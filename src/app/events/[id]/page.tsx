@@ -266,23 +266,43 @@ export default async function EventDetailPage({ params }: Props) {
                 <ul className="mt-2 space-y-1">
                   {event.rsvps
                     .filter((r) => r.status === 'CONFIRMED')
-                    .map((rsvp) => (
-                      <li
-                        key={rsvp.id}
-                        className="flex flex-wrap items-center gap-2 text-stone-700"
-                      >
-                        <span className="text-green-500">✓</span>
-                        <span>{rsvp.user.household?.name || rsvp.user.name}</span>
-                        {rsvp.headcount > 1 && (
-                          <span className="text-sm text-stone-500">
-                            +{rsvp.headcount - 1} guest{rsvp.headcount > 2 ? 's' : ''}
-                          </span>
-                        )}
-                        {rsvp.dietaryNotes && (
-                          <span className="text-sm text-amber-600">🥗 {rsvp.dietaryNotes}</span>
-                        )}
-                      </li>
-                    ))}
+                    .map((rsvp) => {
+                      const respondedDate = rsvp.respondedAt ? new Date(rsvp.respondedAt) : null;
+                      const daysAgo = respondedDate
+                        ? Math.floor(
+                            (now.getTime() - respondedDate.getTime()) / (1000 * 60 * 60 * 24),
+                          )
+                        : null;
+                      const timeAgoStr =
+                        daysAgo !== null
+                          ? daysAgo === 0
+                            ? 'today'
+                            : daysAgo === 1
+                              ? '1 day ago'
+                              : `${daysAgo} days ago`
+                          : null;
+
+                      return (
+                        <li
+                          key={rsvp.id}
+                          className="flex flex-wrap items-center gap-2 text-stone-700"
+                        >
+                          <span className="text-green-500">✓</span>
+                          <span>{rsvp.user.household?.name || rsvp.user.name}</span>
+                          {rsvp.headcount > 1 && (
+                            <span className="text-sm text-stone-500">
+                              +{rsvp.headcount - 1} guest{rsvp.headcount > 2 ? 's' : ''}
+                            </span>
+                          )}
+                          {rsvp.dietaryNotes && (
+                            <span className="text-sm text-amber-600">🥗 {rsvp.dietaryNotes}</span>
+                          )}
+                          {timeAgoStr && (
+                            <span className="text-xs text-stone-400">({timeAgoStr})</span>
+                          )}
+                        </li>
+                      );
+                    })}
                 </ul>
               </div>
             )}
