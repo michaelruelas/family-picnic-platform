@@ -108,6 +108,18 @@ export default async function EventsPage() {
                             <span>{event.potluckSlots.length} potluck slots</span>
                           </span>
                         )}
+                        {event.rsvpDeadline && new Date(event.rsvpDeadline) > now && (
+                          <span className="flex items-center gap-1 text-amber-600">
+                            <span>⏰</span>
+                            <span>
+                              RSVP by{' '}
+                              {new Date(event.rsvpDeadline).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </span>
+                          </span>
+                        )}
                       </div>
                     </Link>
                   );
