@@ -20,6 +20,7 @@ export default async function ProfilePage() {
       name: true,
       email: true,
       communicationPreference: true,
+      createdAt: true,
       household: {
         select: {
           id: true,
@@ -46,8 +47,13 @@ export default async function ProfilePage() {
         <h2 className="text-lg font-semibold text-stone-800">Account Info</h2>
         <dl className="mt-4 space-y-3">
           <div className="flex justify-between">
-            <dt className="text-stone-500">Account created</dt>
-            <dd className="text-stone-900">Through Google OAuth</dd>
+            <dt className="text-stone-500">Member since</dt>
+            <dd className="text-stone-900">
+              {user.createdAt.toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-stone-500">Role</dt>
