@@ -44,6 +44,31 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
+      if (action === 'confirm' && event.maxCapacity) {
+        const currentHeadcount = await prisma.rSVP.aggregate({
+          where: {
+            eventId,
+            status: RSVPStatus.CONFIRMED,
+            userId: { not: session.user.id },
+          },
+          _sum: { headcount: true },
+        });
+
+        const totalAfterRsvp = (currentHeadcount._sum.headcount || 0) + (headcount || 1);
+        if (totalAfterRsvp > event.maxCapacity) {
+          const spotsRemaining = event.maxCapacity - (currentHeadcount._sum.headcount || 0);
+          return NextResponse.json(
+            {
+              error:
+                spotsRemaining <= 0
+                  ? 'Event is full'
+                  : `Only ${spotsRemaining} spot${spotsRemaining !== 1 ? 's' : ''} remaining`,
+            },
+            { status: 400 },
+          );
+        }
+      }
+
       const rsvpData = {
         eventId,
         userId: session.user.id,
