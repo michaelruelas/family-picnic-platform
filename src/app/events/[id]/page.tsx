@@ -16,6 +16,21 @@ export default async function EventDetailPage({ params }: Props) {
     include: {
       potluckSlots: {
         orderBy: { category: 'asc' },
+        include: {
+          signups: {
+            include: {
+              rsvp: {
+                include: {
+                  user: {
+                    include: {
+                      household: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       photos: {
         orderBy: { createdAt: 'desc' },
@@ -238,31 +253,54 @@ export default async function EventDetailPage({ params }: Props) {
                 </h3>
                 <div className="mt-4 space-y-3">
                   {slots.map((slot) => (
-                    <div
-                      key={slot.id}
-                      className="flex items-center justify-between rounded-lg border border-stone-200 p-3"
-                    >
-                      <div>
-                        <p className="font-medium text-stone-900">{slot.name}</p>
-                        <p className="text-sm text-stone-500">
-                          {slot.slotType === 'UNLIMITED'
-                            ? 'Unlimited signups'
-                            : `${slot.currentSignups}/${slot.maxSignups} slots filled`}
-                        </p>
+                    <div key={slot.id} className="rounded-lg border border-stone-200 p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-stone-900">{slot.name}</p>
+                          <p className="text-sm text-stone-500">
+                            {slot.slotType === 'UNLIMITED'
+                              ? 'Unlimited signups'
+                              : `${slot.currentSignups}/${slot.maxSignups} slots filled`}
+                          </p>
+                        </div>
+                        {slot.slotType === 'LIMITED' &&
+                        slot.currentSignups < (slot.maxSignups || 0) ? (
+                          <button className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">
+                            Sign Up
+                          </button>
+                        ) : slot.slotType === 'UNLIMITED' ? (
+                          <button className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">
+                            Sign Up
+                          </button>
+                        ) : (
+                          <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm text-stone-500">
+                            Full
+                          </span>
+                        )}
                       </div>
-                      {slot.slotType === 'LIMITED' &&
-                      slot.currentSignups < (slot.maxSignups || 0) ? (
-                        <button className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">
-                          Sign Up
-                        </button>
-                      ) : slot.slotType === 'UNLIMITED' ? (
-                        <button className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">
-                          Sign Up
-                        </button>
-                      ) : (
-                        <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm text-stone-500">
-                          Full
-                        </span>
+                      {slot.signups.length > 0 && (
+                        <div className="mt-3 border-t border-stone-100 pt-3">
+                          <p className="text-sm font-medium text-stone-700">Who&apos;s bringing:</p>
+                          <ul className="mt-1 space-y-1">
+                            {slot.signups.map((signup) => (
+                              <li
+                                key={signup.id}
+                                className="flex items-center gap-2 text-sm text-stone-600"
+                              >
+                                <span className="text-green-500">✓</span>
+                                <span className="font-medium">{signup.dishName}</span>
+                                <span className="text-stone-400">
+                                  by {signup.rsvp.user.household?.name || signup.rsvp.user.name}
+                                </span>
+                                {signup.servings > 1 && (
+                                  <span className="text-stone-400">
+                                    (serving {signup.servings})
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                     </div>
                   ))}
