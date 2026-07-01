@@ -1,0 +1,63 @@
+{
+  "name": "family-picnic-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A private family engagement hub for an annual picnic — RSVP, potluck, photos, and communication.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "prisma db seed",
+    "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@t3-oss/env-nextjs": "^0.13.0",
+    "@trpc/client": "^11.18.0",
+    "@trpc/next": "^11.18.0",
+    "@trpc/react-query": "^11.18.0",
+    "@trpc/server": "^11.18.0",
+    "dotenv": "^17.4.2",
+    "next": "^16.2.9",
+    "next-auth": "^4.24.14",
+    "pg": "^8.22.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "superjson": "^2.2.2",
+    "twilio": "^6.0.2",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.2",
+    "@types/node": "^26.0.1",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^10.6.0",
+    "eslint-config-next": "^16.2.9",
+    "postcss": "^8.5.3",
+    "prettier": "^3.9.4",
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "prisma": "^7.8.0",
+    "tailwindcss": "^4.3.2",
+    "tsx": "^4.19.4",
+    "typescript": "^6.0.3"
+  },
+  "packageManager": "npm@11.17.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

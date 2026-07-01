@@ -1,0 +1,325 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/lib/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN_ADULT
+  ADMIN
+}
+
+enum CommunicationPreference {
+  EMAIL
+  SMS
+  BOTH
+  NONE
+}
+
+enum Relationship {
+  SPOUSE
+  CHILD
+  PARENT
+  SIBLING
+  INLAW
+  COUSIN
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  CANCELLED
+}
+
+enum InvitationStatus {
+  PENDING
+  SENT
+  DELIVERED
+}
+
+enum RSVPStatus {
+  INVITED
+  PENDING
+  CONFIRMED
+  DECLINED
+}
+
+enum PotluckCategory {
+  MAIN
+  SIDE
+  DESSERT
+  DRINK
+  OTHER
+}
+
+enum SlotType {
+  LIMITED
+  UNLIMITED
+}
+
+enum CommunicationChannel {
+  EMAIL
+  SMS
+}
+
+enum CommunicationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  UNSUBSCRIBED
+}
+
+// reactions are stored as emoji strings
+
+model Household {
+  id                String    @id @default(cuid())
+  name              String
+  parentHouseholdId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  parent           Household?  @relation("HouseholdTree", fields: [parentHouseholdId], references: [id])
+  children         Household[] @relation("HouseholdTree")
+  users            User[]
+  dependents       Dependent[]
+  invitations      Invitation[]
+  photos           Photo[]
+
+  @@index([parentHouseholdId])
+  @@index([deletedAt])
+}
+
+model User {
+  id                     String                 @id @default(cuid())
+  email                  String                 @unique
+  name                   String
+  role                   Role                   @default(ADMIN_ADULT)
+  householdId            String?
+  communicationPreference CommunicationPreference @default(EMAIL)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  deletedAt              DateTime?
+
+  household          Household?        @relation(fields: [householdId], references: [id])
+  managedDependents  Dependent[]
+  invitations        Invitation[]      @relation("UserInvitations")
+  invitedByMe        Invitation[]     @relation("InvitedByUser")
+  rsvps              RSVP[]
+  uploadedPhotos     Photo[]
+  sentCommunications CommunicationLog[] @relation("SentByUser")
+  receivedCommunications CommunicationLog[] @relation("ReceivedByUser")
+  photoReactions     PhotoReaction[]
+  adminAuditLogs     AdminAuditLog[]
+
+  @@index([householdId])
+  @@index([role])
+  @@index([deletedAt])
+}
+
+model Dependent {
+  id              String       @id @default(cuid())
+  name            String
+  relationship    Relationship
+  age             Int?
+  dietaryLabels   String[]
+  isChild         Boolean      @default(false)
+  householdId     String
+  managedByUserId String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  household    Household   @relation(fields: [householdId], references: [id])
+  managedBy    User        @relation(fields: [managedByUserId], references: [id])
+
+  @@index([householdId])
+  @@index([managedByUserId])
+  @@index([deletedAt])
+}
+
+model Event {
+  id           String     @id @default(cuid())
+  name         String
+  date         DateTime
+  location     String
+  mapImageUrl  String?
+  description  String
+  rsvpDeadline DateTime?
+  maxCapacity  Int?
+  status       EventStatus @default(DRAFT)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  invitations        Invitation[]
+  rsvps              RSVP[]
+  potluckSlots       PotluckSlot[]
+  communications     CommunicationLog[]
+  photos             Photo[]
+  adminAuditLogs     AdminAuditLog[]
+
+  @@index([status])
+  @@index([date])
+  @@index([rsvpDeadline])
+}
+
+model Invitation {
+  id              String           @id @default(cuid())
+  eventId         String
+  userId          String?
+  householdId     String?
+  status          InvitationStatus @default(PENDING)
+  invitedByUserId String
+  createdAt       DateTime         @default(now())
+
+  event       Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user        User?      @relation("UserInvitations", fields: [userId], references: [id])
+  household   Household? @relation(fields: [householdId], references: [id])
+  invitedBy   User       @relation("InvitedByUser", fields: [invitedByUserId], references: [id])
+
+  @@unique([eventId, userId])
+  @@unique([eventId, householdId])
+  @@index([eventId])
+  @@index([userId])
+  @@index([householdId])
+  @@index([invitedByUserId])
+  @@index([status])
+}
+
+model RSVP {
+  id            String     @id @default(cuid())
+  eventId       String
+  userId        String
+  householdId   String
+  status        RSVPStatus @default(INVITED)
+  headcount     Int        @default(1)
+  dietaryNotes  String?
+  respondedAt   DateTime?
+  modifiedAt    DateTime   @updatedAt
+
+  event          Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  potluckSignups PotluckSignup[]
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@index([householdId])
+  @@index([status])
+}
+
+model PotluckSlot {
+  id             String         @id @default(cuid())
+  eventId        String
+  category       PotluckCategory
+  name           String
+  slotType       SlotType
+  maxSignups     Int?
+  currentSignups Int            @default(0)
+
+  event    Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  signups  PotluckSignup[]
+
+  @@index([eventId])
+  @@index([category])
+}
+
+model PotluckSignup {
+  id            String   @id @default(cuid())
+  slotId        String
+  rsvpId        String
+  dishName      String
+  servings      Int      @default(1)
+  dietaryLabels String[]
+  claimedAt     DateTime @default(now())
+
+  slot PotluckSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  rsvp RSVP        @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
+
+  @@unique([slotId, rsvpId])
+  @@index([slotId])
+  @@index([rsvpId])
+}
+
+model CommunicationLog {
+  id               String               @id @default(cuid())
+  eventId          String
+  sentByUserId     String
+  recipientUserId  String?
+  channel          CommunicationChannel
+  messageId        String?
+  status           CommunicationStatus  @default(QUEUED)
+  errorCode        String?
+  errorMessage     String?
+  attemptedAt      DateTime             @default(now())
+  deliveredAt      DateTime?
+
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sentBy    User    @relation("SentByUser", fields: [sentByUserId], references: [id], onDelete: Cascade)
+  recipient User?   @relation("ReceivedByUser", fields: [recipientUserId], references: [id])
+
+  @@index([eventId])
+  @@index([recipientUserId])
+  @@index([status])
+  @@index([sentByUserId])
+}
+
+model Photo {
+  id               String   @id @default(cuid())
+  eventId          String
+  uploadedByUserId String
+  householdId      String
+  photoPrismId     String
+  caption          String?
+  url              String
+  thumbnailUrl     String?
+  createdAt        DateTime @default(now())
+
+  event      Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  uploadedBy User           @relation(fields: [uploadedByUserId], references: [id], onDelete: Cascade)
+  household  Household      @relation(fields: [householdId], references: [id])
+  reactions  PhotoReaction[]
+
+  @@index([eventId])
+  @@index([uploadedByUserId])
+  @@index([householdId])
+  @@index([photoPrismId])
+}
+
+model PhotoReaction {
+  id        String   @id @default(cuid())
+  photoId   String
+  userId    String
+  reaction  String
+  createdAt DateTime @default(now())
+
+  photo Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([photoId, userId, reaction])
+  @@index([photoId])
+  @@index([userId])
+}
+
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String?
+  action    String
+  oldValue  Json?
+  newValue  Json?
+  createdAt DateTime @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([createdAt])
+  @@index([action])
+}
