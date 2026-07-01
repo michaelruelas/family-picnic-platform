@@ -245,13 +245,19 @@ export default async function EventDetailPage({ params }: Props) {
                   {event.rsvps
                     .filter((r) => r.status === 'CONFIRMED')
                     .map((rsvp) => (
-                      <li key={rsvp.id} className="flex items-center gap-2 text-stone-700">
+                      <li
+                        key={rsvp.id}
+                        className="flex flex-wrap items-center gap-2 text-stone-700"
+                      >
                         <span className="text-green-500">✓</span>
                         <span>{rsvp.user.household?.name || rsvp.user.name}</span>
                         {rsvp.headcount > 1 && (
                           <span className="text-sm text-stone-500">
                             +{rsvp.headcount - 1} guest{rsvp.headcount > 2 ? 's' : ''}
                           </span>
+                        )}
+                        {rsvp.dietaryNotes && (
+                          <span className="text-sm text-amber-600">🥗 {rsvp.dietaryNotes}</span>
                         )}
                       </li>
                     ))}
