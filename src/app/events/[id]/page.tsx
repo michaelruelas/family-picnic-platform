@@ -143,6 +143,37 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
         )}
 
+        {event.rsvpDeadline && new Date(event.rsvpDeadline) > now && (
+          <div className="mt-4 rounded-lg bg-stone-100 p-4 text-stone-700">
+            <span className="font-medium">RSVP Deadline:</span>{' '}
+            {new Date(event.rsvpDeadline).toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </div>
+        )}
+
+        {event.mapImageUrl && (
+          <div className="mt-6">
+            <h3 className="text-lg font-medium text-stone-900">Event Location</h3>
+            <div className="relative mt-2 aspect-video overflow-hidden rounded-lg bg-stone-100">
+              <Image
+                src={event.mapImageUrl}
+                alt={`Map for ${event.location}`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            </div>
+            <p className="mt-2 flex items-center gap-2 text-stone-600">
+              <span>📍</span>
+              <span>{event.location}</span>
+            </p>
+          </div>
+        )}
+
         {event.rsvps.length > 0 && (
           <div className="mt-6 rounded-lg bg-stone-50 p-4">
             <div className="flex items-center gap-2 text-lg font-medium text-stone-900">
