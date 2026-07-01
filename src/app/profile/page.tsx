@@ -48,7 +48,7 @@ export default async function ProfilePage() {
       <p className="mt-2 text-stone-600">Manage your account settings</p>
 
       <div className="mt-8">
-        <ProfileClient user={user} />
+        <ProfileClient user={user} initialDependents={user.managedDependents} />
       </div>
 
       <div className="mt-8 rounded-xl bg-stone-100 p-6">
@@ -71,35 +71,6 @@ export default async function ProfilePage() {
           </div>
         </dl>
       </div>
-
-      {user.managedDependents.length > 0 && (
-        <div className="mt-8 rounded-xl bg-stone-100 p-6">
-          <h2 className="text-lg font-semibold text-stone-800">Family Members</h2>
-          <ul className="mt-4 space-y-3">
-            {user.managedDependents.map((dependent) => (
-              <li key={dependent.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-stone-700">{dependent.name}</span>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 capitalize">
-                    {dependent.relationship.toLowerCase()}
-                  </span>
-                  {dependent.isChild && (
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
-                      Child
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 text-sm text-stone-500">
-                  {dependent.age !== null && <span>{dependent.age} yrs</span>}
-                  {dependent.dietaryLabels.length > 0 && (
-                    <span className="text-amber-600">🥗 {dependent.dietaryLabels.join(', ')}</span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </main>
   );
 }
