@@ -1,0 +1,207 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+interface RSVPFormProps {
+  eventId: string;
+  existingRsvp?: {
+    status: string;
+    headcount: number;
+    dietaryNotes: string | null;
+  } | null;
+  rsvpDeadline?: string | null;
+  isPast: boolean;
+  maxCapacity?: number | null;
+  currentAttending: number;
+}
+
+export default function RSVPForm({
+  eventId,
+  existingRsvp,
+  rsvpDeadline,
+  isPast,
+  maxCapacity,
+  currentAttending,
+}: RSVPFormProps) {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [headcount, setHeadcount] = useState(existingRsvp?.headcount || 1);
+  const [dietaryNotes, setDietaryNotes] = useState(existingRsvp?.dietaryNotes || '');
+  const [error, setError] = useState<string | null>(null);
+
+  const isRsvpOpen = !isPast && (!rsvpDeadline || new Date(rsvpDeadline) > new Date());
+  const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
+  const isFull = spotsRemaining !== null && spotsRemaining <= 0;
+
+  const handleSubmit = async (action: 'confirm' | 'decline') => {
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/rsvp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId,
+          action,
+          headcount: action === 'confirm' ? headcount : 0,
+          dietaryNotes: action === 'confirm' ? dietaryNotes : null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to submit RSVP');
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isPast) {
+    return (
+      <div className="rounded-lg bg-stone-100 p-4 text-stone-600">
+        <p className="font-medium">This event has already taken place.</p>
+        {existingRsvp && existingRsvp.status === 'CONFIRMED' && (
+          <p className="mt-1 text-sm">You attended this event.</p>
+        )}
+      </div>
+    );
+  }
+
+  if (existingRsvp) {
+    const statusLabels: Record<string, { label: string; color: string; bg: string }> = {
+      CONFIRMED: { label: "You're Attending!", color: 'text-green-700', bg: 'bg-green-50' },
+      DECLINED: { label: 'You Declined', color: 'text-red-700', bg: 'bg-red-50' },
+      PENDING: { label: 'Response Pending', color: 'text-amber-700', bg: 'bg-amber-50' },
+      INVITED: { label: 'Invitation Pending', color: 'text-stone-700', bg: 'bg-stone-50' },
+    };
+
+    const defaultStatus = { label: 'Unknown', color: 'text-stone-700', bg: 'bg-stone-50' };
+    const status = statusLabels[existingRsvp.status] ?? defaultStatus;
+
+    return (
+      <div className={`rounded-lg ${status.bg} p-4`}>
+        <p className={`font-medium ${status.color}`}>{status.label}</p>
+        {existingRsvp.status === 'CONFIRMED' && (
+          <div className="mt-3 space-y-2">
+            <p className="text-sm text-stone-600">
+              Headcount: {existingRsvp.headcount}
+              {existingRsvp.headcount > 1 && ' (including guests)'}
+            </p>
+            {existingRsvp.dietaryNotes && (
+              <p className="text-sm text-stone-600">Dietary notes: {existingRsvp.dietaryNotes}</p>
+            )}
+            {isRsvpOpen && (
+              <button
+                onClick={() => handleSubmit('decline')}
+                disabled={isSubmitting}
+                className="mt-2 rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Updating...' : 'Change to Declined'}
+              </button>
+            )}
+          </div>
+        )}
+        {existingRsvp.status === 'DECLINED' && isRsvpOpen && (
+          <button
+            onClick={() => handleSubmit('confirm')}
+            disabled={isSubmitting || isFull}
+            className="mt-2 rounded-lg bg-green-100 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-200 disabled:opacity-50"
+          >
+            {isSubmitting ? 'Updating...' : isFull ? 'Event is Full' : 'Change to Attending'}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!isRsvpOpen) {
+    return (
+      <div className="rounded-lg bg-stone-100 p-4 text-stone-600">
+        <p className="font-medium">RSVP is closed for this event.</p>
+        {rsvpDeadline && (
+          <p className="mt-1 text-sm">
+            The RSVP deadline was {new Date(rsvpDeadline).toLocaleDateString()}.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (isFull) {
+    return (
+      <div className="rounded-lg bg-stone-100 p-4 text-stone-600">
+        <p className="font-medium">This event is full.</p>
+        <p className="mt-1 text-sm">All spots have been taken.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-stone-200">
+      <h3 className="text-lg font-medium text-stone-900">RSVP for this Event</h3>
+      {spotsRemaining !== null && (
+        <p className="mt-1 text-sm text-stone-500">
+          {spotsRemaining} spot{spotsRemaining !== 1 ? 's' : ''} remaining
+        </p>
+      )}
+
+      {error && <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+      <div className="mt-4 space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-stone-700">Number of People</label>
+          <select
+            value={headcount}
+            onChange={(e) => setHeadcount(Number(e.target.value))}
+            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+          >
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              <option key={n} value={n}>
+                {n} {n === 1 ? 'person' : 'people'}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-stone-700">
+            Dietary Notes (optional)
+          </label>
+          <textarea
+            value={dietaryNotes}
+            onChange={(e) => setDietaryNotes(e.target.value)}
+            placeholder="Allergies, preferences, etc."
+            rows={2}
+            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => handleSubmit('confirm')}
+            disabled={isSubmitting}
+            className="flex-1 rounded-lg bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {isSubmitting ? 'Submitting...' : '✓ Confirm Attendance'}
+          </button>
+          <button
+            onClick={() => handleSubmit('decline')}
+            disabled={isSubmitting}
+            className="flex-1 rounded-lg bg-stone-200 px-4 py-2 font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
+          >
+            {isSubmitting ? 'Submitting...' : '✗ Decline'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

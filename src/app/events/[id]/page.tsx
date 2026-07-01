@@ -2,6 +2,9 @@ import { prisma } from '~/lib/prisma';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '~/lib/auth';
+import RSVPForm from '~/components/RSVPForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +14,8 @@ interface Props {
 
 export default async function EventDetailPage({ params }: Props) {
   const { id } = await params;
+  const session = await getServerSession(authOptions);
+
   const event = await prisma.event.findUnique({
     where: { id },
     include: {
@@ -68,6 +73,12 @@ export default async function EventDetailPage({ params }: Props) {
   const eventDate = new Date(event.date);
   const now = new Date();
   const isPast = eventDate < now;
+
+  const currentAttending = event.rsvps
+    .filter((r) => r.status === 'CONFIRMED')
+    .reduce((sum, r) => sum + r.headcount, 0);
+
+  const userRsvp = session?.user?.id ? event.rsvps.find((r) => r.userId === session.user.id) : null;
 
   const confirmedUserIds = new Set(
     event.rsvps.filter((r) => r.status === 'CONFIRMED').map((r) => r.userId),
@@ -347,6 +358,27 @@ export default async function EventDetailPage({ params }: Props) {
                 </ul>
               </div>
             )}
+          </div>
+        )}
+
+        {session?.user?.id && (
+          <div className="mt-6">
+            <RSVPForm
+              eventId={event.id}
+              existingRsvp={
+                userRsvp
+                  ? {
+                      status: userRsvp.status,
+                      headcount: userRsvp.headcount,
+                      dietaryNotes: userRsvp.dietaryNotes,
+                    }
+                  : null
+              }
+              rsvpDeadline={event.rsvpDeadline?.toISOString()}
+              isPast={isPast}
+              maxCapacity={event.maxCapacity}
+              currentAttending={currentAttending}
+            />
           </div>
         )}
       </div>
