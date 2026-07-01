@@ -27,13 +27,26 @@ export default async function MyEventsPage() {
         event: {
           include: {
             potluckSlots: {
-              select: { id: true },
+              include: {
+                signups: {
+                  where: {
+                    rsvp: {
+                      userId,
+                    },
+                  },
+                },
+              },
             },
           },
         },
         user: {
           include: {
             household: true,
+          },
+        },
+        potluckSignups: {
+          include: {
+            slot: true,
           },
         },
       },
@@ -61,6 +74,11 @@ export default async function MyEventsPage() {
         user: {
           include: {
             household: true,
+          },
+        },
+        potluckSignups: {
+          include: {
+            slot: true,
           },
         },
       },
@@ -102,6 +120,7 @@ export default async function MyEventsPage() {
                 {upcomingRSVPs.map((rsvp) => {
                   const eventDate = new Date(rsvp.event.date);
                   const hasPotluck = rsvp.event.potluckSlots.length > 0;
+                  const userPotluckSignups = rsvp.potluckSignups || [];
                   return (
                     <Link
                       key={rsvp.id}
@@ -160,7 +179,11 @@ export default async function MyEventsPage() {
                       )}
                       {hasPotluck && rsvp.status === 'CONFIRMED' && (
                         <p className="mt-2 text-sm text-stone-500">
-                          🍴 Potluck available - sign up!
+                          {userPotluckSignups.length > 0 ? (
+                            <>🍴 Bringing: {userPotluckSignups.map((s) => s.dishName).join(', ')}</>
+                          ) : (
+                            '🍴 Potluck available - sign up!'
+                          )}
                         </p>
                       )}
                     </Link>
