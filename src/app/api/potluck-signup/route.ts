@@ -63,16 +63,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Dish name is required' }, { status: 400 });
       }
 
-      if (slot.slotType === 'LIMITED') {
-        const currentSignups = await prisma.potluckSignup.count({
-          where: { slotId },
-        });
-
-        if (currentSignups >= (slot.maxSignups || 0)) {
-          return NextResponse.json({ error: 'This slot is full' }, { status: 400 });
-        }
-      }
-
       const existingSignup = await prisma.potluckSignup.findUnique({
         where: {
           slotId_rsvpId: {
@@ -81,6 +71,23 @@ export async function POST(request: Request) {
           },
         },
       });
+
+      if (slot.slotType === 'LIMITED') {
+        const currentSignups = await prisma.potluckSignup.count({
+          where: { slotId },
+        });
+        const maxSignups = slot.maxSignups || 0;
+
+        if (existingSignup) {
+          if (currentSignups - 1 >= maxSignups) {
+            return NextResponse.json({ error: 'This slot is full' }, { status: 400 });
+          }
+        } else {
+          if (currentSignups >= maxSignups) {
+            return NextResponse.json({ error: 'This slot is full' }, { status: 400 });
+          }
+        }
+      }
 
       if (existingSignup) {
         await prisma.potluckSignup.update({
