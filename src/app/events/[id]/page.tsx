@@ -236,12 +236,6 @@ export default async function EventDetailPage({ params }: Props) {
                 </div>
                 <div className="text-sm text-stone-500">Declined</div>
               </div>
-              <div className="rounded-lg bg-white p-3 text-center">
-                <div className="text-2xl font-bold text-stone-600">
-                  {event.rsvps.reduce((sum, r) => sum + r.headcount, 0)}
-                </div>
-                <div className="text-sm text-stone-500">Total Headcount</div>
-              </div>
             </div>
             {event.maxCapacity && (
               <div className="mt-3">
