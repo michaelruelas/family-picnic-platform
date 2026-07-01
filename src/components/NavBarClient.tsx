@@ -30,7 +30,10 @@ export default function NavBarClient() {
               ...
             </span>
           ) : session ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
+              <Link href="/my-events" className="hover:text-amber-200">
+                My Events
+              </Link>
               <span className="text-sm text-amber-200">{session.user?.name}</span>
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
