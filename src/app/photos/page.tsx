@@ -1,10 +1,15 @@
 import { prisma } from '~/lib/prisma';
 import Link from 'next/link';
-import Image from 'next/image';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '~/lib/auth';
+import PhotoCard from '~/components/PhotoCard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PhotosPage() {
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id;
+
   const eventsWithPhotos = await prisma.event.findMany({
     where: {
       status: 'PUBLISHED',
@@ -82,51 +87,14 @@ export default async function PhotosPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-                  {event.photos.map((photo) => {
-                    const reactionCounts = photo.reactions.reduce(
-                      (acc, r) => {
-                        acc[r.reaction] = (acc[r.reaction] || 0) + 1;
-                        return acc;
-                      },
-                      {} as Record<string, number>,
-                    );
-                    const topReactions = Object.entries(reactionCounts)
-                      .sort((a, b) => b[1] - a[1])
-                      .slice(0, 3)
-                      .map(([emoji]) => emoji);
-
-                    return (
-                      <div
-                        key={photo.id}
-                        className="group relative aspect-square overflow-hidden rounded-lg bg-stone-100"
-                      >
-                        <Image
-                          src={photo.thumbnailUrl || photo.url}
-                          alt={photo.caption || `${event.name} photo`}
-                          fill
-                          className="object-cover transition-transform duration-200 group-hover:scale-105"
-                          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        />
-                        {photo.caption && (
-                          <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/50 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                            <p className="p-2 text-sm text-white">{photo.caption}</p>
-                          </div>
-                        )}
-                        {topReactions.length > 0 && (
-                          <div className="absolute top-2 left-2 flex gap-1">
-                            {topReactions.map((emoji) => (
-                              <span
-                                key={emoji}
-                                className="rounded-full bg-black/50 px-2 py-1 text-xs text-white backdrop-blur-sm"
-                              >
-                                {emoji} {reactionCounts[emoji]}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {event.photos.map((photo) => (
+                    <PhotoCard
+                      key={photo.id}
+                      photo={photo}
+                      eventName={event.name}
+                      userId={userId}
+                    />
+                  ))}
                 </div>
 
                 <Link
