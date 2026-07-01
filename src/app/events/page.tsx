@@ -1,4 +1,5 @@
 import { prisma } from '~/lib/prisma';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,9 +29,10 @@ export default async function EventsPage() {
             const eventDate = new Date(event.date);
             const isPast = eventDate < now;
             return (
-              <div
+              <Link
                 key={event.id}
-                className={`rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md ${
+                href={`/events/${event.id}`}
+                className={`block rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md ${
                   isPast ? 'opacity-60' : ''
                 }`}
               >
@@ -56,7 +58,7 @@ export default async function EventsPage() {
                 <div className="mt-4 flex items-center gap-4 text-sm text-stone-500">
                   <span>📍 {event.location}</span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
