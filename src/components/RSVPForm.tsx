@@ -26,6 +26,7 @@ export default function RSVPForm({
 }: RSVPFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [headcount, setHeadcount] = useState(existingRsvp?.headcount || 1);
   const [dietaryNotes, setDietaryNotes] = useState(existingRsvp?.dietaryNotes || '');
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +88,72 @@ export default function RSVPForm({
     const defaultStatus = { label: 'Unknown', color: 'text-stone-700', bg: 'bg-stone-50' };
     const status = statusLabels[existingRsvp.status] ?? defaultStatus;
 
+    if (isEditing && existingRsvp.status === 'CONFIRMED') {
+      return (
+        <div className="rounded-lg bg-green-50 p-4">
+          <h3 className="text-lg font-medium text-green-900">Edit Your RSVP</h3>
+
+          {error && (
+            <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          )}
+
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-stone-700">Number of People</label>
+              <select
+                value={headcount}
+                onChange={(e) => setHeadcount(Number(e.target.value))}
+                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(
+                  (n) => (
+                    <option key={n} value={n}>
+                      {n} {n === 1 ? 'person' : 'people'}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-stone-700">
+                Dietary Notes (optional)
+              </label>
+              <textarea
+                value={dietaryNotes}
+                onChange={(e) => setDietaryNotes(e.target.value)}
+                placeholder="Allergies, preferences, etc."
+                rows={2}
+                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleSubmit('confirm')}
+                disabled={isSubmitting}
+                className="flex-1 rounded-lg bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Saving...' : '✓ Save Changes'}
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditing(false);
+                  setHeadcount(existingRsvp.headcount);
+                  setDietaryNotes(existingRsvp.dietaryNotes || '');
+                  setError(null);
+                }}
+                disabled={isSubmitting}
+                className="flex-1 rounded-lg bg-stone-200 px-4 py-2 font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className={`rounded-lg ${status.bg} p-4`}>
         <p className={`font-medium ${status.color}`}>{status.label}</p>
@@ -100,13 +167,21 @@ export default function RSVPForm({
               <p className="text-sm text-stone-600">Dietary notes: {existingRsvp.dietaryNotes}</p>
             )}
             {isRsvpOpen && (
-              <button
-                onClick={() => handleSubmit('decline')}
-                disabled={isSubmitting}
-                className="mt-2 rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Updating...' : 'Change to Declined'}
-              </button>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="rounded-lg bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700 hover:bg-blue-200"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleSubmit('decline')}
+                  disabled={isSubmitting}
+                  className="rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Updating...' : 'Decline'}
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -164,7 +239,7 @@ export default function RSVPForm({
             onChange={(e) => setHeadcount(Number(e.target.value))}
             className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
           >
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((n) => (
               <option key={n} value={n}>
                 {n} {n === 1 ? 'person' : 'people'}
               </option>
