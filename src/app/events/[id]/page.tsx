@@ -433,8 +433,8 @@ export default async function EventDetailPage({ params }: Props) {
                           <p className="font-medium text-stone-900">{slot.name}</p>
                           <p className="text-sm text-stone-500">
                             {slot.slotType === 'UNLIMITED'
-                              ? 'Unlimited signups'
-                              : `${slot.currentSignups}/${slot.maxSignups} slots filled`}
+                              ? `${slot.currentSignups} signups${slot.signups.length > 0 ? ` (${slot.signups.reduce((sum, s) => sum + s.servings, 0)} servings)` : ''}`
+                              : `${slot.currentSignups}/${slot.maxSignups} slots filled${slot.signups.length > 0 ? ` (${slot.signups.reduce((sum, s) => sum + s.servings, 0)} servings)` : ''}`}
                           </p>
                         </div>
                         {userRsvp?.status === 'CONFIRMED' && (
