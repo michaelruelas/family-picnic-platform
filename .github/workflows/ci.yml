@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  DATABASE_URL: postgresql://localhost:5432/family-picnic-ci
+  NEXTAUTH_URL: http://localhost:3000
+  NEXTAUTH_SECRET: ci-secret-do-not-use
+  AUTH_GOOGLE_ID: ci-placeholder
+  AUTH_GOOGLE_SECRET: ci-placeholder
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -41,9 +48,3 @@ jobs:
 
       - name: Build
         run: bun run build
-        env:
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
-          NEXTAUTH_URL: http://localhost:3000
-          NEXTAUTH_SECRET: ci-secret
-          AUTH_GOOGLE_ID: ci
-          AUTH_GOOGLE_SECRET: ci
