@@ -48,6 +48,16 @@ export default async function EventDetailPage({ params }: Props) {
           },
         },
       },
+      invitations: {
+        include: {
+          user: {
+            include: {
+              household: true,
+            },
+          },
+          household: true,
+        },
+      },
     },
   });
 
@@ -58,6 +68,13 @@ export default async function EventDetailPage({ params }: Props) {
   const eventDate = new Date(event.date);
   const now = new Date();
   const isPast = eventDate < now;
+
+  const confirmedUserIds = new Set(
+    event.rsvps.filter((r) => r.status === 'CONFIRMED').map((r) => r.userId),
+  );
+  const pendingInvitations = event.invitations.filter(
+    (inv) => inv.userId && !confirmedUserIds.has(inv.userId),
+  );
 
   const slotsByCategory = event.potluckSlots.reduce(
     (acc, slot) => {
@@ -272,6 +289,32 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      {pendingInvitations.length > 0 && (
+        <div className="mt-8 rounded-2xl bg-white p-8 shadow-sm">
+          <div className="flex items-center gap-2 text-lg font-medium text-stone-900">
+            <span>✉️</span>
+            <span>Pending Invitations</span>
+          </div>
+          <p className="mt-2 text-stone-600">
+            These guests have been invited but haven&apos;t responded yet
+          </p>
+          <ul className="mt-4 space-y-2">
+            {pendingInvitations.map((inv) => (
+              <li key={inv.id} className="flex items-center gap-2 text-stone-700">
+                <span className="text-amber-500">⏳</span>
+                <span>{inv.household?.name || inv.user?.name || 'Unknown'}</span>
+                {inv.status === 'SENT' && (
+                  <span className="text-xs text-stone-400">(invitation sent)</span>
+                )}
+                {inv.status === 'DELIVERED' && (
+                  <span className="text-xs text-stone-400">(delivered)</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-8">
         <h2 className="text-2xl font-bold text-stone-900">Potluck Sign-ups</h2>
