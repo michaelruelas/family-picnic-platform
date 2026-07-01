@@ -1,4 +1,15 @@
-export default function Home() {
+import { prisma } from '~/lib/prisma';
+import Link from 'next/link';
+
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  const upcomingEvents = await prisma.event.findMany({
+    where: { status: 'PUBLISHED', date: { gte: new Date() } },
+    orderBy: { date: 'asc' },
+    take: 3,
+  });
+
   return (
     <main className="min-h-screen">
       <header className="bg-amber-700 py-6 text-white shadow-md">
@@ -7,6 +18,43 @@ export default function Home() {
           <p className="mt-1 text-amber-100">Our annual family gathering made easy</p>
         </div>
       </header>
+
+      {upcomingEvents.length > 0 && (
+        <section className="mx-auto mt-12 max-w-5xl px-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-stone-900">Upcoming Events</h2>
+            <Link href="/events" className="text-amber-700 hover:text-amber-900">
+              View all →
+            </Link>
+          </div>
+          <div className="mt-6 grid gap-6 md:grid-cols-3">
+            {upcomingEvents.map((event) => {
+              const eventDate = new Date(event.date);
+              return (
+                <Link
+                  key={event.id}
+                  href={`/events/${event.id}`}
+                  className="block rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <h3 className="text-lg font-semibold text-stone-900">{event.name}</h3>
+                  <p className="mt-1 text-sm text-stone-500">
+                    {eventDate.toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </p>
+                  <p className="mt-2 line-clamp-2 text-sm text-stone-600">{event.description}</p>
+                  <div className="mt-4 flex items-center gap-2 text-sm text-amber-700">
+                    <span>📍</span>
+                    <span className="truncate">{event.location}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="mx-auto mt-16 max-w-5xl px-4">
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
