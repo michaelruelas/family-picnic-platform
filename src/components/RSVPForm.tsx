@@ -30,6 +30,7 @@ export default function RSVPForm({
   const [headcount, setHeadcount] = useState(existingRsvp?.headcount || 1);
   const [dietaryNotes, setDietaryNotes] = useState(existingRsvp?.dietaryNotes || '');
   const [error, setError] = useState<string | null>(null);
+  const [showDeclineConfirm, setShowDeclineConfirm] = useState(false);
 
   const isRsvpOpen = !isPast && (!rsvpDeadline || new Date(rsvpDeadline) > new Date());
   const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
@@ -175,11 +176,11 @@ export default function RSVPForm({
                   Edit
                 </button>
                 <button
-                  onClick={() => handleSubmit('decline')}
+                  onClick={() => setShowDeclineConfirm(true)}
                   disabled={isSubmitting}
                   className="rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Updating...' : 'Decline'}
+                  Decline
                 </button>
               </div>
             )}
@@ -193,6 +194,34 @@ export default function RSVPForm({
           >
             {isSubmitting ? 'Updating...' : isFull ? 'Event is Full' : 'Change to Attending'}
           </button>
+        )}
+
+        {showDeclineConfirm && (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="font-medium text-red-800">Are you sure you want to decline this event?</p>
+            <p className="mt-1 text-sm text-red-600">
+              You can change your response later if you change your mind.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => {
+                  setShowDeclineConfirm(false);
+                  handleSubmit('decline');
+                }}
+                disabled={isSubmitting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Updating...' : 'Yes, Decline'}
+              </button>
+              <button
+                onClick={() => setShowDeclineConfirm(false)}
+                disabled={isSubmitting}
+                className="rounded-lg bg-stone-200 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -269,13 +298,41 @@ export default function RSVPForm({
             {isSubmitting ? 'Submitting...' : '✓ Confirm Attendance'}
           </button>
           <button
-            onClick={() => handleSubmit('decline')}
+            onClick={() => setShowDeclineConfirm(true)}
             disabled={isSubmitting}
             className="flex-1 rounded-lg bg-stone-200 px-4 py-2 font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
           >
-            {isSubmitting ? 'Submitting...' : '✗ Decline'}
+            ✗ Decline
           </button>
         </div>
+
+        {showDeclineConfirm && (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="font-medium text-red-800">Are you sure you want to decline this event?</p>
+            <p className="mt-1 text-sm text-red-600">
+              You can change your response later if you change your mind.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => {
+                  setShowDeclineConfirm(false);
+                  handleSubmit('decline');
+                }}
+                disabled={isSubmitting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Submitting...' : 'Yes, Decline'}
+              </button>
+              <button
+                onClick={() => setShowDeclineConfirm(false)}
+                disabled={isSubmitting}
+                className="rounded-lg bg-stone-200 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
