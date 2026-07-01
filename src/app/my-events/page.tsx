@@ -66,9 +66,7 @@ export default async function MyEventsPage() {
       include: {
         event: {
           include: {
-            potluckSlots: {
-              select: { id: true },
-            },
+            potluckSlots: true,
           },
         },
         user: {
