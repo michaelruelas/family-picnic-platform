@@ -8,6 +8,19 @@ export default async function EventsPage() {
     where: { status: 'PUBLISHED' },
     orderBy: { date: 'asc' },
     take: 10,
+    include: {
+      rsvps: {
+        select: {
+          status: true,
+          headcount: true,
+        },
+      },
+      potluckSlots: {
+        select: {
+          id: true,
+        },
+      },
+    },
   });
 
   const now = new Date();
@@ -55,8 +68,25 @@ export default async function EventsPage() {
                   )}
                 </div>
                 <p className="mt-3 text-stone-600">{event.description}</p>
-                <div className="mt-4 flex items-center gap-4 text-sm text-stone-500">
+                <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-stone-500">
                   <span>📍 {event.location}</span>
+                  {event.rsvps.length > 0 && (
+                    <span className="flex items-center gap-1">
+                      <span className="text-green-600">✓</span>
+                      <span>
+                        {event.rsvps
+                          .filter((r) => r.status === 'CONFIRMED')
+                          .reduce((sum, r) => sum + r.headcount, 0)}{' '}
+                        attending
+                      </span>
+                    </span>
+                  )}
+                  {event.potluckSlots.length > 0 && (
+                    <span className="flex items-center gap-1">
+                      <span>🍴</span>
+                      <span>{event.potluckSlots.length} potluck slots</span>
+                    </span>
+                  )}
                 </div>
               </Link>
             );
