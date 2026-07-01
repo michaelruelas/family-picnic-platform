@@ -105,6 +105,11 @@ export default async function EventDetailPage({ params }: Props) {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
+              })}{' '}
+              at{' '}
+              {eventDate.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
               })}
             </p>
           </div>

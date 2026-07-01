@@ -42,6 +42,11 @@ export default async function Home() {
                       weekday: 'short',
                       month: 'short',
                       day: 'numeric',
+                    })}{' '}
+                    at{' '}
+                    {eventDate.toLocaleTimeString('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
                     })}
                   </p>
                   <p className="mt-2 line-clamp-2 text-sm text-stone-600">{event.description}</p>

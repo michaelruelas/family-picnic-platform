@@ -66,6 +66,11 @@ export default async function PhotosPage() {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',
+                      })}{' '}
+                      at{' '}
+                      {eventDate.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
                       })}
                     </p>
                   </div>

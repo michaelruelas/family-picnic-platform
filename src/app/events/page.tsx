@@ -79,6 +79,11 @@ export default async function EventsPage() {
                               year: 'numeric',
                               month: 'long',
                               day: 'numeric',
+                            })}{' '}
+                            at{' '}
+                            {eventDate.toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
                             })}
                           </p>
                         </div>
@@ -132,6 +137,11 @@ export default async function EventsPage() {
                               year: 'numeric',
                               month: 'long',
                               day: 'numeric',
+                            })}{' '}
+                            at{' '}
+                            {eventDate.toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
                             })}
                           </p>
                         </div>
