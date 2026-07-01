@@ -34,6 +34,9 @@ export default function NavBarClient() {
               <Link href="/my-events" className="hover:text-amber-200">
                 My Events
               </Link>
+              <Link href="/profile" className="hover:text-amber-200">
+                Profile
+              </Link>
               <span className="text-sm text-amber-200">{session.user?.name}</span>
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
