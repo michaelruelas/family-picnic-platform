@@ -327,7 +327,7 @@ export default async function EventDetailPage({ params }: Props) {
                             {slot.signups.map((signup) => (
                               <li
                                 key={signup.id}
-                                className="flex items-center gap-2 text-sm text-stone-600"
+                                className="flex flex-wrap items-center gap-2 text-sm text-stone-600"
                               >
                                 <span className="text-green-500">✓</span>
                                 <span className="font-medium">{signup.dishName}</span>
@@ -337,6 +337,11 @@ export default async function EventDetailPage({ params }: Props) {
                                 {signup.servings > 1 && (
                                   <span className="text-stone-400">
                                     (serving {signup.servings})
+                                  </span>
+                                )}
+                                {signup.dietaryLabels.length > 0 && (
+                                  <span className="text-xs text-amber-600">
+                                    🥗 {signup.dietaryLabels.join(', ')}
                                   </span>
                                 )}
                               </li>
