@@ -1,5 +1,6 @@
 import { prisma } from '~/lib/prisma';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,15 @@ export default async function EventsPage() {
       where: { status: 'PUBLISHED', date: { gte: now } },
       orderBy: { date: 'asc' },
       take: 10,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        date: true,
+        location: true,
+        description: true,
+        mapImageUrl: true,
+        rsvpDeadline: true,
+        status: true,
         rsvps: {
           select: {
             status: true,
@@ -29,7 +38,15 @@ export default async function EventsPage() {
       where: { status: 'PUBLISHED', date: { lt: now } },
       orderBy: { date: 'desc' },
       take: 10,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        date: true,
+        location: true,
+        description: true,
+        mapImageUrl: true,
+        rsvpDeadline: true,
+        status: true,
         rsvps: {
           select: {
             status: true,
@@ -70,25 +87,40 @@ export default async function EventsPage() {
                       href={`/events/${event.id}`}
                       className="block rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
                     >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="text-xl font-semibold text-stone-900">{event.name}</h3>
-                          <p className="mt-1 text-sm text-stone-500">
-                            {eventDate.toLocaleDateString('en-US', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            })}{' '}
-                            at{' '}
-                            {eventDate.toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })}
-                          </p>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="text-xl font-semibold text-stone-900">{event.name}</h3>
+                              <p className="mt-1 text-sm text-stone-500">
+                                {eventDate.toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                })}{' '}
+                                at{' '}
+                                {eventDate.toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="mt-3 line-clamp-2 text-stone-600">{event.description}</p>
                         </div>
+                        {event.mapImageUrl && (
+                          <div className="relative h-24 w-32 flex-shrink-0 overflow-hidden rounded-lg bg-stone-100">
+                            <Image
+                              src={event.mapImageUrl}
+                              alt={`Map for ${event.location}`}
+                              fill
+                              className="object-cover"
+                              sizes="128px"
+                            />
+                          </div>
+                        )}
                       </div>
-                      <p className="mt-3 line-clamp-2 text-stone-600">{event.description}</p>
                       <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-stone-500">
                         <span>📍 {event.location}</span>
                         {event.rsvps.length > 0 && (
@@ -140,28 +172,43 @@ export default async function EventsPage() {
                       href={`/events/${event.id}`}
                       className="block rounded-xl bg-white p-6 opacity-80 shadow-sm transition-shadow hover:opacity-100 hover:shadow-md"
                     >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="text-xl font-semibold text-stone-900">{event.name}</h3>
-                          <p className="mt-1 text-sm text-stone-500">
-                            {eventDate.toLocaleDateString('en-US', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            })}{' '}
-                            at{' '}
-                            {eventDate.toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })}
-                          </p>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="text-xl font-semibold text-stone-900">{event.name}</h3>
+                              <p className="mt-1 text-sm text-stone-500">
+                                {eventDate.toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                })}{' '}
+                                at{' '}
+                                {eventDate.toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
+                              Past
+                            </span>
+                          </div>
+                          <p className="mt-3 line-clamp-2 text-stone-600">{event.description}</p>
                         </div>
-                        <span className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
-                          Past
-                        </span>
+                        {event.mapImageUrl && (
+                          <div className="relative h-24 w-32 flex-shrink-0 overflow-hidden rounded-lg bg-stone-100 opacity-60">
+                            <Image
+                              src={event.mapImageUrl}
+                              alt={`Map for ${event.location}`}
+                              fill
+                              className="object-cover"
+                              sizes="128px"
+                            />
+                          </div>
+                        )}
                       </div>
-                      <p className="mt-3 line-clamp-2 text-stone-600">{event.description}</p>
                       <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-stone-500">
                         <span>📍 {event.location}</span>
                         {event.rsvps.length > 0 && (
