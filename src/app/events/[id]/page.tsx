@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import RSVPForm from '~/components/RSVPForm';
+import PotluckSignupForm from '~/components/PotluckSignupForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -432,7 +433,7 @@ export default async function EventDetailPage({ params }: Props) {
                 <div className="mt-4 space-y-3">
                   {slots.map((slot) => (
                     <div key={slot.id} className="rounded-lg border border-stone-200 p-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-start justify-between">
                         <div>
                           <p className="font-medium text-stone-900">{slot.name}</p>
                           <p className="text-sm text-stone-500">
@@ -441,19 +442,8 @@ export default async function EventDetailPage({ params }: Props) {
                               : `${slot.currentSignups}/${slot.maxSignups} slots filled`}
                           </p>
                         </div>
-                        {slot.slotType === 'LIMITED' &&
-                        slot.currentSignups < (slot.maxSignups || 0) ? (
-                          <button className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">
-                            Sign Up
-                          </button>
-                        ) : slot.slotType === 'UNLIMITED' ? (
-                          <button className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">
-                            Sign Up
-                          </button>
-                        ) : (
-                          <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm text-stone-500">
-                            Full
-                          </span>
+                        {userRsvp?.status === 'CONFIRMED' && (
+                          <PotluckSignupForm slot={slot} userId={session?.user?.id} />
                         )}
                       </div>
                       {slot.signups.length > 0 && (
