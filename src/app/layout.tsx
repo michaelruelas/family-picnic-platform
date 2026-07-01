@@ -28,6 +28,12 @@ function NavBar() {
           <Link href="/photos" className="hover:text-amber-200">
             Photos
           </Link>
+          <Link
+            href="/login"
+            className="rounded-lg bg-amber-600 px-3 py-1 text-sm font-medium hover:bg-amber-500"
+          >
+            Sign In
+          </Link>
         </div>
       </div>
     </nav>
