@@ -21,6 +21,7 @@ export default async function EventDetailPage({ params }: Props) {
         orderBy: { createdAt: 'desc' },
         take: 12,
       },
+      rsvps: true,
     },
   });
 
@@ -113,6 +114,73 @@ export default async function EventDetailPage({ params }: Props) {
         {event.maxCapacity && (
           <div className="mt-6 rounded-lg bg-amber-50 p-4 text-amber-800">
             <span className="font-medium">Max Capacity:</span> {event.maxCapacity} people
+          </div>
+        )}
+
+        {event.rsvps.length > 0 && (
+          <div className="mt-6 rounded-lg bg-stone-50 p-4">
+            <div className="flex items-center gap-2 text-lg font-medium text-stone-900">
+              <span>📋</span>
+              <span>RSVP Summary</span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
+              <div className="rounded-lg bg-white p-3 text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {event.rsvps
+                    .filter((r) => r.status === 'CONFIRMED')
+                    .reduce((sum, r) => sum + r.headcount, 0)}
+                </div>
+                <div className="text-sm text-stone-500">Attending</div>
+              </div>
+              <div className="rounded-lg bg-white p-3 text-center">
+                <div className="text-2xl font-bold text-amber-600">
+                  {event.rsvps.filter((r) => r.status === 'PENDING').length}
+                </div>
+                <div className="text-sm text-stone-500">Pending</div>
+              </div>
+              <div className="rounded-lg bg-white p-3 text-center">
+                <div className="text-2xl font-bold text-red-600">
+                  {event.rsvps.filter((r) => r.status === 'DECLINED').length}
+                </div>
+                <div className="text-sm text-stone-500">Declined</div>
+              </div>
+              <div className="rounded-lg bg-white p-3 text-center">
+                <div className="text-2xl font-bold text-stone-600">
+                  {event.rsvps.reduce((sum, r) => sum + r.headcount, 0)}
+                </div>
+                <div className="text-sm text-stone-500">Total Headcount</div>
+              </div>
+            </div>
+            {event.maxCapacity && (
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-stone-600">
+                    {event.rsvps
+                      .filter((r) => r.status === 'CONFIRMED')
+                      .reduce((sum, r) => sum + r.headcount, 0)}{' '}
+                    / {event.maxCapacity} spots filled
+                  </span>
+                  <span className="text-stone-500">
+                    {Math.round(
+                      (event.rsvps
+                        .filter((r) => r.status === 'CONFIRMED')
+                        .reduce((sum, r) => sum + r.headcount, 0) /
+                        event.maxCapacity) *
+                        100,
+                    )}
+                    % capacity
+                  </span>
+                </div>
+                <div className="mt-1 h-2 w-full rounded-full bg-stone-200">
+                  <div
+                    className="h-2 rounded-full bg-amber-500 transition-all"
+                    style={{
+                      width: `${Math.min(100, (event.rsvps.filter((r) => r.status === 'CONFIRMED').reduce((sum, r) => sum + r.headcount, 0) / event.maxCapacity) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
