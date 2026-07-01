@@ -19,7 +19,7 @@ export default async function Home() {
         </div>
       </header>
 
-      {upcomingEvents.length > 0 && (
+      {upcomingEvents.length > 0 ? (
         <section className="mx-auto mt-12 max-w-5xl px-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-stone-900">Upcoming Events</h2>
@@ -59,6 +59,14 @@ export default async function Home() {
             })}
           </div>
         </section>
+      ) : (
+        <div className="mx-auto mt-12 max-w-5xl px-4">
+          <div className="rounded-2xl bg-amber-50 p-8 text-center">
+            <div className="text-5xl">🎉</div>
+            <h2 className="mt-4 text-xl font-semibold text-amber-900">No Upcoming Events</h2>
+            <p className="mt-2 text-amber-700">Check back soon for our next family gathering!</p>
+          </div>
+        </div>
       )}
 
       <section className="mx-auto mt-16 max-w-5xl px-4">
