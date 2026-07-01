@@ -94,6 +94,10 @@ export default async function PotluckPage() {
                         minute: '2-digit',
                       })}
                     </p>
+                    <p className="mt-1 flex items-center gap-1 text-sm text-stone-500">
+                      <span>📍</span>
+                      <span>{event.location}</span>
+                    </p>
                   </div>
                   {isPast && (
                     <span className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
