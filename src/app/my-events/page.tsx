@@ -199,6 +199,8 @@ export default async function MyEventsPage() {
               <div className="mt-4 space-y-4">
                 {pastRSVPs.map((rsvp) => {
                   const eventDate = new Date(rsvp.event.date);
+                  const hasPotluck = rsvp.event.potluckSlots.length > 0;
+                  const userPotluckSignups = rsvp.potluckSignups || [];
                   return (
                     <Link
                       key={rsvp.id}
@@ -249,6 +251,15 @@ export default async function MyEventsPage() {
                       </div>
                       {rsvp.dietaryNotes && (
                         <p className="mt-2 text-sm text-amber-600">🥗 {rsvp.dietaryNotes}</p>
+                      )}
+                      {hasPotluck && rsvp.status === 'CONFIRMED' && (
+                        <p className="mt-2 text-sm text-stone-500">
+                          {userPotluckSignups.length > 0 ? (
+                            <>🍴 Brought: {userPotluckSignups.map((s) => s.dishName).join(', ')}</>
+                          ) : (
+                            '🍴 Potluck event (no signup)'
+                          )}
+                        </p>
                       )}
                     </Link>
                   );
