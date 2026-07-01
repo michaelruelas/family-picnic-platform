@@ -2,7 +2,8 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import { ZodError } from 'zod';
 import type { Session } from 'next-auth';
-import { auth } from './auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from './auth';
 
 interface Ctx {
   session: Session | null;
@@ -45,7 +46,7 @@ export const protectedProcedure = t.procedure.use(isAuthenticated);
 export const adminProcedure = t.procedure.use(isAuthenticated).use(isAdmin);
 export const router = t.router;
 
-export async function createTRPCContext() {
-  const session = await auth();
-  return { session };
+export async function createTRPCContext(opts?: { headers: Headers }) {
+  const session = await getServerSession(authOptions);
+  return { session, ...opts };
 }

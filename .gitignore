@@ -1,11 +1,39 @@
+# Dependencies
 node_modules/
+
+# Build output
 .next/
-.env
-.env.local
-.env.production
-*.tsbuildinfo
-next-env.d.ts
 out/
 dist/
 .turbo/
+
+# Environment
+.env
+.env.local
+.env.production
+.env.development.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Generated
 src/lib/generated/
+
+# Coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
