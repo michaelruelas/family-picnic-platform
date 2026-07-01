@@ -24,7 +24,15 @@ export default async function EventDetailPage({ params }: Props) {
           reactions: true,
         },
       },
-      rsvps: true,
+      rsvps: {
+        include: {
+          user: {
+            include: {
+              household: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -182,6 +190,26 @@ export default async function EventDetailPage({ params }: Props) {
                     }}
                   />
                 </div>
+              </div>
+            )}
+            {event.rsvps.filter((r) => r.status === 'CONFIRMED').length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-md font-medium text-stone-900">Confirmed Attendees</h3>
+                <ul className="mt-2 space-y-1">
+                  {event.rsvps
+                    .filter((r) => r.status === 'CONFIRMED')
+                    .map((rsvp) => (
+                      <li key={rsvp.id} className="flex items-center gap-2 text-stone-700">
+                        <span className="text-green-500">✓</span>
+                        <span>{rsvp.user.household?.name || rsvp.user.name}</span>
+                        {rsvp.headcount > 1 && (
+                          <span className="text-sm text-stone-500">
+                            +{rsvp.headcount - 1} guest{rsvp.headcount > 2 ? 's' : ''}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                </ul>
               </div>
             )}
           </div>
