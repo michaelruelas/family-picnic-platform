@@ -1,10 +1,10 @@
-import { router, adminProcedure } from '~/lib/trpc';
+import { router, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { RSVPStatus } from '~/lib/generated/enums';
 
 export const adminRouter = router({
-  auditLog: adminProcedure
+  auditLog: auditedAdminProcedure
     .input(
       z.object({
         eventId: z.string().optional(),
@@ -39,7 +39,7 @@ export const adminRouter = router({
       });
     }),
 
-  dashboard: adminProcedure
+  dashboard: auditedAdminProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ input }) => {
       const event = await prisma.event.findUnique({
@@ -107,7 +107,7 @@ export const adminRouter = router({
       };
     }),
 
-  inviteFromPrevious: adminProcedure
+  inviteFromPrevious: auditedAdminProcedure
     .input(
       z.object({
         fromEventId: z.string(),
@@ -141,7 +141,7 @@ export const adminRouter = router({
       return { success: true, count: invitations.length };
     }),
 
-  csvImport: adminProcedure
+  csvImport: auditedAdminProcedure
     .input(
       z.object({
         eventId: z.string(),

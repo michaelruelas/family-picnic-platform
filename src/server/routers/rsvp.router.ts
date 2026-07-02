@@ -1,4 +1,4 @@
-import { router, protectedProcedure, adminProcedure } from '~/lib/trpc';
+import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { RSVPStatus, InvitationStatus } from '~/lib/generated/enums';
@@ -216,7 +216,7 @@ export const rsvpRouter = router({
       });
     }),
 
-  adminOverride: adminProcedure
+  adminOverride: auditedAdminProcedure
     .input(
       z.object({
         eventId: z.string(),

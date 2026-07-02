@@ -1,9 +1,9 @@
-import { router, protectedProcedure, adminProcedure } from '~/lib/trpc';
+import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 
 export const potluckRouter = router({
-  createSlot: adminProcedure
+  createSlot: auditedAdminProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -25,7 +25,7 @@ export const potluckRouter = router({
       });
     }),
 
-  updateSlot: adminProcedure
+  updateSlot: auditedAdminProcedure
     .input(
       z.object({
         id: z.string(),
@@ -41,7 +41,7 @@ export const potluckRouter = router({
       });
     }),
 
-  deleteSlot: adminProcedure
+  deleteSlot: auditedAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       return prisma.potluckSlot.delete({

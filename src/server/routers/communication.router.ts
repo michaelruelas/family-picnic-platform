@@ -1,10 +1,10 @@
-import { router, adminProcedure, protectedProcedure } from '~/lib/trpc';
+import { router, auditedAdminProcedure, protectedProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
 
 export const communicationRouter = router({
-  sendBroadcast: adminProcedure
+  sendBroadcast: auditedAdminProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -74,7 +74,7 @@ export const communicationRouter = router({
       return { success: true, count: logs.length };
     }),
 
-  scheduleMessage: adminProcedure
+  scheduleMessage: auditedAdminProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -93,7 +93,7 @@ export const communicationRouter = router({
       };
     }),
 
-  getDeliveryStatus: adminProcedure
+  getDeliveryStatus: auditedAdminProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ input }) => {
       return prisma.communicationLog.findMany({

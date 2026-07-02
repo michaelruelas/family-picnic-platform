@@ -1,10 +1,10 @@
-import { router, protectedProcedure, adminProcedure } from '~/lib/trpc';
+import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { EventStatus } from '~/lib/generated/enums';
 
 export const eventRouter = router({
-  create: adminProcedure
+  create: auditedAdminProcedure
     .input(
       z.object({
         name: z.string().min(1),
@@ -29,7 +29,7 @@ export const eventRouter = router({
       });
     }),
 
-  update: adminProcedure
+  update: auditedAdminProcedure
     .input(
       z.object({
         id: z.string(),
@@ -104,7 +104,7 @@ export const eventRouter = router({
       });
     }),
 
-  publish: adminProcedure
+  publish: auditedAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       return prisma.event.update({
@@ -113,7 +113,7 @@ export const eventRouter = router({
       });
     }),
 
-  close: adminProcedure
+  close: auditedAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       return prisma.event.update({
@@ -122,7 +122,7 @@ export const eventRouter = router({
       });
     }),
 
-  cancel: adminProcedure
+  cancel: auditedAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       return prisma.event.update({

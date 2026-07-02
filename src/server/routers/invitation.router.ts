@@ -1,11 +1,11 @@
-import { router, adminProcedure } from '~/lib/trpc';
+import { router, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { InvitationStatus, CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
 import { generateInvitationToken, getInvitationExpiry } from '~/lib/invitation-token';
 
 export const invitationRouter = router({
-  send: adminProcedure
+  send: auditedAdminProcedure
     .input(
       z.object({
         eventId: z.string(),
@@ -60,7 +60,7 @@ export const invitationRouter = router({
       return invitation;
     }),
 
-  resend: adminProcedure
+  resend: auditedAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       return prisma.invitation.update({
@@ -69,7 +69,7 @@ export const invitationRouter = router({
       });
     }),
 
-  trackDelivery: adminProcedure
+  trackDelivery: auditedAdminProcedure
     .input(
       z.object({
         id: z.string(),
@@ -86,7 +86,7 @@ export const invitationRouter = router({
       });
     }),
 
-  getByEvent: adminProcedure
+  getByEvent: auditedAdminProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ input }) => {
       return prisma.invitation.findMany({
@@ -99,7 +99,7 @@ export const invitationRouter = router({
       });
     }),
 
-  getByHousehold: adminProcedure
+  getByHousehold: auditedAdminProcedure
     .input(z.object({ householdId: z.string() }))
     .query(async ({ input }) => {
       return prisma.invitation.findMany({
@@ -111,7 +111,7 @@ export const invitationRouter = router({
       });
     }),
 
-  consume: adminProcedure
+  consume: auditedAdminProcedure
     .input(z.object({ token: z.string() }))
     .mutation(async ({ input }) => {
       const invitation = await prisma.invitation.findUnique({
