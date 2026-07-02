@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — directory exists but `page.tsx` is not implemented.
+Partial — page UI implemented, automatic audit middleware blocked by TypeScript typing issues (see ticket 18).
 
 ## Description
 
@@ -23,13 +23,14 @@ Also wire an `audit()` helper into all admin procedures so any
 ## Acceptance criteria
 
 - Every mutation through `adminProcedure` writes a corresponding
-  `AdminAuditLog` entry with action label and JSON diff.
-- Page is server-rendered with at least basic filter UI.
-- Backfilled seed data for testing.
+  `AdminAuditLog` entry with action label and JSON diff. **BLOCKED - see ticket 18.**
+- Page is server-rendered with at least basic filter UI. **DONE**
+- Backfilled seed data for testing. **NOT DONE**
 
 ## Files
 
-- `src/app/admin/audit-log/page.tsx` (create)
-- `src/lib/audit.ts` (create — central helper)
-- `src/server/routers/admin.ts` (extend)
-- Update existing router procedures to call `audit(...)` after mutation.
+- `src/app/admin/audit-log/page.tsx` (create) ✅
+- `src/components/admin/AuditLogTable.tsx` (create) ✅
+- `src/lib/audit.ts` (create — central helper) ✅
+- `src/app/api/admin/audit-log/route.ts` (create) ✅
+- `src/server/routers/admin.ts` (extend) - audit wiring blocked
