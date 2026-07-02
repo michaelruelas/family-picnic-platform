@@ -73,20 +73,43 @@ export async function POST(request: Request) {
       });
 
       if (slot.slotType === 'LIMITED') {
-        const currentSignups = await prisma.potluckSignup.count({
-          where: { slotId },
-        });
         const maxSignups = slot.maxSignups || 0;
-
-        if (existingSignup) {
-          if (currentSignups - 1 >= maxSignups) {
-            return NextResponse.json({ error: 'This slot is full' }, { status: 400 });
+        await prisma.$transaction(async (tx) => {
+          const currentSignups = await tx.potluckSignup.count({
+            where: { slotId },
+          });
+          const effectiveCount = existingSignup ? currentSignups - 1 : currentSignups;
+          if (effectiveCount >= maxSignups) {
+            throw new Error('Slot is full');
           }
-        } else {
-          if (currentSignups >= maxSignups) {
-            return NextResponse.json({ error: 'This slot is full' }, { status: 400 });
+          if (existingSignup) {
+            await tx.potluckSignup.update({
+              where: { id: existingSignup.id },
+              data: {
+                dishName: dishName.trim(),
+                servings: servings || 1,
+                dietaryLabels: dietaryLabels || [],
+              },
+            });
+          } else {
+            await tx.potluckSignup.create({
+              data: {
+                slotId,
+                rsvpId: rsvp.id,
+                dishName: dishName.trim(),
+                servings: servings || 1,
+                dietaryLabels: dietaryLabels || [],
+              },
+            });
+            await tx.potluckSlot.update({
+              where: { id: slotId },
+              data: { currentSignups: { increment: 1 } },
+            });
           }
-        }
+        }, {
+          isolationLevel: 'Serializable',
+        });
+        return NextResponse.json({ success: true, action: existingSignup ? 'updated' : 'created' });
       }
 
       if (existingSignup) {
@@ -98,12 +121,6 @@ export async function POST(request: Request) {
             dietaryLabels: dietaryLabels || [],
           },
         });
-
-        await prisma.potluckSlot.update({
-          where: { id: slotId },
-          data: { currentSignups: { increment: 0 } },
-        });
-
         return NextResponse.json({ success: true, action: 'updated' });
       }
 
@@ -115,11 +132,6 @@ export async function POST(request: Request) {
           servings: servings || 1,
           dietaryLabels: dietaryLabels || [],
         },
-      });
-
-      await prisma.potluckSlot.update({
-        where: { id: slotId },
-        data: { currentSignups: { increment: 1 } },
       });
 
       return NextResponse.json({ success: true, action: 'created' });
@@ -154,6 +166,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
     console.error('Potluck signup error:', error);
+    if (error instanceof Error && error.message === 'Slot is full') {
+      return NextResponse.json({ error: 'This slot is full' }, { status: 409 });
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

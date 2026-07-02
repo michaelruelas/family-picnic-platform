@@ -11,6 +11,10 @@ All notable changes to this project are documented here.
 - **Admin Event CRUD UI** — Implemented `/admin/events` list page, `/admin/events/new` create page, `/admin/events/[id]/edit` page with `EventForm` and `EventStatusBadge` components. Includes API routes for create, update, delete, publish, close, and cancel with admin role protection and EventStatus transition enforcement.
 - **Household Dashboard** — Implemented `/household` page with household member list, cumulative RSVP headcount aggregation across events (SPEC §8.1), and dependent management form. Added `getCumulativeHeadcount` procedure to household router.
 
+### Fixed
+
+- **Potluck slot race condition** — Fixed race condition in `src/app/api/potluck-signup/route.ts` by wrapping signup + counter increment in `prisma.$transaction` with `isolationLevel: Serializable`. The count check, signup create/update, and counter increment now happen atomically. Returns 409 Conflict when slot is full instead of allowing over-signup.
+
 ## [0.1.0] — 2026-07-01
 
 ### Added

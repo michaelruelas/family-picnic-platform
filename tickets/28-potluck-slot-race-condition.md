@@ -2,10 +2,10 @@
 
 ## Status
 
-Bug — `src/app/api/potluck-signup/route.ts:75-90` reads
-`currentSignups`, then inserts, then increments `currentSignups`. Two
-concurrent requests can both pass the `if (currentSignups >= maxSignups)`
-check before either commits.
+Done — Fixed race condition by wrapping signup + counter increment in
+`prisma.$transaction` with `isolationLevel: Serializable`. The count check,
+signup create/update, and counter increment now happen atomically. Returns
+409 Conflict when slot is full. Integration tests verify the fix.
 
 ## Description
 
