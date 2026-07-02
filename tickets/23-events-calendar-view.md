@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — only list views exist (`/events`, `/my-events`).
+Done — calendar view implemented at `/events/calendar` with month navigation, today highlighting, event chips color-coded by status, and mobile-friendly layout.
 
 ## Description
 
