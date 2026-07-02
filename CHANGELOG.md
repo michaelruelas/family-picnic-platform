@@ -82,4 +82,4 @@ All notable changes to this project are documented here.
 - Added missing `CommunicationLog.messageId`
 - Restructured `PotluckSignup` to reference RSVP (not User/Household directly)
 - Upgraded to Prisma 7 driver-adapter pattern (`prisma.config.ts`, `@prisma/adapter-pg`)
-- Removed deprecated `dependentSlots` relation and ReactionType enum
+- Removed deprecated `dependentSlots` relation and ReactionType enum 
