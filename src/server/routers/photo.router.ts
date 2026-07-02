@@ -1,6 +1,8 @@
 import { router, protectedProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
+import { generatePresignedUploadUrl, isS3Configured } from '~/lib/s3';
+import { importPhotoToPhotoPrism, isPhotoPrismConfigured } from '~/lib/photo-prism';
 
 const VALID_REACTIONS = ['❤️', '👍', '👏', '🎉', '😂'];
 
@@ -39,9 +41,19 @@ export const photoRouter = router({
         contentType: z.string(),
       }),
     )
-    .mutation(async ({ input }) => {
-      const presignedUrl = `/api/photo-upload?eventId=${input.eventId}&filename=${input.filename}`;
-      return { uploadUrl: presignedUrl };
+    .mutation(async ({ ctx, input }) => {
+      if (!isS3Configured()) {
+        throw new Error('S3 is not configured. Please set AWS credentials.');
+      }
+
+      const { uploadUrl, key, expiresAt } = await generatePresignedUploadUrl(
+        input.eventId,
+        ctx.session.user.id,
+        input.filename,
+        input.contentType,
+      );
+
+      return { uploadUrl, key, expiresAt };
     }),
 
   addReaction: protectedProcedure
@@ -146,6 +158,51 @@ export const photoRouter = router({
           caption: input.caption,
           url: input.url,
           thumbnailUrl: input.thumbnailUrl,
+        },
+      });
+    }),
+
+  confirmUpload: protectedProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        s3Key: z.string(),
+        filename: z.string(),
+        caption: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: ctx.session.user.id },
+      });
+
+      if (!user || !user.householdId) {
+        throw new Error('User must belong to a household');
+      }
+
+      let photoPrismId = input.s3Key;
+      const thumbnailUrl = input.s3Key;
+
+      if (isPhotoPrismConfigured()) {
+        const photoPrismPhoto = await importPhotoToPhotoPrism(
+          input.s3Key,
+          input.filename,
+          input.eventId,
+        );
+        if (photoPrismPhoto) {
+          photoPrismId = photoPrismPhoto.id;
+        }
+      }
+
+      return prisma.photo.create({
+        data: {
+          eventId: input.eventId,
+          uploadedByUserId: ctx.session.user.id,
+          householdId: user.householdId,
+          photoPrismId,
+          caption: input.caption,
+          url: photoPrismId,
+          thumbnailUrl,
         },
       });
     }),

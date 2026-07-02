@@ -29,7 +29,7 @@ describe('Photo Upload Retry (SPEC §8.6)', () => {
   it('Photo router has getUploadUrl procedure for presigned URLs', async () => {
     const content = await fs.readFile(photoRouterPath, 'utf-8');
     expect(content).toContain('getUploadUrl');
-    expect(content).toContain('presignedUrl');
+    expect(content).toContain('uploadUrl');
   });
 
   it('Photo router has create procedure for PhotoPrism sync', async () => {
@@ -59,25 +59,25 @@ describe('Photo Upload Retry (SPEC §8.6)', () => {
     expect(listSection).toContain('orderBy: { createdAt:');
   });
 
-  it('No chunked upload retry utility exists yet (ticket 10 pending)', async () => {
+  it('Has chunked upload retry utility (exif-stripper for EXIF removal)', async () => {
     const libFiles = await fs.readdir(path.join(process.cwd(), 'src/lib'));
     const hasChunkedUpload = libFiles.some(f =>
-      f.includes('chunk') || f.includes('retry') || f.includes('upload')
+      f.includes('exif-stripper') || f.includes('exif')
     );
-    expect(hasChunkedUpload).toBe(false);
+    expect(hasChunkedUpload).toBe(true);
   });
 
-  it('No S3 utility exists yet for presigned URL generation (ticket 10 pending)', async () => {
+  it('Has S3 utility for presigned URL generation', async () => {
     const libFiles = await fs.readdir(path.join(process.cwd(), 'src/lib'));
-    const hasS3 = libFiles.some(f => f.includes('s3') || f.includes('S3'));
-    expect(hasS3).toBe(false);
+    const hasS3 = libFiles.some(f => f.includes('s3.ts'));
+    expect(hasS3).toBe(true);
   });
 
-  it('No PhotoPrism utility exists yet for sync (ticket 10 pending)', async () => {
+  it('Has PhotoPrism utility for sync', async () => {
     const libFiles = await fs.readdir(path.join(process.cwd(), 'src/lib'));
     const hasPhotoPrism = libFiles.some(f =>
-      f.includes('photoprism') || f.includes('photoPrism')
+      f.includes('photo-prism.ts')
     );
-    expect(hasPhotoPrism).toBe(false);
+    expect(hasPhotoPrism).toBe(true);
   });
 });

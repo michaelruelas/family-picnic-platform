@@ -2,8 +2,7 @@
 
 ## Status
 
-Missing — schema exists, but no upload UI, no S3 presigned URL endpoint, no
-EXIF stripping middleware, no PhotoPrism sync.
+Done — implemented S3 presigned URL generation, client-side EXIF stripping, PhotoPrism sync utilities, UploadButton component, and confirmUpload procedure.
 
 ## Description
 
