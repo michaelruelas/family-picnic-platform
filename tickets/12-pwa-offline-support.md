@@ -2,8 +2,10 @@
 
 ## Status
 
-Missing — `public/` directory is empty; no `manifest.webmanifest`,
-no `sw.js`, no offline support.
+Done — `public/` directory created with `manifest.webmanifest` and icons;
+`public/sw.js` service worker implemented with cache strategies;
+`OfflineBanner` component created and integrated in `Providers.tsx`.
+IndexedDB layer (event/potluck data caching) is deferred to future iteration.
 
 ## Description
 

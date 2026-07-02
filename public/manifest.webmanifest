@@ -1,0 +1,28 @@
+{
+  "name": "Family Picnic Platform",
+  "short_name": "Picnic",
+  "description": "A private family engagement hub for our annual picnic — RSVP, potluck coordination, photo sharing, and family communication.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fef3c7",
+  "theme_color": "#166534",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["family", "events", "social"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
