@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — directory exists but `page.tsx` is not implemented.
+Done — `src/app/admin/dashboard/page.tsx` and `src/components/admin/DashboardCard.tsx` implemented.
 
 ## Description
 
