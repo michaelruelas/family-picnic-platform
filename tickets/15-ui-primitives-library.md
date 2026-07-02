@@ -2,8 +2,9 @@
 
 ## Status
 
-Missing — `src/components/ui/` directory exists but is empty. Tailwind 4
-classes are used inline in every component.
+Done — All UI primitives implemented with tests. Existing components
+were not refactored to keep the scope manageable; new components should
+import from `src/components/ui/`.
 
 ## Description
 

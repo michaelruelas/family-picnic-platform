@@ -6,6 +6,7 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- **UI Primitives Library** — Created `src/components/ui/` with Button (primary/secondary/danger/ghost variants, lg/xl sizes for touch), Input, Textarea, Select (large fonts, high contrast), Card (with CardHeader/CardTitle/CardContent/CardFooter), Modal (focus trap, escape-to-close, React portal), Toast (success/error/warning/info with auto-dismiss), EmptyState, and Spinner. All components use Tailwind tokens (text-lg, min-h-12) sized for multi-generational accessibility. Tests at `tests/ui/primitives.test.ts`.
 - **Admin Audit Log UI** — Implemented `/admin/audit-log` page with filterable table showing all AdminAuditLog entries, filters by eventId/userId/action, and JSON diff viewer for oldValue/newValue. Created `AuditLogTable` component and `/api/admin/audit-log` API route. Ticket 05 is Partial - automatic audit logging via middleware is blocked (see ticket 18).
 - **Audit helper** — Created `src/lib/audit.ts` with `diff()` helper and `writeAuditLog()` function for manual audit logging. Ticket 18 Blocked - TypeScript typing issues prevent adding audit middleware to adminProcedure chain without breaking session null-check narrowing.
 - **Architecture Decision Records** — Created `docs/decisions/` with 10 ADRs resolving SPEC §10 open questions (Q1, Q3, Q4, Q6, Q7, Q8, Q9, Q11, Q12, Q15): account recovery, household naming, household merging, headcount minimum, waitlist, RSVP closing, duplicate dishes, EXIF stripping, storage quotas, and communication opt-in defaults.
