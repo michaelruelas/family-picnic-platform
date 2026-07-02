@@ -6,10 +6,6 @@ const STATIC_ASSETS = [
   '/icons/icon-512.png',
 ];
 
-const tRPCRoutes = [
-  '/api/trpc/',
-];
-
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {

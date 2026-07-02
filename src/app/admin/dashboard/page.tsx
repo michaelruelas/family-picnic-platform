@@ -99,18 +99,8 @@ export default async function AdminDashboardPage() {
 
   const eventsWithDashboard = await getEventsWithDashboard();
 
-  const totalConfirmed = eventsWithDashboard.reduce(
-    (sum, e) => sum + e.rsvpSummary.confirmed,
-    0,
-  );
-  const totalHeadcount = eventsWithDashboard.reduce(
-    (sum, e) => sum + e.rsvpSummary.headcount,
-    0,
-  );
-  const totalPending = eventsWithDashboard.reduce(
-    (sum, e) => sum + e.rsvpSummary.pending,
-    0,
-  );
+  const totalConfirmed = eventsWithDashboard.reduce((sum, e) => sum + e.rsvpSummary.confirmed, 0);
+  const totalHeadcount = eventsWithDashboard.reduce((sum, e) => sum + e.rsvpSummary.headcount, 0);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">

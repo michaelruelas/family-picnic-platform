@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   rsvpConfirmSchema,
   rsvpDeclineSchema,
-  rsvpUpdateSchema,
   potluckSignupSchema,
   dependentCreateSchema,
   dependentUpdateSchema,

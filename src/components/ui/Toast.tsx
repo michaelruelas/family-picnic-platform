@@ -48,10 +48,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
       {typeof window !== 'undefined' &&
-        createPortal(
-          <ToastContainer toasts={toasts} removeToast={removeToast} />,
-          document.body
-        )}
+        createPortal(<ToastContainer toasts={toasts} removeToast={removeToast} />, document.body)}
     </ToastContext.Provider>
   );
 }
@@ -63,7 +60,7 @@ interface ToastContainerProps {
 
 function ToastContainer({ toasts, removeToast }: ToastContainerProps) {
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div className="fixed right-4 bottom-4 z-50 flex flex-col gap-2">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onDismiss={() => removeToast(toast.id)} />
       ))}
@@ -120,10 +117,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 
   return (
     <div
-      className={`
-        flex min-w-[300px] max-w-md items-center gap-3 rounded-lg border p-4 shadow-lg
-        ${styles.bg}
-      `}
+      className={`flex max-w-md min-w-[300px] items-center gap-3 rounded-lg border p-4 shadow-lg ${styles.bg} `}
       role="alert"
       aria-live="polite"
       aria-atomic="true"
@@ -136,7 +130,12 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
         aria-label="Dismiss"
       >
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
       </button>
     </div>
@@ -149,7 +148,7 @@ interface ToastProps {
   className?: string;
 }
 
-export function Toast({ type, message, className = '' }: ToastProps) {
+export function Toast({ type, message, className: _className = '' }: ToastProps) {
   const { addToast } = useToast();
 
   useEffect(() => {

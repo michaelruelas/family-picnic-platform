@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import InvitationTable from '~/components/invitation/InvitationTable';
 import CsvUploader from '~/components/admin/CsvUploader';
@@ -14,12 +14,6 @@ type Event = {
 type Household = {
   id: string;
   name: string;
-};
-
-type User = {
-  id: string;
-  name: string;
-  email: string;
 };
 
 type InvitationWithRelations = {
@@ -51,16 +45,16 @@ export default function AdminInvitationsClient({
   const [selectedEvent, setSelectedEvent] = useState<string>(selectedEventId || '');
   const [invitations, setInvitations] = useState<InvitationWithRelations[]>(initialInvitations);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredHouseholds, setFilteredHouseholds] = useState<Household[]>(households);
   const [selectedHousehold, setSelectedHousehold] = useState<string>('');
   const [sending, setSending] = useState(false);
 
-  useEffect(() => {
-    const filtered = households.filter((h) =>
-      h.name.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-    setFilteredHouseholds(filtered);
-  }, [searchQuery, households]);
+  const filteredHouseholds = useMemo(
+    () =>
+      searchQuery
+        ? households.filter((h) => h.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        : households,
+    [searchQuery, households],
+  );
 
   const handleEventChange = (eventId: string) => {
     setSelectedEvent(eventId);
@@ -80,10 +74,7 @@ export default function AdminInvitationsClient({
     }
   };
 
-  const handleTrackDelivery = async (
-    id: string,
-    status: 'PENDING' | 'SENT' | 'DELIVERED',
-  ) => {
+  const handleTrackDelivery = async (id: string, status: 'PENDING' | 'SENT' | 'DELIVERED') => {
     await fetch('/api/admin/invitations/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -131,11 +122,13 @@ export default function AdminInvitationsClient({
             <option value="">Select an event...</option>
             {events.map((event) => (
               <option key={event.id} value={event.id}>
-                {event.name} ({new Date(event.date).toLocaleDateString('en-US', {
+                {event.name} (
+                {new Date(event.date).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
                   year: 'numeric',
-                })})
+                })}
+                )
               </option>
             ))}
           </select>

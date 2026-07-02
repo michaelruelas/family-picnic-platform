@@ -57,7 +57,7 @@ const isAdmin = t.middleware(({ ctx, next }) => {
 const auditLog = t.middleware(async ({ ctx, next, type, path }) => {
   const authedCtx = ctx as AuthedCtx;
   const result = await next({ ctx: authedCtx });
-  
+
   if (type === 'mutation' && path) {
     const eventId = extractEventId(authedCtx, path);
     await writeAuditLog({
@@ -66,11 +66,11 @@ const auditLog = t.middleware(async ({ ctx, next, type, path }) => {
       action: path,
     });
   }
-  
+
   return result;
 });
 
-function extractEventId(ctx: Ctx | AuthedCtx, path: string): string | undefined {
+function extractEventId(ctx: Ctx | AuthedCtx, _path: string): string | undefined {
   if ('eventId' in ctx && typeof ctx.eventId === 'string') {
     return ctx.eventId;
   }

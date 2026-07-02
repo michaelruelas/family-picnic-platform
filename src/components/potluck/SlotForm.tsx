@@ -35,9 +35,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
     maxSignups: initialData?.maxSignups ?? 1,
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -51,7 +49,6 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
     setError(null);
 
     try {
-      const isEdit = !!initialData?.id;
       const response = await fetch('/api/admin/potluck-slots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,9 +89,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
         {initialData ? 'Edit Potluck Slot' : 'Add Potluck Slot'}
       </h3>
 
-      {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-      )}
+      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
@@ -135,9 +130,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-stone-700">
-            Slot Type *
-          </label>
+          <label className="block text-sm font-medium text-stone-700">Slot Type *</label>
           <div className="mt-2 flex gap-4">
             <label className="flex items-center gap-2">
               <input

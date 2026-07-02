@@ -61,7 +61,6 @@ export default async function AdminEventsPage() {
         <div className="space-y-4">
           {events.map((event) => {
             const eventDate = new Date(event.date);
-            const isPast = eventDate < new Date();
 
             return (
               <div

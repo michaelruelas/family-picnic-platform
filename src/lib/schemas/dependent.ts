@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { Relationship } from '~/lib/generated/client';
 
 export const dependentCreateSchema = z.object({
   name: z.string().min(1, 'Name is required').trim().min(1),
@@ -12,7 +11,9 @@ export const dependentCreateSchema = z.object({
 export const dependentUpdateSchema = z.object({
   id: z.string().min(1, 'Dependent ID is required'),
   name: z.string().trim().min(1, 'Name cannot be empty').optional(),
-  relationship: z.enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN'] as const).optional(),
+  relationship: z
+    .enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN'] as const)
+    .optional(),
   age: z.number().int().positive().nullable().optional(),
   dietaryLabels: z.array(z.string()).optional(),
   isChild: z.boolean().optional(),

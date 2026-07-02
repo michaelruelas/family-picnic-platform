@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
-import { EventStatus } from '~/lib/generated/enums';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -73,10 +72,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     if (maxCapacity !== undefined && maxCapacity < 1) {
-      return NextResponse.json(
-        { error: 'maxCapacity must be at least 1' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'maxCapacity must be at least 1' }, { status: 400 });
     }
 
     const updateData: Record<string, unknown> = {};
@@ -84,7 +80,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (date !== undefined) updateData.date = new Date(date);
     if (location !== undefined) updateData.location = location;
     if (description !== undefined) updateData.description = description;
-    if (rsvpDeadline !== undefined) updateData.rsvpDeadline = rsvpDeadline ? new Date(rsvpDeadline) : null;
+    if (rsvpDeadline !== undefined)
+      updateData.rsvpDeadline = rsvpDeadline ? new Date(rsvpDeadline) : null;
     if (maxCapacity !== undefined) updateData.maxCapacity = maxCapacity || null;
     if (mapImageUrl !== undefined) updateData.mapImageUrl = mapImageUrl || null;
 

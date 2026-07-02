@@ -38,9 +38,9 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
 };
 
 export default function HouseholdClient({
-  householdId,
+  householdId: _householdId,
   initialDependents,
-  managedDependents,
+  managedDependents: _managedDependents,
 }: HouseholdClientProps) {
   const router = useRouter();
   const [dependents, setDependents] = useState<Dependent[]>(initialDependents);
@@ -206,9 +206,12 @@ export default function HouseholdClient({
       ) : (
         <ul className="mt-4 space-y-3">
           {dependents.map((dependent) => (
-            <li key={dependent.id} className="flex items-center justify-between rounded-lg border border-stone-200 p-3">
+            <li
+              key={dependent.id}
+              className="flex items-center justify-between rounded-lg border border-stone-200 p-3"
+            >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 font-medium">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 font-medium text-blue-700">
                   {dependent.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex flex-col">
@@ -227,7 +230,9 @@ export default function HouseholdClient({
                   <div className="flex items-center gap-3 text-xs text-stone-500">
                     {dependent.age !== null && <span>{dependent.age} yrs</span>}
                     {dependent.dietaryLabels.length > 0 && (
-                      <span className="text-amber-600">🥗 {dependent.dietaryLabels.join(', ')}</span>
+                      <span className="text-amber-600">
+                        🥗 {dependent.dietaryLabels.join(', ')}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -261,7 +266,9 @@ export default function HouseholdClient({
           </h3>
 
           {dependentError && (
-            <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{dependentError}</div>
+            <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {dependentError}
+            </div>
           )}
 
           <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -281,7 +288,9 @@ export default function HouseholdClient({
               <label className="block text-sm font-medium text-stone-700">Relationship</label>
               <select
                 value={dependentForm.relationship}
-                onChange={(e) => setDependentForm({ ...dependentForm, relationship: e.target.value })}
+                onChange={(e) =>
+                  setDependentForm({ ...dependentForm, relationship: e.target.value })
+                }
                 className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
               >
                 <option value="SPOUSE">Spouse</option>
@@ -307,11 +316,15 @@ export default function HouseholdClient({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-700">Dietary Labels (optional)</label>
+              <label className="block text-sm font-medium text-stone-700">
+                Dietary Labels (optional)
+              </label>
               <input
                 type="text"
                 value={dependentForm.dietaryLabels}
-                onChange={(e) => setDependentForm({ ...dependentForm, dietaryLabels: e.target.value })}
+                onChange={(e) =>
+                  setDependentForm({ ...dependentForm, dietaryLabels: e.target.value })
+                }
                 placeholder="vegetarian, gluten-free, nut-free"
                 className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
               />

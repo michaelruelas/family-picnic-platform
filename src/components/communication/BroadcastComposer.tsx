@@ -32,7 +32,7 @@ type BroadcastComposerProps = {
 };
 
 export default function BroadcastComposer({
-  eventId,
+  eventId: _eventId,
   households,
   users,
   onSend,
@@ -107,7 +107,9 @@ export default function BroadcastComposer({
           className="mt-1 block w-full rounded-lg border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
         />
         <p className="mt-1 text-xs text-stone-500">
-          {channel === 'SMS' ? `${message.length} characters (SMS limit: 160)` : `${message.length} characters`}
+          {channel === 'SMS'
+            ? `${message.length} characters (SMS limit: 160)`
+            : `${message.length} characters`}
         </p>
       </div>
 
@@ -198,11 +200,7 @@ export default function BroadcastComposer({
         </div>
       )}
 
-      {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
       {success && (
         <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">

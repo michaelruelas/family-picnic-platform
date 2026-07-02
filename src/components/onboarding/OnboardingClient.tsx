@@ -28,7 +28,7 @@ const STEPS: { key: Step; label: string }[] = [
   { key: 'preferences', label: 'Preferences' },
 ];
 
-export default function OnboardingClient({ user, households }: OnboardingClientProps) {
+export default function OnboardingClient({ user: _user, households }: OnboardingClientProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>('household');
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +54,9 @@ export default function OnboardingClient({ user, households }: OnboardingClientP
     isChild: false,
   });
 
-  const [communicationPreference, setCommunicationPreference] = useState<'EMAIL' | 'SMS' | 'BOTH' | 'NONE'>('EMAIL');
+  const [communicationPreference, setCommunicationPreference] = useState<
+    'EMAIL' | 'SMS' | 'BOTH' | 'NONE'
+  >('EMAIL');
 
   const currentStepIndex = STEPS.findIndex((s) => s.key === currentStep);
 
@@ -191,7 +193,9 @@ export default function OnboardingClient({ user, households }: OnboardingClientP
               <span className="text-3xl">🏠</span>
               <div>
                 <p className="text-lg font-semibold text-stone-900">Create a new household</p>
-                <p className="text-sm text-stone-600">Start fresh and invite family members later</p>
+                <p className="text-sm text-stone-600">
+                  Start fresh and invite family members later
+                </p>
               </div>
             </button>
 
@@ -203,7 +207,9 @@ export default function OnboardingClient({ user, households }: OnboardingClientP
                 <span className="text-3xl">👨‍👩‍👧‍👦</span>
                 <div>
                   <p className="text-lg font-semibold text-stone-900">Join an existing household</p>
-                  <p className="text-sm text-stone-600">Connect with family already on the platform</p>
+                  <p className="text-sm text-stone-600">
+                    Connect with family already on the platform
+                  </p>
                 </div>
               </button>
             )}
@@ -211,12 +217,17 @@ export default function OnboardingClient({ user, households }: OnboardingClientP
         </div>
       ) : householdMode === 'create' ? (
         <div className="space-y-6">
-          <button onClick={() => setHouseholdMode(null)} className="text-sm text-stone-500 hover:text-stone-700">
+          <button
+            onClick={() => setHouseholdMode(null)}
+            className="text-sm text-stone-500 hover:text-stone-700"
+          >
             ← Change option
           </button>
           <div>
             <label className="block text-lg font-medium text-stone-700">Household Name</label>
-            <p className="mb-2 text-sm text-stone-500">This is how your family will appear to other members</p>
+            <p className="mb-2 text-sm text-stone-500">
+              This is how your family will appear to other members
+            </p>
             <input
               type="text"
               value={newHouseholdName}
@@ -235,7 +246,10 @@ export default function OnboardingClient({ user, households }: OnboardingClientP
         </div>
       ) : (
         <div className="space-y-6">
-          <button onClick={() => setHouseholdMode(null)} className="text-sm text-stone-500 hover:text-stone-700">
+          <button
+            onClick={() => setHouseholdMode(null)}
+            className="text-sm text-stone-500 hover:text-stone-700"
+          >
             ← Change option
           </button>
           <div>
@@ -283,7 +297,10 @@ export default function OnboardingClient({ user, households }: OnboardingClientP
       {familyMembers.length > 0 ? (
         <ul className="mb-4 space-y-2">
           {familyMembers.map((member, index) => (
-            <li key={index} className="flex items-center justify-between rounded-lg bg-stone-50 p-3">
+            <li
+              key={index}
+              className="flex items-center justify-between rounded-lg bg-stone-50 p-3"
+            >
               <div className="flex items-center gap-3">
                 <span className="text-lg">{member.isChild ? '👶' : '👤'}</span>
                 <div>
@@ -326,7 +343,10 @@ export default function OnboardingClient({ user, households }: OnboardingClientP
               <select
                 value={newFamilyMember.relationship}
                 onChange={(e) =>
-                  setNewFamilyMember({ ...newFamilyMember, relationship: e.target.value as typeof newFamilyMember.relationship })
+                  setNewFamilyMember({
+                    ...newFamilyMember,
+                    relationship: e.target.value as typeof newFamilyMember.relationship,
+                  })
                 }
                 className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
               >
@@ -353,7 +373,9 @@ export default function OnboardingClient({ user, households }: OnboardingClientP
                 <input
                   type="checkbox"
                   checked={newFamilyMember.isChild}
-                  onChange={(e) => setNewFamilyMember({ ...newFamilyMember, isChild: e.target.checked })}
+                  onChange={(e) =>
+                    setNewFamilyMember({ ...newFamilyMember, isChild: e.target.checked })
+                  }
                   className="h-5 w-5 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
                 />
                 <span className="text-sm text-stone-700">Under 18 (child)</span>
@@ -408,14 +430,36 @@ export default function OnboardingClient({ user, households }: OnboardingClientP
 
         <div className="space-y-3">
           {[
-            { value: 'EMAIL', label: 'Email', description: 'Receive updates at your email address', icon: '📧' },
-            { value: 'SMS', label: 'Text Message', description: 'Get quick texts for important updates', icon: '📱' },
-            { value: 'BOTH', label: 'Both Email & Text', description: 'Stay informed through multiple channels', icon: '📬' },
-            { value: 'NONE', label: 'No Notifications', description: 'Check for updates manually', icon: '🔕' },
+            {
+              value: 'EMAIL',
+              label: 'Email',
+              description: 'Receive updates at your email address',
+              icon: '📧',
+            },
+            {
+              value: 'SMS',
+              label: 'Text Message',
+              description: 'Get quick texts for important updates',
+              icon: '📱',
+            },
+            {
+              value: 'BOTH',
+              label: 'Both Email & Text',
+              description: 'Stay informed through multiple channels',
+              icon: '📬',
+            },
+            {
+              value: 'NONE',
+              label: 'No Notifications',
+              description: 'Check for updates manually',
+              icon: '🔕',
+            },
           ].map((option) => (
             <button
               key={option.value}
-              onClick={() => setCommunicationPreference(option.value as typeof communicationPreference)}
+              onClick={() =>
+                setCommunicationPreference(option.value as typeof communicationPreference)
+              }
               className={`flex w-full items-center gap-4 rounded-lg border-2 p-4 text-left transition-colors ${
                 communicationPreference === option.value
                   ? 'border-amber-500 bg-amber-50'
@@ -451,11 +495,15 @@ export default function OnboardingClient({ user, households }: OnboardingClientP
             >
               {index < currentStepIndex ? '✓' : index + 1}
             </div>
-            <span className={`ml-2 text-sm ${index === currentStepIndex ? 'font-medium text-amber-700' : 'text-stone-500'}`}>
+            <span
+              className={`ml-2 text-sm ${index === currentStepIndex ? 'font-medium text-amber-700' : 'text-stone-500'}`}
+            >
               {step.label}
             </span>
             {index < STEPS.length - 1 && (
-              <div className={`mx-4 h-0.5 w-12 ${index < currentStepIndex ? 'bg-amber-700' : 'bg-stone-200'}`} />
+              <div
+                className={`mx-4 h-0.5 w-12 ${index < currentStepIndex ? 'bg-amber-700' : 'bg-stone-200'}`}
+              />
             )}
           </div>
         ))}

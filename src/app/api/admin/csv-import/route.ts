@@ -42,7 +42,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         householdsCreated: households.length,
-        usersCreated: households.reduce((sum, hh) => sum + hh.members.filter((m) => m.email).length, 0),
+        usersCreated: households.reduce(
+          (sum, hh) => sum + hh.members.filter((m) => m.email).length,
+          0,
+        ),
         rsvpsCreated: households.reduce((sum, hh) => sum + hh.members.length, 0),
         message: 'Dry run successful',
       });
@@ -65,16 +68,13 @@ export async function POST(request: NextRequest) {
           where: { email: member.email },
         });
 
-        let userId: string;
-
         if (existingUser) {
           await prisma.user.update({
             where: { id: existingUser.id },
             data: { householdId: newHousehold.id },
           });
-          userId = existingUser.id;
         } else {
-          const newUser = await prisma.user.create({
+          await prisma.user.create({
             data: {
               email: member.email,
               name: member.name,
@@ -82,7 +82,6 @@ export async function POST(request: NextRequest) {
               role: 'ADMIN_ADULT',
             },
           });
-          userId = newUser.id;
           results.usersCreated++;
         }
 
@@ -120,7 +119,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(results);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.issues },
+        { status: 400 },
+      );
     }
     console.error('CSV Import error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

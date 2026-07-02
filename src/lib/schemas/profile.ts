@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { CommunicationPreference } from '~/lib/generated/client';
 
 export const profileUpdateSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').optional(),

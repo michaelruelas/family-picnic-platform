@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
-import { Relationship } from '~/lib/generated/client';
 import { z } from 'zod';
 
 export async function GET() {
@@ -24,7 +23,10 @@ export async function GET() {
     return NextResponse.json(dependents);
   } catch (error) {
     console.error('Get dependents error:', error);
-    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' },
+      { status: 500 },
+    );
   }
 }
 
@@ -39,17 +41,22 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, relationship, age, dietaryLabels, isChild } = body;
 
-    const createResult = z.object({
-      name: z.string().min(1, 'Name is required').trim().min(1),
-      relationship: z.enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN'] as const),
-      age: z.number().int().positive().optional(),
-      dietaryLabels: z.array(z.string()).default([]),
-      isChild: z.boolean().default(false),
-    }).safeParse({ name, relationship, age, dietaryLabels, isChild });
+    const createResult = z
+      .object({
+        name: z.string().min(1, 'Name is required').trim().min(1),
+        relationship: z.enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN'] as const),
+        age: z.number().int().positive().optional(),
+        dietaryLabels: z.array(z.string()).default([]),
+        isChild: z.boolean().default(false),
+      })
+      .safeParse({ name, relationship, age, dietaryLabels, isChild });
 
     if (!createResult.success) {
       const errors = createResult.error.issues.map((i) => i.message);
-      return NextResponse.json({ error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' }, { status: 400 });
+      return NextResponse.json(
+        { error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' },
+        { status: 400 },
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -78,7 +85,10 @@ export async function POST(request: Request) {
     return NextResponse.json(dependent, { status: 201 });
   } catch (error) {
     console.error('Create dependent error:', error);
-    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' },
+      { status: 500 },
+    );
   }
 }
 
@@ -93,18 +103,25 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { id, name, relationship, age, dietaryLabels, isChild } = body;
 
-    const updateResult = z.object({
-      id: z.string().min(1, 'Dependent ID is required'),
-      name: z.string().trim().min(1, 'Name cannot be empty').optional(),
-      relationship: z.enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN'] as const).optional(),
-      age: z.number().int().positive().nullable().optional(),
-      dietaryLabels: z.array(z.string()).optional(),
-      isChild: z.boolean().optional(),
-    }).safeParse({ id, name, relationship, age, dietaryLabels, isChild });
+    const updateResult = z
+      .object({
+        id: z.string().min(1, 'Dependent ID is required'),
+        name: z.string().trim().min(1, 'Name cannot be empty').optional(),
+        relationship: z
+          .enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN'] as const)
+          .optional(),
+        age: z.number().int().positive().nullable().optional(),
+        dietaryLabels: z.array(z.string()).optional(),
+        isChild: z.boolean().optional(),
+      })
+      .safeParse({ id, name, relationship, age, dietaryLabels, isChild });
 
     if (!updateResult.success) {
       const errors = updateResult.error.issues.map((i) => i.message);
-      return NextResponse.json({ error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' }, { status: 400 });
+      return NextResponse.json(
+        { error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' },
+        { status: 400 },
+      );
     }
 
     const { id: dependentId, ...updateData } = updateResult.data;
@@ -114,7 +131,10 @@ export async function PATCH(request: Request) {
     });
 
     if (!existing || existing.deletedAt !== null) {
-      return NextResponse.json({ error: 'Dependent not found', code: 'NOT_FOUND' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Dependent not found', code: 'NOT_FOUND' },
+        { status: 404 },
+      );
     }
 
     if (existing.managedByUserId !== session.user.id) {
@@ -122,7 +142,10 @@ export async function PATCH(request: Request) {
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: 'No valid fields to update', code: 'BAD_REQUEST' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'No valid fields to update', code: 'BAD_REQUEST' },
+        { status: 400 },
+      );
     }
 
     const dependent = await prisma.dependent.update({
@@ -133,7 +156,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json(dependent);
   } catch (error) {
     console.error('Update dependent error:', error);
-    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' },
+      { status: 500 },
+    );
   }
 }
 
@@ -149,7 +175,10 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: 'Dependent ID is required', code: 'BAD_REQUEST' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Dependent ID is required', code: 'BAD_REQUEST' },
+        { status: 400 },
+      );
     }
 
     const existing = await prisma.dependent.findUnique({
@@ -157,7 +186,10 @@ export async function DELETE(request: Request) {
     });
 
     if (!existing || existing.deletedAt !== null) {
-      return NextResponse.json({ error: 'Dependent not found', code: 'NOT_FOUND' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Dependent not found', code: 'NOT_FOUND' },
+        { status: 404 },
+      );
     }
 
     if (existing.managedByUserId !== session.user.id) {
@@ -172,6 +204,9 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete dependent error:', error);
-    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' },
+      { status: 500 },
+    );
   }
 }
