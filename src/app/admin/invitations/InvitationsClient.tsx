@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import InvitationTable from '~/components/invitation/InvitationTable';
+import CsvUploader from '~/components/admin/CsvUploader';
 
 type Event = {
   id: string;
@@ -209,6 +210,17 @@ export default function AdminInvitationsClient({
             onTrackDelivery={handleTrackDelivery}
           />
         </div>
+      )}
+
+      {selectedEvent && (
+        <CsvUploader
+          eventId={selectedEvent}
+          onImportComplete={async () => {
+            const res = await fetch(`/api/admin/invitations?event=${selectedEvent}`);
+            const data = await res.json();
+            setInvitations(data);
+          }}
+        />
       )}
     </div>
   );

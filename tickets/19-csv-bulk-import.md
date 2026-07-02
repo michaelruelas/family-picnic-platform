@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — SPEC §9 lists "Admin bulk CSV import" as post-MVP High priority.
+Done — Implemented with PapaParse CSV parser, CsvUploader component, API route, and admin invitations integration. 19 passing integration tests.
 
 ## Description
 
