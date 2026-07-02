@@ -2,9 +2,7 @@
 
 ## Status
 
-Missing — `docs/architecture.md` is 35 KB of detail, but there's no
-quick-start for new contributors and no AGENTS.md / README section
-explaining the empty dirs, route groups, and conventions.
+Done — Created `AGENTS.md` at repo root with comprehensive developer guide covering build/test/lint commands, route map, tRPC conventions, what-not-to-touch areas, known lint errors, ticket priority table with status and iteration, and environment variables. Created `scripts/dev.sh` for one-command dev setup and `docker-compose.yml` for local PostgreSQL.
 
 ## Description
 
