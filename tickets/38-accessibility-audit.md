@@ -2,8 +2,7 @@
 
 ## Status
 
-Untested — SPEC §1 lists multi-generational accessibility as the top
-design principle but no a11y audit has been run.
+Done — Accessibility audit completed: Toast component updated with aria-live="polite" and aria-atomic="true", accessibility test suite created at tests/a11y/ with 29 tests covering WCAG contrast ratios, ARIA attributes, and keyboard navigation styles. Full axe-core browser testing remains as a manual verification step.
 
 ## Description
 

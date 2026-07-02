@@ -125,6 +125,8 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
         ${styles.bg}
       `}
       role="alert"
+      aria-live="polite"
+      aria-atomic="true"
     >
       <span className={`text-xl ${styles.icon}`}>{icons[type]}</span>
       <p className={`flex-1 text-base font-medium ${styles.text}`}>{message}</p>
