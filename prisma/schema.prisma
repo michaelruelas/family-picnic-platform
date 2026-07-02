@@ -119,6 +119,7 @@ model User {
   receivedCommunications CommunicationLog[] @relation("ReceivedByUser")
   photoReactions     PhotoReaction[]
   adminAuditLogs     AdminAuditLog[]
+  eventAdmins        EventAdmin[]
 
   @@index([householdId])
   @@index([role])
@@ -165,6 +166,7 @@ model Event {
   communications     CommunicationLog[]
   photos             Photo[]
   adminAuditLogs     AdminAuditLog[]
+  admins             EventAdmin[]
 
   @@index([status])
   @@index([date])
@@ -331,4 +333,25 @@ model AdminAuditLog {
   @@index([eventId])
   @@index([createdAt])
   @@index([action])
+}
+
+enum AdminPermission {
+  OWNER
+  COADMIN
+  INVITER
+}
+
+model EventAdmin {
+  id        String         @id @default(cuid())
+  eventId   String
+  userId    String
+  role      AdminPermission @default(COADMIN)
+  createdAt DateTime       @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
 }

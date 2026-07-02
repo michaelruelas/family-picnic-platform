@@ -1,7 +1,7 @@
 import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { EventStatus } from '~/lib/generated/enums';
+import { EventStatus, AdminPermission } from '~/lib/generated/enums';
 
 export const eventRouter = router({
   create: auditedAdminProcedure
@@ -128,6 +128,64 @@ export const eventRouter = router({
       return prisma.event.update({
         where: { id: input.id },
         data: { status: EventStatus.CANCELLED },
+      });
+    }),
+
+  listAdmins: protectedProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ input }) => {
+      return prisma.eventAdmin.findMany({
+        where: { eventId: input.eventId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              household: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    }),
+
+  addAdmin: auditedAdminProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        userId: z.string(),
+        role: z.enum(['OWNER', 'COADMIN', 'INVITER']).default('COADMIN'),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      return prisma.eventAdmin.create({
+        data: {
+          eventId: input.eventId,
+          userId: input.userId,
+          role: input.role as AdminPermission,
+        },
+      });
+    }),
+
+  removeAdmin: auditedAdminProcedure
+    .input(
+      z.object({
+        eventId: z.string(),
+        userId: z.string(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      return prisma.eventAdmin.delete({
+        where: {
+          eventId_userId: {
+            eventId: input.eventId,
+            userId: input.userId,
+          },
+        },
       });
     }),
 });

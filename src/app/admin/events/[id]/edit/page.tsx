@@ -81,6 +81,21 @@ export default async function EditEventPage({ params }: PageProps) {
           <SlotGrid eventId={event.id} slots={event.potluckSlots} />
         </div>
       </div>
+
+      <div className="mt-12 border-t border-stone-200 pt-12">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-stone-900">Event Admins</h2>
+            <p className="mt-2 text-stone-600">Manage who can administer this event</p>
+          </div>
+          <a
+            href={`/admin/events/${event.id}/edit/admins`}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+          >
+            Manage Admins
+          </a>
+        </div>
+      </div>
     </main>
   );
 }

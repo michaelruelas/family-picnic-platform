@@ -91,6 +91,26 @@ export const userRouter = router({
       });
     }),
 
+  searchByEmail: protectedProcedure
+    .input(z.object({ email: z.string().email() }))
+    .query(async ({ input }) => {
+      return prisma.user.findUnique({
+        where: { email: input.email },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          household: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+    }),
+
   completeOnboarding: protectedProcedure.mutation(async ({ ctx }) => {
     return prisma.user.update({
       where: { id: ctx.session.user.id },

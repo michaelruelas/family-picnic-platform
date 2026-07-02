@@ -65,4 +65,33 @@ describe('Prisma schema integrity vs SPEC', () => {
   it('enforces @@unique constraints on RSVP (eventId + userId)', () => {
     expect(schema).toContain('@@unique([eventId, userId])');
   });
+
+  it('defines AdminPermission enum with OWNER, COADMIN, INVITER', () => {
+    const match = schema.match(/enum AdminPermission \{([^}]+)\}/);
+    expect(match).not.toBeNull();
+    expect(match![1]!.trim()).toContain('OWNER');
+    expect(match![1]!.trim()).toContain('COADMIN');
+    expect(match![1]!.trim()).toContain('INVITER');
+  });
+
+  it('defines EventAdmin model with eventId, userId, and role', () => {
+    const block = schema.match(/model EventAdmin \{([^}]+)\}/);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toContain('eventId');
+    expect(block![1]!).toContain('userId');
+    expect(block![1]!).toContain('role');
+    expect(block![1]!).toContain('AdminPermission');
+  });
+
+  it('EventAdmin has @@unique constraint on eventId + userId', () => {
+    expect(schema).toContain('@@unique([eventId, userId])');
+  });
+
+  it('Event model has admins relation', () => {
+    expect(schema).toMatch(/model Event \{[\s\S]*?admins\s+EventAdmin\[\]/);
+  });
+
+  it('User model has eventAdmins relation', () => {
+    expect(schema).toMatch(/model User \{[\s\S]*?eventAdmins\s+EventAdmin\[\]/);
+  });
 });

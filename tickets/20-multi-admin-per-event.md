@@ -2,8 +2,12 @@
 
 ## Status
 
-Schema gap — `Event` has no `admins` join table. SPEC §2.1 says
-"Multiple admins per event allowed" and SPEC §9 lists this as MVP.
+Done — `EventAdmin` model added with `eventId`, `userId`, and `role`
+(OWNER/COADMIN/INVITER). Added `listAdmins`, `addAdmin`, `removeAdmin`
+procedures to event router. Created `/admin/events/[id]/edit/admins` page
+with user search by email and admin management UI. API routes created at
+`/api/admin/events/[id]/admins` and `/api/admin/users/search`. Schema
+integrity tests extended.
 
 ## Description
 
