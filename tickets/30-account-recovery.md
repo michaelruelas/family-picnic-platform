@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — SPEC §10 Q1 and Q2 are unresolved.
+Post-MVP — SPEC §10 Q1 and Q2 explicitly list as Post-MVP per architecture decisions.
 
 ## Description
 

@@ -2,9 +2,7 @@
 
 ## Status
 
-Missing — SPEC §4.5 step 3 calls for "Admin sets send time (within
-reasonable hours constraint)". The `CommunicationLog` schema has no
-scheduled-at column.
+Post-MVP — SPEC §4.5 step 3 and SPEC §9 Medium priority explicitly deferred to Post-MVP per architecture decisions.
 
 ## Description
 

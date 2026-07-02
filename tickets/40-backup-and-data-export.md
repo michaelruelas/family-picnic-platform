@@ -2,8 +2,7 @@
 
 ## Status
 
-Missing — SPEC §10 Q18 asks about PostgreSQL backup frequency. No
-strategy exists.
+Post-MVP — SPEC §10 Q18 explicitly defers backup/retention/GDPR export as Post-MVP per architecture decisions.
 
 ## Description
 
