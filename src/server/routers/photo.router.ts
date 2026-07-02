@@ -33,6 +33,89 @@ export const photoRouter = router({
       });
     }),
 
+  search: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().optional(),
+        eventId: z.string().optional(),
+        uploadedByUserId: z.string().optional(),
+        dateFrom: z.date().optional(),
+        dateTo: z.date().optional(),
+        reaction: z.string().optional(),
+        sortBy: z.enum(['newest', 'most_reacted']).optional().default('newest'),
+        cursor: z.string().optional(),
+        limit: z.number().min(1).max(100).optional().default(50),
+      }),
+    )
+    .query(async ({ input }) => {
+      const where: Record<string, unknown> = { deletedAt: null };
+
+      if (input.query) {
+        where.OR = [
+          { caption: { contains: input.query, mode: 'insensitive' } },
+          { uploadedBy: { name: { contains: input.query, mode: 'insensitive' } } },
+        ];
+      }
+
+      if (input.eventId) {
+        where.eventId = input.eventId;
+      }
+
+      if (input.uploadedByUserId) {
+        where.uploadedByUserId = input.uploadedByUserId;
+      }
+
+      if (input.dateFrom || input.dateTo) {
+        where.createdAt = {};
+        if (input.dateFrom) {
+          (where.createdAt as Record<string, Date>).gte = input.dateFrom;
+        }
+        if (input.dateTo) {
+          (where.createdAt as Record<string, Date>).lte = input.dateTo;
+        }
+      }
+
+      if (input.reaction) {
+        where.reactions = {
+          some: { reaction: input.reaction },
+        };
+      }
+
+      const orderBy =
+        input.sortBy === 'most_reacted'
+          ? { reactions: { _count: 'desc' as const } }
+          : { createdAt: 'desc' as const };
+
+      const photos = await prisma.photo.findMany({
+        where,
+        include: {
+          uploadedBy: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          reactions: true,
+          _count: {
+            select: { reactions: true },
+          },
+        },
+        orderBy,
+        take: (input.limit || 50) + 1,
+        ...(input.cursor ? { skip: 1, cursor: { id: input.cursor } } : {}),
+      });
+
+      const hasMore = photos.length > (input.limit || 50);
+      const items = hasMore ? photos.slice(0, -1) : photos;
+      const nextCursor = hasMore ? items[items.length - 1]?.id : undefined;
+
+      return {
+        items,
+        nextCursor,
+        hasMore,
+      };
+    }),
+
   getUploadUrl: protectedProcedure
     .input(
       z.object({

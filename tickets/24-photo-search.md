@@ -2,8 +2,10 @@
 
 ## Status
 
-Missing — SPEC §9 lists "Photo gallery search" as Low priority, but the
-feature is unstarted.
+Done — Full-text search over Photo.caption + uploader name implemented via
+`search` procedure with cursor-based pagination. PhotoSearch component provides
+caption search, event filter, date range filter, reaction emoji filter, and
+sort options (newest/most reacted). Filters combine with AND logic.
 
 ## Description
 
