@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useOffline } from '~/hooks';
 
 interface RSVPFormProps {
   eventId: string;
@@ -25,6 +26,7 @@ export default function RSVPForm({
   currentAttending,
 }: RSVPFormProps) {
   const router = useRouter();
+  const { isOnline } = useOffline();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [headcount, setHeadcount] = useState(existingRsvp?.headcount || 1);
@@ -74,6 +76,15 @@ export default function RSVPForm({
         {existingRsvp && existingRsvp.status === 'CONFIRMED' && (
           <p className="mt-1 text-sm">You attended this event.</p>
         )}
+      </div>
+    );
+  }
+
+  if (!isOnline) {
+    return (
+      <div className="rounded-lg bg-amber-50 p-4 text-amber-800">
+        <p className="font-medium">You are currently offline.</p>
+        <p className="mt-1 text-sm">RSVPs require an internet connection. Please try again when you are back online.</p>
       </div>
     );
   }

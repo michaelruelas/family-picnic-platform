@@ -18,6 +18,15 @@ export default async function EventDetailPage({ params }: Props) {
   const { id } = await params;
   const session = await getServerSession(authOptions);
 
+  let userRole: string | undefined;
+  if (session?.user?.id) {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+    userRole = user?.role;
+  }
+
   const event = await prisma.event.findUnique({
     where: { id },
     include: {
@@ -40,10 +49,12 @@ export default async function EventDetailPage({ params }: Props) {
         },
       },
       photos: {
+        where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
         take: 12,
         include: {
           reactions: true,
+          uploadedByUserId: true,
         },
       },
       rsvps: {
@@ -499,6 +510,7 @@ export default async function EventDetailPage({ params }: Props) {
                 photo={photo}
                 eventName={event.name}
                 userId={session?.user?.id}
+                userRole={userRole}
               />
             ))}
           </div>

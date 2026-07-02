@@ -2,8 +2,7 @@
 
 ## Status
 
-Partial — `prisma/__tests__/schema-integrity.test.ts` covers schema only.
-21 tests total per CHANGELOG but no coverage of business logic.
+Done — All six SPEC §8 edge cases have passing integration tests. 136 tests total.
 
 ## Description
 

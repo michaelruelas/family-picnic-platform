@@ -10,21 +10,34 @@ export default async function PhotosPage() {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
 
+  let userRole: string | undefined;
+  if (userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    userRole = user?.role;
+  }
+
   const eventsWithPhotos = await prisma.event.findMany({
     where: {
       status: 'PUBLISHED',
       photos: {
-        some: {},
+        some: {
+          deletedAt: null,
+        },
       },
     },
     include: {
       photos: {
+        where: { deletedAt: null },
         select: {
           id: true,
           caption: true,
           url: true,
           thumbnailUrl: true,
           createdAt: true,
+          uploadedByUserId: true,
           reactions: true,
         },
         orderBy: { createdAt: 'desc' },
@@ -93,6 +106,7 @@ export default async function PhotosPage() {
                       photo={photo}
                       eventName={event.name}
                       userId={userId}
+                      userRole={userRole}
                     />
                   ))}
                 </div>

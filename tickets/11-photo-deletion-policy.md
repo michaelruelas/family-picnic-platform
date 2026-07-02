@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — Open Question #13 in SPEC.
+Done — Soft delete implemented with adminAuditLog entries. Uploader or admin can delete photos.
 
 ## Description
 

@@ -276,7 +276,7 @@ model CommunicationLog {
 }
 
 model Photo {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   eventId          String
   uploadedByUserId String
   householdId      String
@@ -284,7 +284,8 @@ model Photo {
   caption          String?
   url              String
   thumbnailUrl     String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
 
   event      Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   uploadedBy User           @relation(fields: [uploadedByUserId], references: [id], onDelete: Cascade)
@@ -295,6 +296,7 @@ model Photo {
   @@index([uploadedByUserId])
   @@index([householdId])
   @@index([photoPrismId])
+  @@index([deletedAt])
 }
 
 model PhotoReaction {

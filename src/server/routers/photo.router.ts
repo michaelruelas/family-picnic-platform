@@ -4,12 +4,20 @@ import { prisma } from '~/lib/prisma';
 
 const VALID_REACTIONS = ['❤️', '👍', '👏', '🎉', '😂'];
 
+async function isAdmin(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  return user?.role === 'ADMIN';
+}
+
 export const photoRouter = router({
   list: protectedProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ input }) => {
       return prisma.photo.findMany({
-        where: { eventId: input.eventId },
+        where: { eventId: input.eventId, deletedAt: null },
         include: {
           uploadedBy: {
             select: {
@@ -158,5 +166,42 @@ export const photoRouter = router({
           household: true,
         },
       });
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const photo = await prisma.photo.findUnique({
+        where: { id: input.id },
+        include: { event: true },
+      });
+
+      if (!photo) {
+        throw new Error('Photo not found');
+      }
+
+      const userIsAdmin = await isAdmin(ctx.session.user.id);
+      const isUploader = photo.uploadedByUserId === ctx.session.user.id;
+
+      if (!userIsAdmin && !isUploader) {
+        throw new Error('Only the uploader or an admin can delete this photo');
+      }
+
+      await prisma.photo.update({
+        where: { id: input.id },
+        data: { deletedAt: new Date() },
+      });
+
+      await prisma.adminAuditLog.create({
+        data: {
+          userId: ctx.session.user.id,
+          eventId: photo.eventId,
+          action: 'PHOTO_DELETE',
+          oldValue: { id: photo.id, caption: photo.caption, url: photo.url },
+          newValue: { deletedAt: new Date().toISOString() },
+        },
+      });
+
+      return { success: true };
     }),
 });
