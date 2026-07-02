@@ -2,8 +2,8 @@
 
 ## Status
 
-Missing — events are only created via `prisma/seed.ts`. No admin UI or tRPC
-procedures for create / update / publish / close / cancel.
+Done — Admin event management UI and API routes implemented. Events can be created,
+updated, published, closed, and cancelled through the admin interface.
 
 ## Description
 
