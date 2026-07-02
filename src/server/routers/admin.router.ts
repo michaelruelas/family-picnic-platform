@@ -6,11 +6,13 @@ import { RSVPStatus } from '~/lib/generated/enums';
 export const adminRouter = router({
   auditLog: auditedAdminProcedure
     .input(
-      z.object({
-        eventId: z.string().optional(),
-        userId: z.string().optional(),
-        action: z.string().optional(),
-      }).optional(),
+      z
+        .object({
+          eventId: z.string().optional(),
+          userId: z.string().optional(),
+          action: z.string().optional(),
+        })
+        .optional(),
     )
     .query(async ({ input }) => {
       return prisma.adminAuditLog.findMany({
@@ -65,7 +67,9 @@ export const adminRouter = router({
 
       const confirmedRsvps = rsvps.filter((r) => r.status === RSVPStatus.CONFIRMED);
       const declinedRsvps = rsvps.filter((r) => r.status === RSVPStatus.DECLINED);
-      const pendingRsvps = rsvps.filter((r) => r.status === RSVPStatus.PENDING || r.status === RSVPStatus.INVITED);
+      const pendingRsvps = rsvps.filter(
+        (r) => r.status === RSVPStatus.PENDING || r.status === RSVPStatus.INVITED,
+      );
 
       const totalHeadcount = confirmedRsvps.reduce((sum, r) => sum + r.headcount, 0);
 
@@ -86,9 +90,7 @@ export const adminRouter = router({
         foodSummary[slot.category] = categoryEntry;
         for (const signup of slot.signups) {
           if (signup.rsvp.status === RSVPStatus.CONFIRMED) {
-            categoryEntry.items.push(
-              `${signup.dishName} (${signup.servings} servings)`,
-            );
+            categoryEntry.items.push(`${signup.dishName} (${signup.servings} servings)`);
           }
         }
       }
@@ -196,7 +198,9 @@ export const adminRouter = router({
           await prisma.rSVP.create({
             data: {
               eventId: input.eventId,
-              userId: existingUser?.id || (await prisma.user.findUnique({ where: { email: member.email } }))!.id,
+              userId:
+                existingUser?.id ||
+                (await prisma.user.findUnique({ where: { email: member.email } }))!.id,
               householdId: newHousehold.id,
               status: RSVPStatus.CONFIRMED,
               headcount: member.headcount,

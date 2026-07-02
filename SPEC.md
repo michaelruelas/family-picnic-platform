@@ -696,27 +696,27 @@ src/
 
 > See [docs/decisions/](docs/decisions/) for Architecture Decision Records.
 
-| ID | Question | Decision |
-| --- | -------- | -------- |
-| Q1 | Account recovery | Google OAuth only; re-auth link surfaced |
-| Q2 | Dependent accounts | Magic link to household (see ticket 30) |
-| Q3 | Household naming | Any adult can propose; second adult must confirm |
-| Q4 | Household merging | Admin-only with audit log entry |
-| Q5 | Child aging out | Dependents become separate households at 18 |
-| Q6 | Headcount minimum | 1 (self only) |
-| Q7 | Waitlist | Yes, auto-promote on cancellation |
-| Q8 | RSVP closing | Auto-close at deadline; admin can extend 24h once |
-| Q9 | Duplicate dishes | Allowed; conflict warning shown |
-| Q10 | Serving estimation | Not implemented in MVP |
-| Q11 | EXIF stripping | Strip GPS, serial numbers, timestamps; keep dimensions |
-| Q12 | Storage quotas | Soft cap 500MB/household; hard cap 5GB/event |
-| Q13 | Photo deletion | Uploader or admin can delete |
-| Q14 | Message templating | Not implemented in MVP |
-| Q15 | Opt-in defaults | EMAIL opt-in; SMS requires explicit consent |
-| Q16 | Rate limiting | Not implemented in MVP (see ticket 25) |
-| Q17 | PhotoPrism sync | Batch sync (Post-MVP) |
-| Q18 | Backup strategy | Daily pg_dump; weekly full backup |
-| Q19 | Monitoring | Basic alerts for error rate and latency |
+| ID  | Question           | Decision                                               |
+| --- | ------------------ | ------------------------------------------------------ |
+| Q1  | Account recovery   | Google OAuth only; re-auth link surfaced               |
+| Q2  | Dependent accounts | Magic link to household (see ticket 30)                |
+| Q3  | Household naming   | Any adult can propose; second adult must confirm       |
+| Q4  | Household merging  | Admin-only with audit log entry                        |
+| Q5  | Child aging out    | Dependents become separate households at 18            |
+| Q6  | Headcount minimum  | 1 (self only)                                          |
+| Q7  | Waitlist           | Yes, auto-promote on cancellation                      |
+| Q8  | RSVP closing       | Auto-close at deadline; admin can extend 24h once      |
+| Q9  | Duplicate dishes   | Allowed; conflict warning shown                        |
+| Q10 | Serving estimation | Not implemented in MVP                                 |
+| Q11 | EXIF stripping     | Strip GPS, serial numbers, timestamps; keep dimensions |
+| Q12 | Storage quotas     | Soft cap 500MB/household; hard cap 5GB/event           |
+| Q13 | Photo deletion     | Uploader or admin can delete                           |
+| Q14 | Message templating | Not implemented in MVP                                 |
+| Q15 | Opt-in defaults    | EMAIL opt-in; SMS requires explicit consent            |
+| Q16 | Rate limiting      | Not implemented in MVP (see ticket 25)                 |
+| Q17 | PhotoPrism sync    | Batch sync (Post-MVP)                                  |
+| Q18 | Backup strategy    | Daily pg_dump; weekly full backup                      |
+| Q19 | Monitoring         | Basic alerts for error rate and latency                |
 
 ### Authentication
 

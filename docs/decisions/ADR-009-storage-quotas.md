@@ -13,6 +13,7 @@ Unlimited photo storage could lead to abuse. Need fair limits that accommodate f
 ## Decision
 
 Implement two-tier storage quotas:
+
 - Soft cap: 500MB per household
 - Hard cap: 5GB per event (total across all households)
 

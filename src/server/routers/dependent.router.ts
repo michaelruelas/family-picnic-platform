@@ -51,7 +51,9 @@ export const dependentRouter = router({
       z.object({
         id: z.string(),
         name: z.string().min(1).optional(),
-        relationship: z.enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN']).optional(),
+        relationship: z
+          .enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN'])
+          .optional(),
         age: z.number().int().positive().nullable().optional(),
         dietaryLabels: z.array(z.string()).optional(),
         isChild: z.boolean().optional(),

@@ -4,7 +4,10 @@ import path from 'path';
 
 describe('Rate Limiting Implementation', () => {
   const rateLimitPath = path.join(process.cwd(), 'src/lib/rate-limit.ts');
-  const communicationRouterPath = path.join(process.cwd(), 'src/server/routers/communication.router.ts');
+  const communicationRouterPath = path.join(
+    process.cwd(),
+    'src/server/routers/communication.router.ts',
+  );
   const invitationRouterPath = path.join(process.cwd(), 'src/server/routers/invitation.router.ts');
 
   it('creates rate-limit.ts with rate limit checking functions', async () => {

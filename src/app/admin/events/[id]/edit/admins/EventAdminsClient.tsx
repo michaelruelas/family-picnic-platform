@@ -28,7 +28,12 @@ type Props = {
   currentUserId: string;
 };
 
-export default function EventAdminsClient({ eventId, eventName, initialAdmins, currentUserId }: Props) {
+export default function EventAdminsClient({
+  eventId,
+  eventName,
+  initialAdmins,
+  currentUserId,
+}: Props) {
   const [admins, setAdmins] = useState<EventAdmin[]>(initialAdmins);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'OWNER' | 'COADMIN' | 'INVITER'>('COADMIN');
@@ -107,9 +112,7 @@ export default function EventAdminsClient({ eventId, eventName, initialAdmins, c
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-bold text-stone-900">Event Admins</h2>
-        <p className="mt-2 text-stone-600">
-          Manage who can administer {eventName}
-        </p>
+        <p className="mt-2 text-stone-600">Manage who can administer {eventName}</p>
       </div>
 
       <Card>
@@ -140,11 +143,7 @@ export default function EventAdminsClient({ eventId, eventName, initialAdmins, c
                       {admin.role}
                     </span>
                     {!isCurrentUser(admin) && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setRemoveModal(admin)}
-                      >
+                      <Button variant="secondary" size="sm" onClick={() => setRemoveModal(admin)}>
                         Remove
                       </Button>
                     )}
@@ -188,9 +187,7 @@ export default function EventAdminsClient({ eventId, eventName, initialAdmins, c
             </Button>
           </div>
 
-          {searchError && (
-            <p className="text-sm text-red-600">{searchError}</p>
-          )}
+          {searchError && <p className="text-sm text-red-600">{searchError}</p>}
 
           {searchResult && (
             <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
@@ -222,14 +219,10 @@ export default function EventAdminsClient({ eventId, eventName, initialAdmins, c
         </CardContent>
       </Card>
 
-      <Modal
-        isOpen={!!removeModal}
-        onClose={() => setRemoveModal(null)}
-        title="Remove Admin"
-      >
+      <Modal isOpen={!!removeModal} onClose={() => setRemoveModal(null)} title="Remove Admin">
         <p className="text-stone-600">
-          Are you sure you want to remove <strong>{removeModal?.user.name}</strong> as an admin
-          from this event? They will lose access immediately.
+          Are you sure you want to remove <strong>{removeModal?.user.name}</strong> as an admin from
+          this event? They will lose access immediately.
         </p>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setRemoveModal(null)}>

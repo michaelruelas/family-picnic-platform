@@ -9,11 +9,11 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: family-picnic
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d family-picnic"]
+      test: ['CMD-SHELL', 'pg_isready -U user -d family-picnic']
       interval: 5s
       timeout: 5s
       retries: 5

@@ -102,7 +102,10 @@ export function parseCsv(csvText: string): CsvParseResult {
       }
 
       if (!primaryEmail || !isValidEmail(primaryEmail)) {
-        result.errors.push({ row: rowNum, message: `Row ${rowNum}: Valid primary email is required` });
+        result.errors.push({
+          row: rowNum,
+          message: `Row ${rowNum}: Valid primary email is required`,
+        });
         continue;
       }
 

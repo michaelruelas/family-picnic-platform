@@ -23,10 +23,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     }
 
     if (event.status !== EventStatus.DRAFT) {
-      return NextResponse.json(
-        { error: 'Only DRAFT events can be published' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Only DRAFT events can be published' }, { status: 400 });
     }
 
     const updated = await prisma.event.update({

@@ -4,10 +4,7 @@ import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { AdminPermission } from '~/lib/generated/enums';
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id || session.user.role !== 'ADMIN') {

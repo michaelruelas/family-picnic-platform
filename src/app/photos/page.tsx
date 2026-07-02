@@ -144,7 +144,14 @@ async function getEventsWithPhotos() {
 export default async function PhotosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; event?: string; from?: string; to?: string; reaction?: string; sort?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    event?: string;
+    from?: string;
+    to?: string;
+    reaction?: string;
+    sort?: string;
+  }>;
 }) {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;

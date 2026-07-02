@@ -52,10 +52,7 @@ export const rsvpRouter = router({
       await prisma.invitation.updateMany({
         where: {
           eventId: input.eventId,
-          OR: [
-            { userId: ctx.session.user.id },
-            { householdId: user.householdId || user.id },
-          ],
+          OR: [{ userId: ctx.session.user.id }, { householdId: user.householdId || user.id }],
           status: InvitationStatus.PENDING,
         },
         data: { status: InvitationStatus.USED },
@@ -176,10 +173,7 @@ export const rsvpRouter = router({
         await prisma.invitation.updateMany({
           where: {
             eventId: input.eventId,
-            OR: [
-              { userId: ctx.session.user.id },
-              { householdId: user.householdId || user.id },
-            ],
+            OR: [{ userId: ctx.session.user.id }, { householdId: user.householdId || user.id }],
             status: InvitationStatus.PENDING,
           },
           data: { status: InvitationStatus.USED },

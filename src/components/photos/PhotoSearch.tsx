@@ -92,12 +92,7 @@ export default function PhotoSearch({ events }: PhotoSearchProps) {
           onChange={(e) => setDateFrom(e.target.value)}
         />
 
-        <Input
-          type="date"
-          label="To"
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-        />
+        <Input type="date" label="To" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
 
         <Select
           options={SORT_OPTIONS}

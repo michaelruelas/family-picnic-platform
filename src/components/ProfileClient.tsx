@@ -109,7 +109,8 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
     try {
       const newDependent = await create.mutateAsync({
         name: dependentForm.name,
-        relationship: dependentForm.relationship as 'SPOUSE' | 'CHILD' | 'PARENT' | 'SIBLING' | 'INLAW' | 'COUSIN',
+        relationship: dependentForm.relationship as
+          'SPOUSE' | 'CHILD' | 'PARENT' | 'SIBLING' | 'INLAW' | 'COUSIN',
         age: dependentForm.age ? Number(dependentForm.age) : undefined,
         dietaryLabels: dependentForm.dietaryLabels
           .split(',')
@@ -120,7 +121,9 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
       setDependents([...dependents, newDependent]);
       resetDependentForm();
     } catch (err) {
-      setDependentError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setDependentError(
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+      );
     } finally {
       setDependentSubmitting(false);
     }
@@ -137,7 +140,8 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
       const updatedDependent = await update.mutateAsync({
         id: editingDependentId,
         name: dependentForm.name,
-        relationship: dependentForm.relationship as 'SPOUSE' | 'CHILD' | 'PARENT' | 'SIBLING' | 'INLAW' | 'COUSIN',
+        relationship: dependentForm.relationship as
+          'SPOUSE' | 'CHILD' | 'PARENT' | 'SIBLING' | 'INLAW' | 'COUSIN',
         age: dependentForm.age ? Number(dependentForm.age) : null,
         dietaryLabels: dependentForm.dietaryLabels
           .split(',')
@@ -148,7 +152,9 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
       setDependents(dependents.map((d) => (d.id === editingDependentId ? updatedDependent : d)));
       resetDependentForm();
     } catch (err) {
-      setDependentError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setDependentError(
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+      );
     } finally {
       setDependentSubmitting(false);
     }
@@ -240,7 +246,9 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
             {isEditing ? (
               <select
                 value={communicationPreference}
-                onChange={(e) => setCommunicationPreference(e.target.value as CommunicationPreference)}
+                onChange={(e) =>
+                  setCommunicationPreference(e.target.value as CommunicationPreference)
+                }
                 className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
               >
                 <option value="EMAIL">Email only</option>

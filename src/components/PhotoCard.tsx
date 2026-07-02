@@ -70,15 +70,20 @@ export default function PhotoCard({ photo, eventName, userId, userRole }: PhotoC
         <div className="absolute top-2 right-2">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity duration-200 hover:bg-black/70 group-hover:opacity-100"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:bg-black/70"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
               <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
             </svg>
           </button>
 
           {showMenu && (
-            <div className="absolute right-0 top-10 z-10 w-32 rounded-lg bg-white py-1 shadow-lg ring-1 ring-stone-200">
+            <div className="absolute top-10 right-0 z-10 w-32 rounded-lg bg-white py-1 shadow-lg ring-1 ring-stone-200">
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="flex w-full items-center px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"

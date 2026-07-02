@@ -26,8 +26,8 @@ semantics (we use `@trpc/react-query`).
 
 - [x] All hooks exported from `src/hooks/index.ts`.
 - [x] All current components that use raw `fetch` (`RSVPForm`,
-  `PotluckSignupForm`, `ProfileClient`, `PhotoReactionButton`) are migrated
-  to the new hooks.
+      `PotluckSignupForm`, `ProfileClient`, `PhotoReactionButton`) are migrated
+      to the new hooks.
 - [x] Hooks have unit tests with `renderHook`.
 
 ## Files

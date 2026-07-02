@@ -53,23 +53,20 @@ export const eventRouter = router({
       });
     }),
 
-  getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ input }) => {
-      return prisma.event.findUnique({
-        where: { id: input.id },
-        include: {
-          potluckSlots: {
-            include: {
-              signups: {
-                include: {
-                  rsvp: {
-                    include: {
-                      user: {
-                        select: {
-                          id: true,
-                          name: true,
-                        },
+  getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    return prisma.event.findUnique({
+      where: { id: input.id },
+      include: {
+        potluckSlots: {
+          include: {
+            signups: {
+              include: {
+                rsvp: {
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        name: true,
                       },
                     },
                   },
@@ -77,25 +74,28 @@ export const eventRouter = router({
               },
             },
           },
-          rsvps: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                },
+        },
+        rsvps: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
               },
             },
           },
         },
-      });
-    }),
+      },
+    });
+  }),
 
   list: protectedProcedure
     .input(
-      z.object({
-        status: z.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'CANCELLED']).optional(),
-      }).optional(),
+      z
+        .object({
+          status: z.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'CANCELLED']).optional(),
+        })
+        .optional(),
     )
     .query(async ({ input }) => {
       return prisma.event.findMany({
@@ -104,32 +104,26 @@ export const eventRouter = router({
       });
     }),
 
-  publish: auditedAdminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      return prisma.event.update({
-        where: { id: input.id },
-        data: { status: EventStatus.PUBLISHED },
-      });
-    }),
+  publish: auditedAdminProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+    return prisma.event.update({
+      where: { id: input.id },
+      data: { status: EventStatus.PUBLISHED },
+    });
+  }),
 
-  close: auditedAdminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      return prisma.event.update({
-        where: { id: input.id },
-        data: { status: EventStatus.CLOSED },
-      });
-    }),
+  close: auditedAdminProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+    return prisma.event.update({
+      where: { id: input.id },
+      data: { status: EventStatus.CLOSED },
+    });
+  }),
 
-  cancel: auditedAdminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      return prisma.event.update({
-        where: { id: input.id },
-        data: { status: EventStatus.CANCELLED },
-      });
-    }),
+  cancel: auditedAdminProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+    return prisma.event.update({
+      where: { id: input.id },
+      data: { status: EventStatus.CANCELLED },
+    });
+  }),
 
   listAdmins: protectedProcedure
     .input(z.object({ eventId: z.string() }))

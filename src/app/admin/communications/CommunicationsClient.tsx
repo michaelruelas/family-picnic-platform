@@ -133,7 +133,7 @@ export default function AdminCommunicationsClient({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-stone-900">Delivery Status</h2>
             <button
               onClick={fetchLogs}

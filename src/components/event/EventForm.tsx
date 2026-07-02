@@ -34,7 +34,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
   });
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -76,9 +76,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 rounded-xl bg-white p-6 shadow-sm">
-      {error && (
-        <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</div>
-      )}
+      {error && <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
       <div className="grid gap-6 md:grid-cols-2">
         <div>

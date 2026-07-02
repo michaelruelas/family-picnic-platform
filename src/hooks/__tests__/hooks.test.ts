@@ -127,10 +127,12 @@ describe('React Hooks Layer', () => {
 
     it('exports all hooks from index', async () => {
       const content = await fs.readFile(indexPath, 'utf-8');
-      expect(content).toContain("export { useOffline }");
-      expect(content).toContain("export { useEvent, useEventRsvp, useEventHeadcount }");
-      expect(content).toContain("export { usePotluckSlots, usePotluckFoodSummary, usePotluckSignupMutation }");
-      expect(content).toContain("export {");
+      expect(content).toContain('export { useOffline }');
+      expect(content).toContain('export { useEvent, useEventRsvp, useEventHeadcount }');
+      expect(content).toContain(
+        'export { usePotluckSlots, usePotluckFoodSummary, usePotluckSignupMutation }',
+      );
+      expect(content).toContain('export {');
     });
   });
 });

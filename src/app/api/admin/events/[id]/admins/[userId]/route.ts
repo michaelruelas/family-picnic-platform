@@ -5,7 +5,7 @@ import { prisma } from '~/lib/prisma';
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string; userId: string }> }
+  { params }: { params: Promise<{ id: string; userId: string }> },
 ) {
   const session = await getServerSession(authOptions);
 

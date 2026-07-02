@@ -26,7 +26,9 @@ export async function POST(request: Request) {
     });
 
     const users = await prisma.user.findMany({
-      where: invitation.householdId ? { householdId: invitation.householdId } : { id: invitation.userId! },
+      where: invitation.householdId
+        ? { householdId: invitation.householdId }
+        : { id: invitation.userId! },
       select: { id: true },
     });
 

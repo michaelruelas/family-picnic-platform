@@ -121,6 +121,7 @@ kubectl logs -n family-picnic-dev -l app.kubernetes.io/name=nextjs -f
 ## Network Policies
 
 Each component has a NetworkPolicy that:
+
 - Allows only required ingress traffic
 - Restricts egress to necessary destinations only
 - PhotoPrism egress is restricted to prevent data exfiltration

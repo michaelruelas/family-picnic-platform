@@ -92,14 +92,12 @@ export const invitationRouter = router({
       return invitation;
     }),
 
-  resend: auditedAdminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      return prisma.invitation.update({
-        where: { id: input.id },
-        data: { status: InvitationStatus.PENDING },
-      });
-    }),
+  resend: auditedAdminProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+    return prisma.invitation.update({
+      where: { id: input.id },
+      data: { status: InvitationStatus.PENDING },
+    });
+  }),
 
   trackDelivery: auditedAdminProcedure
     .input(

@@ -164,7 +164,8 @@ export default function RecipientSelector({
 
           {selectedIds.length > 0 && (
             <p className="text-sm text-stone-600">
-              {selectedIds.length} {recipientType === 'HOUSEHOLD' ? 'household(s)' : 'individual(s)'} selected
+              {selectedIds.length}{' '}
+              {recipientType === 'HOUSEHOLD' ? 'household(s)' : 'individual(s)'} selected
             </p>
           )}
         </>

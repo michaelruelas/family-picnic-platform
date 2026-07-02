@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { getDietaryLabelConfig, STANDARD_DIETARY_LABELS } from '~/components/dietary/DietaryLabelChip';
+import {
+  getDietaryLabelConfig,
+  STANDARD_DIETARY_LABELS,
+} from '~/components/dietary/DietaryLabelChip';
 
 interface RsvpSummary {
   total: number;
@@ -73,15 +76,11 @@ export default function DashboardCard({
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-lg bg-stone-50 p-3">
           <p className="text-sm text-stone-500">Confirmed</p>
-          <p className="mt-1 text-2xl font-semibold text-stone-900">
-            {rsvpSummary.confirmed}
-          </p>
+          <p className="mt-1 text-2xl font-semibold text-stone-900">{rsvpSummary.confirmed}</p>
         </div>
         <div className="rounded-lg bg-stone-50 p-3">
           <p className="text-sm text-stone-500">Headcount</p>
-          <p className="mt-1 text-2xl font-semibold text-stone-900">
-            {rsvpSummary.headcount}
-          </p>
+          <p className="mt-1 text-2xl font-semibold text-stone-900">{rsvpSummary.headcount}</p>
           {capacityPercent !== null && (
             <p className="mt-0.5 text-xs text-stone-400">
               {capacityPercent}% of {maxCapacity}
@@ -90,15 +89,11 @@ export default function DashboardCard({
         </div>
         <div className="rounded-lg bg-stone-50 p-3">
           <p className="text-sm text-stone-500">Pending</p>
-          <p className="mt-1 text-2xl font-semibold text-amber-600">
-            {rsvpSummary.pending}
-          </p>
+          <p className="mt-1 text-2xl font-semibold text-amber-600">{rsvpSummary.pending}</p>
         </div>
         <div className="rounded-lg bg-stone-50 p-3">
           <p className="text-sm text-stone-500">Declined</p>
-          <p className="mt-1 text-2xl font-semibold text-red-600">
-            {rsvpSummary.declined}
-          </p>
+          <p className="mt-1 text-2xl font-semibold text-red-600">{rsvpSummary.declined}</p>
         </div>
       </div>
 
@@ -108,7 +103,7 @@ export default function DashboardCard({
           <div className="mt-2 space-y-2">
             {foodSummary.map((category) => (
               <div key={category.category}>
-                <p className="text-xs uppercase tracking-wide text-stone-500">
+                <p className="text-xs tracking-wide text-stone-500 uppercase">
                   {category.category}
                 </p>
                 <p className="mt-0.5 text-sm text-stone-700">
@@ -116,10 +111,7 @@ export default function DashboardCard({
                     ? category.items.slice(0, 3).join(', ')
                     : 'No items yet'}
                   {category.items.length > 3 && (
-                    <span className="text-stone-400">
-                      {' '}
-                      +{category.items.length - 3} more
-                    </span>
+                    <span className="text-stone-400"> +{category.items.length - 3} more</span>
                   )}
                 </p>
               </div>

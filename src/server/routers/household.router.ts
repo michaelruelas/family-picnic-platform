@@ -19,18 +19,16 @@ export const householdRouter = router({
       });
     }),
 
-  getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ input }) => {
-      return prisma.household.findUnique({
-        where: { id: input.id },
-        include: {
-          users: true,
-          dependents: true,
-          children: true,
-        },
-      });
-    }),
+  getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    return prisma.household.findUnique({
+      where: { id: input.id },
+      include: {
+        users: true,
+        dependents: true,
+        children: true,
+      },
+    });
+  }),
 
   getTree: protectedProcedure.query(async () => {
     const households = await prisma.household.findMany({

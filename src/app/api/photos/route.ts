@@ -26,10 +26,7 @@ export async function POST(request: Request) {
     });
 
     if (!user || !user.householdId) {
-      return NextResponse.json(
-        { error: 'User must belong to a household' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'User must belong to a household' }, { status: 400 });
     }
 
     const event = await prisma.event.findUnique({

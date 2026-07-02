@@ -13,17 +13,14 @@ export function getTraceContext(): TraceContext | undefined {
   return traceStorage.getStore();
 }
 
-export function runWithTraceContext<T>(
-  context: TraceContext,
-  fn: () => T
-): T {
+export function runWithTraceContext<T>(context: TraceContext, fn: () => T): T {
   return traceStorage.run(context, fn);
 }
 
 export function createTraceContext(
   requestId?: string,
   userId?: string,
-  route?: string
+  route?: string,
 ): TraceContext {
   return {
     requestId: requestId || generateRequestId(),

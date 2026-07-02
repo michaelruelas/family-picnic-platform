@@ -33,7 +33,11 @@ function StatusBadge({ status }: { status: string }) {
     UNSUBSCRIBED: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Unsubscribed' },
   };
 
-  const { bg, text, label } = config[status] ?? { bg: 'bg-gray-100', text: 'text-gray-700', label: status };
+  const { bg, text, label } = config[status] ?? {
+    bg: 'bg-gray-100',
+    text: 'text-gray-700',
+    label: status,
+  };
 
   return (
     <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${bg} ${text}`}>
@@ -104,19 +108,19 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
         <table className="min-w-full divide-y divide-stone-200">
           <thead className="bg-stone-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+              <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
                 Recipient
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+              <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
                 Channel
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+              <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+              <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
                 Attempted
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+              <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
                 Delivered
               </th>
             </tr>
@@ -124,7 +128,7 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
           <tbody className="divide-y divide-stone-200">
             {logs.map((log) => (
               <tr key={log.id} className="hover:bg-stone-50">
-                <td className="whitespace-nowrap px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <div className="font-medium text-stone-900">
                     {log.recipient?.name || 'Unknown'}
                   </div>
@@ -132,12 +136,12 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
                     {log.recipient?.email || log.recipientUserId}
                   </div>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <span className="inline-flex rounded-full bg-stone-100 px-2 py-1 text-xs font-medium text-stone-700">
                     {log.channel}
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <StatusBadge status={log.status} />
                   {log.errorMessage && (
                     <div className="mt-1 text-xs text-red-600" title={log.errorMessage}>
@@ -145,10 +149,10 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
                     </div>
                   )}
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-600">
+                <td className="px-4 py-3 text-sm whitespace-nowrap text-stone-600">
                   {new Date(log.attemptedAt).toLocaleString()}
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-600">
+                <td className="px-4 py-3 text-sm whitespace-nowrap text-stone-600">
                   {log.deliveredAt ? new Date(log.deliveredAt).toLocaleString() : '-'}
                 </td>
               </tr>

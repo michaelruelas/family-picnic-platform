@@ -31,13 +31,8 @@ export default function UploadButton({
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const updateFileStatus = (
-    id: string,
-    updates: Partial<UploadingFile>,
-  ) => {
-    setUploadingFiles((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, ...updates } : f)),
-    );
+  const updateFileStatus = (id: string, updates: Partial<UploadingFile>) => {
+    setUploadingFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...updates } : f)));
   };
 
   const uploadFile = async (uploadingFile: UploadingFile): Promise<boolean> => {
@@ -241,12 +236,8 @@ export default function UploadButton({
                   </span>
                 </div>
               </div>
-              {uploadingFile.status === 'done' && (
-                <span className="text-green-500">✓</span>
-              )}
-              {uploadingFile.status === 'error' && (
-                <span className="text-red-500">✗</span>
-              )}
+              {uploadingFile.status === 'done' && <span className="text-green-500">✓</span>}
+              {uploadingFile.status === 'error' && <span className="text-red-500">✗</span>}
             </div>
           ))}
         </div>

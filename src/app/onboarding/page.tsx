@@ -57,7 +57,9 @@ export default async function OnboardingPage() {
           <span className="text-3xl">🎉</span>
         </div>
         <h1 className="text-3xl font-bold text-stone-900">Welcome to Family Picnic!</h1>
-        <p className="mt-2 text-lg text-stone-600">Let&apos;s get you set up in just a few quick steps</p>
+        <p className="mt-2 text-lg text-stone-600">
+          Let&apos;s get you set up in just a few quick steps
+        </p>
       </div>
 
       <OnboardingClient

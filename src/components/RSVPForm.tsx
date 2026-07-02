@@ -77,7 +77,9 @@ export default function RSVPForm({
     return (
       <div className="rounded-lg bg-amber-50 p-4 text-amber-800">
         <p className="font-medium">You are currently offline.</p>
-        <p className="mt-1 text-sm">RSVPs require an internet connection. Please try again when you are back online.</p>
+        <p className="mt-1 text-sm">
+          RSVPs require an internet connection. Please try again when you are back online.
+        </p>
       </div>
     );
   }
@@ -264,7 +266,8 @@ export default function RSVPForm({
       <div className="rounded-lg bg-amber-50 p-4">
         <p className="font-medium text-amber-800">This event is full.</p>
         <p className="mt-1 text-sm text-amber-700">
-          All spots have been taken, but you can join the waitlist. You&apos;ll be notified if a spot opens up.
+          All spots have been taken, but you can join the waitlist. You&apos;ll be notified if a
+          spot opens up.
         </p>
         <p className="mt-1 text-sm text-amber-600">
           If you&apos;d like to be added to the waitlist, please confirm your attendance below.

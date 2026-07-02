@@ -38,7 +38,7 @@ export default function Modal({
 
       if (e.key === 'Tab' && modalRef.current) {
         const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         );
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
@@ -52,7 +52,7 @@ export default function Modal({
         }
       }
     },
-    [onClose]
+    [onClose],
   );
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export default function Modal({
       document.body.style.overflow = 'hidden';
 
       const firstFocusable = modalRef.current?.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
       firstFocusable?.focus();
     }
@@ -92,28 +92,26 @@ export default function Modal({
       />
       <div
         ref={modalRef}
-        className={`
-          relative w-full rounded-xl bg-white p-6 shadow-xl
-          ${sizeClasses[size]}
-          ${className}
-        `}
+        className={`relative w-full rounded-xl bg-white p-6 shadow-xl ${sizeClasses[size]} ${className} `}
         {...props}
       >
         {title && (
-          <h2
-            id="modal-title"
-            className="text-xl font-semibold text-stone-900"
-          >
+          <h2 id="modal-title" className="text-xl font-semibold text-stone-900">
             {title}
           </h2>
         )}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+          className="absolute top-4 right-4 rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
           aria-label="Close modal"
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
         <div className="mt-4">{children}</div>

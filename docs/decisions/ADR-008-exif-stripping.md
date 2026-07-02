@@ -13,6 +13,7 @@ GPS data must be stripped for privacy. Other metadata may contain identifying in
 ## Decision
 
 Strip the following EXIF fields from all uploaded photos:
+
 - GPS coordinates (latitude, longitude, altitude)
 - Camera serial number
 - Lens serial number
@@ -20,6 +21,7 @@ Strip the following EXIF fields from all uploaded photos:
 - Software/version
 
 Keep the following EXIF fields:
+
 - Image dimensions (width, height) - needed for display
 - Orientation - needed for correct rotation
 - Color profile information

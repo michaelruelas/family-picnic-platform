@@ -22,30 +22,18 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         <textarea
           ref={ref}
           id={textareaId}
-          className={`
-            mt-1 block w-full rounded-lg border bg-white px-3 py-2
-            text-lg text-stone-900 placeholder:text-stone-400
-            shadow-sm transition-colors duration-150
-            focus:outline-none focus:ring-2 focus:ring-offset-0
-            disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500
-            resize-y min-h-[80px]
-            ${error
+          className={`mt-1 block min-h-[80px] w-full resize-y rounded-lg border bg-white px-3 py-2 text-lg text-stone-900 shadow-sm transition-colors duration-150 placeholder:text-stone-400 focus:ring-2 focus:ring-offset-0 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500 ${
+            error
               ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
               : 'border-stone-300 focus:border-amber-500 focus:ring-amber-500'
-            }
-            ${className}
-          `}
+          } ${className} `}
           {...props}
         />
-        {hint && !error && (
-          <p className="mt-1 text-sm text-stone-500">{hint}</p>
-        )}
-        {error && (
-          <p className="mt-1 text-sm text-red-600">{error}</p>
-        )}
+        {hint && !error && <p className="mt-1 text-sm text-stone-500">{hint}</p>}
+        {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
       </div>
     );
-  }
+  },
 );
 
 Textarea.displayName = 'Textarea';

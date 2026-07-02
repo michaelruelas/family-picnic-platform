@@ -15,23 +15,21 @@ async function isAdmin(userId: string): Promise<boolean> {
 }
 
 export const photoRouter = router({
-  list: protectedProcedure
-    .input(z.object({ eventId: z.string() }))
-    .query(async ({ input }) => {
-      return prisma.photo.findMany({
-        where: { eventId: input.eventId, deletedAt: null },
-        include: {
-          uploadedBy: {
-            select: {
-              id: true,
-              name: true,
-            },
+  list: protectedProcedure.input(z.object({ eventId: z.string() })).query(async ({ input }) => {
+    return prisma.photo.findMany({
+      where: { eventId: input.eventId, deletedAt: null },
+      include: {
+        uploadedBy: {
+          select: {
+            id: true,
+            name: true,
           },
-          reactions: true,
         },
-        orderBy: { createdAt: 'desc' },
-      });
-    }),
+        reactions: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }),
 
   search: protectedProcedure
     .input(
@@ -290,23 +288,21 @@ export const photoRouter = router({
       });
     }),
 
-  getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ input }) => {
-      return prisma.photo.findUnique({
-        where: { id: input.id },
-        include: {
-          uploadedBy: {
-            select: {
-              id: true,
-              name: true,
-            },
+  getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    return prisma.photo.findUnique({
+      where: { id: input.id },
+      include: {
+        uploadedBy: {
+          select: {
+            id: true,
+            name: true,
           },
-          reactions: true,
-          household: true,
         },
-      });
-    }),
+        reactions: true,
+        household: true,
+      },
+    });
+  }),
 
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))

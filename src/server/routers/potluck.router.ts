@@ -20,7 +20,7 @@ export const potluckRouter = router({
           category: input.category,
           name: input.name,
           slotType: input.slotType,
-          maxSignups: input.slotType === 'LIMITED' ? input.maxSignups ?? 1 : null,
+          maxSignups: input.slotType === 'LIMITED' ? (input.maxSignups ?? 1) : null,
         },
       });
     }),
@@ -120,46 +120,49 @@ export const potluckRouter = router({
       });
 
       if (slot.slotType === 'LIMITED') {
-        return prisma.$transaction(async (tx) => {
-          const currentSignups = await tx.potluckSignup.count({
-            where: { slotId: input.slotId },
-          });
-          const effectiveCount = existingSignup ? currentSignups - 1 : currentSignups;
-          const maxSignups = slot.maxSignups || 0;
+        return prisma.$transaction(
+          async (tx) => {
+            const currentSignups = await tx.potluckSignup.count({
+              where: { slotId: input.slotId },
+            });
+            const effectiveCount = existingSignup ? currentSignups - 1 : currentSignups;
+            const maxSignups = slot.maxSignups || 0;
 
-          if (effectiveCount >= maxSignups) {
-            throw new Error('This slot is full');
-          }
+            if (effectiveCount >= maxSignups) {
+              throw new Error('This slot is full');
+            }
 
-          if (existingSignup) {
-            const updated = await tx.potluckSignup.update({
-              where: { id: existingSignup.id },
+            if (existingSignup) {
+              const updated = await tx.potluckSignup.update({
+                where: { id: existingSignup.id },
+                data: {
+                  dishName: input.dishName,
+                  servings: input.servings,
+                  dietaryLabels: input.dietaryLabels,
+                },
+              });
+              return updated;
+            }
+
+            const created = await tx.potluckSignup.create({
               data: {
+                slotId: input.slotId,
+                rsvpId: rsvp.id,
                 dishName: input.dishName,
                 servings: input.servings,
                 dietaryLabels: input.dietaryLabels,
               },
             });
-            return updated;
-          }
 
-          const created = await tx.potluckSignup.create({
-            data: {
-              slotId: input.slotId,
-              rsvpId: rsvp.id,
-              dishName: input.dishName,
-              servings: input.servings,
-              dietaryLabels: input.dietaryLabels,
-            },
-          });
+            await tx.potluckSlot.update({
+              where: { id: input.slotId },
+              data: { currentSignups: { increment: 1 } },
+            });
 
-          await tx.potluckSlot.update({
-            where: { id: input.slotId },
-            data: { currentSignups: { increment: 1 } },
-          });
-
-          return created;
-        }, { isolationLevel: 'Serializable' });
+            return created;
+          },
+          { isolationLevel: 'Serializable' },
+        );
       }
 
       if (existingSignup) {
@@ -197,7 +200,8 @@ export const potluckRouter = router({
       const rsvp = await prisma.rSVP.findUnique({
         where: {
           eventId_userId: {
-            eventId: (await prisma.potluckSlot.findUnique({ where: { id: input.slotId } }))?.eventId || '',
+            eventId:
+              (await prisma.potluckSlot.findUnique({ where: { id: input.slotId } }))?.eventId || '',
             userId: ctx.session.user.id,
           },
         },
@@ -291,9 +295,7 @@ export const potluckRouter = router({
         const categoryEntry = summary[slot.category] ?? { category: slot.category, items: [] };
         summary[slot.category] = categoryEntry;
         for (const signup of slot.signups) {
-          categoryEntry.items.push(
-            `${signup.dishName} (${signup.servings} servings)`,
-          );
+          categoryEntry.items.push(`${signup.dishName} (${signup.servings} servings)`);
         }
       }
 

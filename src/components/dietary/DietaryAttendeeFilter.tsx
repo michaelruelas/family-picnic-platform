@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import DietaryFilter from './DietaryFilter';
-import DietaryLabelChip, { STANDARD_DIETARY_LABELS, getDietaryLabelConfig } from './DietaryLabelChip';
+import DietaryLabelChip, {
+  STANDARD_DIETARY_LABELS,
+  getDietaryLabelConfig,
+} from './DietaryLabelChip';
 
 interface Attendee {
   id: string;
@@ -27,9 +30,12 @@ function parseDietaryNotesToLabels(notes: string | null): string[] {
   const labels: string[] = [];
   if (lower.includes('vegetarian') && !lower.includes('non-vegetarian')) labels.push('vegetarian');
   if (lower.includes('vegan')) labels.push('vegan');
-  if (lower.includes('gluten') || lower.includes('celiac') || lower.includes('gf')) labels.push('gluten_free');
-  if (lower.includes('nut') || lower.includes('peanut') || lower.includes('allergy')) labels.push('contains_nuts');
-  if (lower.includes('dairy') || lower.includes('lactose') || lower.includes('milk')) labels.push('dairy_free');
+  if (lower.includes('gluten') || lower.includes('celiac') || lower.includes('gf'))
+    labels.push('gluten_free');
+  if (lower.includes('nut') || lower.includes('peanut') || lower.includes('allergy'))
+    labels.push('contains_nuts');
+  if (lower.includes('dairy') || lower.includes('lactose') || lower.includes('milk'))
+    labels.push('dairy_free');
   return labels;
 }
 
@@ -109,15 +115,11 @@ export default function DietaryAttendeeFilter({
           <div className="text-sm text-stone-500">Attending</div>
         </div>
         <div className="rounded-lg bg-white p-3 text-center">
-          <div className="text-2xl font-bold text-amber-600">
-            {confirmedAttendees.length}
-          </div>
+          <div className="text-2xl font-bold text-amber-600">{confirmedAttendees.length}</div>
           <div className="text-sm text-stone-500">Households</div>
         </div>
         <div className="rounded-lg bg-white p-3 text-center">
-          <div className="text-2xl font-bold text-red-600">
-            {declinedAttendees.length}
-          </div>
+          <div className="text-2xl font-bold text-red-600">{declinedAttendees.length}</div>
           <div className="text-sm text-stone-500">Declined</div>
         </div>
         <div className="rounded-lg bg-white p-3 text-center">
@@ -163,10 +165,7 @@ export default function DietaryAttendeeFilter({
               const labels = parseDietaryNotesToLabels(rsvp.dietaryNotes);
 
               return (
-                <li
-                  key={rsvp.id}
-                  className="flex flex-wrap items-center gap-2 text-stone-700"
-                >
+                <li key={rsvp.id} className="flex flex-wrap items-center gap-2 text-stone-700">
                   <span className="text-green-500">✓</span>
                   <span>{rsvp.user.household?.name || rsvp.user.name}</span>
                   {rsvp.headcount > 1 && (
@@ -192,10 +191,7 @@ export default function DietaryAttendeeFilter({
             {filteredDeclined.map((rsvp) => {
               const labels = parseDietaryNotesToLabels(rsvp.dietaryNotes);
               return (
-                <li
-                  key={rsvp.id}
-                  className="flex flex-wrap items-center gap-2 text-stone-700"
-                >
+                <li key={rsvp.id} className="flex flex-wrap items-center gap-2 text-stone-700">
                   <span className="text-red-500">✗</span>
                   <span>{rsvp.user.household?.name || rsvp.user.name}</span>
                   {labels.map((label) => (

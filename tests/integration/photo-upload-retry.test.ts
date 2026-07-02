@@ -61,23 +61,21 @@ describe('Photo Upload Retry (SPEC §8.6)', () => {
 
   it('Has chunked upload retry utility (exif-stripper for EXIF removal)', async () => {
     const libFiles = await fs.readdir(path.join(process.cwd(), 'src/lib'));
-    const hasChunkedUpload = libFiles.some(f =>
-      f.includes('exif-stripper') || f.includes('exif')
+    const hasChunkedUpload = libFiles.some(
+      (f) => f.includes('exif-stripper') || f.includes('exif'),
     );
     expect(hasChunkedUpload).toBe(true);
   });
 
   it('Has S3 utility for presigned URL generation', async () => {
     const libFiles = await fs.readdir(path.join(process.cwd(), 'src/lib'));
-    const hasS3 = libFiles.some(f => f.includes('s3.ts'));
+    const hasS3 = libFiles.some((f) => f.includes('s3.ts'));
     expect(hasS3).toBe(true);
   });
 
   it('Has PhotoPrism utility for sync', async () => {
     const libFiles = await fs.readdir(path.join(process.cwd(), 'src/lib'));
-    const hasPhotoPrism = libFiles.some(f =>
-      f.includes('photo-prism.ts')
-    );
+    const hasPhotoPrism = libFiles.some((f) => f.includes('photo-prism.ts'));
     expect(hasPhotoPrism).toBe(true);
   });
 });

@@ -52,9 +52,7 @@ export async function stripExifFromFile(file: File): Promise<ExifStrippedBlob> {
   });
 }
 
-export function getImageDimensions(
-  file: File,
-): Promise<{ width: number; height: number }> {
+export function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);

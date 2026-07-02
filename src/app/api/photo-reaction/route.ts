@@ -17,14 +17,19 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { photoId, reaction } = body;
 
-    const reactionResult = z.object({
-      photoId: z.string().min(1, 'Photo ID is required'),
-      reaction: z.enum(VALID_REACTIONS),
-    }).safeParse({ photoId, reaction });
+    const reactionResult = z
+      .object({
+        photoId: z.string().min(1, 'Photo ID is required'),
+        reaction: z.enum(VALID_REACTIONS),
+      })
+      .safeParse({ photoId, reaction });
 
     if (!reactionResult.success) {
       const errors = reactionResult.error.issues.map((i) => i.message);
-      return NextResponse.json({ error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' }, { status: 400 });
+      return NextResponse.json(
+        { error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' },
+        { status: 400 },
+      );
     }
 
     const photo = await prisma.photo.findUnique({
@@ -62,6 +67,9 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error('Photo reaction error:', error);
-    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' },
+      { status: 500 },
+    );
   }
 }

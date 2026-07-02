@@ -23,10 +23,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     }
 
     if (event.status !== EventStatus.PUBLISHED) {
-      return NextResponse.json(
-        { error: 'Only PUBLISHED events can be closed' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Only PUBLISHED events can be closed' }, { status: 400 });
     }
 
     const updated = await prisma.event.update({

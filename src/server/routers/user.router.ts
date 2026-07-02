@@ -70,26 +70,24 @@ export const userRouter = router({
       });
     }),
 
-  getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ input }) => {
-      return prisma.user.findUnique({
-        where: { id: input.id },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          communicationPreference: true,
-          household: {
-            select: {
-              id: true,
-              name: true,
-            },
+  getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
+    return prisma.user.findUnique({
+      where: { id: input.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        communicationPreference: true,
+        household: {
+          select: {
+            id: true,
+            name: true,
           },
         },
-      });
-    }),
+      },
+    });
+  }),
 
   searchByEmail: protectedProcedure
     .input(z.object({ email: z.string().email() }))

@@ -29,18 +29,13 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={`
-          rounded-lg shadow-sm
-          ${variantClasses[variant]}
-          ${paddingClasses[padding]}
-          ${className}
-        `}
+        className={`rounded-lg shadow-sm ${variantClasses[variant]} ${paddingClasses[padding]} ${className} `}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 
 Card.displayName = 'Card';
@@ -50,15 +45,11 @@ interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {}
 const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div
-        ref={ref}
-        className={`flex items-center justify-between ${className}`}
-        {...props}
-      >
+      <div ref={ref} className={`flex items-center justify-between ${className}`} {...props}>
         {children}
       </div>
     );
-  }
+  },
 );
 
 CardHeader.displayName = 'CardHeader';
@@ -68,15 +59,11 @@ interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {}
 const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <h3
-        ref={ref}
-        className={`text-lg font-semibold text-stone-900 ${className}`}
-        {...props}
-      >
+      <h3 ref={ref} className={`text-lg font-semibold text-stone-900 ${className}`} {...props}>
         {children}
       </h3>
     );
-  }
+  },
 );
 
 CardTitle.displayName = 'CardTitle';
@@ -90,7 +77,7 @@ const CardContent = forwardRef<HTMLDivElement, CardContentProps>(
         {children}
       </div>
     );
-  }
+  },
 );
 
 CardContent.displayName = 'CardContent';
@@ -100,15 +87,11 @@ interface CardFooterProps extends HTMLAttributes<HTMLDivElement> {}
 const CardFooter = forwardRef<HTMLDivElement, CardFooterProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <div
-        ref={ref}
-        className={`mt-4 flex items-center gap-3 ${className}`}
-        {...props}
-      >
+      <div ref={ref} className={`mt-4 flex items-center gap-3 ${className}`} {...props}>
         {children}
       </div>
     );
-  }
+  },
 );
 
 CardFooter.displayName = 'CardFooter';

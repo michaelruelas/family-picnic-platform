@@ -20,9 +20,7 @@ const RECIPIENT_GROUP_WINDOW_MS = 30 * 60 * 1000;
 const RECIPIENTS_PER_DAY = 2;
 const RECIPIENT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-export async function checkAdminBroadcastRateLimit(
-  adminUserId: string,
-): Promise<RateLimitResult> {
+export async function checkAdminBroadcastRateLimit(adminUserId: string): Promise<RateLimitResult> {
   const oneHourAgo = new Date(Date.now() - BROADCAST_WINDOW_MS);
 
   const recentBroadcasts = await prisma.communicationLog.count({
@@ -88,9 +86,7 @@ export async function checkRecipientGroupRateLimit(
   };
 }
 
-export async function checkRecipientRateLimit(
-  recipientUserId: string,
-): Promise<RateLimitResult> {
+export async function checkRecipientRateLimit(recipientUserId: string): Promise<RateLimitResult> {
   const oneDayAgo = new Date(Date.now() - RECIPIENT_WINDOW_MS);
 
   const recentMessages = await prisma.communicationLog.count({

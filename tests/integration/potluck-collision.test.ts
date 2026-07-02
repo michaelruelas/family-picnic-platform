@@ -3,10 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 
 describe('Potluck Slot Race Condition Fix', () => {
-  const routePath = path.join(
-    process.cwd(),
-    'src/app/api/potluck-signup/route.ts'
-  );
+  const routePath = path.join(process.cwd(), 'src/app/api/potluck-signup/route.ts');
 
   it('uses $transaction with Serializable isolation for LIMITED slot signups', async () => {
     const routeContent = await fs.readFile(routePath, 'utf-8');
@@ -34,9 +31,7 @@ describe('Potluck Slot Race Condition Fix', () => {
 
   it('increments currentSignups atomically inside transaction for new signups', async () => {
     const routeContent = await fs.readFile(routePath, 'utf-8');
-    const hasAtomicIncrement = routeContent.includes(
-      'currentSignups: { increment: 1 }'
-    );
+    const hasAtomicIncrement = routeContent.includes('currentSignups: { increment: 1 }');
     expect(hasAtomicIncrement).toBe(true);
   });
 
@@ -47,7 +42,10 @@ describe('Potluck Slot Race Condition Fix', () => {
     let foundNonTransactionalPattern = false;
 
     for (const line of lines) {
-      if (line.includes('slot.slotType === \'LIMITED\'') || line.includes('slot.slotType === "LIMITED"')) {
+      if (
+        line.includes("slot.slotType === 'LIMITED'") ||
+        line.includes('slot.slotType === "LIMITED"')
+      ) {
         insideLimitedSlotTransaction = true;
       }
       if (insideLimitedSlotTransaction && line.includes('$transaction')) {

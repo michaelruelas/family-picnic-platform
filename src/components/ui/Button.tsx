@@ -12,14 +12,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary:
-    'bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-500',
-  secondary:
-    'bg-stone-200 text-stone-700 hover:bg-stone-300 focus:ring-stone-400',
-  danger:
-    'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-  ghost:
-    'bg-transparent text-stone-600 hover:bg-stone-100 focus:ring-stone-400',
+  primary: 'bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-500',
+  secondary: 'bg-stone-200 text-stone-700 hover:bg-stone-300 focus:ring-stone-400',
+  danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+  ghost: 'bg-transparent text-stone-600 hover:bg-stone-100 focus:ring-stone-400',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -30,20 +26,15 @@ const sizeClasses: Record<ButtonSize, string> = {
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', size = 'md', isLoading, className = '', disabled, children, ...props }, ref) => {
+  (
+    { variant = 'primary', size = 'md', isLoading, className = '', disabled, children, ...props },
+    ref,
+  ) => {
     return (
       <button
         ref={ref}
         disabled={disabled || isLoading}
-        className={`
-          inline-flex items-center justify-center gap-2 rounded-lg font-medium
-          shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2
-          disabled:cursor-not-allowed disabled:opacity-50
-          transition-colors duration-150
-          ${variantClasses[variant]}
-          ${sizeClasses[size]}
-          ${className}
-        `}
+        className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium shadow-sm transition-colors duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${variantClasses[variant]} ${sizeClasses[size]} ${className} `}
         {...props}
       >
         {isLoading && (
@@ -52,7 +43,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {children}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = 'Button';

@@ -23,10 +23,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     }
 
     if (event.status === EventStatus.CLOSED) {
-      return NextResponse.json(
-        { error: 'CLOSED events cannot be cancelled' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'CLOSED events cannot be cancelled' }, { status: 400 });
     }
 
     const updated = await prisma.event.update({

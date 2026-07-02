@@ -526,12 +526,14 @@ The application uses flat route organization under `src/app/` without route grou
 ### Route Groups Considered But Not Used
 
 Route groups `(auth)` and `(event)` were evaluated for shared layouts but were not adopted:
+
 - `(auth)/login/` — redundant with `/login/`, OAuth callbacks handled via `/api/auth/[...nextauth]`
 - `(event)/[eventId]/rsvp/`, `(event)/[eventId]/potluck/`, `(event)/[eventId]/photos/` — inline on event detail page `/events/[id]`
 
 ### Chosen Route Layout
 
 Flat routes under `/events/[id]/*` for event sub-pages:
+
 - `/events/[id]` — event detail with RSVP and potluck inline
 - `/events/[id]/edit` — admin event editing
 - `/events/[id]/edit/admins` — event admin management
@@ -540,38 +542,38 @@ No nested route groups; each page is a standalone route directory with its own `
 
 ### Public Routes
 
-| Route | Description |
-|-------|-------------|
-| `/` | Home page |
-| `/login` | Login page |
-| `/events` | Events list |
-| `/events/[id]` | Event detail with RSVP & potluck |
-| `/events/calendar` | Calendar view |
-| `/potluck` | Potluck overview |
-| `/photos` | Photo gallery |
-| `/my-events` | User's RSVP history |
+| Route              | Description                      |
+| ------------------ | -------------------------------- |
+| `/`                | Home page                        |
+| `/login`           | Login page                       |
+| `/events`          | Events list                      |
+| `/events/[id]`     | Event detail with RSVP & potluck |
+| `/events/calendar` | Calendar view                    |
+| `/potluck`         | Potluck overview                 |
+| `/photos`          | Photo gallery                    |
+| `/my-events`       | User's RSVP history              |
 
 ### Authenticated Routes
 
-| Route | Description |
-|-------|-------------|
-| `/profile` | User profile & preferences |
-| `/household` | Household dashboard |
-| `/household/tree` | Family tree visualization |
-| `/onboarding` | First-time onboarding wizard |
+| Route             | Description                  |
+| ----------------- | ---------------------------- |
+| `/profile`        | User profile & preferences   |
+| `/household`      | Household dashboard          |
+| `/household/tree` | Family tree visualization    |
+| `/onboarding`     | First-time onboarding wizard |
 
 ### Admin Routes
 
-| Route | Description |
-|-------|-------------|
-| `/admin/dashboard` | Admin overview metrics |
-| `/admin/events` | Event management list |
-| `/admin/events/new` | Create event |
-| `/admin/events/[id]/edit` | Edit event & potluck slots |
-| `/admin/events/[id]/edit/admins` | Event admin management |
-| `/admin/invitations` | Invitation management + CSV import |
-| `/admin/communications` | Broadcast composer |
-| `/admin/audit-log` | Audit log viewer |
+| Route                            | Description                        |
+| -------------------------------- | ---------------------------------- |
+| `/admin/dashboard`               | Admin overview metrics             |
+| `/admin/events`                  | Event management list              |
+| `/admin/events/new`              | Create event                       |
+| `/admin/events/[id]/edit`        | Edit event & potluck slots         |
+| `/admin/events/[id]/edit/admins` | Event admin management             |
+| `/admin/invitations`             | Invitation management + CSV import |
+| `/admin/communications`          | Broadcast composer                 |
+| `/admin/audit-log`               | Audit log viewer                   |
 
 ## 9. API Route Protection
 

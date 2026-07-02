@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     if (!isAdmin && !isUploader) {
       return NextResponse.json(
         { error: 'Only the uploader or an admin can delete this photo' },
-        { status: 403 }
+        { status: 403 },
       );
     }
 

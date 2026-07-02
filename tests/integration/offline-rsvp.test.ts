@@ -26,7 +26,7 @@ describe('Offline RSVP Handling (SPEC §8.4)', () => {
 
   it('useOffline is exported from hooks index', async () => {
     const content = await fs.readFile(hooksIndexPath, 'utf-8');
-    expect(content).toContain("export { useOffline }");
+    expect(content).toContain('export { useOffline }');
   });
 
   it('RSVPForm has online/offline detection implemented (useOffline hook usage)', async () => {
@@ -37,16 +37,16 @@ describe('Offline RSVP Handling (SPEC §8.4)', () => {
 
   it('RSVPForm disables submission when offline', async () => {
     const content = await fs.readFile(rsvpFormPath, 'utf-8');
-    const disabledWhenOffline = content.includes('disabled') &&
+    const disabledWhenOffline =
+      content.includes('disabled') &&
       (content.includes('!isOnline') || content.includes('isOnline === false'));
     expect(disabledWhenOffline).toBe(true);
   });
 
   it('RSVPForm shows offline indicator when disconnected', async () => {
     const content = await fs.readFile(rsvpFormPath, 'utf-8');
-    const showsOfflineIndicator = content.includes('offline') ||
-      content.includes('Offline') ||
-      content.includes('isOnline');
+    const showsOfflineIndicator =
+      content.includes('offline') || content.includes('Offline') || content.includes('isOnline');
     expect(showsOfflineIndicator).toBe(true);
   });
 });

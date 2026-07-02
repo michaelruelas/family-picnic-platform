@@ -138,7 +138,7 @@ export default async function HouseholdPage() {
             <ul className="mt-4 space-y-3">
               {household.users.map((member) => (
                 <li key={member.id} className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-700 font-medium">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 font-medium text-amber-700">
                     {member.name.charAt(0).toUpperCase()}
                   </div>
                   <div>

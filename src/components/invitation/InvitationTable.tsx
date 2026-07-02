@@ -72,30 +72,18 @@ export default function InvitationTable({
       <table className="min-w-full divide-y divide-stone-200">
         <thead className="bg-stone-50">
           <tr>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">
-              Recipient
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">
-              Type
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">
-              Status
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">
-              Sent At
-            </th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">
-              Expires
-            </th>
-            <th className="px-4 py-3 text-right text-sm font-semibold text-stone-700">
-              Actions
-            </th>
+            <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">Recipient</th>
+            <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">Type</th>
+            <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">Status</th>
+            <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">Sent At</th>
+            <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">Expires</th>
+            <th className="px-4 py-3 text-right text-sm font-semibold text-stone-700">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-200">
           {invitations.map((invitation) => (
             <tr key={invitation.id} className="hover:bg-stone-50">
-              <td className="whitespace-nowrap px-4 py-3">
+              <td className="px-4 py-3 whitespace-nowrap">
                 {invitation.household ? (
                   <div>
                     <p className="font-medium text-stone-900">{invitation.household.name}</p>
@@ -110,10 +98,10 @@ export default function InvitationTable({
                   <span className="text-stone-400">Unknown</span>
                 )}
               </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-600">
+              <td className="px-4 py-3 text-sm whitespace-nowrap text-stone-600">
                 {invitation.householdId ? 'Household' : 'User'}
               </td>
-              <td className="whitespace-nowrap px-4 py-3">
+              <td className="px-4 py-3 whitespace-nowrap">
                 <span
                   className={`rounded-full px-2 py-1 text-xs font-medium ${
                     statusColors[invitation.status] ?? 'bg-stone-100 text-stone-700'
@@ -122,7 +110,7 @@ export default function InvitationTable({
                   {invitation.status}
                 </span>
               </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-600">
+              <td className="px-4 py-3 text-sm whitespace-nowrap text-stone-600">
                 {invitation.sentAt
                   ? new Date(invitation.sentAt).toLocaleDateString('en-US', {
                       month: 'short',
@@ -132,7 +120,7 @@ export default function InvitationTable({
                     })
                   : '—'}
               </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-600">
+              <td className="px-4 py-3 text-sm whitespace-nowrap text-stone-600">
                 {invitation.expiresAt
                   ? new Date(invitation.expiresAt).toLocaleDateString('en-US', {
                       month: 'short',
@@ -141,7 +129,7 @@ export default function InvitationTable({
                     })
                   : '—'}
               </td>
-              <td className="whitespace-nowrap px-4 py-3 text-right">
+              <td className="px-4 py-3 text-right whitespace-nowrap">
                 <div className="flex justify-end gap-2">
                   {invitation.status !== 'USED' && invitation.status !== 'EXPIRED' && (
                     <>

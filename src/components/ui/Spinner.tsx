@@ -13,12 +13,7 @@ const sizeClasses = {
   lg: 'h-12 w-12 border-3',
 };
 
-export default function Spinner({
-  size = 'md',
-  label,
-  className = '',
-  ...props
-}: SpinnerProps) {
+export default function Spinner({ size = 'md', label, className = '', ...props }: SpinnerProps) {
   return (
     <div className={`flex items-center justify-center gap-2 ${className}`} {...props}>
       <span

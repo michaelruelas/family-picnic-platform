@@ -3,19 +3,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 
 describe('Invitation Single-Use Token', () => {
-  const invitationRouterPath = path.join(
-    process.cwd(),
-    'src/server/routers/invitation.router.ts'
-  );
-  const rsvpRouterPath = path.join(
-    process.cwd(),
-    'src/server/routers/rsvp.router.ts'
-  );
+  const invitationRouterPath = path.join(process.cwd(), 'src/server/routers/invitation.router.ts');
+  const rsvpRouterPath = path.join(process.cwd(), 'src/server/routers/rsvp.router.ts');
   const schemaPath = path.join(process.cwd(), 'prisma/schema.prisma');
-  const tokenUtilPath = path.join(
-    process.cwd(),
-    'src/lib/invitation-token.ts'
-  );
+  const tokenUtilPath = path.join(process.cwd(), 'src/lib/invitation-token.ts');
 
   it('generates token and expiresAt on invitation send', async () => {
     const routerContent = await fs.readFile(invitationRouterPath, 'utf-8');

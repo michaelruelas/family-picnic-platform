@@ -5,7 +5,11 @@ import { parseCsv, generateSampleCsv, CsvParseResult } from '~/lib/csv-parser';
 
 interface CsvUploaderProps {
   eventId: string;
-  onImportComplete?: (result: { householdsCreated: number; usersCreated: number; rsvpsCreated: number }) => void;
+  onImportComplete?: (result: {
+    householdsCreated: number;
+    usersCreated: number;
+    rsvpsCreated: number;
+  }) => void;
 }
 
 export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderProps) {
@@ -14,7 +18,9 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
   const [file, setFile] = useState<File | null>(null);
   const [parseResult, setParseResult] = useState<CsvParseResult | null>(null);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -196,12 +202,16 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
                 <div className="text-sm">
                   <span className="font-medium text-stone-900">{parseResult.totalRows}</span> rows
                   <span className="mx-2 text-stone-400">|</span>
-                  <span className="font-medium text-green-600">{parseResult.households.length}</span>{' '}
+                  <span className="font-medium text-green-600">
+                    {parseResult.households.length}
+                  </span>{' '}
                   households parsed
                   {parseResult.errors.length > 0 && (
                     <>
                       <span className="mx-2 text-stone-400">|</span>
-                      <span className="font-medium text-red-600">{parseResult.errors.length} errors</span>
+                      <span className="font-medium text-red-600">
+                        {parseResult.errors.length} errors
+                      </span>
                     </>
                   )}
                 </div>

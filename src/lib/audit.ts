@@ -1,6 +1,9 @@
 import { prisma } from '~/lib/prisma';
 
-export function diff(oldVal: unknown, newVal: unknown): Record<string, { old: unknown; new: unknown }> | null {
+export function diff(
+  oldVal: unknown,
+  newVal: unknown,
+): Record<string, { old: unknown; new: unknown }> | null {
   if (oldVal === newVal) return null;
   if (typeof oldVal !== typeof newVal) return { _changed: { old: oldVal, new: newVal } };
   if (typeof oldVal !== 'object' || oldVal === null || newVal === null) {
@@ -10,7 +13,8 @@ export function diff(oldVal: unknown, newVal: unknown): Record<string, { old: un
   const oldKeys = new Set(Object.keys(oldVal as Record<string, unknown>));
   const newKeys = new Set(Object.keys(newVal as Record<string, unknown>));
   for (const key of oldKeys) {
-    if (!newKeys.has(key)) result[key] = { old: (oldVal as Record<string, unknown>)[key], new: undefined };
+    if (!newKeys.has(key))
+      result[key] = { old: (oldVal as Record<string, unknown>)[key], new: undefined };
   }
   for (const key of newKeys) {
     const oldItem = (oldVal as Record<string, unknown>)[key];

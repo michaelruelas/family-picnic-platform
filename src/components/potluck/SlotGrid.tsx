@@ -108,9 +108,7 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
       <div className="rounded-xl bg-amber-50 p-8 text-center">
         <div className="text-5xl">🍴</div>
         <h3 className="mt-4 text-xl font-semibold text-amber-900">No Potluck Slots Yet</h3>
-        <p className="mt-2 text-amber-700">
-          Add slots to let attendees sign up to bring dishes.
-        </p>
+        <p className="mt-2 text-amber-700">Add slots to let attendees sign up to bring dishes.</p>
         <button
           onClick={() => setShowAddForm(true)}
           className="mt-4 rounded-lg bg-amber-600 px-6 py-2 font-medium text-white hover:bg-amber-700"
@@ -123,13 +121,9 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</div>
-      )}
+      {error && <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
-      {showAddForm && (
-        <SlotForm eventId={eventId} onSuccess={() => setShowAddForm(false)} />
-      )}
+      {showAddForm && <SlotForm eventId={eventId} onSuccess={() => setShowAddForm(false)} />}
 
       {!showAddForm && (
         <button
@@ -157,7 +151,11 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                       value={slot.name}
                       onChange={(e) => {
                         const newName = e.target.value;
-                        handleUpdate(slot.id, newName, slot.slotType === 'LIMITED' ? slot.maxSignups ?? 1 : undefined);
+                        handleUpdate(
+                          slot.id,
+                          newName,
+                          slot.slotType === 'LIMITED' ? (slot.maxSignups ?? 1) : undefined,
+                        );
                       }}
                       className="block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
                       placeholder="Slot name"

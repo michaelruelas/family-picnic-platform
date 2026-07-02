@@ -73,11 +73,7 @@ export default async function AdminCommunicationsPage({
   const params = await searchParams;
   const selectedEventId = params.event || null;
 
-  const [events, households, users] = await Promise.all([
-    getEvents(),
-    getHouseholds(),
-    getUsers(),
-  ]);
+  const [events, households, users] = await Promise.all([getEvents(), getHouseholds(), getUsers()]);
 
   const logs = selectedEventId ? await getDeliveryLogs(selectedEventId) : [];
 
@@ -140,11 +136,13 @@ export default async function AdminCommunicationsPage({
           <option value="">Select an event...</option>
           {events.map((event) => (
             <option key={event.id} value={event.id}>
-              {event.name} ({new Date(event.date).toLocaleDateString('en-US', {
+              {event.name} (
+              {new Date(event.date).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',
-              })})
+              })}
+              )
             </option>
           ))}
         </select>

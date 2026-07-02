@@ -28,13 +28,7 @@ interface FamilyTreeProps {
   households: HouseholdNode[];
 }
 
-function HouseholdNodeComponent({
-  node,
-  level = 0,
-}: {
-  node: HouseholdNode;
-  level?: number;
-}) {
+function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; level?: number }) {
   const [isExpanded, setIsExpanded] = useState(level < 2);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -45,9 +39,7 @@ function HouseholdNodeComponent({
     <li className="relative">
       <div
         className={`flex flex-wrap items-center gap-2 rounded-lg p-3 transition-colors ${
-          level === 0
-            ? 'bg-amber-50 border border-amber-200'
-            : 'bg-white border border-stone-200'
+          level === 0 ? 'border border-amber-200 bg-amber-50' : 'border border-stone-200 bg-white'
         } hover:shadow-sm`}
         style={{ marginLeft: level > 0 ? '1.5rem' : 0 }}
       >
@@ -72,7 +64,9 @@ function HouseholdNodeComponent({
 
           <div className="mt-1 flex flex-wrap gap-2 text-xs text-stone-500">
             {node.users.length > 0 && (
-              <span>{node.users.length} adult{node.users.length !== 1 ? 's' : ''}</span>
+              <span>
+                {node.users.length} adult{node.users.length !== 1 ? 's' : ''}
+              </span>
             )}
             {node.dependents.length > 0 && (
               <span>
@@ -117,7 +111,9 @@ function HouseholdNodeComponent({
               <ul className="mt-1 space-y-1">
                 {node.dependents.map((dep) => (
                   <li key={dep.id} className="flex items-center gap-2 text-sm text-stone-600">
-                    <span className={`h-2 w-2 rounded-full ${dep.isChild ? 'bg-blue-400' : 'bg-green-400'}`} />
+                    <span
+                      className={`h-2 w-2 rounded-full ${dep.isChild ? 'bg-blue-400' : 'bg-green-400'}`}
+                    />
                     {dep.name}
                     <span className="text-xs text-stone-400">
                       ({dep.relationship}

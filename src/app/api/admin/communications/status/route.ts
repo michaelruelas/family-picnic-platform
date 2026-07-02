@@ -14,10 +14,7 @@ export async function GET(request: NextRequest) {
     const eventId = request.nextUrl.searchParams.get('eventId');
 
     if (!eventId) {
-      return NextResponse.json(
-        { error: 'eventId is required' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'eventId is required' }, { status: 400 });
     }
 
     const logs = await prisma.communicationLog.findMany({
@@ -37,9 +34,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(logs);
   } catch (error) {
     console.error('Error fetching delivery status:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

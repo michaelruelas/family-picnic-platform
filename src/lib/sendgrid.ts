@@ -8,7 +8,9 @@ export type EmailMessage = {
   text?: string;
 };
 
-export async function sendEmail(message: EmailMessage): Promise<{ success: boolean; messageId?: string; error?: string }> {
+export async function sendEmail(
+  message: EmailMessage,
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
   if (!apiKey) {
     return { success: false, error: 'SendGrid not configured' };
   }
@@ -17,7 +19,7 @@ export async function sendEmail(message: EmailMessage): Promise<{ success: boole
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -43,9 +45,15 @@ export async function sendEmail(message: EmailMessage): Promise<{ success: boole
   }
 }
 
-export async function sendBulkEmail(messages: EmailMessage[]): Promise<{ success: boolean; results: Array<{ to: string; messageId?: string; error?: string }> }> {
+export async function sendBulkEmail(messages: EmailMessage[]): Promise<{
+  success: boolean;
+  results: Array<{ to: string; messageId?: string; error?: string }>;
+}> {
   if (!apiKey) {
-    return { success: false, results: messages.map((m) => ({ to: m.to, error: 'SendGrid not configured' })) };
+    return {
+      success: false,
+      results: messages.map((m) => ({ to: m.to, error: 'SendGrid not configured' })),
+    };
   }
 
   const results: Array<{ to: string; messageId?: string; error?: string }> = [];

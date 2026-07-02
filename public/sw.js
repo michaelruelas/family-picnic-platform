@@ -1,16 +1,11 @@
 const CACHE_NAME = 'family-picnic-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-];
+const STATIC_ASSETS = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
-    })
+    }),
   );
   self.skipWaiting();
 });
@@ -19,11 +14,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+        cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name)),
       );
-    })
+    }),
   );
   self.clients.claim();
 });
@@ -53,7 +46,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname === '/' || url.pathname.startsWith('/events') || url.pathname.startsWith('/potluck')) {
+  if (
+    url.pathname === '/' ||
+    url.pathname.startsWith('/events') ||
+    url.pathname.startsWith('/potluck')
+  ) {
     event.respondWith(staleWhileRevalidate(request));
     return;
   }
@@ -80,16 +77,18 @@ async function cacheFirst(request) {
 
 async function staleWhileRevalidate(request) {
   const cachedResponse = await caches.match(request);
-  const fetchPromise = fetch(request).then((networkResponse) => {
-    if (networkResponse.ok) {
-      caches.open(CACHE_NAME).then((cache) => {
-        cache.put(request, networkResponse.clone());
-      });
-    }
-    return networkResponse;
-  }).catch(() => {
-    return null;
-  });
+  const fetchPromise = fetch(request)
+    .then((networkResponse) => {
+      if (networkResponse.ok) {
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(request, networkResponse.clone());
+        });
+      }
+      return networkResponse;
+    })
+    .catch(() => {
+      return null;
+    });
 
   return cachedResponse || fetchPromise || new Response('Offline', { status: 503 });
 }
@@ -107,10 +106,16 @@ async function networkFirstWithCacheFallback(request) {
     if (cachedResponse) {
       return cachedResponse;
     }
-    return new Response(JSON.stringify({ error: 'Offline', message: 'You are currently offline. Please try again when connected.' }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({
+        error: 'Offline',
+        message: 'You are currently offline. Please try again when connected.',
+      }),
+      {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   }
 }
 

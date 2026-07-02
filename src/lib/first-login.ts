@@ -1,6 +1,9 @@
 import { prisma } from '~/lib/prisma';
 
-export function isFirstLogin(user: { createdAt: Date; onboardingCompletedAt: Date | null }): boolean {
+export function isFirstLogin(user: {
+  createdAt: Date;
+  onboardingCompletedAt: Date | null;
+}): boolean {
   return user.onboardingCompletedAt === null;
 }
 
@@ -11,7 +14,9 @@ export async function completeOnboarding(userId: string): Promise<void> {
   });
 }
 
-export function needsOnboarding(user: { createdAt: Date; onboardingCompletedAt: Date | null } | null): boolean {
+export function needsOnboarding(
+  user: { createdAt: Date; onboardingCompletedAt: Date | null } | null,
+): boolean {
   if (!user) return false;
   return isFirstLogin(user);
 }

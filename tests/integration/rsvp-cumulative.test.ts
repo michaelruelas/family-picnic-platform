@@ -3,10 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 
 describe('RSVP Cumulative Headcount (SPEC §8.1)', () => {
-  const householdRouterPath = path.join(
-    process.cwd(),
-    'src/server/routers/household.router.ts'
-  );
+  const householdRouterPath = path.join(process.cwd(), 'src/server/routers/household.router.ts');
 
   it('getCumulativeHeadcount procedure filters for CONFIRMED status only', async () => {
     const content = await fs.readFile(householdRouterPath, 'utf-8');
@@ -44,10 +41,7 @@ describe('RSVP Cumulative Headcount (SPEC §8.1)', () => {
 });
 
 describe('Nested Households (SPEC §8.2)', () => {
-  const householdRouterPath = path.join(
-    process.cwd(),
-    'src/server/routers/household.router.ts'
-  );
+  const householdRouterPath = path.join(process.cwd(), 'src/server/routers/household.router.ts');
   const schemaPath = path.join(process.cwd(), 'prisma/schema.prisma');
 
   it('Household model has parentHouseholdId self-reference', async () => {

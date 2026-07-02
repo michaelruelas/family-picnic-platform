@@ -107,26 +107,28 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
         <div className="rounded-2xl bg-stone-100 p-12 text-center">
           <div className="text-5xl">📋</div>
           <h2 className="mt-4 text-xl font-semibold text-stone-900">No Audit Logs</h2>
-          <p className="mt-2 text-stone-600">Audit logs will appear here as admin actions are performed.</p>
+          <p className="mt-2 text-stone-600">
+            Audit logs will appear here as admin actions are performed.
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
           <table className="min-w-full divide-y divide-stone-200">
             <thead className="bg-stone-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
                   Timestamp
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
                   User
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
                   Action
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
                   Event
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
+                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
                   Details
                 </th>
               </tr>
@@ -134,7 +136,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
             <tbody className="divide-y divide-stone-200">
               {logs.map((log) => (
                 <tr key={log.id} className="hover:bg-stone-50">
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-600">
+                  <td className="px-4 py-3 text-sm whitespace-nowrap text-stone-600">
                     {new Date(log.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-sm">
@@ -144,9 +146,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
                   <td className="px-4 py-3 text-sm">
                     <code className="rounded bg-stone-100 px-2 py-1 text-xs">{log.action}</code>
                   </td>
-                  <td className="px-4 py-3 text-sm text-stone-600">
-                    {log.event?.name || '-'}
-                  </td>
+                  <td className="px-4 py-3 text-sm text-stone-600">{log.event?.name || '-'}</td>
                   <td className="max-w-xs px-4 py-3 text-xs">
                     {log.oldValue || log.newValue ? (
                       <details className="cursor-pointer">

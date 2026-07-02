@@ -11,7 +11,9 @@ export type SMSMessage = {
   body: string;
 };
 
-export async function sendSMS(message: SMSMessage): Promise<{ success: boolean; messageId?: string; error?: string }> {
+export async function sendSMS(
+  message: SMSMessage,
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
   if (!client || !phoneNumber) {
     return { success: false, error: 'Twilio not configured' };
   }
@@ -28,7 +30,10 @@ export async function sendSMS(message: SMSMessage): Promise<{ success: boolean; 
   }
 }
 
-export async function sendBulkSMS(messages: SMSMessage[]): Promise<{ success: boolean; results: Array<{ to: string; messageId?: string; error?: string }> }> {
+export async function sendBulkSMS(messages: SMSMessage[]): Promise<{
+  success: boolean;
+  results: Array<{ to: string; messageId?: string; error?: string }>;
+}> {
   const results = await Promise.all(
     messages.map(async (msg) => {
       const result = await sendSMS(msg);

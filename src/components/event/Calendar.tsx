@@ -15,8 +15,18 @@ interface CalendarProps {
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 export function Calendar({ events }: CalendarProps) {
@@ -32,9 +42,7 @@ export function Calendar({ events }: CalendarProps) {
 
   const today = new Date();
   const isToday = (day: number) =>
-    day === today.getDate() &&
-    month === today.getMonth() &&
-    year === today.getFullYear();
+    day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
   const prevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
@@ -111,12 +119,7 @@ export function Calendar({ events }: CalendarProps) {
 
         {calendarDays.map((day, index) => {
           if (day === null) {
-            return (
-              <div
-                key={`empty-${index}`}
-                className="min-h-24 bg-white p-2 md:min-h-32"
-              />
-            );
+            return <div key={`empty-${index}`} className="min-h-24 bg-white p-2 md:min-h-32" />;
           }
 
           const dayEvents = getEventsForDay(day);
@@ -129,9 +132,7 @@ export function Calendar({ events }: CalendarProps) {
             >
               <div
                 className={`mb-1 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium ${
-                  isCurrentDay
-                    ? 'bg-green-600 text-white'
-                    : 'text-stone-700'
+                  isCurrentDay ? 'bg-green-600 text-white' : 'text-stone-700'
                 }`}
               >
                 {day}
@@ -141,9 +142,7 @@ export function Calendar({ events }: CalendarProps) {
                   <CalendarEventChip key={event.id} event={event} />
                 ))}
                 {dayEvents.length > 3 && (
-                  <div className="text-xs text-stone-500">
-                    +{dayEvents.length - 3} more
-                  </div>
+                  <div className="text-xs text-stone-500">+{dayEvents.length - 3} more</div>
                 )}
               </div>
             </div>
@@ -157,19 +156,19 @@ export function Calendar({ events }: CalendarProps) {
           <span>Today</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded bg-green-200 border border-green-300" />
+          <span className="h-3 w-3 rounded border border-green-300 bg-green-200" />
           <span>Published</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded bg-amber-200 border border-amber-300" />
+          <span className="h-3 w-3 rounded border border-amber-300 bg-amber-200" />
           <span>Draft</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded bg-stone-200 border border-stone-300" />
+          <span className="h-3 w-3 rounded border border-stone-300 bg-stone-200" />
           <span>Closed</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded bg-red-200 border border-red-300" />
+          <span className="h-3 w-3 rounded border border-red-300 bg-red-200" />
           <span>Cancelled</span>
         </div>
       </div>
