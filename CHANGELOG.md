@@ -10,6 +10,7 @@ All notable changes to this project are documented here.
 - **Architecture Decision Records** — Created `docs/decisions/` with 10 ADRs resolving SPEC §10 open questions (Q1, Q3, Q4, Q6, Q7, Q8, Q9, Q11, Q12, Q15): account recovery, household naming, household merging, headcount minimum, waitlist, RSVP closing, duplicate dishes, EXIF stripping, storage quotas, and communication opt-in defaults.
 - **Admin Event CRUD UI** — Implemented `/admin/events` list page, `/admin/events/new` create page, `/admin/events/[id]/edit` page with `EventForm` and `EventStatusBadge` components. Includes API routes for create, update, delete, publish, close, and cancel with admin role protection and EventStatus transition enforcement.
 - **Household Dashboard** — Implemented `/household` page with household member list, cumulative RSVP headcount aggregation across events (SPEC §8.1), and dependent management form. Added `getCumulativeHeadcount` procedure to household router.
+- **Household Tree Visualization** — Implemented `/household/tree` page with interactive tree visualization showing nested household hierarchy. Uses recursive `FamilyTree` component with expand/collapse, member details view, color-coded member types (adults/children/dependents), and mobile-friendly layout.
 
 ### Fixed
 

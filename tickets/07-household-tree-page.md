@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — `/household/tree/page.tsx` does not exist.
+Done — `/household/tree/page.tsx` and `FamilyTree` component created. Recursive tree fetches HouseholdTree relation, renders with simple ul/li structure, mobile-friendly, handles deep nesting with max-depth expand/collapse.
 
 ## Description
 
