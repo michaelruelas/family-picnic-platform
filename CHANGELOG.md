@@ -6,6 +6,8 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- **Kubernetes Manifests (Ticket 13)** — Created `kubernetes/` directory with base manifests for Next.js (Deployment, Service, Ingress, HPA, PDB, NetworkPolicy), PostgreSQL (StatefulSet with 3 replicas, headless Service, PVC, Secret), and PhotoPrism (Deployment with 50TB PVC, Service, NetworkPolicy restricting egress). Added Kustomize overlay at `kubernetes/overlays/dev/` for development with reduced resource requests. Included `kubernetes/README.md` with deployment instructions, prerequisites (nginx-ingress, cert-manager), and health check details. Ticket 13 Done.
+
 - **Accessibility Audit (Ticket 38)** — Updated Toast component with `aria-live="polite"` and `aria-atomic="true"` per WCAG accessibility guidelines. Created `tests/a11y/` directory with 29 tests covering Toast ARIA attributes, Modal accessibility, UI primitive keyboard navigation, and WCAG 4.5:1 color contrast verification for all primary text colors (amber-800, green-700, red-700, stone-700 on white). Full axe-core browser testing requires manual verification in a browser environment.
 
 - **Empty Route Shells Cleanup and Route Layout Documentation** — Documented route layout decision in `docs/architecture.md` section 8. Confirmed route groups `(auth)` and `(event)` were not adopted; application uses flat routes under `/events/[id]/*` for event sub-pages. Verified navbar links point to valid routes with no 404s. All previously-scaffolded empty directories have been removed. Ticket 26 Done.

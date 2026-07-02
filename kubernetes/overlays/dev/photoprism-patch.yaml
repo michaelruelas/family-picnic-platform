@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: photoprism
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: photoprism
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: 2
+              memory: 4Gi

@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — `kubernetes/` directory is empty.
+Done — implemented `kubernetes/` directory with base manifests and dev overlay.
 
 ## Description
 
