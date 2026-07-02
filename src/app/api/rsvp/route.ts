@@ -124,17 +124,46 @@ export async function POST(request: Request) {
 
             const totalAfterRsvp = (currentHeadcount._sum.headcount || 0) + (headcount || 1);
             if (totalAfterRsvp > event.maxCapacity) {
-              const spotsRemaining = event.maxCapacity - (currentHeadcount._sum.headcount || 0);
-              return NextResponse.json(
-                {
-                  error:
-                    spotsRemaining <= 0
-                      ? 'Event is full'
-                      : `Only ${spotsRemaining} spot${spotsRemaining !== 1 ? 's' : ''} remaining`,
-                  code: 'CONFLICT',
+              const nextPosition = await prisma.rSVP.aggregate({
+                where: {
+                  eventId,
+                  status: RSVPStatus.WAITLISTED,
                 },
-                { status: 409 },
-              );
+                _max: { waitlistPosition: true },
+              });
+              const waitlistPosition = (nextPosition._max.waitlistPosition || 0) + 1;
+
+              await prisma.rSVP.upsert({
+                where: {
+                  eventId_userId: {
+                    eventId: eventId!,
+                    userId: session.user.id,
+                  },
+                },
+                update: {
+                  status: RSVPStatus.WAITLISTED,
+                  headcount: headcount || 1,
+                  dietaryNotes: dietaryNotes || null,
+                  respondedAt: new Date(),
+                  waitlistPosition,
+                },
+                create: {
+                  eventId: eventId!,
+                  userId: session.user.id,
+                  householdId: user.householdId || user.id,
+                  status: RSVPStatus.WAITLISTED,
+                  headcount: headcount || 1,
+                  dietaryNotes: dietaryNotes || null,
+                  respondedAt: new Date(),
+                  waitlistPosition,
+                },
+              });
+
+              return NextResponse.json({
+                success: true,
+                status: RSVPStatus.WAITLISTED,
+                waitlistPosition,
+              });
             }
           }
 
@@ -204,6 +233,49 @@ export async function POST(request: Request) {
                   },
                 },
               });
+
+              const firstWaitlisted = await tx.rSVP.findFirst({
+                where: {
+                  eventId: eventId!,
+                  status: RSVPStatus.WAITLISTED,
+                },
+                orderBy: { waitlistPosition: 'asc' },
+              });
+
+              if (firstWaitlisted) {
+                await tx.rSVP.update({
+                  where: { id: firstWaitlisted.id },
+                  data: {
+                    status: RSVPStatus.CONFIRMED,
+                    waitlistPosition: null,
+                    respondedAt: new Date(),
+                  },
+                });
+
+                await tx.rSVP.updateMany({
+                  where: {
+                    eventId: eventId!,
+                    status: RSVPStatus.WAITLISTED,
+                    waitlistPosition: { gt: firstWaitlisted.waitlistPosition! },
+                  },
+                  data: {
+                    waitlistPosition: { decrement: 1 },
+                  },
+                });
+
+                await tx.adminAuditLog.create({
+                  data: {
+                    userId: firstWaitlisted.userId,
+                    eventId: eventId!,
+                    action: 'WAITLIST_PROMOTION',
+                    oldValue: {
+                      status: RSVPStatus.WAITLISTED,
+                      position: firstWaitlisted.waitlistPosition,
+                    },
+                    newValue: { status: RSVPStatus.CONFIRMED },
+                  },
+                });
+              }
             });
 
             return NextResponse.json({ success: true, status: RSVPStatus.DECLINED });
