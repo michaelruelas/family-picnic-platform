@@ -2,8 +2,7 @@
 
 ## Status
 
-Empty shells — several route directories exist but contain no `page.tsx`,
-producing Next.js 404 / "not found" if visited.
+Done — Route layout decision documented in docs/architecture.md §8. Confirmed empty route groups (auth) and (event) were not adopted; flat routes used throughout. Navbar links verified to point to valid routes. Empty directories confirmed removed.
 
 ## Description
 

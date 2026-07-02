@@ -6,6 +6,8 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- **Empty Route Shells Cleanup and Route Layout Documentation** — Documented route layout decision in `docs/architecture.md` section 8. Confirmed route groups `(auth)` and `(event)` were not adopted; application uses flat routes under `/events/[id]/*` for event sub-pages. Verified navbar links point to valid routes with no 404s. All previously-scaffolded empty directories have been removed. Ticket 26 Done.
+
 - **Commit Hygiene and Release Please** — Implemented conventional commit discipline with commitlint + husky. Created `.husky/commit-msg` hook that runs commitlint to enforce conventional commits (feat:, fix:, docs:, etc.). Created `commitlint.config.js` extending @commitlint/config-conventional. Added `release-please` package and `release-please-config.json` for changelog auto-generation. Added `release:dry` and `release:full` scripts to package.json. Ticket 35 Done.
 
 - **Dev Onramp and AGENTS.md** — Created `AGENTS.md` at repo root with comprehensive developer guide covering build/test/lint commands, route map, tRPC conventions, what-not-to-touch areas (auth handlers, Prisma schema, generated types), known lint errors, ticket priority table, and environment variables. Created `scripts/dev.sh` one-command dev setup script that starts PostgreSQL via Docker, installs dependencies, generates Prisma client, pushes schema, and starts Next.js dev server. Created `docker-compose.yml` for local PostgreSQL. Updated README.md scripts table with `start` command. Tickets 43 and 32 Done.
