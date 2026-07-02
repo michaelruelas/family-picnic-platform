@@ -2,8 +2,7 @@
 
 ## Status
 
-Schema has `Dependent.dietaryLabels`, `RSVP.dietaryNotes`, and
-`PotluckSignup.dietaryLabels`, but no UI surfaces or filters on these.
+Done — Filter chips on event detail page, dietary aggregation on admin dashboard, and DietaryLabelChip component with standard label set. Print-friendly dietary summary page deferred.
 
 ## Description
 
