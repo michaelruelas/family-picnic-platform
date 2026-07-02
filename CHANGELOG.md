@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Added
+
+- **tRPC router structure** — Implemented all 10 routers from SPEC §5 (`auth`, `household`, `user`, `event`, `invitation`, `rsvp`, `potluck`, `photo`, `communication`, `admin`) with procedures for all CRUD operations and business logic. The `appRouter` is fully wired up and type-safe.
+
 ## [0.1.0] — 2026-07-01
 
 ### Added

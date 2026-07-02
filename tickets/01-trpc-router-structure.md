@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — SPEC §5 requires 10 routers, only an empty `appRouter` exists.
+Done — All 10 routers from SPEC §5 implemented and wired up in `appRouter`.
 
 ## Description
 
