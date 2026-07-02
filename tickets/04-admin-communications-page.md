@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — directory exists but `page.tsx` is not implemented.
+Done — page, components, API routes, and service wrappers implemented.
 
 ## Description
 
