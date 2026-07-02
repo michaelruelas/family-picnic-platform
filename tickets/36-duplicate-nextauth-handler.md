@@ -2,9 +2,9 @@
 
 ## Status
 
-Duplicate — `src/lib/auth.ts:49` exports `handler as GET, handler as
-POST` AND `src/app/api/auth/[...nextauth]/route.ts:1` does the same.
-Two code paths for the same logic is a footgun.
+Done — removed duplicate `GET`/`POST` handler exports from `src/lib/auth.ts`.
+Active handler remains in `src/app/api/auth/[...nextauth]/route.ts`. Added
+`tests/auth/sign-in.test.ts` covering the signIn callback.
 
 ## Description
 
