@@ -2,9 +2,7 @@
 
 ## Status
 
-Missing — no structured logging, no metrics, no tracing. SPEC §10 Q19
-flags "Monitoring: What alerts are required for production?" as
-unresolved.
+Done — structured logging with pino implemented. Per-request correlation IDs via AsyncLocalStorage. API routes instrumented with request-scoped loggers replacing console.error calls.
 
 ## Description
 

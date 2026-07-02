@@ -3,17 +3,30 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { z } from 'zod';
+import { generateRequestId, createRequestLogger } from '~/lib/logger';
+import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 
 export async function POST(request: Request) {
+  const requestId = generateRequestId();
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
-  }
+  const log = createRequestLogger({
+    requestId,
+    userId: session?.user?.id,
+    route: '/api/potluck-signup',
+  });
 
-  try {
-    const body = await request.json();
-    const { slotId, action, dishName, servings, dietaryLabels } = body;
+  return runWithTraceContext(createTraceContext(requestId, session?.user?.id, '/api/potluck-signup'), async () => {
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
+    }
+
+    let slotId: string | undefined;
+
+    try {
+      const body = await request.json();
+      const { slotId: reqSlotId, action, dishName, servings, dietaryLabels } = body;
+      slotId = reqSlotId;
 
     if (!slotId || !action) {
       return NextResponse.json({ error: 'slotId and action are required', code: 'BAD_REQUEST' }, { status: 400 });
@@ -92,7 +105,7 @@ export async function POST(request: Request) {
       const existingSignup = await prisma.potluckSignup.findUnique({
         where: {
           slotId_rsvpId: {
-            slotId,
+            slotId: slotId!,
             rsvpId: rsvp.id,
           },
         },
@@ -102,7 +115,7 @@ export async function POST(request: Request) {
         const maxSignups = slot.maxSignups || 0;
         await prisma.$transaction(async (tx) => {
           const currentSignups = await tx.potluckSignup.count({
-            where: { slotId },
+            where: { slotId: slotId! },
           });
           const effectiveCount = existingSignup ? currentSignups - 1 : currentSignups;
           if (effectiveCount >= maxSignups) {
@@ -120,7 +133,7 @@ export async function POST(request: Request) {
           } else {
             await tx.potluckSignup.create({
               data: {
-                slotId,
+                slotId: slotId!,
                 rsvpId: rsvp.id,
                 dishName: dishName.trim(),
                 servings: servings || 1,
@@ -128,7 +141,7 @@ export async function POST(request: Request) {
               },
             });
             await tx.potluckSlot.update({
-              where: { id: slotId },
+              where: { id: slotId! },
               data: { currentSignups: { increment: 1 } },
             });
           }
@@ -152,7 +165,7 @@ export async function POST(request: Request) {
 
       await prisma.potluckSignup.create({
         data: {
-          slotId,
+          slotId: slotId!,
           rsvpId: rsvp.id,
           dishName: dishName.trim(),
           servings: servings || 1,
@@ -167,7 +180,7 @@ export async function POST(request: Request) {
       const existingSignup = await prisma.potluckSignup.findUnique({
         where: {
           slotId_rsvpId: {
-            slotId,
+            slotId: slotId!,
             rsvpId: rsvp.id,
           },
         },
@@ -182,7 +195,7 @@ export async function POST(request: Request) {
       });
 
       await prisma.potluckSlot.update({
-        where: { id: slotId },
+        where: { id: slotId! },
         data: { currentSignups: { decrement: 1 } },
       });
 
@@ -190,11 +203,12 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ error: 'Invalid action', code: 'BAD_REQUEST' }, { status: 400 });
-  } catch (error) {
-    console.error('Potluck signup error:', error);
-    if (error instanceof Error && error.message === 'Slot is full') {
-      return NextResponse.json({ error: 'This slot is full', code: 'CONFLICT' }, { status: 409 });
+    } catch (error) {
+      log.error({ err: error, slotId }, 'Potluck signup error');
+      if (error instanceof Error && error.message === 'Slot is full') {
+        return NextResponse.json({ error: 'This slot is full', code: 'CONFLICT' }, { status: 409 });
+      }
+      return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
     }
-    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
-  }
+  });
 }
