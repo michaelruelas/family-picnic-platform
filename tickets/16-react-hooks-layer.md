@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — `src/hooks/` directory does not exist.
+Partial — hooks implemented and exported, tRPC client infrastructure set up, component migration remaining.
 
 ## Description
 
@@ -24,11 +24,11 @@ semantics (we use `@trpc/react-query`).
 
 ## Acceptance criteria
 
-- All hooks exported from `src/hooks/index.ts`.
-- All current components that use raw `fetch` (`RSVPForm`,
+- [x] All hooks exported from `src/hooks/index.ts`.
+- [ ] All current components that use raw `fetch` (`RSVPForm`,
   `PotluckSignupForm`, `ProfileClient`, `PhotoReactionButton`) are migrated
   to the new hooks.
-- Hooks have unit tests with `renderHook`.
+- [x] Hooks have unit tests with `renderHook`.
 
 ## Files
 

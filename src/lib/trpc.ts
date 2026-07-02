@@ -46,7 +46,7 @@ export const protectedProcedure = t.procedure.use(isAuthenticated);
 export const adminProcedure = t.procedure.use(isAuthenticated).use(isAdmin);
 export const router = t.router;
 
-export async function createTRPCContext(opts?: { headers: Headers }) {
+export async function createTRPCContext(opts?: { headers?: Headers }) {
   const session = await getServerSession(authOptions);
   return { session, ...opts };
 }
