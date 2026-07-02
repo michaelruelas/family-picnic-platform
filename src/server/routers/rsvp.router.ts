@@ -112,6 +112,9 @@ export const rsvpRouter = router({
         throw new Error('RSVP deadline has passed');
       }
 
+      let isWaitlisted = false;
+      let waitlistPosition: number | null = null;
+
       if (event.maxCapacity) {
         const currentHeadcount = await prisma.rSVP.aggregate({
           where: {
@@ -124,12 +127,14 @@ export const rsvpRouter = router({
 
         const totalAfterRsvp = (currentHeadcount._sum.headcount || 0) + input.headcount;
         if (totalAfterRsvp > event.maxCapacity) {
-          const spotsRemaining = event.maxCapacity - (currentHeadcount._sum.headcount || 0);
-          throw new Error(
-            spotsRemaining <= 0
-              ? 'Event is full'
-              : `Only ${spotsRemaining} spot${spotsRemaining !== 1 ? 's' : ''} remaining`,
-          );
+          const waitlistCount = await prisma.rSVP.count({
+            where: {
+              eventId: input.eventId,
+              status: RSVPStatus.WAITLISTED,
+            },
+          });
+          isWaitlisted = true;
+          waitlistPosition = waitlistCount + 1;
         }
       }
 
@@ -149,35 +154,39 @@ export const rsvpRouter = router({
           },
         },
         update: {
-          status: RSVPStatus.CONFIRMED,
+          status: isWaitlisted ? RSVPStatus.WAITLISTED : RSVPStatus.CONFIRMED,
           headcount: input.headcount,
           dietaryNotes: input.dietaryNotes || null,
           respondedAt: new Date(),
+          waitlistPosition: isWaitlisted ? waitlistPosition : null,
         },
         create: {
           eventId: input.eventId,
           userId: ctx.session.user.id,
           householdId: user.householdId || user.id,
-          status: RSVPStatus.CONFIRMED,
+          status: isWaitlisted ? RSVPStatus.WAITLISTED : RSVPStatus.CONFIRMED,
           headcount: input.headcount,
           dietaryNotes: input.dietaryNotes || null,
           respondedAt: new Date(),
+          waitlistPosition: isWaitlisted ? waitlistPosition : null,
         },
       });
 
-      await prisma.invitation.updateMany({
-        where: {
-          eventId: input.eventId,
-          OR: [
-            { userId: ctx.session.user.id },
-            { householdId: user.householdId || user.id },
-          ],
-          status: InvitationStatus.PENDING,
-        },
-        data: { status: InvitationStatus.USED },
-      });
+      if (!isWaitlisted) {
+        await prisma.invitation.updateMany({
+          where: {
+            eventId: input.eventId,
+            OR: [
+              { userId: ctx.session.user.id },
+              { householdId: user.householdId || user.id },
+            ],
+            status: InvitationStatus.PENDING,
+          },
+          data: { status: InvitationStatus.USED },
+        });
+      }
 
-      return rsvp;
+      return { ...rsvp, isWaitlisted, waitlistPosition };
     }),
 
   decline: protectedProcedure
@@ -191,7 +200,19 @@ export const rsvpRouter = router({
         throw new Error('User not found');
       }
 
-      return prisma.rSVP.upsert({
+      const existingRsvp = await prisma.rSVP.findUnique({
+        where: {
+          eventId_userId: {
+            eventId: input.eventId,
+            userId: ctx.session.user.id,
+          },
+        },
+      });
+
+      const wasConfirmed = existingRsvp?.status === RSVPStatus.CONFIRMED;
+      const hadWaitlistPosition = existingRsvp?.waitlistPosition;
+
+      const rsvp = await prisma.rSVP.upsert({
         where: {
           eventId_userId: {
             eventId: input.eventId,
@@ -203,6 +224,7 @@ export const rsvpRouter = router({
           headcount: 0,
           dietaryNotes: null,
           respondedAt: new Date(),
+          waitlistPosition: null,
         },
         create: {
           eventId: input.eventId,
@@ -214,6 +236,53 @@ export const rsvpRouter = router({
           respondedAt: new Date(),
         },
       });
+
+      if (wasConfirmed) {
+        await prisma.$transaction(async (tx) => {
+          const nextWaitlisted = await tx.rSVP.findFirst({
+            where: {
+              eventId: input.eventId,
+              status: RSVPStatus.WAITLISTED,
+            },
+            orderBy: { waitlistPosition: 'asc' },
+          });
+
+          if (nextWaitlisted) {
+            await tx.rSVP.update({
+              where: { id: nextWaitlisted.id },
+              data: {
+                status: RSVPStatus.CONFIRMED,
+                waitlistPosition: null,
+                respondedAt: new Date(),
+              },
+            });
+
+            await tx.rSVP.updateMany({
+              where: {
+                eventId: input.eventId,
+                status: RSVPStatus.WAITLISTED,
+                waitlistPosition: { gt: nextWaitlisted.waitlistPosition || 0 },
+              },
+              data: {
+                waitlistPosition: { decrement: 1 },
+              },
+            });
+          }
+        });
+      } else if (hadWaitlistPosition) {
+        await prisma.rSVP.updateMany({
+          where: {
+            eventId: input.eventId,
+            status: RSVPStatus.WAITLISTED,
+            waitlistPosition: { gt: hadWaitlistPosition },
+          },
+          data: {
+            waitlistPosition: { decrement: 1 },
+          },
+        });
+      }
+
+      return rsvp;
     }),
 
   adminOverride: auditedAdminProcedure

@@ -48,6 +48,7 @@ enum RSVPStatus {
   PENDING
   CONFIRMED
   DECLINED
+  WAITLISTED
 }
 
 enum PotluckCategory {
@@ -201,15 +202,16 @@ model Invitation {
 }
 
 model RSVP {
-  id            String     @id @default(cuid())
-  eventId       String
-  userId        String
-  householdId   String
-  status        RSVPStatus @default(INVITED)
-  headcount     Int        @default(1)
-  dietaryNotes  String?
-  respondedAt   DateTime?
-  modifiedAt    DateTime   @updatedAt
+  id               String     @id @default(cuid())
+  eventId          String
+  userId           String
+  householdId      String
+  status           RSVPStatus @default(INVITED)
+  headcount        Int        @default(1)
+  dietaryNotes    String?
+  respondedAt      DateTime?
+  modifiedAt       DateTime   @updatedAt
+  waitlistPosition Int?
 
   event          Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -220,6 +222,7 @@ model RSVP {
   @@index([userId])
   @@index([householdId])
   @@index([status])
+  @@index([waitlistPosition])
 }
 
 model PotluckSlot {

@@ -9,6 +9,7 @@ interface RSVPFormProps {
     status: string;
     headcount: number;
     dietaryNotes: string | null;
+    waitlistPosition?: number | null;
   } | null;
   rsvpDeadline?: string | null;
   isPast: boolean;
@@ -36,6 +37,7 @@ export default function RSVPForm({
   const isRsvpOpen = !isPast && (!rsvpDeadline || new Date(rsvpDeadline) > new Date());
   const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
   const isFull = spotsRemaining !== null && spotsRemaining <= 0;
+  const existingIsWaitlisted = existingRsvp?.status === 'WAITLISTED';
 
   const handleSubmit = async (action: 'confirm' | 'decline') => {
     setIsSubmitting(true);
@@ -85,6 +87,7 @@ export default function RSVPForm({
       DECLINED: { label: 'You Declined', color: 'text-red-700', bg: 'bg-red-50' },
       PENDING: { label: 'Response Pending', color: 'text-amber-700', bg: 'bg-amber-50' },
       INVITED: { label: 'Invitation Pending', color: 'text-stone-700', bg: 'bg-stone-50' },
+      WAITLISTED: { label: 'On Waitlist', color: 'text-amber-700', bg: 'bg-amber-50' },
     };
 
     const defaultStatus = { label: 'Unknown', color: 'text-stone-700', bg: 'bg-stone-50' };
@@ -159,6 +162,11 @@ export default function RSVPForm({
     return (
       <div className={`rounded-lg ${status.bg} p-4`}>
         <p className={`font-medium ${status.color}`}>{status.label}</p>
+        {existingIsWaitlisted && existingRsvp.waitlistPosition && (
+          <p className="mt-1 text-sm text-stone-600">
+            Waitlist position: #{existingRsvp.waitlistPosition}
+          </p>
+        )}
         {existingRsvp.status === 'CONFIRMED' && (
           <div className="mt-3 space-y-2">
             <p className="text-sm text-stone-600">
@@ -194,6 +202,15 @@ export default function RSVPForm({
             className="mt-2 rounded-lg bg-green-100 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-200 disabled:opacity-50"
           >
             {isSubmitting ? 'Updating...' : isFull ? 'Event is Full' : 'Change to Attending'}
+          </button>
+        )}
+        {existingRsvp.status === 'WAITLISTED' && isRsvpOpen && (
+          <button
+            onClick={() => handleSubmit('decline')}
+            disabled={isSubmitting}
+            className="mt-2 rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
+          >
+            {isSubmitting ? 'Updating...' : 'Leave Waitlist'}
           </button>
         )}
 
@@ -243,9 +260,76 @@ export default function RSVPForm({
 
   if (isFull) {
     return (
-      <div className="rounded-lg bg-stone-100 p-4 text-stone-600">
-        <p className="font-medium">This event is full.</p>
-        <p className="mt-1 text-sm">All spots have been taken.</p>
+      <div className="rounded-lg bg-amber-50 p-4">
+        <p className="font-medium text-amber-800">This event is full.</p>
+        <p className="mt-1 text-sm text-amber-700">
+          All spots have been taken, but you can join the waitlist. You&apos;ll be notified if a spot opens up.
+        </p>
+        <p className="mt-1 text-sm text-amber-600">
+          If you&apos;d like to be added to the waitlist, please confirm your attendance below.
+        </p>
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-stone-700">Number of People</label>
+            <select
+              value={headcount}
+              onChange={(e) => setHeadcount(Number(e.target.value))}
+              className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((n) => (
+                <option key={n} value={n}>
+                  {n} {n === 1 ? 'person' : 'people'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-stone-700">
+              Dietary Notes (optional)
+            </label>
+            <textarea
+              value={dietaryNotes}
+              onChange={(e) => setDietaryNotes(e.target.value)}
+              placeholder="Allergies, preferences, etc."
+              rows={2}
+              className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            />
+          </div>
+
+          <button
+            onClick={() => handleSubmit('confirm')}
+            disabled={isSubmitting}
+            className="w-full rounded-lg bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+          >
+            {isSubmitting ? 'Joining Waitlist...' : 'Join Waitlist'}
+          </button>
+
+          {showDeclineConfirm && (
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="font-medium text-red-800">Are you sure you want to decline?</p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowDeclineConfirm(false);
+                    handleSubmit('decline');
+                  }}
+                  disabled={isSubmitting}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Updating...' : 'Yes, Decline'}
+                </button>
+                <button
+                  onClick={() => setShowDeclineConfirm(false)}
+                  disabled={isSubmitting}
+                  className="rounded-lg bg-stone-200 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
