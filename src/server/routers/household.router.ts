@@ -86,4 +86,44 @@ export const householdRouter = router({
       orderBy: { name: 'asc' },
     });
   }),
+
+  getCumulativeHeadcount: protectedProcedure
+    .input(z.object({ householdId: z.string() }))
+    .query(async ({ input }) => {
+      const now = new Date();
+
+      const rsvps = await prisma.rSVP.findMany({
+        where: {
+          householdId: input.householdId,
+          status: 'CONFIRMED',
+          event: {
+            status: 'PUBLISHED',
+            date: { gte: now },
+          },
+        },
+        include: {
+          event: {
+            select: {
+              id: true,
+              name: true,
+              date: true,
+            },
+          },
+        },
+      });
+
+      const totalHeadcount = rsvps.reduce((sum, r) => sum + r.headcount, 0);
+
+      const byEvent = rsvps.map((r) => ({
+        eventId: r.event.id,
+        eventName: r.event.name,
+        eventDate: r.event.date,
+        headcount: r.headcount,
+      }));
+
+      return {
+        totalHeadcount,
+        byEvent,
+      };
+    }),
 });

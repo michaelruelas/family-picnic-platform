@@ -2,8 +2,9 @@
 
 ## Status
 
-Missing — `/household/page.tsx` does not exist. SPEC §6 calls for a
-household dashboard and tree visualization.
+Done — `/household/page.tsx` implemented with household dashboard showing members,
+cumulative headcount, and dependent management. `getCumulativeHeadcount` procedure
+added to household router.
 
 ## Description
 
