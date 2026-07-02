@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useOffline, useRsvpMutation } from '~/hooks';
+import { RSVPStatus } from '~/lib/generated/enums';
 
 interface RSVPFormProps {
   eventId: string;
   existingRsvp?: {
-    status: string;
+    status: RSVPStatus;
     headcount: number;
     dietaryNotes: string | null;
     waitlistPosition?: number | null;
@@ -82,7 +83,7 @@ export default function RSVPForm({
   }
 
   if (existingRsvp) {
-    const statusLabels: Record<string, { label: string; color: string; bg: string }> = {
+    const statusLabels: Record<RSVPStatus, { label: string; color: string; bg: string }> = {
       CONFIRMED: { label: "You're Attending!", color: 'text-green-700', bg: 'bg-green-50' },
       DECLINED: { label: 'You Declined', color: 'text-red-700', bg: 'bg-red-50' },
       PENDING: { label: 'Response Pending', color: 'text-amber-700', bg: 'bg-amber-50' },

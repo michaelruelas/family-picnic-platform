@@ -6,6 +6,8 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- **Type Safety Hardening** — Replaced loose `string` types with Prisma-generated enums in components: RSVPStatus in RSVPForm, SlotType in PotluckSignupForm, Relationship in ProfileClient Dependent interface, CommunicationPreference in ProfileClient user props, and RELATIONSHIP_LABELS record. tsconfig already had `noUncheckedIndexedAccess: true`. Build passes with strict TypeScript checks. PhotoReactionButton correctly uses string type for emoji reactions per schema comment "reactions are stored as emoji strings". Ticket 34 Done.
+
 - **Loading Skeletons** — Created `/events/loading.tsx` and `/my-events/loading.tsx` with pulse-animated skeleton placeholders matching the layout of each page (event cards, RSVP cards, sections). Root `error.tsx` already provides friendly error UI with "Try Again" and "Go Home" buttons. Ticket 33 Done.
 
 - **Zod Schemas and Validation** — Created shared Zod schemas in `src/lib/schemas/` for rsvp, potluck, dependent, profile, and photo domains. Updated all five API routes (`/api/rsvp`, `/api/potluck-signup`, `/api/dependents`, `/api/profile`, `/api/photo-reaction`) to use Zod validation with consistent error codes (UNAUTHORIZED, BAD_REQUEST, NOT_FOUND, CONFLICT, INTERNAL_SERVER_ERROR). Created 30 schema validation tests. Ticket 27 Done.

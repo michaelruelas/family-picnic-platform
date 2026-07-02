@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useUserProfileMutation, useDependentMutations } from '~/hooks';
+import { Relationship, CommunicationPreference } from '~/lib/generated/enums';
 
 interface Dependent {
   id: string;
   name: string;
-  relationship: string;
+  relationship: Relationship;
   age: number | null;
   dietaryLabels: string[];
   isChild: boolean;
@@ -17,7 +18,7 @@ interface ProfileFormProps {
     id: string;
     name: string;
     email: string;
-    communicationPreference: string;
+    communicationPreference: CommunicationPreference;
     household?: {
       id: string;
       name: string;
@@ -26,7 +27,7 @@ interface ProfileFormProps {
   initialDependents?: Dependent[];
 }
 
-const RELATIONSHIP_LABELS: Record<string, string> = {
+const RELATIONSHIP_LABELS: Record<Relationship, string> = {
   SPOUSE: 'Spouse',
   CHILD: 'Child',
   PARENT: 'Parent',
@@ -239,7 +240,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
             {isEditing ? (
               <select
                 value={communicationPreference}
-                onChange={(e) => setCommunicationPreference(e.target.value)}
+                onChange={(e) => setCommunicationPreference(e.target.value as CommunicationPreference)}
                 className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
               >
                 <option value="EMAIL">Email only</option>

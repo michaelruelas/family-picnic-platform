@@ -2,9 +2,11 @@
 
 ## Status
 
-Partial — `tsconfig.json` strict mode exists, but several `any` /
-loosely-typed patterns persist (e.g., `RSVPForm` props use
-`existingRsvp?.status: string` instead of `RSVPStatus`).
+Done — All component props now use Prisma generated types: RSVPStatus in
+RSVPForm, SlotType in PotluckSignupForm, Relationship and CommunicationPreference
+in ProfileClient. `tsc --noEmit` passes with strict config. PhotoReactionButton
+uses emoji string reactions per schema comment "reactions are stored as emoji
+strings" — no ReactionType enum exists so string type is correct.
 
 ## Description
 

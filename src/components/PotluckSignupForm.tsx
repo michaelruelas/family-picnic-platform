@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { usePotluckSignupMutation } from '~/hooks';
+import { SlotType } from '~/lib/generated/enums';
 
 interface PotluckSlot {
   id: string;
   name: string;
-  slotType: string;
+  slotType: SlotType;
   maxSignups: number | null;
   currentSignups: number;
   signups: Array<{
