@@ -1,7 +1,7 @@
 import { router, adminProcedure, protectedProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { CommunicationStatus } from '~/lib/generated/enums';
+import { CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
 
 export const communicationRouter = router({
   sendBroadcast: adminProcedure
@@ -116,11 +116,21 @@ export const communicationRouter = router({
       z.object({
         userId: z.string(),
         channel: z.enum(['EMAIL', 'SMS']),
+        eventId: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       if (ctx.session.user.id !== input.userId) {
         throw new Error('Unauthorized');
+      }
+
+      let eventId = input.eventId;
+      if (!eventId) {
+        const latestEvent = await prisma.event.findFirst({
+          orderBy: { date: 'desc' },
+          select: { id: true },
+        });
+        eventId = latestEvent?.id;
       }
 
       if (input.channel === 'SMS') {
@@ -132,6 +142,18 @@ export const communicationRouter = router({
         await prisma.user.update({
           where: { id: input.userId },
           data: { communicationPreference: 'NONE' },
+        });
+      }
+
+      if (eventId) {
+        await prisma.communicationLog.create({
+          data: {
+            eventId,
+            sentByUserId: ctx.session.user.id,
+            recipientUserId: input.userId,
+            channel: input.channel as CommunicationChannel,
+            status: CommunicationStatus.UNSUBSCRIBED,
+          },
         });
       }
 

@@ -1,7 +1,7 @@
 import { router, adminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { InvitationStatus } from '~/lib/generated/enums';
+import { InvitationStatus, CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
 import { generateInvitationToken, getInvitationExpiry } from '~/lib/invitation-token';
 
 export const invitationRouter = router({
@@ -11,6 +11,7 @@ export const invitationRouter = router({
         eventId: z.string(),
         householdId: z.string().optional(),
         userId: z.string().optional(),
+        channel: z.enum(['EMAIL', 'SMS']).default('EMAIL'),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -19,7 +20,7 @@ export const invitationRouter = router({
       }
       const token = generateInvitationToken();
       const expiresAt = getInvitationExpiry(30);
-      return prisma.invitation.create({
+      const invitation = await prisma.invitation.create({
         data: {
           eventId: input.eventId,
           householdId: input.householdId,
@@ -30,6 +31,33 @@ export const invitationRouter = router({
           expiresAt,
         },
       });
+
+      let recipientUserIds: string[] = [];
+      if (input.userId) {
+        recipientUserIds = [input.userId];
+      } else if (input.householdId) {
+        const users = await prisma.user.findMany({
+          where: { householdId: input.householdId },
+          select: { id: true },
+        });
+        recipientUserIds = users.map((u) => u.id);
+      }
+
+      await Promise.all(
+        recipientUserIds.map((recipientUserId) =>
+          prisma.communicationLog.create({
+            data: {
+              eventId: input.eventId,
+              sentByUserId: ctx.session.user.id,
+              recipientUserId,
+              channel: input.channel as CommunicationChannel,
+              status: CommunicationStatus.QUEUED,
+            },
+          }),
+        ),
+      );
+
+      return invitation;
     }),
 
   resend: adminProcedure
@@ -53,7 +81,7 @@ export const invitationRouter = router({
         where: { id: input.id },
         data: {
           status: input.status,
-          sentAt: input.status === 'SENT' ? new Date() : undefined,
+          sentAt: input.status === 'SENT' || input.status === 'DELIVERED' ? new Date() : null,
         },
       });
     }),

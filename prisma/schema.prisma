@@ -180,6 +180,7 @@ model Invitation {
   createdAt       DateTime         @default(now())
   token           String?          @unique
   expiresAt       DateTime?
+  sentAt          DateTime?
 
   event       Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user        User?      @relation("UserInvitations", fields: [userId], references: [id])

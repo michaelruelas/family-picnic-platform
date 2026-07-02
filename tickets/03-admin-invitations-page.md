@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — directory exists but `page.tsx` is not implemented.
+Done — `/admin/invitations` page implemented with event selector, household search, invitation table, and send/resend/track actions. CommunicationLog entries emitted on send/resend. Unsubscribe logs UNSUBSCRIBED status. Added `sentAt` field to Invitation model.
 
 ## Description
 
