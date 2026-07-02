@@ -2,10 +2,7 @@
 
 ## Status
 
-Stub — `Photo.url` and `Photo.thumbnailUrl` exist in the schema but the
-seed file (`prisma/seed.ts`) does not create any sample photos. The
-`/photos` page will always render "No Photos Yet" with no way to test
-the gallery locally.
+Done — `prisma/seed.ts` extended with full dataset: household, users, dependent, published event, 3 potluck slots, 2 RSVPs with potluck signups, 8 photos with reactions, and a used invitation. Acceptance criteria met.
 
 ## Description
 
