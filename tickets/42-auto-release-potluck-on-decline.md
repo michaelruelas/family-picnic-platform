@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — SPEC §4.3: "Potluck slots auto-release when RSVP is DECLINED,
+Done — SPEC §4.3: "Potluck slots auto-release when RSVP is DECLINED,
 RSVP modified below required count, RSVP deleted after deadline."
 
 ## Description

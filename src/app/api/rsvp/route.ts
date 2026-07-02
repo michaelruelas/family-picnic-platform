@@ -79,6 +79,63 @@ export async function POST(request: Request) {
         respondedAt: new Date(),
       };
 
+      if (action === 'decline') {
+        await prisma.$transaction(async (tx) => {
+          const existingRsvp = await tx.rSVP.findUnique({
+            where: {
+              eventId_userId: {
+                eventId,
+                userId: session.user.id,
+              },
+            },
+            include: {
+              potluckSignups: {
+                include: { slot: true },
+              },
+            },
+          });
+
+          for (const signup of existingRsvp?.potluckSignups || []) {
+            await tx.potluckSlot.update({
+              where: { id: signup.slotId },
+              data: { currentSignups: { decrement: signup.servings } },
+            });
+          }
+
+          await tx.potluckSignup.deleteMany({
+            where: { rsvpId: existingRsvp?.id },
+          });
+
+          await tx.rSVP.upsert({
+            where: {
+              eventId_userId: {
+                eventId,
+                userId: session.user.id,
+              },
+            },
+            update: {
+              status: rsvpData.status,
+              headcount: rsvpData.headcount,
+              dietaryNotes: rsvpData.dietaryNotes,
+              respondedAt: rsvpData.respondedAt,
+            },
+            create: rsvpData,
+          });
+
+          await tx.adminAuditLog.create({
+            data: {
+              userId: session.user.id,
+              eventId,
+              action: 'POTLUCK_SLOT_RELEASE',
+              oldValue: { status: existingRsvp?.status, headcount: existingRsvp?.headcount },
+              newValue: { status: RSVPStatus.DECLINED, headcount: 0, slotsReleased: existingRsvp?.potluckSignups.length || 0 },
+            },
+          });
+        });
+
+        return NextResponse.json({ success: true, status: RSVPStatus.DECLINED });
+      }
+
       await prisma.rSVP.upsert({
         where: {
           eventId_userId: {

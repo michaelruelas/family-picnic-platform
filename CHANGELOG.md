@@ -17,6 +17,7 @@ All notable changes to this project are documented here.
 ### Fixed
 
 - **Potluck slot race condition** — Fixed race condition in `src/app/api/potluck-signup/route.ts` by wrapping signup + counter increment in `prisma.$transaction` with `isolationLevel: Serializable`. The count check, signup create/update, and counter increment now happen atomically. Returns 409 Conflict when slot is full instead of allowing over-signup.
+- **Auto-release potluck slots on RSVP decline** — When an RSVP is declined, potluck signups are now automatically released. The implementation in `src/app/api/rsvp/route.ts` decrements `PotluckSlot.currentSignups` by the signup's servings count, deletes all `PotluckSignup` rows tied to the RSVP, updates the RSVP to DECLINED status with headcount 0, and writes an audit log entry with `POTLUCK_SLOT_RELEASE` action — all within a single transaction for atomicity.
 
 ## [0.1.0] — 2026-07-01
 
