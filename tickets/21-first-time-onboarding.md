@@ -2,9 +2,7 @@
 
 ## Status
 
-Missing — no first-run experience. SPEC §1 calls for "Multi-generational
-accessibility: Simple UI, large touch targets, forgiving interactions"
-as the top design principle.
+Done — `/onboarding` page with 3-step wizard implemented. Step 1: household setup (create or join). Step 2: add family members (skippable). Step 3: set communication preference. `onboardingCompletedAt` field added to User model. `WizardStep` and `HelpButton` components created. API routes for household/dependent onboarding steps created. New users who haven't completed onboarding are redirected to `/onboarding` from profile page.
 
 ## Description
 

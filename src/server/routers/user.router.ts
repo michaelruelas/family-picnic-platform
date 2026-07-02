@@ -90,4 +90,22 @@ export const userRouter = router({
         },
       });
     }),
+
+  completeOnboarding: protectedProcedure.mutation(async ({ ctx }) => {
+    return prisma.user.update({
+      where: { id: ctx.session.user.id },
+      data: { onboardingCompletedAt: new Date() },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        household: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }),
 });

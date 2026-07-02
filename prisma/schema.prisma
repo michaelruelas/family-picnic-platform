@@ -104,6 +104,7 @@ model User {
   role                   Role                   @default(ADMIN_ADULT)
   householdId            String?
   communicationPreference CommunicationPreference @default(EMAIL)
+  onboardingCompletedAt  DateTime?
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
   deletedAt              DateTime?
