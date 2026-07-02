@@ -39,16 +39,14 @@ describe('waitlist', () => {
         { id: '1', waitlistPosition: 1 },
         { id: '2', waitlistPosition: 2 },
       ];
-      const promoted = waitlistedUsers[0];
+      const promoted = waitlistedUsers[0]!;
       expect(promoted.waitlistPosition).toBe(1);
     });
 
     it('should shift waitlist positions after promotion', async () => {
       const positions = [1, 2, 3];
       const promotedPosition = 1;
-      const shifted = positions
-        .filter((p) => p > promotedPosition)
-        .map((p) => p - 1);
+      const shifted = positions.filter((p) => p > promotedPosition).map((p) => p - 1);
       expect(shifted).toEqual([1, 2]);
     });
   });
@@ -71,7 +69,7 @@ describe('waitlist', () => {
       const statusLabels: Record<string, { label: string }> = {
         WAITLISTED: { label: 'On Waitlist' },
       };
-      expect(statusLabels['WAITLISTED'].label).toBe('On Waitlist');
+      expect(statusLabels['WAITLISTED']!.label).toBe('On Waitlist');
     });
 
     it('should show waitlist position number', async () => {

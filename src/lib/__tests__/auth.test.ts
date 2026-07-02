@@ -18,7 +18,7 @@ describe('Auth module', () => {
 
   it('authOptions has session and signIn callbacks defined', async () => {
     const { authOptions } = await import('../auth');
-    expect(typeof authOptions.callbacks.session).toBe('function');
-    expect(typeof authOptions.callbacks.signIn).toBe('function');
+    expect(typeof authOptions.callbacks?.session).toBe('function');
+    expect(typeof authOptions.callbacks?.signIn).toBe('function');
   });
 });
