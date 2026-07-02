@@ -2,8 +2,7 @@
 
 ## Status
 
-Missing — SPEC §4.1 edge cases: "Max capacity reached → show waitlist
-option." SPEC §10 Q7 also flags this as an open question.
+Done — RSVPStatus.WAITLISTED added, waitlistPosition field on RSVP model with index, confirm procedure creates WAITLISTED RSVPs when event is at capacity with sequential positions, decline procedure auto-promotes first waitlisted user transactionally. Waitlist UI shown in RSVPForm with position number and leave waitlist option. Notification on auto-promotion deferred to future iteration (requires communication infrastructure).
 
 ## Description
 
