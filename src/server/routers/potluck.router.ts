@@ -110,15 +110,67 @@ export const potluckRouter = router({
         throw new Error('You must have a confirmed RSVP to sign up for potluck');
       }
 
-      if (slot.slotType === 'LIMITED') {
-        const currentSignups = await prisma.potluckSignup.count({
-          where: { slotId: input.slotId },
-        });
-        const maxSignups = slot.maxSignups || 0;
+      const existingSignup = await prisma.potluckSignup.findUnique({
+        where: {
+          slotId_rsvpId: {
+            slotId: input.slotId,
+            rsvpId: rsvp.id,
+          },
+        },
+      });
 
-        if (currentSignups >= maxSignups) {
-          throw new Error('This slot is full');
-        }
+      if (slot.slotType === 'LIMITED') {
+        return prisma.$transaction(async (tx) => {
+          const currentSignups = await tx.potluckSignup.count({
+            where: { slotId: input.slotId },
+          });
+          const effectiveCount = existingSignup ? currentSignups - 1 : currentSignups;
+          const maxSignups = slot.maxSignups || 0;
+
+          if (effectiveCount >= maxSignups) {
+            throw new Error('This slot is full');
+          }
+
+          if (existingSignup) {
+            const updated = await tx.potluckSignup.update({
+              where: { id: existingSignup.id },
+              data: {
+                dishName: input.dishName,
+                servings: input.servings,
+                dietaryLabels: input.dietaryLabels,
+              },
+            });
+            return updated;
+          }
+
+          const created = await tx.potluckSignup.create({
+            data: {
+              slotId: input.slotId,
+              rsvpId: rsvp.id,
+              dishName: input.dishName,
+              servings: input.servings,
+              dietaryLabels: input.dietaryLabels,
+            },
+          });
+
+          await tx.potluckSlot.update({
+            where: { id: input.slotId },
+            data: { currentSignups: { increment: 1 } },
+          });
+
+          return created;
+        }, { isolationLevel: 'Serializable' });
+      }
+
+      if (existingSignup) {
+        return prisma.potluckSignup.update({
+          where: { id: existingSignup.id },
+          data: {
+            dishName: input.dishName,
+            servings: input.servings,
+            dietaryLabels: input.dietaryLabels,
+          },
+        });
       }
 
       return prisma.potluckSignup.create({

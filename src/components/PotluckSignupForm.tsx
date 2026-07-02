@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePotluckSignupMutation } from '~/hooks';
 
 interface PotluckSlot {
   id: string;
@@ -31,55 +31,85 @@ export default function PotluckSignupForm({
   userId,
   onSignupChange,
 }: PotluckSignupFormProps) {
-  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [dishName, setDishName] = useState('');
   const [servings, setServings] = useState(1);
   const [dietaryLabels, setDietaryLabels] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  const { signup, updateSignup, cancelSignup } = usePotluckSignupMutation();
+
   const userSignup = slot.signups.find((s) => s.rsvp.userId === userId);
 
   const isLimited = slot.slotType === 'LIMITED';
   const isFull = isLimited && slot.currentSignups >= (slot.maxSignups || 0);
+  const isSubmitting = signup.isPending || updateSignup.isPending || cancelSignup.isPending;
 
   const handleSubmit = async (action: 'signup' | 'cancel') => {
     if (!userId) return;
 
-    setIsSubmitting(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/potluck-signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slotId: slot.id,
-          action,
-          dishName: dishName.trim(),
-          servings,
-          dietaryLabels: dietaryLabels
-            .split(',')
-            .map((l) => l.trim())
-            .filter((l) => l !== ''),
-        }),
-      });
+      const labels = dietaryLabels
+        .split(',')
+        .map((l) => l.trim())
+        .filter((l) => l !== '');
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || `Failed to ${action} signup`);
-        return;
+      if (action === 'signup') {
+        if (userSignup) {
+          updateSignup.mutate(
+            {
+              slotId: slot.id,
+              dishName: dishName.trim(),
+              servings,
+              dietaryLabels: labels,
+            },
+            {
+              onSuccess: () => {
+                setIsExpanded(false);
+                onSignupChange?.();
+              },
+              onError: (err) => {
+                setError(err.message);
+              },
+            },
+          );
+        } else {
+          signup.mutate(
+            {
+              slotId: slot.id,
+              dishName: dishName.trim(),
+              servings,
+              dietaryLabels: labels,
+            },
+            {
+              onSuccess: () => {
+                setIsExpanded(false);
+                onSignupChange?.();
+              },
+              onError: (err) => {
+                setError(err.message);
+              },
+            },
+          );
+        }
+      } else {
+        cancelSignup.mutate(
+          { slotId: slot.id },
+          {
+            onSuccess: () => {
+              setIsExpanded(false);
+              onSignupChange?.();
+            },
+            onError: (err) => {
+              setError(err.message);
+            },
+          },
+        );
       }
-
-      setIsExpanded(false);
-      router.refresh();
-      onSignupChange?.();
     } catch {
       setError('Something went wrong. Please try again.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
