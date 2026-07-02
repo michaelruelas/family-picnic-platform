@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePhotoReactionMutation } from '~/hooks';
 
 interface PhotoReaction {
   reaction: string;
@@ -11,6 +12,7 @@ interface PhotoReactionButtonProps {
   photoId: string;
   reactions: PhotoReaction[];
   userId?: string;
+  compact?: boolean;
 }
 
 const AVAILABLE_REACTIONS = ['❤️', '👍', '👏', '🎉', '😂'];
@@ -19,7 +21,9 @@ export default function PhotoReactionButton({
   photoId,
   reactions,
   userId,
+  compact = false,
 }: PhotoReactionButtonProps) {
+  const { addReaction, removeReaction } = usePhotoReactionMutation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localReactions, setLocalReactions] = useState(reactions);
 
@@ -41,31 +45,26 @@ export default function PhotoReactionButton({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/photo-reaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photoId, reaction }),
-      });
+      const hasReacted = userReactions.includes(reaction);
 
-      if (response.ok) {
-        const data = await response.json();
-        setLocalReactions((prev) => {
-          if (data.action === 'removed') {
-            return prev.filter((r) => !(r.reaction === reaction && r.userId === userId));
-          } else {
-            return [...prev, { reaction, userId }];
-          }
-        });
+      if (hasReacted) {
+        await removeReaction.mutateAsync({ photoId, reaction });
+        setLocalReactions((prev) =>
+          prev.filter((r) => !(r.reaction === reaction && r.userId === userId)),
+        );
+      } else {
+        await addReaction.mutateAsync({ photoId, reaction });
+        setLocalReactions((prev) => [...prev, { reaction, userId }]);
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="absolute right-2 bottom-2">
+  if (compact) {
+    return (
       <div className="flex items-center gap-1 rounded-full bg-black/50 p-1 backdrop-blur-sm">
-        {AVAILABLE_REACTIONS.map((emoji) => {
+        {AVAILABLE_REACTIONS.slice(0, 3).map((emoji) => {
           const count = reactionCounts[emoji] || 0;
           const isSelected = userReactions.includes(emoji);
 
@@ -74,7 +73,7 @@ export default function PhotoReactionButton({
               key={emoji}
               onClick={() => handleReaction(emoji)}
               disabled={!userId || isSubmitting}
-              className={`flex items-center gap-1 rounded-full px-2 py-1 text-sm transition-all ${
+              className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs transition-all ${
                 isSelected ? 'scale-110 bg-white/30' : 'hover:bg-white/20'
               } ${!userId ? 'cursor-default opacity-50' : 'cursor-pointer'}`}
               title={userId ? `${emoji} (${count})` : 'Sign in to react'}
@@ -85,6 +84,30 @@ export default function PhotoReactionButton({
           );
         })}
       </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 rounded-full bg-black/50 p-1 backdrop-blur-sm">
+      {AVAILABLE_REACTIONS.map((emoji) => {
+        const count = reactionCounts[emoji] || 0;
+        const isSelected = userReactions.includes(emoji);
+
+        return (
+          <button
+            key={emoji}
+            onClick={() => handleReaction(emoji)}
+            disabled={!userId || isSubmitting}
+            className={`flex items-center gap-1 rounded-full px-2 py-1 text-sm transition-all ${
+              isSelected ? 'scale-110 bg-white/30' : 'hover:bg-white/20'
+            } ${!userId ? 'cursor-default opacity-50' : 'cursor-pointer'}`}
+            title={userId ? `${emoji} (${count})` : 'Sign in to react'}
+          >
+            <span>{emoji}</span>
+            {count > 0 && <span className="text-white">{count}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }

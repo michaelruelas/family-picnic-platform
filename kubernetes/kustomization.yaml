@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: family-picnic
+
+commonLabels:
+  app.kubernetes.io/part-of: family-picnic
+
+resources:
+  - namespace.yaml
+  - nextjs.yaml
+  - postgres.yaml
+  - photoprism.yaml
+
+configMapGenerator:
+  - name: nextjs-env
+    envs:
+      - env.base
+    options:
+      disableNameSuffixHash: true
+
+secretGenerator:
+  - name: nextjs-secrets
+    type: Opaque
+    envs:
+      - secrets.base
+    options:
+      disableNameSuffixHash: true

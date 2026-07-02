@@ -7,6 +7,7 @@ import { authOptions } from '~/lib/auth';
 import RSVPForm from '~/components/RSVPForm';
 import PotluckSignupForm from '~/components/PotluckSignupForm';
 import PhotoCard from '~/components/PhotoCard';
+import DietaryAttendeeFilter from '~/components/dietary/DietaryAttendeeFilter';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,15 @@ interface Props {
 export default async function EventDetailPage({ params }: Props) {
   const { id } = await params;
   const session = await getServerSession(authOptions);
+
+  let userRole: string | undefined;
+  if (session?.user?.id) {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+    userRole = user?.role;
+  }
 
   const event = await prisma.event.findUnique({
     where: { id },
@@ -40,10 +50,12 @@ export default async function EventDetailPage({ params }: Props) {
         },
       },
       photos: {
+        where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
         take: 12,
         include: {
           reactions: true,
+          uploadedByUserId: true,
         },
       },
       rsvps: {
@@ -210,151 +222,10 @@ export default async function EventDetailPage({ params }: Props) {
         )}
 
         {event.rsvps.length > 0 && (
-          <div className="mt-6 rounded-lg bg-stone-50 p-4">
-            <div className="flex items-center gap-2 text-lg font-medium text-stone-900">
-              <span>📋</span>
-              <span>RSVP Summary</span>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-4">
-              <div className="rounded-lg bg-white p-3 text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {event.rsvps
-                    .filter((r) => r.status === 'CONFIRMED')
-                    .reduce((sum, r) => sum + r.headcount, 0)}
-                </div>
-                <div className="text-sm text-stone-500">Attending</div>
-              </div>
-              <div className="rounded-lg bg-white p-3 text-center">
-                <div className="text-2xl font-bold text-amber-600">
-                  {event.rsvps.filter((r) => r.status === 'PENDING').length}
-                </div>
-                <div className="text-sm text-stone-500">Pending</div>
-              </div>
-              <div className="rounded-lg bg-white p-3 text-center">
-                <div className="text-2xl font-bold text-red-600">
-                  {event.rsvps.filter((r) => r.status === 'DECLINED').length}
-                </div>
-                <div className="text-sm text-stone-500">Declined</div>
-              </div>
-            </div>
-            {event.maxCapacity && (
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-stone-600">
-                    {event.rsvps
-                      .filter((r) => r.status === 'CONFIRMED')
-                      .reduce((sum, r) => sum + r.headcount, 0)}{' '}
-                    / {event.maxCapacity} spots filled
-                  </span>
-                  <span className="text-stone-500">
-                    {Math.round(
-                      (event.rsvps
-                        .filter((r) => r.status === 'CONFIRMED')
-                        .reduce((sum, r) => sum + r.headcount, 0) /
-                        event.maxCapacity) *
-                        100,
-                    )}
-                    % capacity
-                  </span>
-                </div>
-                <div className="mt-1 h-2 w-full rounded-full bg-stone-200">
-                  <div
-                    className="h-2 rounded-full bg-amber-500 transition-all"
-                    style={{
-                      width: `${Math.min(100, (event.rsvps.filter((r) => r.status === 'CONFIRMED').reduce((sum, r) => sum + r.headcount, 0) / event.maxCapacity) * 100)}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-            {event.rsvps.filter((r) => r.status === 'CONFIRMED').length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-md font-medium text-stone-900">Confirmed Attendees</h3>
-                <ul className="mt-2 space-y-1">
-                  {event.rsvps
-                    .filter((r) => r.status === 'CONFIRMED')
-                    .map((rsvp) => {
-                      const respondedDate = rsvp.respondedAt ? new Date(rsvp.respondedAt) : null;
-                      const daysAgo = respondedDate
-                        ? Math.floor(
-                            (now.getTime() - respondedDate.getTime()) / (1000 * 60 * 60 * 24),
-                          )
-                        : null;
-                      const timeAgoStr =
-                        daysAgo !== null
-                          ? daysAgo === 0
-                            ? 'today'
-                            : daysAgo === 1
-                              ? '1 day ago'
-                              : `${daysAgo} days ago`
-                          : null;
-
-                      return (
-                        <li
-                          key={rsvp.id}
-                          className="flex flex-wrap items-center gap-2 text-stone-700"
-                        >
-                          <span className="text-green-500">✓</span>
-                          <span>{rsvp.user.household?.name || rsvp.user.name}</span>
-                          {rsvp.headcount > 1 && (
-                            <span className="text-sm text-stone-500">
-                              +{rsvp.headcount - 1} guest{rsvp.headcount > 2 ? 's' : ''}
-                            </span>
-                          )}
-                          {rsvp.dietaryNotes && (
-                            <span className="text-sm text-amber-600">🥗 {rsvp.dietaryNotes}</span>
-                          )}
-                          {timeAgoStr && (
-                            <span className="text-xs text-stone-400">({timeAgoStr})</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                </ul>
-              </div>
-            )}
-            {event.rsvps.filter((r) => r.status === 'DECLINED').length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-md font-medium text-stone-900">Declined Attendees</h3>
-                <ul className="mt-2 space-y-1">
-                  {event.rsvps
-                    .filter((r) => r.status === 'DECLINED')
-                    .map((rsvp) => {
-                      const respondedDate = rsvp.respondedAt ? new Date(rsvp.respondedAt) : null;
-                      const daysAgo = respondedDate
-                        ? Math.floor(
-                            (now.getTime() - respondedDate.getTime()) / (1000 * 60 * 60 * 24),
-                          )
-                        : null;
-                      const timeAgoStr =
-                        daysAgo !== null
-                          ? daysAgo === 0
-                            ? 'today'
-                            : daysAgo === 1
-                              ? '1 day ago'
-                              : `${daysAgo} days ago`
-                          : null;
-
-                      return (
-                        <li
-                          key={rsvp.id}
-                          className="flex flex-wrap items-center gap-2 text-stone-700"
-                        >
-                          <span className="text-red-500">✗</span>
-                          <span>{rsvp.user.household?.name || rsvp.user.name}</span>
-                          {rsvp.dietaryNotes && (
-                            <span className="text-sm text-amber-600">🥗 {rsvp.dietaryNotes}</span>
-                          )}
-                          {timeAgoStr && (
-                            <span className="text-xs text-stone-400">({timeAgoStr})</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                </ul>
-              </div>
-            )}
-          </div>
+          <DietaryAttendeeFilter
+            confirmedAttendees={event.rsvps.filter((r) => r.status === 'CONFIRMED')}
+            declinedAttendees={event.rsvps.filter((r) => r.status === 'DECLINED')}
+          />
         )}
 
         {session?.user?.id && (
@@ -499,6 +370,7 @@ export default async function EventDetailPage({ params }: Props) {
                 photo={photo}
                 eventName={event.name}
                 userId={session?.user?.id}
+                userRole={userRole}
               />
             ))}
           </div>

@@ -39,6 +39,8 @@ enum InvitationStatus {
   PENDING
   SENT
   DELIVERED
+  USED
+  EXPIRED
 }
 
 enum RSVPStatus {
@@ -46,6 +48,7 @@ enum RSVPStatus {
   PENDING
   CONFIRMED
   DECLINED
+  WAITLISTED
 }
 
 enum PotluckCategory {
@@ -102,6 +105,7 @@ model User {
   role                   Role                   @default(ADMIN_ADULT)
   householdId            String?
   communicationPreference CommunicationPreference @default(EMAIL)
+  onboardingCompletedAt  DateTime?
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
   deletedAt              DateTime?
@@ -116,6 +120,7 @@ model User {
   receivedCommunications CommunicationLog[] @relation("ReceivedByUser")
   photoReactions     PhotoReaction[]
   adminAuditLogs     AdminAuditLog[]
+  eventAdmins        EventAdmin[]
 
   @@index([householdId])
   @@index([role])
@@ -162,6 +167,7 @@ model Event {
   communications     CommunicationLog[]
   photos             Photo[]
   adminAuditLogs     AdminAuditLog[]
+  admins             EventAdmin[]
 
   @@index([status])
   @@index([date])
@@ -176,6 +182,9 @@ model Invitation {
   status          InvitationStatus @default(PENDING)
   invitedByUserId String
   createdAt       DateTime         @default(now())
+  token           String?          @unique
+  expiresAt       DateTime?
+  sentAt          DateTime?
 
   event       Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user        User?      @relation("UserInvitations", fields: [userId], references: [id])
@@ -189,18 +198,20 @@ model Invitation {
   @@index([householdId])
   @@index([invitedByUserId])
   @@index([status])
+  @@index([token])
 }
 
 model RSVP {
-  id            String     @id @default(cuid())
-  eventId       String
-  userId        String
-  householdId   String
-  status        RSVPStatus @default(INVITED)
-  headcount     Int        @default(1)
-  dietaryNotes  String?
-  respondedAt   DateTime?
-  modifiedAt    DateTime   @updatedAt
+  id               String     @id @default(cuid())
+  eventId          String
+  userId           String
+  householdId      String
+  status           RSVPStatus @default(INVITED)
+  headcount        Int        @default(1)
+  dietaryNotes    String?
+  respondedAt      DateTime?
+  modifiedAt       DateTime   @updatedAt
+  waitlistPosition Int?
 
   event          Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -211,6 +222,7 @@ model RSVP {
   @@index([userId])
   @@index([householdId])
   @@index([status])
+  @@index([waitlistPosition])
 }
 
 model PotluckSlot {
@@ -270,7 +282,7 @@ model CommunicationLog {
 }
 
 model Photo {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   eventId          String
   uploadedByUserId String
   householdId      String
@@ -278,7 +290,8 @@ model Photo {
   caption          String?
   url              String
   thumbnailUrl     String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
 
   event      Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   uploadedBy User           @relation(fields: [uploadedByUserId], references: [id], onDelete: Cascade)
@@ -289,6 +302,7 @@ model Photo {
   @@index([uploadedByUserId])
   @@index([householdId])
   @@index([photoPrismId])
+  @@index([deletedAt])
 }
 
 model PhotoReaction {
@@ -322,4 +336,25 @@ model AdminAuditLog {
   @@index([eventId])
   @@index([createdAt])
   @@index([action])
+}
+
+enum AdminPermission {
+  OWNER
+  COADMIN
+  INVITER
+}
+
+model EventAdmin {
+  id        String         @id @default(cuid())
+  eventId   String
+  userId    String
+  role      AdminPermission @default(COADMIN)
+  createdAt DateTime       @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
 }

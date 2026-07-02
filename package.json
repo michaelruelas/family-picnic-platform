@@ -23,7 +23,9 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "postinstall": "prisma generate",
-    "prepare": "husky"
+    "prepare": "husky",
+    "release:dry": "release-please --dry-run",
+    "release:full": "release-please"
   },
   "prisma": {
     "seed": "bun run prisma/seed.ts"
@@ -39,8 +41,11 @@
     ]
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1078.0",
+    "@aws-sdk/s3-request-presigner": "^3.1078.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@sentry/node": "^10.63.0",
     "@t3-oss/env-nextjs": "^0.13.0",
     "@trpc/client": "^11.18.0",
     "@trpc/next": "^11.18.0",
@@ -49,7 +54,10 @@
     "dotenv": "^17.4.2",
     "next": "^16.2.9",
     "next-auth": "^4.24.14",
+    "papaparse": "^5.5.4",
     "pg": "^8.22.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "superjson": "^2.2.2",
@@ -57,6 +65,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@commitlint/config-conventional": "^21.2.0",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
     "@next/eslint-plugin-next": "^16.2.9",
@@ -64,10 +73,12 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^26.0.1",
+    "@types/papaparse": "^5.5.2",
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "commitlint": "^21.2.0",
     "eslint": "^10.6.0",
     "eslint-config-next": "^16.2.9",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -78,6 +89,7 @@
     "prettier": "^3.9.4",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "prisma": "^7.8.0",
+    "release-please": "^17.10.1",
     "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.62.1",
