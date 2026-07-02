@@ -577,6 +577,11 @@ No nested route groups; each page is a standalone route directory with its own `
 
 ## 9. API Route Protection
 
+---
+
+_Document Version: 1.0_  
+_Last Updated: 2026-07-02_
+
 ```typescript
 // Middleware stack order
 const middlewareStack = [
