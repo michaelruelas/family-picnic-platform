@@ -2,7 +2,7 @@
 
 ## Status
 
-Missing — slot creation only happens via DB seed; no admin UI or tRPC.
+Done — Admin potluck slot management UI implemented in `/admin/events/[id]/edit` page with SlotForm and SlotGrid components. API routes created for create/update/delete operations.
 
 ## Description
 

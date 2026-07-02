@@ -11,6 +11,7 @@ All notable changes to this project are documented here.
 - **Admin Event CRUD UI** — Implemented `/admin/events` list page, `/admin/events/new` create page, `/admin/events/[id]/edit` page with `EventForm` and `EventStatusBadge` components. Includes API routes for create, update, delete, publish, close, and cancel with admin role protection and EventStatus transition enforcement.
 - **Household Dashboard** — Implemented `/household` page with household member list, cumulative RSVP headcount aggregation across events (SPEC §8.1), and dependent management form. Added `getCumulativeHeadcount` procedure to household router.
 - **Household Tree Visualization** — Implemented `/household/tree` page with interactive tree visualization showing nested household hierarchy. Uses recursive `FamilyTree` component with expand/collapse, member details view, color-coded member types (adults/children/dependents), and mobile-friendly layout.
+- **Admin Potluck Slot Management** — Implemented potluck slot management UI in `/admin/events/[id]/edit` page with `SlotForm` and `SlotGrid` components. Admins can add, edit, and delete potluck slots with category, name, slot type (LIMITED/UNLIMITED), and max signups. API routes: `POST /api/admin/potluck-slots`, `PATCH/DELETE /api/admin/potluck-slots/[id]`. Slot deletion cascades to signups via Prisma `onDelete: Cascade`.
 
 ### Fixed
 

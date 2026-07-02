@@ -4,6 +4,7 @@ import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import EventForm from '~/components/event/EventForm';
 import EventStatusBadge from '~/components/event/EventStatusBadge';
+import SlotGrid from '~/components/potluck/SlotGrid';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,21 @@ type PageProps = { params: Promise<{ id: string }> };
 async function getEvent(id: string) {
   return prisma.event.findUnique({
     where: { id },
+    include: {
+      potluckSlots: {
+        orderBy: { category: 'asc' },
+        include: {
+          signups: {
+            select: {
+              id: true,
+              dishName: true,
+              servings: true,
+              dietaryLabels: true,
+            },
+          },
+        },
+      },
+    },
   });
 }
 
@@ -57,6 +73,14 @@ export default async function EditEventPage({ params }: PageProps) {
       </div>
 
       <EventForm initialData={initialData} mode="edit" />
+
+      <div className="mt-12">
+        <h2 className="text-2xl font-bold text-stone-900">Potluck Slots</h2>
+        <p className="mt-2 text-stone-600">Manage what dishes attendees can sign up to bring</p>
+        <div className="mt-6">
+          <SlotGrid eventId={event.id} slots={event.potluckSlots} />
+        </div>
+      </div>
     </main>
   );
 }
