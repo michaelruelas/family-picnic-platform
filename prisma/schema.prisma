@@ -39,6 +39,8 @@ enum InvitationStatus {
   PENDING
   SENT
   DELIVERED
+  USED
+  EXPIRED
 }
 
 enum RSVPStatus {
@@ -176,6 +178,8 @@ model Invitation {
   status          InvitationStatus @default(PENDING)
   invitedByUserId String
   createdAt       DateTime         @default(now())
+  token           String?          @unique
+  expiresAt       DateTime?
 
   event       Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user        User?      @relation("UserInvitations", fields: [userId], references: [id])
@@ -189,6 +193,7 @@ model Invitation {
   @@index([householdId])
   @@index([invitedByUserId])
   @@index([status])
+  @@index([token])
 }
 
 model RSVP {

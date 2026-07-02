@@ -13,11 +13,13 @@ describe('Prisma schema integrity vs SPEC', () => {
     expect(match![1]!.trim()).toContain('ADMIN');
   });
 
-  it('defines InvitationStatus as PENDING, SENT, DELIVERED', () => {
+  it('defines InvitationStatus as PENDING, SENT, DELIVERED, USED, EXPIRED', () => {
     const match = schema.match(/enum InvitationStatus \{([^}]+)\}/);
     expect(match![1]!.trim()).toContain('PENDING');
     expect(match![1]!.trim()).toContain('SENT');
     expect(match![1]!.trim()).toContain('DELIVERED');
+    expect(match![1]!.trim()).toContain('USED');
+    expect(match![1]!.trim()).toContain('EXPIRED');
   });
 
   it('defines CommunicationStatus with UNSUBSCRIBED', () => {

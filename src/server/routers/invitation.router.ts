@@ -2,6 +2,7 @@ import { router, adminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { InvitationStatus } from '~/lib/generated/enums';
+import { generateInvitationToken, getInvitationExpiry } from '~/lib/invitation-token';
 
 export const invitationRouter = router({
   send: adminProcedure
@@ -16,6 +17,8 @@ export const invitationRouter = router({
       if (!input.householdId && !input.userId) {
         throw new Error('Either householdId or userId must be provided');
       }
+      const token = generateInvitationToken();
+      const expiresAt = getInvitationExpiry(30);
       return prisma.invitation.create({
         data: {
           eventId: input.eventId,
@@ -23,6 +26,8 @@ export const invitationRouter = router({
           userId: input.userId,
           status: InvitationStatus.PENDING,
           invitedByUserId: ctx.session.user.id,
+          token,
+          expiresAt,
         },
       });
     }),
@@ -75,6 +80,44 @@ export const invitationRouter = router({
           event: true,
         },
         orderBy: { createdAt: 'desc' },
+      });
+    }),
+
+  consume: adminProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ input }) => {
+      const invitation = await prisma.invitation.findUnique({
+        where: { token: input.token },
+      });
+
+      if (!invitation) {
+        throw new Error('Invitation not found');
+      }
+
+      if (invitation.status === InvitationStatus.USED) {
+        throw new Error('This invitation has already been used');
+      }
+
+      if (invitation.status === InvitationStatus.EXPIRED) {
+        throw new Error('This invitation has expired');
+      }
+
+      if (invitation.expiresAt && new Date(invitation.expiresAt) < new Date()) {
+        await prisma.invitation.update({
+          where: { id: invitation.id },
+          data: { status: InvitationStatus.EXPIRED },
+        });
+        throw new Error('This invitation has expired');
+      }
+
+      return prisma.invitation.update({
+        where: { id: invitation.id },
+        data: { status: InvitationStatus.USED },
+        include: {
+          event: true,
+          household: true,
+          user: true,
+        },
       });
     }),
 });

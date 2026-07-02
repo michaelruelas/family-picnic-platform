@@ -2,8 +2,7 @@
 
 ## Status
 
-Missing — SPEC §8.5 calls out "Invitation link reuse" as a concrete
-edge case. Today `Invitation` has no token field and no enforcement.
+Done — SPEC §8.5 single-use token enforcement implemented.
 
 ## Description
 

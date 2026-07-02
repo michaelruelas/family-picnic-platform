@@ -1,7 +1,7 @@
 import { router, protectedProcedure, adminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus } from '~/lib/generated/enums';
+import { RSVPStatus, InvitationStatus } from '~/lib/generated/enums';
 
 export const rsvpRouter = router({
   create: protectedProcedure
@@ -37,7 +37,7 @@ export const rsvpRouter = router({
         throw new Error('User not found');
       }
 
-      return prisma.rSVP.create({
+      const rsvp = await prisma.rSVP.create({
         data: {
           eventId: input.eventId,
           userId: ctx.session.user.id,
@@ -48,6 +48,20 @@ export const rsvpRouter = router({
           respondedAt: new Date(),
         },
       });
+
+      await prisma.invitation.updateMany({
+        where: {
+          eventId: input.eventId,
+          OR: [
+            { userId: ctx.session.user.id },
+            { householdId: user.householdId || user.id },
+          ],
+          status: InvitationStatus.PENDING,
+        },
+        data: { status: InvitationStatus.USED },
+      });
+
+      return rsvp;
     }),
 
   update: protectedProcedure
@@ -127,7 +141,7 @@ export const rsvpRouter = router({
         throw new Error('User not found');
       }
 
-      return prisma.rSVP.upsert({
+      const rsvp = await prisma.rSVP.upsert({
         where: {
           eventId_userId: {
             eventId: input.eventId,
@@ -150,6 +164,20 @@ export const rsvpRouter = router({
           respondedAt: new Date(),
         },
       });
+
+      await prisma.invitation.updateMany({
+        where: {
+          eventId: input.eventId,
+          OR: [
+            { userId: ctx.session.user.id },
+            { householdId: user.householdId || user.id },
+          ],
+          status: InvitationStatus.PENDING,
+        },
+        data: { status: InvitationStatus.USED },
+      });
+
+      return rsvp;
     }),
 
   decline: protectedProcedure
