@@ -4,7 +4,9 @@
 
 Done — removed duplicate `GET`/`POST` handler exports from `src/lib/auth.ts`.
 Active handler remains in `src/app/api/auth/[...nextauth]/route.ts`. Added
-`tests/auth/sign-in.test.ts` covering the signIn callback.
+`tests/auth/sign-in.test.ts` covering the signIn callback. Auth test file
+`src/lib/__tests__/auth.test.ts` updated to test current exports
+(authOptions, getServerSession) instead of removed GET/POST handlers.
 
 ## Description
 
