@@ -3,12 +3,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { RSVPStatus } from '~/lib/generated/enums';
+import { z } from 'zod';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
   }
 
   try {
@@ -16,7 +17,31 @@ export async function POST(request: Request) {
     const { eventId, action, headcount, dietaryNotes } = body;
 
     if (!eventId || !action) {
-      return NextResponse.json({ error: 'eventId and action are required' }, { status: 400 });
+      return NextResponse.json({ error: 'eventId and action are required', code: 'BAD_REQUEST' }, { status: 400 });
+    }
+
+    if (action === 'confirm') {
+      const confirmResult = z.object({
+        eventId: z.string().min(1),
+        headcount: z.number().int().min(1).default(1),
+        dietaryNotes: z.string().optional(),
+      }).safeParse({ eventId, headcount, dietaryNotes });
+
+      if (!confirmResult.success) {
+        const errors = confirmResult.error.issues.map((i) => i.message);
+        return NextResponse.json({ error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' }, { status: 400 });
+      }
+    } else if (action === 'decline') {
+      const declineResult = z.object({
+        eventId: z.string().min(1),
+      }).safeParse({ eventId });
+
+      if (!declineResult.success) {
+        const errors = declineResult.error.issues.map((i) => i.message);
+        return NextResponse.json({ error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' }, { status: 400 });
+      }
+    } else {
+      return NextResponse.json({ error: 'Invalid action', code: 'BAD_REQUEST' }, { status: 400 });
     }
 
     const event = await prisma.event.findUnique({
@@ -24,15 +49,15 @@ export async function POST(request: Request) {
     });
 
     if (!event) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Event not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
     if (event.status !== 'PUBLISHED') {
-      return NextResponse.json({ error: 'Event is not accepting RSVPs' }, { status: 400 });
+      return NextResponse.json({ error: 'Event is not accepting RSVPs', code: 'BAD_REQUEST' }, { status: 400 });
     }
 
     if (event.rsvpDeadline && new Date(event.rsvpDeadline) < new Date()) {
-      return NextResponse.json({ error: 'RSVP deadline has passed' }, { status: 400 });
+      return NextResponse.json({ error: 'RSVP deadline has passed', code: 'BAD_REQUEST' }, { status: 400 });
     }
 
     if (action === 'confirm' || action === 'decline') {
@@ -41,7 +66,7 @@ export async function POST(request: Request) {
       });
 
       if (!user) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        return NextResponse.json({ error: 'User not found', code: 'NOT_FOUND' }, { status: 404 });
       }
 
       if (action === 'confirm' && event.maxCapacity) {
@@ -63,8 +88,9 @@ export async function POST(request: Request) {
                 spotsRemaining <= 0
                   ? 'Event is full'
                   : `Only ${spotsRemaining} spot${spotsRemaining !== 1 ? 's' : ''} remaining`,
+              code: 'CONFLICT',
             },
-            { status: 400 },
+            { status: 409 },
           );
         }
       }
@@ -155,9 +181,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, status: rsvpData.status });
     }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid action', code: 'BAD_REQUEST' }, { status: 400 });
   } catch (error) {
     console.error('RSVP error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
   }
 }

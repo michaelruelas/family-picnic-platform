@@ -3,40 +3,46 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { CommunicationPreference } from '~/lib/generated/client';
+import { z } from 'zod';
 
 export async function PATCH(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const body = await request.json();
     const { name, communicationPreference } = body;
+
+    const updateResult = z.object({
+      name: z.string().trim().min(1, 'Name is required').optional(),
+      communicationPreference: z.enum(['EMAIL', 'SMS', 'BOTH', 'NONE'] as const).optional(),
+    }).safeParse({ name, communicationPreference });
+
+    if (!updateResult.success) {
+      const errors = updateResult.error.issues.map((i) => i.message);
+      return NextResponse.json({ error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' }, { status: 400 });
+    }
+
+    const { name: validName, communicationPreference: validPref } = updateResult.data;
 
     const updateData: {
       name?: string;
       communicationPreference?: CommunicationPreference;
     } = {};
 
-    if (name !== undefined) {
-      if (typeof name !== 'string' || name.trim().length === 0) {
-        return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-      }
-      updateData.name = name.trim();
+    if (validName !== undefined) {
+      updateData.name = validName;
     }
 
-    if (communicationPreference !== undefined) {
-      const validPreferences: CommunicationPreference[] = ['EMAIL', 'SMS', 'BOTH', 'NONE'];
-      if (!validPreferences.includes(communicationPreference)) {
-        return NextResponse.json({ error: 'Invalid communication preference' }, { status: 400 });
-      }
-      updateData.communicationPreference = communicationPreference;
+    if (validPref !== undefined) {
+      updateData.communicationPreference = validPref;
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+      return NextResponse.json({ error: 'No valid fields to update', code: 'BAD_REQUEST' }, { status: 400 });
     }
 
     const user = await prisma.user.update({
@@ -59,7 +65,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json(user);
   } catch (error) {
     console.error('Profile update error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
   }
 }
 
@@ -68,7 +74,7 @@ export async function GET() {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -88,12 +94,12 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'User not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
     return NextResponse.json(user);
   } catch (error) {
     console.error('Profile fetch error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
   }
 }

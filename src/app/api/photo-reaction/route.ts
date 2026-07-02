@@ -2,26 +2,29 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
+import { z } from 'zod';
 
-const VALID_REACTIONS = ['❤️', '👍', '👏', '🎉', '😂'];
+const VALID_REACTIONS = ['❤️', '👍', '👏', '🎉', '😂'] as const;
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
   }
 
   try {
     const body = await request.json();
     const { photoId, reaction } = body;
 
-    if (!photoId || !reaction) {
-      return NextResponse.json({ error: 'photoId and reaction are required' }, { status: 400 });
-    }
+    const reactionResult = z.object({
+      photoId: z.string().min(1, 'Photo ID is required'),
+      reaction: z.enum(VALID_REACTIONS),
+    }).safeParse({ photoId, reaction });
 
-    if (!VALID_REACTIONS.includes(reaction)) {
-      return NextResponse.json({ error: 'Invalid reaction emoji' }, { status: 400 });
+    if (!reactionResult.success) {
+      const errors = reactionResult.error.issues.map((i) => i.message);
+      return NextResponse.json({ error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' }, { status: 400 });
     }
 
     const photo = await prisma.photo.findUnique({
@@ -29,7 +32,7 @@ export async function POST(request: Request) {
     });
 
     if (!photo) {
-      return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Photo not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
     const existingReaction = await prisma.photoReaction.findUnique({
@@ -59,6 +62,6 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error('Photo reaction error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
   }
 }

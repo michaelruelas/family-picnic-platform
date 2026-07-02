@@ -2,8 +2,8 @@
 
 ## Status
 
-Partial — six API routes exist with hand-written Zod-less validation and
-inline `prisma` calls in `src/app/api/*`. Fragile and inconsistent.
+Done — shared Zod schemas created in `src/lib/schemas/`, all five API routes
+updated to use Zod validation with consistent error codes.
 
 ## Description
 

@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
+import { z } from 'zod';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
   }
 
   try {
@@ -15,7 +16,32 @@ export async function POST(request: Request) {
     const { slotId, action, dishName, servings, dietaryLabels } = body;
 
     if (!slotId || !action) {
-      return NextResponse.json({ error: 'slotId and action are required' }, { status: 400 });
+      return NextResponse.json({ error: 'slotId and action are required', code: 'BAD_REQUEST' }, { status: 400 });
+    }
+
+    if (action === 'signup') {
+      const signupResult = z.object({
+        slotId: z.string().min(1),
+        dishName: z.string().min(1, 'Dish name is required').trim().min(1),
+        servings: z.number().int().min(1).default(1),
+        dietaryLabels: z.array(z.string()).default([]),
+      }).safeParse({ slotId, dishName, servings, dietaryLabels });
+
+      if (!signupResult.success) {
+        const errors = signupResult.error.issues.map((i) => i.message);
+        return NextResponse.json({ error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' }, { status: 400 });
+      }
+    } else if (action === 'cancel') {
+      const cancelResult = z.object({
+        slotId: z.string().min(1),
+      }).safeParse({ slotId });
+
+      if (!cancelResult.success) {
+        const errors = cancelResult.error.issues.map((i) => i.message);
+        return NextResponse.json({ error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' }, { status: 400 });
+      }
+    } else {
+      return NextResponse.json({ error: 'Invalid action', code: 'BAD_REQUEST' }, { status: 400 });
     }
 
     const slot = await prisma.potluckSlot.findUnique({
@@ -24,12 +50,12 @@ export async function POST(request: Request) {
     });
 
     if (!slot) {
-      return NextResponse.json({ error: 'Slot not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Slot not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
     if (slot.event.status !== 'PUBLISHED') {
       return NextResponse.json(
-        { error: 'Event is not accepting potluck signups' },
+        { error: 'Event is not accepting potluck signups', code: 'BAD_REQUEST' },
         { status: 400 },
       );
     }
@@ -39,7 +65,7 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'User not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
     const rsvp = await prisma.rSVP.findUnique({
@@ -53,14 +79,14 @@ export async function POST(request: Request) {
 
     if (!rsvp || rsvp.status !== 'CONFIRMED') {
       return NextResponse.json(
-        { error: 'You must have a confirmed RSVP to sign up for potluck' },
+        { error: 'You must have a confirmed RSVP to sign up for potluck', code: 'BAD_REQUEST' },
         { status: 400 },
       );
     }
 
     if (action === 'signup') {
       if (!dishName || dishName.trim() === '') {
-        return NextResponse.json({ error: 'Dish name is required' }, { status: 400 });
+        return NextResponse.json({ error: 'Dish name is required', code: 'BAD_REQUEST' }, { status: 400 });
       }
 
       const existingSignup = await prisma.potluckSignup.findUnique({
@@ -148,7 +174,7 @@ export async function POST(request: Request) {
       });
 
       if (!existingSignup) {
-        return NextResponse.json({ error: 'Signup not found' }, { status: 404 });
+        return NextResponse.json({ error: 'Signup not found', code: 'NOT_FOUND' }, { status: 404 });
       }
 
       await prisma.potluckSignup.delete({
@@ -163,12 +189,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, action: 'cancelled' });
     }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid action', code: 'BAD_REQUEST' }, { status: 400 });
   } catch (error) {
     console.error('Potluck signup error:', error);
     if (error instanceof Error && error.message === 'Slot is full') {
-      return NextResponse.json({ error: 'This slot is full' }, { status: 409 });
+      return NextResponse.json({ error: 'This slot is full', code: 'CONFLICT' }, { status: 409 });
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' }, { status: 500 });
   }
 }
