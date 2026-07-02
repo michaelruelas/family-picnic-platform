@@ -2,8 +2,7 @@
 
 ## Status
 
-Partial — many pages have empty states (`No RSVPs Yet`, `No Events Yet`),
-but inconsistent loading skeletons and no global error boundary.
+Done — `/events/loading.tsx` and `/my-events/loading.tsx` now provide loading skeletons. Root `error.tsx` already exists with friendly error UI.
 
 ## Description
 
