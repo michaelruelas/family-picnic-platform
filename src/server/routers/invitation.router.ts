@@ -1,8 +1,15 @@
 import { router, auditedAdminProcedure } from '~/lib/trpc';
+import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { InvitationStatus, CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
 import { generateInvitationToken, getInvitationExpiry } from '~/lib/invitation-token';
+import {
+  checkAdminBroadcastRateLimit,
+  checkRecipientGroupRateLimit,
+  checkAllRecipientRateLimits,
+  rateLimitError,
+} from '~/lib/rate-limit';
 
 export const invitationRouter = router({
   send: auditedAdminProcedure
@@ -18,6 +25,22 @@ export const invitationRouter = router({
       if (!input.householdId && !input.userId) {
         throw new Error('Either householdId or userId must be provided');
       }
+
+      const adminBroadcastResult = await checkAdminBroadcastRateLimit(ctx.session.user.id);
+      if (!adminBroadcastResult.allowed) {
+        rateLimitError(adminBroadcastResult, 'invitations per hour');
+      }
+
+      const recipientGroupResult = await checkRecipientGroupRateLimit(
+        ctx.session.user.id,
+        input.eventId,
+        'HOUSEHOLD',
+        input.householdId ? [input.householdId] : undefined,
+      );
+      if (!recipientGroupResult.allowed) {
+        rateLimitError(recipientGroupResult, 'invitations to same household');
+      }
+
       const token = generateInvitationToken();
       const expiresAt = getInvitationExpiry(30);
       const invitation = await prisma.invitation.create({
@@ -41,6 +64,15 @@ export const invitationRouter = router({
           select: { id: true },
         });
         recipientUserIds = users.map((u) => u.id);
+      }
+
+      const recipientLimitResults = await checkAllRecipientRateLimits(recipientUserIds);
+      const blockedRecipients = recipientLimitResults.filter((r) => !r.allowed);
+      if (blockedRecipients.length > 0) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: `${blockedRecipients.length} recipient(s) have exceeded the daily message limit and cannot receive invitations today.`,
+        });
       }
 
       await Promise.all(

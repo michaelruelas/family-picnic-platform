@@ -1,9 +1,21 @@
 import { router, auditedAdminProcedure, protectedProcedure } from '~/lib/trpc';
+import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
+import {
+  checkAdminBroadcastRateLimit,
+  checkRecipientGroupRateLimit,
+  checkAllRecipientRateLimits,
+  getRateLimitStatus,
+  rateLimitError,
+} from '~/lib/rate-limit';
 
 export const communicationRouter = router({
+  getRateLimitStatus: auditedAdminProcedure.query(async ({ ctx }) => {
+    return getRateLimitStatus(ctx.session.user.id);
+  }),
+
   sendBroadcast: auditedAdminProcedure
     .input(
       z.object({
@@ -15,6 +27,21 @@ export const communicationRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const adminBroadcastResult = await checkAdminBroadcastRateLimit(ctx.session.user.id);
+      if (!adminBroadcastResult.allowed) {
+        rateLimitError(adminBroadcastResult, 'broadcasts per hour');
+      }
+
+      const recipientGroupResult = await checkRecipientGroupRateLimit(
+        ctx.session.user.id,
+        input.eventId,
+        input.recipientType,
+        input.recipientIds,
+      );
+      if (!recipientGroupResult.allowed) {
+        rateLimitError(recipientGroupResult, 'broadcasts to same recipient group');
+      }
+
       let recipientUserIds: string[] = [];
 
       switch (input.recipientType) {
@@ -55,6 +82,24 @@ export const communicationRouter = router({
           if (!input.recipientIds) throw new Error('recipientIds required for INDIVIDUAL type');
           recipientUserIds = input.recipientIds;
           break;
+      }
+
+      const recipientLimitResults = await checkAllRecipientRateLimits(recipientUserIds);
+      const blockedRecipients = recipientLimitResults.filter((r) => !r.allowed);
+      if (blockedRecipients.length > 0) {
+        const blockedCount = blockedRecipients.length;
+        const totalCount = recipientUserIds.length;
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: `${blockedCount} of ${totalCount} recipients have exceeded the daily message limit (2 messages/day). These recipients cannot receive messages today.`,
+          cause: {
+            type: 'recipient_rate_limit',
+            blockedRecipients: blockedRecipients.map((r) => ({
+              userId: r.userId,
+              remaining: r.remaining,
+            })),
+          },
+        });
       }
 
       const logs = await Promise.all(

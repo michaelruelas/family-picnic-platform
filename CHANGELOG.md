@@ -6,6 +6,8 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- **Rate Limiting for Broadcasts and Invitations** — Implemented per-admin, per-recipient-group, and per-recipient rate limits to prevent spam. Created `src/lib/rate-limit.ts` with `checkAdminBroadcastRateLimit` (5/hour), `checkRecipientGroupRateLimit` (1/30min), `checkAllRecipientRateLimits` (2/day), and `getRateLimitStatus` functions. Added `getRateLimitStatus` query to communication router for admin UI. Updated `sendBroadcast` mutation to enforce all three limits with `TOO_MANY_REQUESTS` errors. Updated `invitation.send` mutation to enforce rate limits. Daily message limit rejects with clear error message showing which recipients are blocked. Ticket 25 Done.
+
 - **Type Safety Hardening** — Replaced loose `string` types with Prisma-generated enums in components: RSVPStatus in RSVPForm, SlotType in PotluckSignupForm, Relationship in ProfileClient Dependent interface, CommunicationPreference in ProfileClient user props, and RELATIONSHIP_LABELS record. tsconfig already had `noUncheckedIndexedAccess: true`. Build passes with strict TypeScript checks. PhotoReactionButton correctly uses string type for emoji reactions per schema comment "reactions are stored as emoji strings". Ticket 34 Done.
 
 - **Loading Skeletons** — Created `/events/loading.tsx` and `/my-events/loading.tsx` with pulse-animated skeleton placeholders matching the layout of each page (event cards, RSVP cards, sections). Root `error.tsx` already provides friendly error UI with "Try Again" and "Go Home" buttons. Ticket 33 Done.
