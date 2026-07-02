@@ -2,8 +2,7 @@
 
 ## Status
 
-Single 0.1.0 entry — CHANGELOG.md shows one release. As work scales we
-need per-PR / per-week entries and conventional-commit discipline.
+Done — Conventional commits enforced via commitlint + husky, release-please configured for changelog auto-generation.
 
 ## Description
 
@@ -27,6 +26,6 @@ Implement:
 ## Files
 
 - `.husky/commit-msg` (commitlint hook)
-- `commitlint.config.js` (create)
-- `.releaserc.json` (release-please config) — optional
-- `package.json` (add `release:dry` script)
+- `commitlint.config.cjs` (create)
+- `release-please-config.json` (create)
+- `package.json` (add `release:dry` and `release:full` scripts)

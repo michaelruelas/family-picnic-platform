@@ -1,0 +1,25 @@
+{
+  "packages": {
+    ".": {
+      "changelog-path": "CHANGELOG.md",
+      "version-file": "package.json",
+      "release-type": "node",
+      "draft": false,
+      "prerelease": false,
+      "includeComponentInTag": false,
+      "tagSeparator": "@",
+      "extraFiles": []
+    }
+  },
+  "changelogSections": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "perf", "section": "Performance" },
+    { "type": "refactor", "section": "Refactoring" },
+    { "type": "docs", "section": "Documentation" },
+    { "type": "test", "section": "Testing" },
+    { "type": "build", "section": "Build System" },
+    { "type": "ci", "section": "CI/CD" },
+    { "type": "chore", "section": "Chores" }
+  ]
+}

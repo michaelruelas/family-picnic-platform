@@ -20,6 +20,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['src/lib/generated/**', '.next/**', 'node_modules/**'],
+    ignores: ['src/lib/generated/**', '.next/**', 'node_modules/**', '*.config.cjs', 'commitlint.config.cjs', 'prisma.config.ts'],
   },
 );
