@@ -7,6 +7,7 @@ All notable changes to this project are documented here.
 ### Added
 
 - **tRPC router structure** — Implemented all 10 routers from SPEC §5 (`auth`, `household`, `user`, `event`, `invitation`, `rsvp`, `potluck`, `photo`, `communication`, `admin`) with procedures for all CRUD operations and business logic. The `appRouter` is fully wired up and type-safe.
+- **Architecture Decision Records** — Created `docs/decisions/` with 10 ADRs resolving SPEC §10 open questions (Q1, Q3, Q4, Q6, Q7, Q8, Q9, Q11, Q12, Q15): account recovery, household naming, household merging, headcount minimum, waitlist, RSVP closing, duplicate dishes, EXIF stripping, storage quotas, and communication opt-in defaults.
 
 ## [0.1.0] — 2026-07-01
 

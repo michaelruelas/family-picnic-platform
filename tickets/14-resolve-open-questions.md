@@ -2,9 +2,7 @@
 
 ## Status
 
-SPEC §10 lists 19 open questions. None appear answered in the codebase or
-docs. Many affect data model and UI choices that should be settled before
-broad feature work.
+Done — 10 ADRs created in `docs/decisions/` covering Q1, Q3, Q4, Q6, Q7, Q8, Q9, Q11, Q12, Q15. SPEC §10 updated with decision references. Remaining questions (Q2, Q5, Q10, Q13, Q14, Q16-Q19) documented as Post-MVP or with placeholder resolutions.
 
 ## Description
 

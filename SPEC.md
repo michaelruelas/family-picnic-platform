@@ -692,45 +692,71 @@ src/
 
 ## 10. Open Questions
 
+### Resolved Decisions
+
+> See [docs/decisions/](docs/decisions/) for Architecture Decision Records.
+
+| ID | Question | Decision |
+| --- | -------- | -------- |
+| Q1 | Account recovery | Google OAuth only; re-auth link surfaced |
+| Q2 | Dependent accounts | Magic link to household (see ticket 30) |
+| Q3 | Household naming | Any adult can propose; second adult must confirm |
+| Q4 | Household merging | Admin-only with audit log entry |
+| Q5 | Child aging out | Dependents become separate households at 18 |
+| Q6 | Headcount minimum | 1 (self only) |
+| Q7 | Waitlist | Yes, auto-promote on cancellation |
+| Q8 | RSVP closing | Auto-close at deadline; admin can extend 24h once |
+| Q9 | Duplicate dishes | Allowed; conflict warning shown |
+| Q10 | Serving estimation | Not implemented in MVP |
+| Q11 | EXIF stripping | Strip GPS, serial numbers, timestamps; keep dimensions |
+| Q12 | Storage quotas | Soft cap 500MB/household; hard cap 5GB/event |
+| Q13 | Photo deletion | Uploader or admin can delete |
+| Q14 | Message templating | Not implemented in MVP |
+| Q15 | Opt-in defaults | EMAIL opt-in; SMS requires explicit consent |
+| Q16 | Rate limiting | Not implemented in MVP (see ticket 25) |
+| Q17 | PhotoPrism sync | Batch sync (Post-MVP) |
+| Q18 | Backup strategy | Daily pg_dump; weekly full backup |
+| Q19 | Monitoring | Basic alerts for error rate and latency |
+
 ### Authentication
 
-1. **Account recovery**: What happens when a user forgets Google account? Should we support email/password fallback?
-2. **Dependent accounts**: Should dependents have limited login capability (e.g., magic link to household)?
+1. **Account recovery**: [Resolved: see ADR-001](docs/decisions/ADR-001-account-recovery.md)
+2. **Dependent accounts**: [Resolved: see ADR-030](docs/decisions/) (magic link approach)
 
 ### Household Model
 
-3. **Household naming**: Who can rename a household? What if family members disagree on name?
-4. **Household merging**: Should we support merging two households if families combine?
-5. **Child aging out**: At what point should dependents become separate households?
+3. **Household naming**: [Resolved: see ADR-002](docs/decisions/ADR-002-household-naming.md)
+4. **Household merging**: [Resolved: see ADR-003](docs/decisions/ADR-003-household-merging.md)
+5. **Child aging out**: At 18, dependents are prompted to create own household
 
 ### RSVP System
 
-6. **Headcount validation**: Is there a minimum headcount (e.g., 1 for self)?
-7. **Waitlist**: When max capacity is reached, should we offer a waitlist?
-8. **RSVP closing**: Should we auto-close RSVPs after deadline or allow admin extension?
+6. **Headcount validation**: [Resolved: see ADR-004](docs/decisions/ADR-004-headcount-minimum.md)
+7. **Waitlist**: [Resolved: see ADR-005](docs/decisions/ADR-005-rsvp-waitlist.md)
+8. **RSVP closing**: [Resolved: see ADR-006](docs/decisions/ADR-006-rsvp-closing.md)
 
 ### Potluck Management
 
-9. **Slot conflicts**: Should we allow duplicate dishes (e.g., two families bring potato salad)?
-10. **Serving estimation**: Auto-calculate suggested servings based on headcount?
+9. **Slot conflicts**: [Resolved: see ADR-007](docs/decisions/ADR-007-duplicate-dishes.md)
+10. **Serving estimation**: Not in MVP scope
 
 ### Photos
 
-11. **EXIF stripping**: Confirm exact fields to remove (GPS is required, but what about other metadata)?
-12. **Storage limits**: Per-household or per-event storage quotas?
-13. **Photo deletion**: Who can delete uploaded photos?
+11. **EXIF stripping**: [Resolved: see ADR-008](docs/decisions/ADR-008-exif-stripping.md)
+12. **Storage limits**: [Resolved: see ADR-009](docs/decisions/ADR-009-storage-quotas.md)
+13. **Photo deletion**: Uploader or admin can delete; soft delete for audit
 
 ### Communication
 
-14. **Message templating**: Should we support templates for broadcast messages?
-15. **Opt-out defaults**: New users opt-in or opt-out by default?
-16. **Spam prevention**: Rate limiting on admin broadcasts?
+14. **Message templating**: Not in MVP scope
+15. **Opt-out defaults**: [Resolved: see ADR-010](docs/decisions/ADR-010-communication-opt-in.md)
+16. **Spam prevention**: Not in MVP scope (see ticket 25)
 
 ### Infrastructure
 
-17. **PhotoPrism sync**: Real-time sync or batch sync?
-18. **Backup strategy**: PostgreSQL backup frequency?
-19. **Monitoring**: What alerts are required for production?
+17. **PhotoPrism sync**: Batch sync (Post-MVP)
+18. **Backup strategy**: Daily pg_dump with weekly full backup
+19. **Monitoring**: Basic error rate and latency alerts (see ticket 39)
 
 ---
 
