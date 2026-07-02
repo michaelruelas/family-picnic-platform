@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useUserProfileMutation, useDependentMutations } from '~/hooks';
 
 interface Dependent {
   id: string;
@@ -36,7 +36,8 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
 };
 
 export default function ProfileClient({ user, initialDependents = [] }: ProfileFormProps) {
-  const router = useRouter();
+  const { updatePreferences } = useUserProfileMutation();
+  const { create, update, remove } = useDependentMutations();
   const [name, setName] = useState(user.name);
   const [communicationPreference, setCommunicationPreference] = useState(
     user.communicationPreference,
@@ -65,27 +66,14 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
     setSuccess(false);
 
     try {
-      const response = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          communicationPreference,
-        }),
+      await updatePreferences.mutateAsync({
+        name,
+        communicationPreference: communicationPreference as 'EMAIL' | 'SMS' | 'BOTH' | 'NONE',
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to update profile');
-        return;
-      }
-
       setSuccess(true);
       setIsEditing(false);
-      router.refresh();
-    } catch {
-      setError('Something went wrong. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -118,33 +106,20 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
     setDependentError(null);
 
     try {
-      const response = await fetch('/api/dependents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: dependentForm.name,
-          relationship: dependentForm.relationship,
-          age: dependentForm.age ? Number(dependentForm.age) : null,
-          dietaryLabels: dependentForm.dietaryLabels
-            .split(',')
-            .map((l) => l.trim())
-            .filter((l) => l !== ''),
-          isChild: dependentForm.isChild,
-        }),
+      const newDependent = await create.mutateAsync({
+        name: dependentForm.name,
+        relationship: dependentForm.relationship as 'SPOUSE' | 'CHILD' | 'PARENT' | 'SIBLING' | 'INLAW' | 'COUSIN',
+        age: dependentForm.age ? Number(dependentForm.age) : undefined,
+        dietaryLabels: dependentForm.dietaryLabels
+          .split(',')
+          .map((l) => l.trim())
+          .filter((l) => l !== ''),
+        isChild: dependentForm.isChild,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setDependentError(data.error || 'Failed to add dependent');
-        return;
-      }
-
-      setDependents([...dependents, data]);
+      setDependents([...dependents, newDependent]);
       resetDependentForm();
-      router.refresh();
-    } catch {
-      setDependentError('Something went wrong. Please try again.');
+    } catch (err) {
+      setDependentError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setDependentSubmitting(false);
     }
@@ -158,34 +133,21 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
     setDependentError(null);
 
     try {
-      const response = await fetch('/api/dependents', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: editingDependentId,
-          name: dependentForm.name,
-          relationship: dependentForm.relationship,
-          age: dependentForm.age ? Number(dependentForm.age) : null,
-          dietaryLabels: dependentForm.dietaryLabels
-            .split(',')
-            .map((l) => l.trim())
-            .filter((l) => l !== ''),
-          isChild: dependentForm.isChild,
-        }),
+      const updatedDependent = await update.mutateAsync({
+        id: editingDependentId,
+        name: dependentForm.name,
+        relationship: dependentForm.relationship as 'SPOUSE' | 'CHILD' | 'PARENT' | 'SIBLING' | 'INLAW' | 'COUSIN',
+        age: dependentForm.age ? Number(dependentForm.age) : null,
+        dietaryLabels: dependentForm.dietaryLabels
+          .split(',')
+          .map((l) => l.trim())
+          .filter((l) => l !== ''),
+        isChild: dependentForm.isChild,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setDependentError(data.error || 'Failed to update dependent');
-        return;
-      }
-
-      setDependents(dependents.map((d) => (d.id === editingDependentId ? data : d)));
+      setDependents(dependents.map((d) => (d.id === editingDependentId ? updatedDependent : d)));
       resetDependentForm();
-      router.refresh();
-    } catch {
-      setDependentError('Something went wrong. Please try again.');
+    } catch (err) {
+      setDependentError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setDependentSubmitting(false);
     }
@@ -195,20 +157,10 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
     if (!confirm('Are you sure you want to remove this family member?')) return;
 
     try {
-      const response = await fetch(`/api/dependents?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        alert(data.error || 'Failed to remove dependent');
-        return;
-      }
-
+      await remove.mutateAsync({ id });
       setDependents(dependents.filter((d) => d.id !== id));
-      router.refresh();
-    } catch {
-      alert('Something went wrong. Please try again.');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     }
   };
 

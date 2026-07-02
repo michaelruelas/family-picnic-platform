@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePhotoReactionMutation } from '~/hooks';
 
 interface PhotoReaction {
   reaction: string;
@@ -22,6 +23,7 @@ export default function PhotoReactionButton({
   userId,
   compact = false,
 }: PhotoReactionButtonProps) {
+  const { addReaction, removeReaction } = usePhotoReactionMutation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localReactions, setLocalReactions] = useState(reactions);
 
@@ -43,21 +45,16 @@ export default function PhotoReactionButton({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/photo-reaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photoId, reaction }),
-      });
+      const hasReacted = userReactions.includes(reaction);
 
-      if (response.ok) {
-        const data = await response.json();
-        setLocalReactions((prev) => {
-          if (data.action === 'removed') {
-            return prev.filter((r) => !(r.reaction === reaction && r.userId === userId));
-          } else {
-            return [...prev, { reaction, userId }];
-          }
-        });
+      if (hasReacted) {
+        await removeReaction.mutateAsync({ photoId, reaction });
+        setLocalReactions((prev) =>
+          prev.filter((r) => !(r.reaction === reaction && r.userId === userId)),
+        );
+      } else {
+        await addReaction.mutateAsync({ photoId, reaction });
+        setLocalReactions((prev) => [...prev, { reaction, userId }]);
       }
     } finally {
       setIsSubmitting(false);

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useOffline } from '~/hooks';
+import { useOffline, useRsvpMutation } from '~/hooks';
 
 interface RSVPFormProps {
   eventId: string;
@@ -25,8 +24,8 @@ export default function RSVPForm({
   maxCapacity,
   currentAttending,
 }: RSVPFormProps) {
-  const router = useRouter();
   const { isOnline } = useOffline();
+  const { confirm, decline } = useRsvpMutation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [headcount, setHeadcount] = useState(existingRsvp?.headcount || 1);
@@ -43,30 +42,21 @@ export default function RSVPForm({
     setError(null);
 
     try {
-      const response = await fetch('/api/rsvp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (action === 'confirm') {
+        await confirm.mutateAsync({
           eventId,
-          action,
-          headcount: action === 'confirm' ? headcount : 0,
-          dietaryNotes: action === 'confirm' ? dietaryNotes : null,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to submit RSVP');
-        return;
+          headcount,
+          dietaryNotes: dietaryNotes || undefined,
+        });
+      } else {
+        await decline.mutateAsync({ eventId });
       }
-
-      router.refresh();
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       setIsSubmitting(false);
+      return;
     }
+    setIsSubmitting(false);
   };
 
   if (isPast) {

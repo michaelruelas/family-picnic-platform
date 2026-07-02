@@ -2,7 +2,7 @@
 
 ## Status
 
-Partial — hooks implemented and exported, tRPC client infrastructure set up, component migration remaining.
+Done — all hooks implemented, tRPC client infrastructure set up, all components migrated to hooks.
 
 ## Description
 
@@ -25,7 +25,7 @@ semantics (we use `@trpc/react-query`).
 ## Acceptance criteria
 
 - [x] All hooks exported from `src/hooks/index.ts`.
-- [ ] All current components that use raw `fetch` (`RSVPForm`,
+- [x] All current components that use raw `fetch` (`RSVPForm`,
   `PotluckSignupForm`, `ProfileClient`, `PhotoReactionButton`) are migrated
   to the new hooks.
 - [x] Hooks have unit tests with `renderHook`.
