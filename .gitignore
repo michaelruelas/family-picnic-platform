@@ -37,3 +37,5 @@ coverage/
 # Logs
 *.log
 npm-debug.log*
+playwright-report/
+.gnfh/
