@@ -3,12 +3,13 @@
 import { useTheme } from 'next-themes';
 import { useMounted } from '~/hooks/useMounted';
 
-type Theme = 'default' | 'notion';
+type Theme = 'default' | 'notion' | 'workspace';
 type ColorMode = 'light' | 'dark' | 'system';
 
 const themes: { value: Theme; label: string }[] = [
   { value: 'default', label: 'Default' },
   { value: 'notion', label: 'Notion' },
+  { value: 'workspace', label: 'Workspace' },
 ];
 
 const colorModes: { value: ColorMode; label: string }[] = [
@@ -24,17 +25,23 @@ export default function ThemeSwitcher() {
   if (!mounted) {
     return (
       <div className="flex items-center gap-2">
-        <div className="h-9 w-24 animate-pulse rounded-md bg-muted" />
+        <div className="h-9 w-36 animate-pulse rounded-md bg-muted" />
         <div className="h-9 w-20 animate-pulse rounded-md bg-muted" />
       </div>
     );
   }
 
-  const currentTheme = theme?.includes('notion') ? 'notion' : 'default';
+  const currentTheme = theme?.includes('workspace')
+    ? 'workspace'
+    : theme?.includes('notion')
+      ? 'notion'
+      : 'default';
   const currentColorMode = resolvedTheme === 'dark' ? 'dark' : 'light';
 
   const handleThemeChange = (newTheme: Theme) => {
-    if (newTheme === 'notion') {
+    if (newTheme === 'workspace') {
+      setTheme(`workspace-${currentColorMode}`);
+    } else if (newTheme === 'notion') {
       setTheme(`notion-${currentColorMode}`);
     } else {
       setTheme(currentColorMode);
@@ -42,7 +49,9 @@ export default function ThemeSwitcher() {
   };
 
   const handleColorModeChange = (newMode: ColorMode) => {
-    if (currentTheme === 'notion') {
+    if (currentTheme === 'workspace') {
+      setTheme(`workspace-${newMode}`);
+    } else if (currentTheme === 'notion') {
       setTheme(`notion-${newMode}`);
     } else {
       setTheme(newMode);
