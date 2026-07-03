@@ -25,14 +25,14 @@ export default function AdminNavBar() {
   }
 
   return (
-    <nav className="bg-stone-800 text-white shadow-sm">
+    <nav className="bg-secondary text-secondary-foreground shadow-sm">
       <div className="mx-auto flex max-w-5xl items-center px-4 py-2">
         <div className="flex gap-6">
           {adminLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-stone-300 hover:text-white"
+              className="text-sm font-medium hover:opacity-80"
             >
               {link.label}
             </Link>
