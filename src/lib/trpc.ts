@@ -59,23 +59,14 @@ const auditLog = t.middleware(async ({ ctx, next, type, path }) => {
   const result = await next({ ctx: authedCtx });
 
   if (type === 'mutation' && path) {
-    const eventId = extractEventId(authedCtx, path);
     await writeAuditLog({
       userId: authedCtx.session.user.id,
-      eventId,
       action: path,
     });
   }
 
   return result;
 });
-
-function extractEventId(ctx: Ctx | AuthedCtx, _path: string): string | undefined {
-  if ('eventId' in ctx && typeof ctx.eventId === 'string') {
-    return ctx.eventId;
-  }
-  return undefined;
-}
 
 export const createCallerFactory = t.createCallerFactory;
 
