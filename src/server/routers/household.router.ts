@@ -1,6 +1,7 @@
 import { router, protectedProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
+import { RSVPStatus, EventStatus } from '~/lib/generated/enums';
 
 export const householdRouter = router({
   create: protectedProcedure
@@ -93,9 +94,9 @@ export const householdRouter = router({
       const rsvps = await prisma.rSVP.findMany({
         where: {
           householdId: input.householdId,
-          status: 'CONFIRMED',
+          status: RSVPStatus.CONFIRMED,
           event: {
-            status: 'PUBLISHED',
+            status: EventStatus.PUBLISHED,
             date: { gte: now },
           },
         },

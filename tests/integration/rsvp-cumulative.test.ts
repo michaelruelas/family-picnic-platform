@@ -7,12 +7,12 @@ describe('RSVP Cumulative Headcount (SPEC §8.1)', () => {
 
   it('getCumulativeHeadcount procedure filters for CONFIRMED status only', async () => {
     const content = await fs.readFile(householdRouterPath, 'utf-8');
-    expect(content).toContain("status: 'CONFIRMED'");
+    expect(content).toContain('RSVPStatus.CONFIRMED');
   });
 
   it('getCumulativeHeadcount procedure filters for PUBLISHED events', async () => {
     const content = await fs.readFile(householdRouterPath, 'utf-8');
-    expect(content).toContain("status: 'PUBLISHED'");
+    expect(content).toContain('EventStatus.PUBLISHED');
   });
 
   it('getCumulativeHeadcount procedure filters for events with date >= now', async () => {

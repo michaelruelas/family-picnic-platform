@@ -48,6 +48,28 @@ npm run db:validate  # Validate Prisma schema
 bash scripts/dev.sh
 ```
 
+### Commit Messages
+
+**Always validate with `commit-message-lint` skill before committing.** This project enforces commitlint with these rules:
+
+| Rule                | Limit                      |
+| ------------------- | -------------------------- |
+| `header-max-length` | ≤ 100 characters           |
+| `subject-case`      | imperative mood, lowercase |
+| `subject-full-stop` | no trailing `.`            |
+
+Format: `type(scope): subject` — e.g. `fix(rsvp): release potluck slots on decline`
+
+Never use sentence-case, past tense ("Fixed", "Added"), or trailing period.
+
+Validate before committing:
+
+```bash
+printf '%s' "fix(rsvp): release potluck slots on decline" | npx commitlint
+```
+
+If the hook rejects, fix the message and use `git commit --amend` — do NOT use `--no-verify`.
+
 ## Route Map
 
 ### Public Routes

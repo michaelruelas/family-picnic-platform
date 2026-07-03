@@ -8,6 +8,7 @@ import RSVPForm from '~/components/RSVPForm';
 import PotluckSignupForm from '~/components/PotluckSignupForm';
 import PhotoCard from '~/components/PhotoCard';
 import DietaryAttendeeFilter from '~/components/dietary/DietaryAttendeeFilter';
+import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS } from '~/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,22 +112,6 @@ export default async function EventDetailPage({ params }: Props) {
     },
     {} as Record<string, typeof event.potluckSlots>,
   );
-
-  const categoryLabels: Record<string, string> = {
-    MAIN: 'Main Dishes',
-    SIDE: 'Side Dishes',
-    DESSERT: 'Desserts',
-    DRINK: 'Drinks',
-    OTHER: 'Other Items',
-  };
-
-  const categoryEmojis: Record<string, string> = {
-    MAIN: '🍖',
-    SIDE: '🥗',
-    DESSERT: '🍰',
-    DRINK: '🥤',
-    OTHER: '📦',
-  };
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-12">
@@ -293,8 +278,8 @@ export default async function EventDetailPage({ params }: Props) {
             {Object.entries(slotsByCategory).map(([category, slots]) => (
               <div key={category} className="rounded-xl bg-white p-6 shadow-sm">
                 <h3 className="flex items-center gap-2 text-lg font-semibold text-stone-900">
-                  <span className="text-2xl">{categoryEmojis[category] || '📦'}</span>
-                  {categoryLabels[category] || category}
+                  <span className="text-2xl">{POTLUCK_CATEGORY_EMOJIS[category] || '📦'}</span>
+                  {POTLUCK_CATEGORY_LABELS[category] || category}
                 </h3>
                 <div className="mt-4 space-y-3">
                   {slots.map((slot) => (

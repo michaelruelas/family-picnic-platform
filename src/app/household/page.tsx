@@ -185,11 +185,7 @@ export default async function HouseholdPage() {
       </div>
 
       <div className="mt-8 rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
-        <HouseholdClient
-          householdId={household.id}
-          initialDependents={household.dependents}
-          managedDependents={user.managedDependents}
-        />
+        <HouseholdClient initialDependents={household.dependents} />
       </div>
     </main>
   );

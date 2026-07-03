@@ -1,5 +1,6 @@
 import { prisma } from '~/lib/prisma';
 import Link from 'next/link';
+import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS } from '~/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,22 +28,6 @@ export default async function PotluckPage() {
   });
 
   const now = new Date();
-
-  const categoryEmojis: Record<string, string> = {
-    MAIN: '🍖',
-    SIDE: '🥗',
-    DESSERT: '🍰',
-    DRINK: '🥤',
-    OTHER: '📦',
-  };
-
-  const categoryLabels: Record<string, string> = {
-    MAIN: 'Main Dishes',
-    SIDE: 'Side Dishes',
-    DESSERT: 'Desserts',
-    DRINK: 'Drinks',
-    OTHER: 'Other Items',
-  };
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-12">
@@ -109,9 +94,9 @@ export default async function PotluckPage() {
                 <div className="mt-4 space-y-3">
                   {Object.entries(slotsByCategory).map(([category, slots]) => (
                     <div key={category} className="flex items-center gap-2">
-                      <span className="text-lg">{categoryEmojis[category] || '📦'}</span>
+                      <span className="text-lg">{POTLUCK_CATEGORY_EMOJIS[category] || '📦'}</span>
                       <span className="text-sm text-stone-600">
-                        {categoryLabels[category] || category}: {slots.length} slot
+                        {POTLUCK_CATEGORY_LABELS[category] || category}: {slots.length} slot
                         {slots.length !== 1 ? 's' : ''}
                       </span>
                     </div>

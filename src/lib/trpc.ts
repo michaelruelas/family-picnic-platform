@@ -40,17 +40,12 @@ const isAuthenticated = t.middleware(({ ctx, next }) => {
 });
 
 const isAdmin = t.middleware(({ ctx, next }) => {
-  if (!ctx.session?.user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED' });
-  }
-  if (ctx.session.user.role !== 'ADMIN') {
+  const authedCtx = ctx as AuthedCtx;
+  if (authedCtx.session.user.role !== 'ADMIN') {
     throw new TRPCError({ code: 'FORBIDDEN' });
   }
   return next({
-    ctx: {
-      ...ctx,
-      session: ctx.session as Session,
-    } as AuthedCtx,
+    ctx: authedCtx,
   });
 });
 

@@ -1,7 +1,7 @@
 import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus, InvitationStatus } from '~/lib/generated/enums';
+import { RSVPStatus, InvitationStatus, EventStatus } from '~/lib/generated/enums';
 
 export const rsvpRouter = router({
   create: protectedProcedure
@@ -21,7 +21,7 @@ export const rsvpRouter = router({
         throw new Error('Event not found');
       }
 
-      if (event.status !== 'PUBLISHED') {
+      if (event.status !== EventStatus.PUBLISHED) {
         throw new Error('Event is not accepting RSVPs');
       }
 
@@ -101,7 +101,7 @@ export const rsvpRouter = router({
         throw new Error('Event not found');
       }
 
-      if (event.status !== 'PUBLISHED') {
+      if (event.status !== EventStatus.PUBLISHED) {
         throw new Error('Event is not accepting RSVPs');
       }
 
@@ -334,7 +334,7 @@ export const rsvpRouter = router({
       z.object({
         eventId: z.string(),
         userId: z.string(),
-        status: z.enum(['CONFIRMED', 'DECLINED']),
+        status: z.enum([RSVPStatus.CONFIRMED, RSVPStatus.DECLINED]),
         headcount: z.number().int().min(0).optional(),
         dietaryNotes: z.string().optional(),
       }),
@@ -357,7 +357,7 @@ export const rsvpRouter = router({
         },
         update: {
           status: input.status,
-          headcount: input.headcount ?? (input.status === 'CONFIRMED' ? 1 : 0),
+          headcount: input.headcount ?? (input.status === RSVPStatus.CONFIRMED ? 1 : 0),
           dietaryNotes: input.dietaryNotes ?? null,
           respondedAt: new Date(),
         },
@@ -366,7 +366,7 @@ export const rsvpRouter = router({
           userId: input.userId,
           householdId: user.householdId || user.id,
           status: input.status,
-          headcount: input.headcount ?? (input.status === 'CONFIRMED' ? 1 : 0),
+          headcount: input.headcount ?? (input.status === RSVPStatus.CONFIRMED ? 1 : 0),
           dietaryNotes: input.dietaryNotes ?? null,
           respondedAt: new Date(),
         },
