@@ -12,20 +12,8 @@ interface Dependent {
   isChild: boolean;
 }
 
-interface ManagedDependent {
-  id: string;
-  name: string;
-  relationship: string;
-  age: number | null;
-  dietaryLabels: string[];
-  isChild: boolean;
-  householdId: string;
-}
-
 interface HouseholdClientProps {
-  householdId: string;
   initialDependents: Dependent[];
-  managedDependents: ManagedDependent[];
 }
 
 const RELATIONSHIP_LABELS: Record<string, string> = {
@@ -37,11 +25,7 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
   COUSIN: 'Cousin',
 };
 
-export default function HouseholdClient({
-  householdId: _householdId,
-  initialDependents,
-  managedDependents: _managedDependents,
-}: HouseholdClientProps) {
+export default function HouseholdClient({ initialDependents }: HouseholdClientProps) {
   const router = useRouter();
   const [dependents, setDependents] = useState<Dependent[]>(initialDependents);
   const [showDependentForm, setShowDependentForm] = useState(false);
