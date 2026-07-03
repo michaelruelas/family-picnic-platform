@@ -8,6 +8,8 @@ import {
   profileUpdateSchema,
   photoReactionSchema,
   VALID_REACTIONS,
+  eventCreateSchema,
+  eventUpdateSchema,
 } from '~/lib/schemas';
 
 describe('RSVP Schemas', () => {
@@ -256,6 +258,177 @@ describe('Photo Reaction Schema', () => {
 
     it('exports VALID_REACTIONS constant', () => {
       expect(VALID_REACTIONS).toEqual(['❤️', '👍', '👏', '🎉', '😂']);
+    });
+  });
+});
+
+describe('Event Schemas', () => {
+  describe('eventCreateSchema', () => {
+    it('validates correct event input', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Mega Picnic',
+        date: '2026-07-31T09:00',
+        location: 'The Moon',
+        description: 'Moon picnic',
+        rsvpDeadline: '2026-07-15T05:00',
+        maxCapacity: 6,
+        mapImageUrl: 'https://example.com/map.jpg',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('validates minimal event input', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Test Event',
+        date: '2026-07-31T09:00',
+        location: 'Central Park',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects missing name', () => {
+      const result = eventCreateSchema.safeParse({
+        date: '2026-07-31T09:00',
+        location: 'Central Park',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects missing date', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Test Event',
+        location: 'Central Park',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects missing location', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Test Event',
+        date: '2026-07-31T09:00',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects rsvpDeadline after event date', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Test Event',
+        date: '2026-07-15T09:00',
+        location: 'Central Park',
+        rsvpDeadline: '2026-07-31T09:00',
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues[0]!;
+        expect(issue.message).toBe('RSVP deadline must be before the event date');
+        expect(issue.path).toContain('rsvpDeadline');
+      }
+    });
+
+    it('allows rsvpDeadline before event date', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Mega Picnic',
+        date: '2026-07-31T09:00',
+        location: 'The Moon',
+        rsvpDeadline: '2026-07-15T05:00',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('allows empty mapImageUrl', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Test Event',
+        date: '2026-07-31T09:00',
+        location: 'Central Park',
+        mapImageUrl: '',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects invalid mapImageUrl', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Test Event',
+        date: '2026-07-31T09:00',
+        location: 'Central Park',
+        mapImageUrl: 'not-a-url',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects maxCapacity less than 1', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Test Event',
+        date: '2026-07-31T09:00',
+        location: 'Central Park',
+        maxCapacity: 0,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects negative maxCapacity', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Test Event',
+        date: '2026-07-31T09:00',
+        location: 'Central Park',
+        maxCapacity: -5,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('applies default description', () => {
+      const result = eventCreateSchema.safeParse({
+        name: 'Test Event',
+        date: '2026-07-31T09:00',
+        location: 'Central Park',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.description).toBe('');
+      }
+    });
+  });
+
+  describe('eventUpdateSchema', () => {
+    it('validates partial update with id', () => {
+      const result = eventUpdateSchema.safeParse({
+        id: 'event-123',
+        name: 'Updated Name',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('validates update with all fields', () => {
+      const result = eventUpdateSchema.safeParse({
+        id: 'event-123',
+        name: 'Updated Event',
+        date: '2026-08-15T10:00',
+        location: 'New Location',
+        description: 'New description',
+        rsvpDeadline: '2026-08-01T10:00',
+        maxCapacity: 20,
+        mapImageUrl: 'https://example.com/new-map.jpg',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects missing id', () => {
+      const result = eventUpdateSchema.safeParse({
+        name: 'Updated Name',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('validates rsvpDeadline after event date in update', () => {
+      const result = eventUpdateSchema.safeParse({
+        id: 'event-123',
+        date: '2026-07-15T09:00',
+        rsvpDeadline: '2026-07-31T09:00',
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues[0]!;
+        expect(issue.message).toBe('RSVP deadline must be before the event date');
+      }
     });
   });
 });

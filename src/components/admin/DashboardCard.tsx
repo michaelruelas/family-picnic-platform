@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   getDietaryLabelConfig,
   STANDARD_DIETARY_LABELS,
@@ -40,6 +42,30 @@ export default function DashboardCard({
   dietarySummary,
   maxCapacity,
 }: DashboardCardProps) {
+  const router = useRouter();
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      await fetch(`/api/admin/events/${eventId}/publish`, { method: 'POST' });
+      router.refresh();
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleClose = async () => {
+    setIsClosing(true);
+    try {
+      await fetch(`/api/admin/events/${eventId}/close`, { method: 'POST' });
+      router.refresh();
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
   const capacityPercent = maxCapacity
     ? Math.round((rsvpSummary.headcount / maxCapacity) * 100)
     : null;
@@ -143,24 +169,24 @@ export default function DashboardCard({
 
       <div className="mt-4 flex gap-2">
         {eventStatus === 'DRAFT' && (
-          <form action={`/api/admin/events/${eventId}/publish`} method="POST">
-            <button
-              type="submit"
-              className="rounded-lg bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-200"
-            >
-              Publish
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={handlePublish}
+            disabled={isPublishing}
+            className="rounded-lg bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700 hover:bg-green-200 disabled:opacity-50"
+          >
+            {isPublishing ? 'Publishing...' : 'Publish'}
+          </button>
         )}
         {eventStatus === 'PUBLISHED' && (
-          <form action={`/api/admin/events/${eventId}/close`} method="POST">
-            <button
-              type="submit"
-              className="rounded-lg bg-red-100 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-200"
-            >
-              Close RSVPs
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isClosing}
+            className="rounded-lg bg-red-100 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
+          >
+            {isClosing ? 'Closing...' : 'Close RSVPs'}
+          </button>
         )}
         <Link
           href="/admin/communications"

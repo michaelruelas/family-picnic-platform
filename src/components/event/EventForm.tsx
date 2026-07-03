@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { eventCreateSchema, eventUpdateSchema } from '~/lib/schemas';
 
 interface EventFormData {
   name: string;
@@ -47,6 +48,18 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+
+    const schema = mode === 'create' ? eventCreateSchema : eventUpdateSchema;
+    const parseResult = schema.safeParse(
+      mode === 'create' ? formData : { ...formData, id: initialData?.id },
+    );
+
+    if (!parseResult.success) {
+      const firstError = parseResult.error.issues[0]!;
+      setError(firstError.message);
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const url = mode === 'create' ? '/api/admin/events' : `/api/admin/events/${initialData?.id}`;

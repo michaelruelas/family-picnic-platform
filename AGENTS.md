@@ -42,7 +42,58 @@ npm run db:studio    # Open Prisma Studio (GUI)
 npm run db:validate  # Validate Prisma schema
 ```
 
+### Test Users & Dev Auth
+
+This project includes dev credentials for testing without OAuth:
+
+**Enable dev auth** in `.env`:
+
+```bash
+DEV_AUTH_ENABLED=true
+DEV_AUTH_PASSWORD=password123
+```
+
+**Test accounts** (all passwords: `password123`):
+
+| Role  | Email                           | Household           |
+| ----- | ------------------------------- | ------------------- |
+| Admin | admin@family-picnic.example.com | —                   |
+| User  | maria.garcia@example.com        | The Garcia Family   |
+| User  | carlos.garcia@example.com       | The Garcia Family   |
+| User  | lisa.thompson@example.com       | The Thompson Family |
+| User  | bob.thompson@example.com        | The Thompson Family |
+| User  | priya.patel@example.com         | The Patel Family    |
+
+**Login flow:**
+
+1. Go to `/login`
+2. Enter email + `password123`
+3. You'll be logged in as that user
+
+**Seeding resets data** — run `npm run db:seed` after `db:push` or `db:migrate`.
+
 ### One-Command Dev Setup
+
+### E2E Testing
+
+```bash
+npm run test:e2e          # Run Playwright e2e tests
+npm run test:e2e -- --ui   # Run with Playwright UI
+```
+
+**Setup required before first run:**
+
+```bash
+npm run db:push            # Push schema (needed after adding devPassword field)
+npm run db:seed            # Seed test users
+playwright install chromium # Install browser
+```
+
+**Test files:** `tests/e2e/`
+
+- `auth.spec.ts` - Login/logout flows
+- `admin.spec.ts` - Admin event management
+- `user.spec.ts` - User RSVP and browsing
 
 ```bash
 bash scripts/dev.sh

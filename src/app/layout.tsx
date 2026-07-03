@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Providers from '~/components/Providers';
 import NavBarClient from '~/components/NavBarClient';
+import AdminNavBar from '~/components/AdminNavBar';
 
 export const metadata: Metadata = {
   title: 'Family Picnic Platform',
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-stone-50 text-stone-900 antialiased">
         <Providers>
           <NavBarClient />
+          <AdminNavBar />
           {children}
         </Providers>
       </body>

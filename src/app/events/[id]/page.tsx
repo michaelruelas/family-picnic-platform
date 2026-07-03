@@ -56,7 +56,7 @@ export default async function EventDetailPage({ params }: Props) {
         take: 12,
         include: {
           reactions: true,
-          uploadedByUserId: true,
+          uploadedBy: true,
         },
       },
       rsvps: {

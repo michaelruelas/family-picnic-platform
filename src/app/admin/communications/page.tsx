@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import AdminCommunicationsClient from './CommunicationsClient';
+import EventSelect from '~/components/admin/EventSelect';
 
 export const dynamic = 'force-dynamic';
 
@@ -123,29 +124,7 @@ export default async function AdminCommunicationsPage({
         <label htmlFor="event-select" className="block text-sm font-medium text-stone-700">
           Event
         </label>
-        <select
-          id="event-select"
-          value={effectiveEventId}
-          onChange={(e) => {
-            const url = new URL(window.location.href);
-            url.searchParams.set('event', e.target.value);
-            window.location.href = url.toString();
-          }}
-          className="mt-1 block w-full max-w-md rounded-lg border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-        >
-          <option value="">Select an event...</option>
-          {events.map((event) => (
-            <option key={event.id} value={event.id}>
-              {event.name} (
-              {new Date(event.date).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-              )
-            </option>
-          ))}
-        </select>
+        <EventSelect events={events} selectedEventId={effectiveEventId} />
       </div>
 
       {effectiveEventId ? (

@@ -5,7 +5,7 @@ import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { RSVPStatus } from '~/lib/generated/enums';
 import DashboardCard from '~/components/admin/DashboardCard';
-import { getDietarySummary } from '~/components/dietary/DietaryAttendeeFilter';
+import { getDietarySummary } from '~/lib/dietary';
 
 export const dynamic = 'force-dynamic';
 
