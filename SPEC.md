@@ -10,7 +10,7 @@ A private family engagement hub for an annual picnic, designed for users across 
 
 | Layer          | Technology                                               |
 | -------------- | -------------------------------------------------------- |
-| Frontend       | Next.js 14+ (App Router), TypeScript, Tailwind CSS       |
+| Frontend       | Next.js 16 (App Router), TypeScript, Tailwind CSS        |
 | Backend        | tRPC v11, Prisma ORM, PostgreSQL                         |
 | Auth           | NextAuth.js with Google OAuth SSO                        |
 | File Storage   | PhotoPrism (Kubernetes, 50TB), S3-compatible for uploads |
@@ -478,23 +478,25 @@ enum MessageStatus {
 ```
 src/
 ├── app/                          # Next.js App Router
-│   ├── (auth)/                  # Auth routes
-│   │   ├── login/
-│   │   └── callback/
-│   ├── (event)/                # Event routes
+│   ├── admin/                   # Admin routes
+│   │   ├── dashboard/
+│   │   ├── events/
+│   │   ├── invitations/
+│   │   ├── communications/
+│   │   └── audit-log/
+│   ├── events/                 # Event routes
 │   │   ├── [eventId]/
 │   │   │   ├── page.tsx        # Event details
-│   │   │   ├── rsvp/
-│   │   │   ├── potluck/
-│   │   │   └── photos/
+│   │   │   └── calendar/
 │   ├── household/
 │   │   ├── page.tsx            # Household dashboard
 │   │   └── tree/
-│   └── admin/
-│       ├── dashboard/
-│       ├── invitations/
-│       ├── communications/
-│       └── audit-log/
+│   ├── login/
+│   ├── my-events/
+│   ├── onboarding/
+│   ├── photos/
+│   ├── potluck/
+│   └── api/                     # API routes
 ├── components/
 │   ├── ui/                      # Base UI primitives
 │   │   ├── Button.tsx

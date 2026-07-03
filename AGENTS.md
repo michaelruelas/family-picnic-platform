@@ -19,7 +19,7 @@ npm test             # Run all tests (Vitest)
 npm run test:watch   # Watch mode for development
 npm run test:coverage # Coverage report
 
-npm run lint         # ESLint (25 errors, 17 warnings as of 2026-07-02)
+npm run lint         # ESLint
 npm run typecheck    # TypeScript type checking
 npm run ci           # Full CI suite: typecheck + lint + test
 ```
@@ -184,8 +184,6 @@ The `isAuthenticated` and `isAdmin` middleware narrow `ctx.session` from `Sessio
 ```
 src/
 ├── app/                    # Next.js App Router pages
-│   ├── (auth)/            # Auth route group (deprecated - not used)
-│   ├── (event)/           # Event route group (deprecated - not used)
 │   ├── admin/             # Admin pages (protected)
 │   ├── api/               # API routes (REST + tRPC)
 │   ├── events/           # Events pages
@@ -293,18 +291,16 @@ All tickets are in `tickets/` directory, ordered by suggested priority in `ticke
 
 ### Remaining Tickets (Post-MVP / Infrastructure)
 
-| Ticket | Description                              | Status                                      |
-| ------ | ---------------------------------------- | ------------------------------------------- |
-| 13     | Kubernetes manifests                     | Missing                                     |
-| 26     | Empty route shells cleanup               | Partial (route groups removed, docs needed) |
-| 30     | Account recovery                         | Missing                                     |
-| 31     | Scheduled broadcasts                     | Missing                                     |
-| 38     | Accessibility audit                      | Untested                                    |
-| 39     | Observability (logging, metrics, Sentry) | Missing                                     |
-| 40     | Backup and data export                   | Missing                                     |
-| 43     | Dev onramp and AGENTS.md                 | Missing (this file)                         |
-| 32     | Repo documentation                       | Missing                                     |
-| 35     | Changelog and commit hygiene             | Missing                                     |
+| Ticket | Description                              | Status                                    |
+| ------ | ---------------------------------------- | ----------------------------------------- |
+| 13     | Kubernetes manifests                     | Done                                      |
+| 26     | Empty route shells cleanup               | Done (route groups removed, docs in arch) |
+| 30     | Account recovery                         | Missing                                   |
+| 31     | Scheduled broadcasts                     | Missing                                   |
+| 38     | Accessibility audit                      | Done                                      |
+| 39     | Observability (logging, metrics, Sentry) | Done                                      |
+| 40     | Backup and data export                   | Missing                                   |
+| 35     | Changelog and commit hygiene             | Done                                      |
 
 ## Environment Variables
 
