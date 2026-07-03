@@ -77,6 +77,22 @@ CI runs:
 
 Note: `bun test` excludes `playwright-tests/` automatically in CI via `--path-ignore-patterns`.
 
+### Local CI Validation with wrkflw
+
+The pre-commit hook runs `wrkflw` automatically. Install [wrkflw](https://github.com/bahdotsh/wrkflw) to validate CI will pass before pushing:
+
+```bash
+cargo install wrkflw
+```
+
+Manual run:
+
+```bash
+wrkflw run --runtime emulation .github/workflows/ci.yml
+```
+
+See `docs/agents/COMMANDS.md` for full wrkflw usage.
+
 ## Test Data
 
 Seeded test accounts (password: `password123`):

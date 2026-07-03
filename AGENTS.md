@@ -23,6 +23,16 @@ npm run typecheck    # TypeScript type checking
 npm run ci           # Full CI suite: typecheck + lint + test
 ```
 
+### Local CI (wrkflw)
+
+The pre-commit hook runs `wrkflw` automatically. Install wrkflw for local CI validation:
+
+```bash
+cargo install wrkflw
+```
+
+Manual run: `wrkflw run --runtime emulation .github/workflows/ci.yml`
+
 ### Code Formatting
 
 ```bash

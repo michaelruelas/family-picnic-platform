@@ -31,6 +31,37 @@ npm run format       # Format all files with Prettier
 npm run format:check # Check formatting without modifying
 ```
 
+## Local CI Validation (wrkflw)
+
+The pre-commit hook runs `wrkflw` automatically before each commit. Install wrkflw to validate CI will pass before pushing.
+
+### Installation
+
+```bash
+cargo install wrkflw
+```
+
+Or with Homebrew:
+
+```bash
+brew install wrkflw
+```
+
+### Manual Usage
+
+```bash
+wrkflw run --runtime emulation .github/workflows/ci.yml
+```
+
+### Other Commands
+
+```bash
+wrkflw validate                       # Validate workflow YAML syntax
+wrkflw tui                           # Interactive TUI
+wrkflw watch --event push            # Watch mode for auto-rerun
+wrkflw run --job validate .github/workflows/ci.yml  # Specific job
+```
+
 ## Database
 
 ```bash

@@ -1,2 +1,7 @@
-bun run typecheck
-bun run lint-staged
+#!/bin/sh
+
+echo "[wrkflw] Validating CI pipeline..."
+wrkflw validate .github/workflows/ci.yml
+
+echo "[wrkflw] Running CI pipeline locally..."
+wrkflw run --runtime secure-emulation .github/workflows/ci.yml
