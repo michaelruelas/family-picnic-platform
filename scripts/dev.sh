@@ -55,6 +55,10 @@ npm run db:push
 echo "Seeding database with sample data..."
 npm run db:seed || echo "Seed skipped or failed (this is normal if DATABASE_URL is not configured)"
 
+# Install Playwright browsers for e2e testing
+echo "Installing Playwright browsers..."
+playwright install chromium || echo "Playwright install skipped (run 'npx playwright install chromium' manually if needed)"
+
 # Start Next.js dev server
 echo "Starting Next.js dev server..."
 echo "The app will be available at http://localhost:3000"

@@ -1,59 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import DietaryFilter from './DietaryFilter';
-import DietaryLabelChip, {
+import {
+  parseDietaryNotesToLabels,
+  getDietarySummary,
   STANDARD_DIETARY_LABELS,
-  getDietaryLabelConfig,
-} from './DietaryLabelChip';
-
-interface Attendee {
-  id: string;
-  headcount: number;
-  dietaryNotes: string | null;
-  respondedAt: Date | null;
-  user: {
-    id: string;
-    name: string | null;
-    household: { name: string | null } | null;
-  };
-}
+  type DietaryAttendee,
+} from '~/lib/dietary';
+import DietaryFilter from './DietaryFilter';
+import DietaryLabelChip, { getDietaryLabelConfig } from './DietaryLabelChip';
 
 interface DietarySummaryProps {
-  confirmedAttendees: Attendee[];
-  declinedAttendees: Attendee[];
+  confirmedAttendees: DietaryAttendee[];
+  declinedAttendees: DietaryAttendee[];
 }
 
-function parseDietaryNotesToLabels(notes: string | null): string[] {
-  if (!notes) return [];
-  const lower = notes.toLowerCase();
-  const labels: string[] = [];
-  if (lower.includes('vegetarian') && !lower.includes('non-vegetarian')) labels.push('vegetarian');
-  if (lower.includes('vegan')) labels.push('vegan');
-  if (lower.includes('gluten') || lower.includes('celiac') || lower.includes('gf'))
-    labels.push('gluten_free');
-  if (lower.includes('nut') || lower.includes('peanut') || lower.includes('allergy'))
-    labels.push('contains_nuts');
-  if (lower.includes('dairy') || lower.includes('lactose') || lower.includes('milk'))
-    labels.push('dairy_free');
-  return labels;
-}
-
-export function getDietarySummary(attendees: Attendee[]) {
-  const counts: Record<string, number> = {};
-  for (const label of STANDARD_DIETARY_LABELS) {
-    counts[label] = 0;
-  }
-  for (const attendee of attendees) {
-    const labels = parseDietaryNotesToLabels(attendee.dietaryNotes);
-    for (const label of labels) {
-      counts[label] = (counts[label] || 0) + 1;
-    }
-  }
-  return counts;
-}
-
-export function DietaryAggregation({ attendees }: { attendees: Attendee[] }) {
+export function DietaryAggregation({ attendees }: { attendees: DietaryAttendee[] }) {
   const counts = getDietarySummary(attendees);
   const hasAny = Object.values(counts).some((c) => c > 0);
 

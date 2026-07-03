@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Developer guide for the Family Picnic Platform codebase. This file helps AI agents and new contributors understand the project structure, conventions, and how to work effectively with the codebase.
+Developer guide for the Family Picnic Platform codebase. Full documentation is in `docs/agents/`.
 
 ## Quick Commands
 
@@ -23,6 +23,16 @@ npm run lint         # ESLint
 npm run typecheck    # TypeScript type checking
 npm run ci           # Full CI suite: typecheck + lint + test
 ```
+
+### Local CI (wrkflw)
+
+The pre-commit hook runs `wrkflw` automatically. Install wrkflw for local CI validation:
+
+```bash
+cargo install wrkflw
+```
+
+Manual run: `wrkflw run --runtime emulation .github/workflows/ci.yml`
 
 ### Code Formatting
 
@@ -48,9 +58,50 @@ npm run db:validate  # Validate Prisma schema
 bash scripts/dev.sh
 ```
 
-### Commit Messages
+### E2E Testing
 
-**Always validate with `commit-message-lint` skill before committing.** This project enforces commitlint with these rules:
+```bash
+npm run test:e2e          # Run Playwright e2e tests
+npm run test:e2e -- --ui   # Run with Playwright UI
+```
+
+Setup for first run:
+
+```bash
+npm run db:push            # Push schema
+npm run db:seed            # Seed test users
+npx playwright install chromium
+```
+
+Test files: `playwright-tests/`
+
+## Test Users & Dev Auth
+
+Enable dev auth in `.env`:
+
+```bash
+DEV_AUTH_ENABLED=true
+DEV_AUTH_PASSWORD=password123
+```
+
+Test accounts (all passwords: `password123`):
+
+| Role  | Email                           | Household           |
+| ----- | ------------------------------- | ------------------- |
+| Admin | admin@family-picnic.example.com | —                   |
+| User  | maria.garcia@example.com        | The Garcia Family   |
+| User  | carlos.garcia@example.com       | The Garcia Family   |
+| User  | lisa.thompson@example.com       | The Thompson Family |
+| User  | bob.thompson@example.com        | The Thompson Family |
+| User  | priya.patel@example.com         | The Patel Family    |
+
+**Login flow:** Go to `/login`, enter email + `password123`.
+
+Seeding resets data — run `npm run db:seed` after `db:push` or `db:migrate`.
+
+## Commit Messages
+
+**Always validate with `commit-message-lint` skill before committing.** Format: `type(scope): subject`
 
 | Rule                | Limit                      |
 | ------------------- | -------------------------- |
@@ -58,41 +109,38 @@ bash scripts/dev.sh
 | `subject-case`      | imperative mood, lowercase |
 | `subject-full-stop` | no trailing `.`            |
 
-Format: `type(scope): subject` — e.g. `fix(rsvp): release potluck slots on decline`
+Examples: `fix(rsvp): release potluck slots on decline`, `feat(auth): add dev credentials`
 
-Never use sentence-case, past tense ("Fixed", "Added"), or trailing period.
-
-Validate before committing:
+Validate:
 
 ```bash
 printf '%s' "fix(rsvp): release potluck slots on decline" | npx commitlint
 ```
 
-If the hook rejects, fix the message and use `git commit --amend` — do NOT use `--no-verify`.
+If rejected, fix the message and use `git commit --amend` — do NOT use `--no-verify`.
 
-## Route Map
+## Full Documentation
+
+For complete documentation on:
+
+- Project context and domain model → `docs/agents/CONTEXT.md`
+- All commands and scripts → `docs/agents/COMMANDS.md`
+- Code conventions and rules → `docs/agents/CONVENTIONS.md`
+- Testing strategy → `docs/agents/TESTING.md`
+- Route structure → `docs/agents/ROUTING.md`
+- tRPC router reference → `docs/agents/TRPC.md`
+- Security model → `docs/agents/SECURITY.md`
+- Quick reference → `docs/QUICKREF.md`
+
+## Route Map (Summary)
 
 ### Public Routes
 
-| Route              | File                               | Description                      |
-| ------------------ | ---------------------------------- | -------------------------------- |
-| `/`                | `src/app/page.tsx`                 | Home page                        |
-| `/login`           | `src/app/login/page.tsx`           | Login page                       |
-| `/events`          | `src/app/events/page.tsx`          | Events list                      |
-| `/events/[id]`     | `src/app/events/[id]/page.tsx`     | Event detail with RSVP & potluck |
-| `/events/calendar` | `src/app/events/calendar/page.tsx` | Calendar view                    |
-| `/potluck`         | `src/app/potluck/page.tsx`         | Potluck overview                 |
-| `/photos`          | `src/app/photos/page.tsx`          | Photo gallery                    |
-| `/my-events`       | `src/app/my-events/page.tsx`       | User's RSVP history              |
+`/`, `/login`, `/events`, `/events/[id]`, `/events/calendar`, `/potluck`, `/photos`, `/my-events`
 
 ### Authenticated Routes
 
-| Route             | File                              | Description                  |
-| ----------------- | --------------------------------- | ---------------------------- |
-| `/profile`        | `src/app/profile/page.tsx`        | User profile & preferences   |
-| `/household`      | `src/app/household/page.tsx`      | Household dashboard          |
-| `/household/tree` | `src/app/household/tree/page.tsx` | Family tree visualization    |
-| `/onboarding`     | `src/app/onboarding/page.tsx`     | First-time onboarding wizard |
+`/profile`, `/household`, `/household/tree`, `/onboarding`
 
 ### Admin Routes
 
@@ -219,37 +267,25 @@ src/
 
 ## What NOT to Edit
 
-1. **`src/app/api/auth/[...nextauth]/route.ts`** — The NextAuth handler is the single source of truth for auth. Do not add handler exports elsewhere.
+1. **`src/app/api/auth/[...nextauth]/route.ts`** — NextAuth handler is the single source of truth for auth.
+2. **`src/lib/auth.ts`** — Only exports `authOptions` and `getServerSession`.
+3. **`prisma/schema.prisma`** — If modified, run `npm run db:generate`. Client generated to `src/lib/generated/client`.
+4. **`src/lib/generated/`** — Prisma-generated code. Do not edit manually.
+5. **`public/sw.js`** — Service worker has known ESLint `no-undef` errors for browser globals. Safe to ignore.
 
-2. **`src/lib/auth.ts`** — Only exports `authOptions` and `getServerSession`. Do not add handler exports.
+## Known ESLint Issues (Safe to Ignore)
 
-3. **`prisma/schema.prisma`** — If you modify the schema, you MUST run `npm run db:generate` to regenerate Prisma client types. The generated client is output to `src/lib/generated/client`.
-
-4. **`src/lib/generated/`** — This directory contains Prisma-generated code. Do not edit manually.
-
-5. **`public/sw.js`** — The service worker has known ESLint `no-undef` errors for browser globals (`self`, `caches`, `fetch`). These are expected and safe to ignore.
-
-## Known Issues
-
-### ESLint Errors (Known & Safe to Ignore)
-
-| File                                              | Errors                                     | Reason                                                      |
-| ------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------- |
-| `public/sw.js`                                    | 23x `no-undef`                             | Service worker globals not recognized by Node ESLint config |
-| `sw.js`                                           | 1x `no-undef`, 1x `unused-vars`            | Browser-only code, globals not in Node scope                |
-| `src/app/admin/invitations/InvitationsClient.tsx` | 1x `set-state-in-effect`, 1x `unused-vars` | React 19 lint warning + one unused import                   |
-| `src/components/household/HouseholdClient.tsx`    | 2x `unused-vars`                           | Two unused variables                                        |
-| `src/components/HelpButton.tsx`                   | 1x `set-state-in-effect`                   | React 19 lint warning                                       |
-| Other files                                       | Various `unused-vars`                      | Minor cleanup needed but not blocking                       |
-
-### TypeScript
-
-- tsconfig has `noUncheckedIndexedAccess: true` — array access requires non-null assertion (`arr[0]!`) or explicit check
-- Prisma-generated types are in `src/lib/generated/client`
+| File                    | Errors                          | Reason                                    |
+| ----------------------- | ------------------------------- | ----------------------------------------- |
+| `public/sw.js`          | 23x `no-undef`                  | Browser globals not in Node ESLint config |
+| `sw.js`                 | 1x `no-undef`, 1x `unused-vars` | Browser-only code                         |
+| `InvitationsClient.tsx` | React 19 lint warnings          | React 19 specific                         |
+| `HouseholdClient.tsx`   | 2x `unused-vars`                | Two unused variables                      |
+| `HelpButton.tsx`        | 1x `set-state-in-effect`        | React 19 lint warning                     |
 
 ## Tickets
 
-All tickets are in `tickets/` directory, ordered by suggested priority in `tickets/README.md`.
+All tickets in `tickets/` directory. See `tickets/README.md` for priority order.
 
 ### Completed Tickets (MVP Scope)
 
