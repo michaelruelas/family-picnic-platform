@@ -92,7 +92,7 @@ export default function HelpButton({ context = 'events', className = '' }: HelpB
                   key={key}
                   onClick={() => setSelectedContext(key)}
                   className={`rounded-lg px-3 py-1 text-sm capitalize transition-colors ${
-                    context === key
+                    selectedContext === key
                       ? 'bg-amber-100 text-amber-700'
                       : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                   }`}
