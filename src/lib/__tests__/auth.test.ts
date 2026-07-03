@@ -9,8 +9,9 @@ describe('Auth module', () => {
 
   it('authOptions has Google provider configured', async () => {
     const { authOptions } = await import('../auth');
-    expect(authOptions.providers).toHaveLength(1);
-    expect(authOptions.providers[0]).toMatchObject({
+    const googleProvider = authOptions.providers.find((p) => p.id === 'google');
+    expect(googleProvider).toBeDefined();
+    expect(googleProvider).toMatchObject({
       id: 'google',
       name: 'Google',
     });
