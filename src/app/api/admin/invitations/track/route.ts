@@ -17,7 +17,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ID and status are required' }, { status: 400 });
     }
 
-    if (!['PENDING', 'SENT', 'DELIVERED'].includes(status)) {
+    if (
+      ![InvitationStatus.PENDING, InvitationStatus.SENT, InvitationStatus.DELIVERED].includes(
+        status,
+      )
+    ) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
@@ -25,7 +29,10 @@ export async function POST(request: Request) {
       where: { id },
       data: {
         status: status as InvitationStatus,
-        sentAt: status === 'SENT' || status === 'DELIVERED' ? new Date() : undefined,
+        sentAt:
+          status === InvitationStatus.SENT || status === InvitationStatus.DELIVERED
+            ? new Date()
+            : undefined,
       },
     });
 

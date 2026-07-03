@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus } from '~/lib/generated/enums';
+import { RSVPStatus, EventStatus } from '~/lib/generated/enums';
 import { z } from 'zod';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
           );
         }
 
-        if (event.status !== 'PUBLISHED') {
+        if (event.status !== EventStatus.PUBLISHED) {
           return NextResponse.json(
             { error: 'Event is not accepting RSVPs', code: 'BAD_REQUEST' },
             { status: 400 },

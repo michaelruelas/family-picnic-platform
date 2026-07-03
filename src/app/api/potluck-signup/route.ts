@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
+import { RSVPStatus, EventStatus } from '~/lib/generated/enums';
 import { z } from 'zod';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'Slot not found', code: 'NOT_FOUND' }, { status: 404 });
         }
 
-        if (slot.event.status !== 'PUBLISHED') {
+        if (slot.event.status !== EventStatus.PUBLISHED) {
           return NextResponse.json(
             { error: 'Event is not accepting potluck signups', code: 'BAD_REQUEST' },
             { status: 400 },
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
           },
         });
 
-        if (!rsvp || rsvp.status !== 'CONFIRMED') {
+        if (!rsvp || rsvp.status !== RSVPStatus.CONFIRMED) {
           return NextResponse.json(
             { error: 'You must have a confirmed RSVP to sign up for potluck', code: 'BAD_REQUEST' },
             { status: 400 },

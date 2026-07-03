@@ -2,7 +2,7 @@ import { router, auditedAdminProcedure, protectedProcedure } from '~/lib/trpc';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
+import { CommunicationStatus, CommunicationChannel, RSVPStatus } from '~/lib/generated/enums';
 import {
   checkAdminBroadcastRateLimit,
   checkRecipientGroupRateLimit,
@@ -61,7 +61,7 @@ export const communicationRouter = router({
                 rsvps: {
                   none: {
                     eventId: input.eventId,
-                    status: { in: ['CONFIRMED', 'DECLINED'] },
+                    status: { in: [RSVPStatus.CONFIRMED, RSVPStatus.DECLINED] },
                   },
                 },
               },

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
-import { CommunicationStatus } from '~/lib/generated/enums';
+import { CommunicationStatus, RSVPStatus } from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
                   rsvps: {
                     none: {
                       eventId,
-                      status: { in: ['CONFIRMED', 'DECLINED'] },
+                      status: { in: [RSVPStatus.CONFIRMED, RSVPStatus.DECLINED] },
                     },
                   },
                 },
