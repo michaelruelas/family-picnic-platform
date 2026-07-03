@@ -334,7 +334,7 @@ export const rsvpRouter = router({
       z.object({
         eventId: z.string(),
         userId: z.string(),
-        status: z.enum(['CONFIRMED', 'DECLINED']),
+        status: z.enum([RSVPStatus.CONFIRMED, RSVPStatus.DECLINED]),
         headcount: z.number().int().min(0).optional(),
         dietaryNotes: z.string().optional(),
       }),

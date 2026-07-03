@@ -1,15 +1,22 @@
 import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
+import { PotluckCategory, SlotType, RSVPStatus, EventStatus } from '~/lib/generated/enums';
 
 export const potluckRouter = router({
   createSlot: auditedAdminProcedure
     .input(
       z.object({
         eventId: z.string(),
-        category: z.enum(['MAIN', 'SIDE', 'DESSERT', 'DRINK', 'OTHER']),
+        category: z.enum([
+          PotluckCategory.MAIN,
+          PotluckCategory.SIDE,
+          PotluckCategory.DESSERT,
+          PotluckCategory.DRINK,
+          PotluckCategory.OTHER,
+        ]),
         name: z.string().min(1),
-        slotType: z.enum(['LIMITED', 'UNLIMITED']),
+        slotType: z.enum([SlotType.LIMITED, SlotType.UNLIMITED]),
         maxSignups: z.number().int().positive().optional(),
       }),
     )
@@ -93,7 +100,7 @@ export const potluckRouter = router({
         throw new Error('Slot not found');
       }
 
-      if (slot.event.status !== 'PUBLISHED') {
+      if (slot.event.status !== EventStatus.PUBLISHED) {
         throw new Error('Event is not accepting potluck signups');
       }
 
@@ -106,7 +113,7 @@ export const potluckRouter = router({
         },
       });
 
-      if (!rsvp || rsvp.status !== 'CONFIRMED') {
+      if (!rsvp || rsvp.status !== RSVPStatus.CONFIRMED) {
         throw new Error('You must have a confirmed RSVP to sign up for potluck');
       }
 
@@ -119,7 +126,7 @@ export const potluckRouter = router({
         },
       });
 
-      if (slot.slotType === 'LIMITED') {
+      if (slot.slotType === SlotType.LIMITED) {
         return prisma.$transaction(
           async (tx) => {
             const currentSignups = await tx.potluckSignup.count({

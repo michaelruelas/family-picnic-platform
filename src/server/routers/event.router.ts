@@ -93,7 +93,14 @@ export const eventRouter = router({
     .input(
       z
         .object({
-          status: z.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'CANCELLED']).optional(),
+          status: z
+            .enum([
+              EventStatus.DRAFT,
+              EventStatus.PUBLISHED,
+              EventStatus.CLOSED,
+              EventStatus.CANCELLED,
+            ])
+            .optional(),
         })
         .optional(),
     )
@@ -152,7 +159,9 @@ export const eventRouter = router({
       z.object({
         eventId: z.string(),
         userId: z.string(),
-        role: z.enum(['OWNER', 'COADMIN', 'INVITER']).default('COADMIN'),
+        role: z
+          .enum([AdminPermission.OWNER, AdminPermission.COADMIN, AdminPermission.INVITER])
+          .default(AdminPermission.COADMIN),
       }),
     )
     .mutation(async ({ input }) => {

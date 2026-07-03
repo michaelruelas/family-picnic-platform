@@ -21,7 +21,7 @@ export const communicationRouter = router({
       z.object({
         eventId: z.string(),
         message: z.string().min(1),
-        channel: z.enum(['EMAIL', 'SMS']),
+        channel: z.enum([CommunicationChannel.EMAIL, CommunicationChannel.SMS]),
         recipientType: z.enum(['ALL', 'HOUSEHOLD', 'INDIVIDUAL', 'NOT_RESPONDED']),
         recipientIds: z.array(z.string()).optional(),
       }),
@@ -124,7 +124,7 @@ export const communicationRouter = router({
       z.object({
         eventId: z.string(),
         message: z.string().min(1),
-        channel: z.enum(['EMAIL', 'SMS']),
+        channel: z.enum([CommunicationChannel.EMAIL, CommunicationChannel.SMS]),
         scheduledAt: z.string().datetime(),
         recipientType: z.enum(['ALL', 'HOUSEHOLD', 'INDIVIDUAL', 'NOT_RESPONDED']),
         recipientIds: z.array(z.string()).optional(),
@@ -160,7 +160,7 @@ export const communicationRouter = router({
     .input(
       z.object({
         userId: z.string(),
-        channel: z.enum(['EMAIL', 'SMS']),
+        channel: z.enum([CommunicationChannel.EMAIL, CommunicationChannel.SMS]),
         eventId: z.string().optional(),
       }),
     )
