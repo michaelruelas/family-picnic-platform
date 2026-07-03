@@ -73,7 +73,7 @@ export async function POST(request: Request) {
           );
         }
 
-        if (rsvpDeadline && new Date(rsvpDeadline) <= new Date(date)) {
+        if (rsvpDeadline && new Date(rsvpDeadline) > new Date(date)) {
           return NextResponse.json(
             { error: 'RSVP deadline must be before the event date' },
             { status: 400 },

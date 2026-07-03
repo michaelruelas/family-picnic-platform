@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import EventStatusBadge from '~/components/event/EventStatusBadge';
+import EventActions from '~/components/admin/EventActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,36 +90,7 @@ export default async function AdminEventsPage() {
                     <p className="mt-1 text-stone-600">📍 {event.location}</p>
                   </div>
                   <div className="flex gap-2">
-                    {event.status === 'DRAFT' && (
-                      <form action={`/api/admin/events/${event.id}/publish`} method="POST">
-                        <button
-                          type="submit"
-                          className="rounded-lg bg-green-100 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-200"
-                        >
-                          Publish
-                        </button>
-                      </form>
-                    )}
-                    {event.status === 'PUBLISHED' && (
-                      <form action={`/api/admin/events/${event.id}/close`} method="POST">
-                        <button
-                          type="submit"
-                          className="rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200"
-                        >
-                          Close RSVPs
-                        </button>
-                      </form>
-                    )}
-                    {event.status !== 'CLOSED' && event.status !== 'CANCELLED' && (
-                      <form action={`/api/admin/events/${event.id}/cancel`} method="POST">
-                        <button
-                          type="submit"
-                          className="rounded-lg bg-stone-100 px-3 py-1 text-sm font-medium text-stone-700 hover:bg-stone-200"
-                        >
-                          Cancel
-                        </button>
-                      </form>
-                    )}
+                    <EventActions eventId={event.id} status={event.status} />
                     <Link
                       href={`/admin/events/${event.id}/edit`}
                       className="rounded-lg bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 hover:bg-amber-200"

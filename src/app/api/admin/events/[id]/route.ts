@@ -80,7 +80,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    if (rsvpDeadline && new Date(rsvpDeadline) <= new Date(date || existing.date)) {
+    if (rsvpDeadline && new Date(rsvpDeadline) > new Date(date || existing.date)) {
       return NextResponse.json(
         { error: 'RSVP deadline must be before the event date' },
         { status: 400 },

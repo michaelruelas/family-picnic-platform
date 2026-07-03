@@ -9,6 +9,9 @@ const prisma = new PrismaClient({
 async function main() {
   console.log('Seeding database…');
 
+  const TEST_PASSWORD = 'password123';
+
+  // Admin account
   const admin = await prisma.user.upsert({
     where: { email: 'admin@family-picnic.example.com' },
     update: {},
@@ -16,56 +19,126 @@ async function main() {
       email: 'admin@family-picnic.example.com',
       name: 'Admin',
       role: 'ADMIN',
+      devPassword: TEST_PASSWORD,
     },
   });
 
-  console.log('Created admin:', admin.id);
+  console.log('Admin:', admin.email);
 
-  const household = await prisma.household.create({
-    data: {
-      name: 'The Johnson Family',
-    },
+  // Household 1 - The Garcia Family
+  const garciaHousehold = await prisma.household.create({
+    data: { name: 'The Garcia Family' },
   });
 
-  console.log('Created household:', household.id);
-
-  const adultUser = await prisma.user.upsert({
-    where: { email: 'sarah.johnson@example.com' },
+  const mariaGarcia = await prisma.user.upsert({
+    where: { email: 'maria.garcia@example.com' },
     update: {},
     create: {
-      email: 'sarah.johnson@example.com',
-      name: 'Sarah Johnson',
+      email: 'maria.garcia@example.com',
+      name: 'Maria Garcia',
       role: 'ADMIN_ADULT',
-      householdId: household.id,
+      householdId: garciaHousehold.id,
+      devPassword: TEST_PASSWORD,
     },
   });
 
-  const childUser = await prisma.user.upsert({
-    where: { email: 'mike.johnson@example.com' },
+  const carlosGarcia = await prisma.user.upsert({
+    where: { email: 'carlos.garcia@example.com' },
     update: {},
     create: {
-      email: 'mike.johnson@example.com',
-      name: 'Mike Johnson',
+      email: 'carlos.garcia@example.com',
+      name: 'Carlos Garcia',
       role: 'ADMIN_ADULT',
-      householdId: household.id,
+      householdId: garciaHousehold.id,
+      devPassword: TEST_PASSWORD,
     },
   });
 
-  console.log('Created users:', adultUser.id, childUser.id);
+  console.log('Household 1:', garciaHousehold.name);
+  console.log('  -', mariaGarcia.email);
+  console.log('  -', carlosGarcia.email);
+
+  // Household 2 - The Thompson Family
+  const thompsonHousehold = await prisma.household.create({
+    data: { name: 'The Thompson Family' },
+  });
+
+  const lisaThompson = await prisma.user.upsert({
+    where: { email: 'lisa.thompson@example.com' },
+    update: {},
+    create: {
+      email: 'lisa.thompson@example.com',
+      name: 'Lisa Thompson',
+      role: 'ADMIN_ADULT',
+      householdId: thompsonHousehold.id,
+      devPassword: TEST_PASSWORD,
+    },
+  });
+
+  const bobThompson = await prisma.user.upsert({
+    where: { email: 'bob.thompson@example.com' },
+    update: {},
+    create: {
+      email: 'bob.thompson@example.com',
+      name: 'Bob Thompson',
+      role: 'ADMIN_ADULT',
+      householdId: thompsonHousehold.id,
+      devPassword: TEST_PASSWORD,
+    },
+  });
+
+  console.log('Household 2:', thompsonHousehold.name);
+  console.log('  -', lisaThompson.email);
+  console.log('  -', bobThompson.email);
+
+  // Household 3 - The Patel Family
+  const patelHousehold = await prisma.household.create({
+    data: { name: 'The Patel Family' },
+  });
+
+  const priyaPatel = await prisma.user.upsert({
+    where: { email: 'priya.patel@example.com' },
+    update: {},
+    create: {
+      email: 'priya.patel@example.com',
+      name: 'Priya Patel',
+      role: 'ADMIN_ADULT',
+      householdId: patelHousehold.id,
+      devPassword: TEST_PASSWORD,
+    },
+  });
+
+  console.log('Household 3:', patelHousehold.name);
+  console.log('  -', priyaPatel.email);
+
+  console.log('');
+  console.log('=== TEST ACCOUNTS ===');
+  console.log('All passwords: password123');
+  console.log('');
+  console.log('Admin:  admin@family-picnic.example.com');
+  console.log('');
+  console.log('Users (for testing end-user experience):');
+  console.log('  maria.garcia@example.com');
+  console.log('  carlos.garcia@example.com');
+  console.log('  lisa.thompson@example.com');
+  console.log('  bob.thompson@example.com');
+  console.log('  priya.patel@example.com');
+  console.log('====================');
+  console.log('');
 
   const dependent = await prisma.dependent.create({
     data: {
-      name: 'Emma Johnson',
+      name: 'Sofia Garcia',
       relationship: 'CHILD',
-      age: 8,
+      age: 7,
       isChild: true,
-      dietaryLabels: ['nut-free'],
-      householdId: household.id,
-      managedByUserId: adultUser.id,
+      dietaryLabels: ['nut-free', 'dairy-free'],
+      householdId: garciaHousehold.id,
+      managedByUserId: mariaGarcia.id,
     },
   });
 
-  console.log('Created dependent:', dependent.id);
+  console.log('Created dependent:', dependent.name);
 
   const event = await prisma.event.create({
     data: {
@@ -79,9 +152,9 @@ async function main() {
     },
   });
 
-  console.log('Created event:', event.id);
+  console.log('Created event:', event.name);
 
-  const mainDishSlot = await prisma.potluckSlot.create({
+  await prisma.potluckSlot.create({
     data: {
       eventId: event.id,
       category: 'MAIN',
@@ -112,32 +185,33 @@ async function main() {
     },
   });
 
-  console.log('Created potluck slots:', mainDishSlot.id, sideSlot.id, dessertSlot.id);
+  console.log('Created potluck slots');
 
   const rsvp1 = await prisma.rSVP.create({
     data: {
       eventId: event.id,
-      userId: adultUser.id,
-      householdId: household.id,
+      userId: mariaGarcia.id,
+      householdId: garciaHousehold.id,
       status: 'CONFIRMED',
       headcount: 3,
-      dietaryNotes: 'One child is nut-free',
+      dietaryNotes: 'One child is nut-free and dairy-free',
       respondedAt: new Date('2026-07-01T10:00:00Z'),
     },
   });
 
-  const rsvp2 = await prisma.rSVP.create({
+  await prisma.rSVP.create({
     data: {
       eventId: event.id,
-      userId: childUser.id,
-      householdId: household.id,
+      userId: lisaThompson.id,
+      householdId: thompsonHousehold.id,
       status: 'CONFIRMED',
-      headcount: 1,
+      headcount: 2,
+      dietaryNotes: 'Vegetarian options please',
       respondedAt: new Date('2026-07-01T11:00:00Z'),
     },
   });
 
-  console.log('Created RSVPs:', rsvp1.id, rsvp2.id);
+  console.log('Created RSVPs for Garcia and Thompson families');
 
   await prisma.potluckSignup.create({
     data: {
@@ -149,7 +223,6 @@ async function main() {
     },
   });
 
-  sideSlot.currentSignups = 2;
   await prisma.potluckSlot.update({
     where: { id: sideSlot.id },
     data: { currentSignups: 2 },
@@ -161,11 +234,10 @@ async function main() {
       rsvpId: rsvp1.id,
       dishName: 'Fudgy Brownies',
       servings: 1,
-      dietaryLabels: ['nut-free'],
+      dietaryLabels: ['nut-free', 'dairy-free'],
     },
   });
 
-  dessertSlot.currentSignups = 1;
   await prisma.potluckSlot.update({
     where: { id: dessertSlot.id },
     data: { currentSignups: 1 },
@@ -178,18 +250,14 @@ async function main() {
     { seed: 200, caption: 'Kids playing frisbee' },
     { seed: 300, caption: 'Setting up the picnic area' },
     { seed: 400, caption: 'Grilling session' },
-    { seed: 500, caption: 'Dessert spread' },
-    { seed: 600, caption: 'Family group photo' },
-    { seed: 700, caption: 'Sunset at the park' },
-    { seed: 800, caption: 'Clean up time' },
   ];
 
   for (const { seed, caption } of photoSeeds) {
     const photo = await prisma.photo.create({
       data: {
         eventId: event.id,
-        uploadedByUserId: adultUser.id,
-        householdId: household.id,
+        uploadedByUserId: mariaGarcia.id,
+        householdId: garciaHousehold.id,
         photoPrismId: `photo-prism-${seed}`,
         url: `https://picsum.photos/seed/${seed}/800/600`,
         thumbnailUrl: `https://picsum.photos/seed/${seed}/400/300`,
@@ -199,36 +267,31 @@ async function main() {
 
     await prisma.photoReaction.createMany({
       data: [
-        {
-          photoId: photo.id,
-          userId: adultUser.id,
-          reaction: '❤️',
-        },
-        {
-          photoId: photo.id,
-          userId: childUser.id,
-          reaction: '😍',
-        },
+        { photoId: photo.id, userId: mariaGarcia.id, reaction: '❤️' },
+        { photoId: photo.id, userId: carlosGarcia.id, reaction: '😍' },
       ],
     });
   }
 
-  console.log('Created 8 photos with reactions');
+  console.log('Created photos with reactions');
 
-  const invitation = await prisma.invitation.create({
-    data: {
+  // Invitations for un-RSVPed households
+  await prisma.invitation.upsert({
+    where: { token: 'seed-invitation-token-patels' },
+    update: {},
+    create: {
       eventId: event.id,
-      householdId: household.id,
+      householdId: patelHousehold.id,
       invitedByUserId: admin.id,
-      status: 'USED',
-      token: 'seed-invitation-token-123',
+      status: 'PENDING',
+      token: 'seed-invitation-token-patels',
       expiresAt: new Date('2026-08-01T23:59:59Z'),
-      sentAt: new Date('2026-06-15T10:00:00Z'),
     },
   });
 
-  console.log('Created invitation:', invitation.id);
+  console.log('Created pending invitation for Patel family');
 
+  console.log('');
   console.log('Seed complete!');
 }
 

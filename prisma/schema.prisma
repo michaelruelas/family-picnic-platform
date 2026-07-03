@@ -109,6 +109,7 @@ model User {
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
   deletedAt              DateTime?
+  devPassword            String?
 
   household          Household?        @relation(fields: [householdId], references: [id])
   managedDependents  Dependent[]
