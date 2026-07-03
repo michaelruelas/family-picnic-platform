@@ -24,7 +24,7 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "postinstall": "prisma generate",
-    "prepare": "husky && playwright install chromium",
+    "prepare": "husky",
     "release:dry": "release-please --dry-run",
     "release:full": "release-please"
   },
