@@ -201,38 +201,68 @@ export const rsvpRouter = router({
             userId: ctx.session.user.id,
           },
         },
+        include: {
+          potluckSignups: {
+            include: { slot: true },
+          },
+        },
       });
 
       const wasConfirmed = existingRsvp?.status === RSVPStatus.CONFIRMED;
       const hadWaitlistPosition = existingRsvp?.waitlistPosition;
 
-      const rsvp = await prisma.rSVP.upsert({
-        where: {
-          eventId_userId: {
+      await prisma.$transaction(async (tx) => {
+        for (const signup of existingRsvp?.potluckSignups || []) {
+          await tx.potluckSlot.update({
+            where: { id: signup.slotId },
+            data: { currentSignups: { decrement: signup.servings } },
+          });
+        }
+
+        await tx.potluckSignup.deleteMany({
+          where: { rsvpId: existingRsvp?.id },
+        });
+
+        await tx.rSVP.upsert({
+          where: {
+            eventId_userId: {
+              eventId: input.eventId,
+              userId: ctx.session.user.id,
+            },
+          },
+          update: {
+            status: RSVPStatus.DECLINED,
+            headcount: 0,
+            dietaryNotes: null,
+            respondedAt: new Date(),
+            waitlistPosition: null,
+          },
+          create: {
             eventId: input.eventId,
             userId: ctx.session.user.id,
+            householdId: user.householdId || user.id,
+            status: RSVPStatus.DECLINED,
+            headcount: 0,
+            dietaryNotes: null,
+            respondedAt: new Date(),
           },
-        },
-        update: {
-          status: RSVPStatus.DECLINED,
-          headcount: 0,
-          dietaryNotes: null,
-          respondedAt: new Date(),
-          waitlistPosition: null,
-        },
-        create: {
-          eventId: input.eventId,
-          userId: ctx.session.user.id,
-          householdId: user.householdId || user.id,
-          status: RSVPStatus.DECLINED,
-          headcount: 0,
-          dietaryNotes: null,
-          respondedAt: new Date(),
-        },
-      });
+        });
 
-      if (wasConfirmed) {
-        await prisma.$transaction(async (tx) => {
+        await tx.adminAuditLog.create({
+          data: {
+            userId: ctx.session.user.id,
+            eventId: input.eventId,
+            action: 'POTLUCK_SLOT_RELEASE',
+            oldValue: { status: existingRsvp?.status, headcount: existingRsvp?.headcount },
+            newValue: {
+              status: RSVPStatus.DECLINED,
+              headcount: 0,
+              slotsReleased: existingRsvp?.potluckSignups.length || 0,
+            },
+          },
+        });
+
+        if (wasConfirmed) {
           const nextWaitlisted = await tx.rSVP.findFirst({
             where: {
               eventId: input.eventId,
@@ -261,22 +291,42 @@ export const rsvpRouter = router({
                 waitlistPosition: { decrement: 1 },
               },
             });
-          }
-        });
-      } else if (hadWaitlistPosition) {
-        await prisma.rSVP.updateMany({
-          where: {
-            eventId: input.eventId,
-            status: RSVPStatus.WAITLISTED,
-            waitlistPosition: { gt: hadWaitlistPosition },
-          },
-          data: {
-            waitlistPosition: { decrement: 1 },
-          },
-        });
-      }
 
-      return rsvp;
+            await tx.adminAuditLog.create({
+              data: {
+                userId: nextWaitlisted.userId,
+                eventId: input.eventId,
+                action: 'WAITLIST_PROMOTION',
+                oldValue: {
+                  status: RSVPStatus.WAITLISTED,
+                  position: nextWaitlisted.waitlistPosition,
+                },
+                newValue: { status: RSVPStatus.CONFIRMED },
+              },
+            });
+          }
+        } else if (hadWaitlistPosition) {
+          await tx.rSVP.updateMany({
+            where: {
+              eventId: input.eventId,
+              status: RSVPStatus.WAITLISTED,
+              waitlistPosition: { gt: hadWaitlistPosition },
+            },
+            data: {
+              waitlistPosition: { decrement: 1 },
+            },
+          });
+        }
+      });
+
+      return prisma.rSVP.findUnique({
+        where: {
+          eventId_userId: {
+            eventId: input.eventId,
+            userId: ctx.session.user.id,
+          },
+        },
+      });
     }),
 
   adminOverride: auditedAdminProcedure

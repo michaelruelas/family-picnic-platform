@@ -32,6 +32,22 @@ export async function GET(_request: Request, { params }: RouteParams) {
             },
           },
         },
+        admins: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                household: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
