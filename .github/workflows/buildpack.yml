@@ -1,0 +1,69 @@
+---
+name: Buildpack Builder CI
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ["v*"]
+    paths:
+      - "project.toml"
+      - "builder.toml"
+      - ".github/workflows/buildpack.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Builder image tag
+        required: false
+        type: string
+
+env:
+  REGISTRY: forgejo.qubitquilt.dev
+  IMAGE: michaelruelas/family-picnic-platform-builder
+  BUILDER_CONFIG: builder.toml
+
+jobs:
+  build-builder:
+    runs-on: forgejo-pugquilt-runner
+    steps:
+      - name: Checkout
+        uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Buildpack CLI
+        uses: buildpacks/setup-pack@v5
+        with:
+          pack-version: latest
+
+      - name: Determine Tag
+        id: vars
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag }}" ]]; then
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/heads/develop ]]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=main" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.DEPLOYMENT_TOKEN }}
+
+      - name: Build and Publish Builder
+        run: |
+          pack builder create ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.vars.outputs.tag }} \
+            --config ${{ env.BUILDER_CONFIG }} \
+            --publish
+
+      - name: Tag as latest on main
+        if: github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
+        run: |
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.vars.outputs.tag }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE }}:latest
