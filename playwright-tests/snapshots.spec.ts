@@ -1,16 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-type Theme = 'default' | 'notion' | 'workspace';
-type ColorMode = 'light' | 'dark';
-
-const themes: { theme: Theme; colorMode: ColorMode }[] = [
-  { theme: 'default', colorMode: 'light' },
-  { theme: 'default', colorMode: 'dark' },
-  { theme: 'notion', colorMode: 'light' },
-  { theme: 'notion', colorMode: 'dark' },
-  { theme: 'workspace', colorMode: 'light' },
-  { theme: 'workspace', colorMode: 'dark' },
-];
+import { getAllThemeCombinations } from '../src/lib/themes';
 
 const pages = [
   { path: '/login', name: 'login-page' },
@@ -21,39 +10,45 @@ const pages = [
 ];
 
 for (const page of pages) {
-  for (const { theme, colorMode } of themes) {
-    const snapshotName = `${page.name}-${theme}-${colorMode}.png`;
+  for (const { theme, colorMode } of getAllThemeCombinations()) {
+    const snapshotName = `${page.name}-${theme.id}-${colorMode}.png`;
 
     test(`screenshot ${snapshotName}`, async ({ page: pw }) => {
-      await pw.goto(page.path);
-      await pw.waitForLoadState('domcontentloaded');
+      const themeClass = theme.className(colorMode);
+
+      await pw.goto(page.path, { waitUntil: 'networkidle' });
 
       await pw.evaluate(
-        ({ theme, colorMode }) => {
-          document.documentElement.classList.remove('dark', 'notion', 'notion.dark', 'workspace', 'workspace.dark');
-          if (theme !== 'default') {
-            document.documentElement.classList.add(
-              colorMode === 'dark' ? `${theme}.dark` : theme
-            );
-          } else if (colorMode === 'dark') {
-            document.documentElement.classList.add('dark');
-          }
+        (cls: string) => {
+          document.documentElement.classList.remove(
+            'dark',
+            'light',
+            'notion',
+            'notion-dark',
+            'notion-light',
+            'workspace',
+            'workspace-dark',
+            'workspace-light'
+          );
+          document.documentElement.classList.add(cls);
+          document.documentElement.setAttribute('data-theme', cls);
+          localStorage.setItem('next-themes-theme', cls);
         },
-        { theme, colorMode }
+        themeClass
       );
 
-      await pw.waitForTimeout(100);
+      await pw.waitForTimeout(300);
       await expect(pw).toHaveScreenshot(snapshotName);
     });
   }
 
   test(`screenshot ${page.name}-login-error`, async ({ page: pw }) => {
     await pw.goto('/login');
-    await pw.waitForLoadState('domcontentloaded');
+    await pw.waitForLoadState('networkidle');
     await pw.fill('#username', 'invalid@example.com');
     await pw.fill('#password', 'wrongpassword');
     await pw.click('button[type="submit"]');
-    await pw.waitForTimeout(1000);
+    await pw.waitForTimeout(1500);
     await expect(pw).toHaveScreenshot(`${page.name}-login-error.png`);
   });
 }

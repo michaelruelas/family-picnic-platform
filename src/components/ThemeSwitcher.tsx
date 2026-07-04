@@ -2,21 +2,23 @@
 
 import { useTheme } from 'next-themes';
 import { useMounted } from '~/hooks/useMounted';
+import { themes, colorModes, type ThemeConfig, type ColorMode } from '~/lib/themes';
 
-type Theme = 'default' | 'notion' | 'workspace';
-type ColorMode = 'light' | 'dark' | 'system';
+type SystemColorMode = ColorMode | 'system';
 
-const themes: { value: Theme; label: string }[] = [
-  { value: 'default', label: 'Default' },
-  { value: 'notion', label: 'Notion' },
-  { value: 'workspace', label: 'Workspace' },
-];
+function findCurrentTheme(theme: string | undefined): ThemeConfig {
+  if (theme?.includes('workspace')) {
+    return themes.find((t) => t.id === 'workspace')!;
+  }
+  if (theme?.includes('notion')) {
+    return themes.find((t) => t.id === 'notion')!;
+  }
+  return themes.find((t) => t.id === 'default')!;
+}
 
-const colorModes: { value: ColorMode; label: string }[] = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'System' },
-];
+function getCurrentColorMode(resolvedTheme: string | undefined): ColorMode {
+  return resolvedTheme === 'dark' ? 'dark' : 'light';
+}
 
 export default function ThemeSwitcher() {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -31,30 +33,18 @@ export default function ThemeSwitcher() {
     );
   }
 
-  const currentTheme = theme?.includes('workspace')
-    ? 'workspace'
-    : theme?.includes('notion')
-      ? 'notion'
-      : 'default';
-  const currentColorMode = resolvedTheme === 'dark' ? 'dark' : 'light';
+  const currentTheme = findCurrentTheme(theme);
+  const currentColorMode = getCurrentColorMode(resolvedTheme);
 
-  const handleThemeChange = (newTheme: Theme) => {
-    if (newTheme === 'workspace') {
-      setTheme(`workspace-${currentColorMode}`);
-    } else if (newTheme === 'notion') {
-      setTheme(`notion-${currentColorMode}`);
-    } else {
-      setTheme(currentColorMode);
-    }
+  const handleThemeChange = (newTheme: ThemeConfig) => {
+    setTheme(newTheme.className(currentColorMode));
   };
 
-  const handleColorModeChange = (newMode: ColorMode) => {
-    if (currentTheme === 'workspace') {
-      setTheme(`workspace-${newMode}`);
-    } else if (currentTheme === 'notion') {
-      setTheme(`notion-${newMode}`);
+  const handleColorModeChange = (newMode: SystemColorMode) => {
+    if (newMode === 'system') {
+      setTheme(currentTheme.className('light'));
     } else {
-      setTheme(newMode);
+      setTheme(currentTheme.className(newMode));
     }
   };
 
@@ -63,32 +53,30 @@ export default function ThemeSwitcher() {
       <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
         {themes.map((t) => (
           <button
-            key={t.value}
-            onClick={() => handleThemeChange(t.value)}
+            key={t.id}
+            onClick={() => handleThemeChange(t)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              currentTheme === t.value
+              currentTheme.id === t.id
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t.label}
+            {t.name}
           </button>
         ))}
       </div>
       <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
         {colorModes.map((mode) => (
           <button
-            key={mode.value}
-            onClick={() => handleColorModeChange(mode.value)}
+            key={mode.id}
+            onClick={() => handleColorModeChange(mode.id)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              (mode.value === 'system' && !resolvedTheme) ||
-              (mode.value === 'dark' && resolvedTheme === 'dark') ||
-              (mode.value === 'light' && resolvedTheme === 'light')
+              mode.id === currentColorMode
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {mode.label}
+            {mode.name}
           </button>
         ))}
       </div>
