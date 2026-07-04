@@ -20,15 +20,19 @@ async function scheduleWorkflow(
     const { getOpenWorkflow } = await import('~/lib/ow-client');
     const { scheduledBroadcastDelivery } = await import('~/lib/ow-workflows');
     const ow = await getOpenWorkflow();
-    await ow.runWorkflow(scheduledBroadcastDelivery.spec, {
-      broadcastId,
-      eventId,
-      message,
-      channel,
-      recipientType,
-      recipientIds,
-      sentByUserId,
-    }, { availableAt: scheduledDate });
+    await ow.runWorkflow(
+      scheduledBroadcastDelivery.spec,
+      {
+        broadcastId,
+        eventId,
+        message,
+        channel,
+        recipientType,
+        recipientIds,
+        sentByUserId,
+      },
+      { availableAt: scheduledDate },
+    );
   } catch (error) {
     console.error('Failed to schedule OpenWorkflow broadcast:', error);
   }

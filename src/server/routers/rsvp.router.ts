@@ -3,6 +3,43 @@ import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { RSVPStatus, InvitationStatus, EventStatus } from '~/lib/generated/enums';
 
+async function triggerWorkflow(
+  eventId: string,
+  userId: string,
+  action: 'confirm' | 'decline',
+  headcount?: number,
+  dietaryNotes?: string,
+) {
+  try {
+    const { getOpenWorkflow } = await import('~/lib/ow-client');
+    const { rsvpConfirm, rsvpDecline } = await import('~/lib/ow-workflows');
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { householdId: true },
+    });
+    if (!user) return;
+
+    const ow = await getOpenWorkflow();
+    if (action === 'confirm') {
+      await ow.runWorkflow(rsvpConfirm.spec, {
+        eventId,
+        userId,
+        householdId: user.householdId || userId,
+        headcount: headcount ?? 1,
+        dietaryNotes,
+      });
+    } else {
+      await ow.runWorkflow(rsvpDecline.spec, {
+        eventId,
+        userId,
+        householdId: user.householdId || userId,
+      });
+    }
+  } catch (error) {
+    console.error(`Failed to trigger ${action} workflow:`, error);
+  }
+}
+
 export const rsvpRouter = router({
   create: protectedProcedure
     .input(
@@ -180,6 +217,14 @@ export const rsvpRouter = router({
         });
       }
 
+      triggerWorkflow(
+        input.eventId,
+        ctx.session.user.id,
+        'confirm',
+        input.headcount,
+        input.dietaryNotes,
+      );
+
       return { ...rsvp, isWaitlisted, waitlistPosition };
     }),
 
@@ -318,6 +363,8 @@ export const rsvpRouter = router({
           });
         }
       });
+
+      triggerWorkflow(input.eventId, ctx.session.user.id, 'decline');
 
       return prisma.rSVP.findUnique({
         where: {
