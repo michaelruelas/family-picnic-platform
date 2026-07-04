@@ -4,4 +4,4 @@ echo "[wrkflw] Validating CI pipeline..."
 wrkflw validate .github/workflows/ci.yml
 
 echo "[wrkflw] Running CI pipeline locally..."
-wrkflw run --runtime secure-emulation .github/workflows/ci.yml
+wrkflw run --runtime emulation .github/workflows/ci.yml
