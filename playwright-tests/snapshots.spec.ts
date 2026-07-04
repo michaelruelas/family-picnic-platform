@@ -1,42 +1,59 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Page Snapshots', () => {
-  test('login page screenshot', async ({ page }) => {
-    await page.goto('/login');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page).toHaveScreenshot('login-page.png');
-  });
+type Theme = 'default' | 'notion' | 'workspace';
+type ColorMode = 'light' | 'dark';
 
-  test('home page screenshot', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page).toHaveScreenshot('home-page.png');
-  });
+const themes: { theme: Theme; colorMode: ColorMode }[] = [
+  { theme: 'default', colorMode: 'light' },
+  { theme: 'default', colorMode: 'dark' },
+  { theme: 'notion', colorMode: 'light' },
+  { theme: 'notion', colorMode: 'dark' },
+  { theme: 'workspace', colorMode: 'light' },
+  { theme: 'workspace', colorMode: 'dark' },
+];
 
-  test('events page screenshot', async ({ page }) => {
-    await page.goto('/events');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page).toHaveScreenshot('events-page.png');
-  });
+const pages = [
+  { path: '/login', name: 'login-page' },
+  { path: '/', name: 'home-page' },
+  { path: '/events', name: 'events-page' },
+  { path: '/potluck', name: 'potluck-page' },
+  { path: '/photos', name: 'photos-page' },
+];
 
-  test('potluck page screenshot', async ({ page }) => {
-    await page.goto('/potluck');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page).toHaveScreenshot('potluck-page.png');
-  });
+for (const page of pages) {
+  for (const { theme, colorMode } of themes) {
+    const snapshotName = `${page.name}-${theme}-${colorMode}.png`;
 
-  test('photos page screenshot', async ({ page }) => {
-    await page.goto('/photos');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page).toHaveScreenshot('photos-page.png');
-  });
+    test(`screenshot ${snapshotName}`, async ({ page: pw }) => {
+      await pw.goto(page.path);
+      await pw.waitForLoadState('domcontentloaded');
 
-  test('login form with error state screenshot', async ({ page }) => {
-    await page.goto('/login');
-    await page.fill('#username', 'invalid@example.com');
-    await page.fill('#password', 'wrongpassword');
-    await page.click('button[type="submit"]');
-    await page.waitForTimeout(1000);
-    await expect(page).toHaveScreenshot('login-error.png');
+      await pw.evaluate(
+        ({ theme, colorMode }) => {
+          document.documentElement.classList.remove('dark', 'notion', 'notion.dark', 'workspace', 'workspace.dark');
+          if (theme !== 'default') {
+            document.documentElement.classList.add(
+              colorMode === 'dark' ? `${theme}.dark` : theme
+            );
+          } else if (colorMode === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        },
+        { theme, colorMode }
+      );
+
+      await pw.waitForTimeout(100);
+      await expect(pw).toHaveScreenshot(snapshotName);
+    });
+  }
+
+  test(`screenshot ${page.name}-login-error`, async ({ page: pw }) => {
+    await pw.goto('/login');
+    await pw.waitForLoadState('domcontentloaded');
+    await pw.fill('#username', 'invalid@example.com');
+    await pw.fill('#password', 'wrongpassword');
+    await pw.click('button[type="submit"]');
+    await pw.waitForTimeout(1000);
+    await expect(pw).toHaveScreenshot(`${page.name}-login-error.png`);
   });
-});
+}
