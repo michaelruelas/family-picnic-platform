@@ -1,8 +1,8 @@
 @import 'tailwindcss';
 
 @custom-variant dark (&:is(.dark *));
-@custom-variant notion (&:is(.notion *));
-@custom-variant workspace (&:is(.workspace *));
+@custom-variant notion (&:is(.notion-light *), &:is(.notion-dark *));
+@custom-variant workspace (&:is(.workspace-light *), &:is(.workspace-dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -138,7 +138,7 @@
   --sidebar-ring: #f59e0b;
 }
 
-.notion {
+.notion-light {
   --radius: 0.375rem;
 
   --background: #ffffff;
@@ -185,7 +185,9 @@
   --sidebar-ring: #2383e2;
 }
 
-.notion.dark {
+.notion-dark {
+  --radius: 0.375rem;
+
   --background: #191919;
   --foreground: #e6e6e6;
 
@@ -230,7 +232,7 @@
   --sidebar-ring: #2383e2;
 }
 
-.workspace {
+.workspace-light {
   --radius: 0.5rem;
 
   --background: #ffffff;
@@ -277,7 +279,9 @@
   --sidebar-ring: #4285f4;
 }
 
-.workspace.dark {
+.workspace-dark {
+  --radius: 0.5rem;
+
   --background: #202124;
   --foreground: #e8eaed;
 
