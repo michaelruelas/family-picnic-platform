@@ -30,9 +30,7 @@ export const colorModes: { id: ColorMode; name: string }[] = [
 ];
 
 export function getThemeVariants(): string[] {
-  return themes.flatMap((theme) =>
-    colorModes.map((mode) => theme.className(mode.id))
-  );
+  return themes.flatMap((theme) => colorModes.map((mode) => theme.className(mode.id)));
 }
 
 export function getAllThemeCombinations(): { theme: ThemeConfig; colorMode: ColorMode }[] {
@@ -40,6 +38,6 @@ export function getAllThemeCombinations(): { theme: ThemeConfig; colorMode: Colo
     colorModes.map((mode) => ({
       theme,
       colorMode: mode.id,
-    }))
+    })),
   );
 }

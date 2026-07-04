@@ -4,11 +4,11 @@ name: Buildpack Builder CI
 on:
   push:
     branches: [main, develop]
-    tags: ["v*"]
+    tags: ['v*']
     paths:
-      - "project.toml"
-      - "builder.toml"
-      - ".github/workflows/buildpack.yml"
+      - 'project.toml'
+      - 'builder.toml'
+      - '.github/workflows/buildpack.yml'
   workflow_dispatch:
     inputs:
       tag:

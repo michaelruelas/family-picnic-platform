@@ -18,24 +18,21 @@ for (const page of pages) {
 
       await pw.goto(page.path, { waitUntil: 'networkidle' });
 
-      await pw.evaluate(
-        (cls: string) => {
-          document.documentElement.classList.remove(
-            'dark',
-            'light',
-            'notion',
-            'notion-dark',
-            'notion-light',
-            'workspace',
-            'workspace-dark',
-            'workspace-light'
-          );
-          document.documentElement.classList.add(cls);
-          document.documentElement.setAttribute('data-theme', cls);
-          localStorage.setItem('next-themes-theme', cls);
-        },
-        themeClass
-      );
+      await pw.evaluate((cls: string) => {
+        document.documentElement.classList.remove(
+          'dark',
+          'light',
+          'notion',
+          'notion-dark',
+          'notion-light',
+          'workspace',
+          'workspace-dark',
+          'workspace-light',
+        );
+        document.documentElement.classList.add(cls);
+        document.documentElement.setAttribute('data-theme', cls);
+        localStorage.setItem('next-themes-theme', cls);
+      }, themeClass);
 
       await pw.waitForTimeout(300);
       await expect(pw).toHaveScreenshot(snapshotName);

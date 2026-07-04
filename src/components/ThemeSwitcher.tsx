@@ -27,8 +27,8 @@ export default function ThemeSwitcher() {
   if (!mounted) {
     return (
       <div className="flex items-center gap-2">
-        <div className="h-9 w-36 animate-pulse rounded-md bg-muted" />
-        <div className="h-9 w-20 animate-pulse rounded-md bg-muted" />
+        <div className="bg-muted h-9 w-36 animate-pulse rounded-md" />
+        <div className="bg-muted h-9 w-20 animate-pulse rounded-md" />
       </div>
     );
   }
@@ -50,7 +50,7 @@ export default function ThemeSwitcher() {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+      <div className="bg-muted flex items-center gap-1 rounded-lg p-1">
         {themes.map((t) => (
           <button
             key={t.id}
@@ -65,7 +65,7 @@ export default function ThemeSwitcher() {
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+      <div className="bg-muted flex items-center gap-1 rounded-lg p-1">
         {colorModes.map((mode) => (
           <button
             key={mode.id}

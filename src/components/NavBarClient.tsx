@@ -14,7 +14,7 @@ export default function NavBarClient() {
           Family Picnic
         </Link>
         <div className="flex items-center gap-6">
-          <div className="hidden md:flex gap-6">
+          <div className="hidden gap-6 md:flex">
             <Link href="/" className="hover:opacity-80">
               Home
             </Link>
@@ -30,21 +30,21 @@ export default function NavBarClient() {
           </div>
           <ThemeSwitcher />
           {status === 'loading' ? (
-            <span className="rounded-lg bg-primary-foreground/10 px-3 py-1 text-sm font-medium opacity-50">
+            <span className="bg-primary-foreground/10 rounded-lg px-3 py-1 text-sm font-medium opacity-50">
               ...
             </span>
           ) : session ? (
             <div className="flex items-center gap-4">
-              <Link href="/my-events" className="hidden md:inline hover:opacity-80">
+              <Link href="/my-events" className="hidden hover:opacity-80 md:inline">
                 My Events
               </Link>
-              <Link href="/profile" className="hidden md:inline hover:opacity-80">
+              <Link href="/profile" className="hidden hover:opacity-80 md:inline">
                 Profile
               </Link>
-              <span className="hidden md:inline text-sm opacity-80">{session.user?.name}</span>
+              <span className="hidden text-sm opacity-80 md:inline">{session.user?.name}</span>
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
-                className="rounded-lg bg-primary-foreground/10 px-3 py-1 text-sm font-medium hover:bg-primary-foreground/20"
+                className="bg-primary-foreground/10 hover:bg-primary-foreground/20 rounded-lg px-3 py-1 text-sm font-medium"
               >
                 Sign Out
               </button>
@@ -52,7 +52,7 @@ export default function NavBarClient() {
           ) : (
             <Link
               href="/login"
-              className="rounded-lg bg-primary-foreground/10 px-3 py-1 text-sm font-medium hover:bg-primary-foreground/20"
+              className="bg-primary-foreground/10 hover:bg-primary-foreground/20 rounded-lg px-3 py-1 text-sm font-medium"
             >
               Sign In
             </Link>
