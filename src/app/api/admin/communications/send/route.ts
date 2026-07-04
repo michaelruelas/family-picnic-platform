@@ -6,6 +6,34 @@ import { CommunicationStatus, RSVPStatus, CommunicationChannel } from '~/lib/gen
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 
+async function scheduleWorkflow(
+  eventId: string,
+  message: string,
+  channel: CommunicationChannel,
+  recipientType: string,
+  recipientIds: string[] | undefined,
+  sentByUserId: string,
+  broadcastId: string,
+  scheduledDate: Date,
+) {
+  try {
+    const { getOpenWorkflow } = await import('~/lib/ow-client');
+    const { scheduledBroadcastDelivery } = await import('~/lib/ow-workflows');
+    const ow = await getOpenWorkflow();
+    await ow.runWorkflow(scheduledBroadcastDelivery.spec, {
+      broadcastId,
+      eventId,
+      message,
+      channel,
+      recipientType,
+      recipientIds,
+      sentByUserId,
+    }, { availableAt: scheduledDate });
+  } catch (error) {
+    console.error('Failed to schedule OpenWorkflow broadcast:', error);
+  }
+}
+
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId();
   const session = await getServerSession(authOptions);
@@ -58,6 +86,17 @@ export async function POST(request: NextRequest) {
               scheduledAt: scheduledDate,
             },
           });
+
+          scheduleWorkflow(
+            eventId,
+            message,
+            channel as CommunicationChannel,
+            recipientType,
+            recipientIds,
+            session.user.id,
+            broadcast.id,
+            scheduledDate,
+          );
 
           return NextResponse.json({
             success: true,

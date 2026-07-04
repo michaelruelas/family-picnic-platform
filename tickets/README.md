@@ -50,14 +50,14 @@ Tickets are ordered by suggested implementation priority. Lower numbers = higher
 
 ### Post-MVP (Phase 2+)
 
-| Ticket | Description              | Status           |
-| ------ | ------------------------ | ---------------- |
-| 13     | Kubernetes manifests     | Done             |
+| Ticket | Description              | Status                 |
+| ------ | ------------------------ | ---------------------- |
+| 13     | Kubernetes manifests     | Done                   |
 | 30     | Account recovery         | Won't do (see ADR-001) |
-| 31     | Scheduled broadcasts     | Done             |
-| 32     | Repo documentation       | Done (this file) |
-| 40     | Backup and data export   | Done             |
-| 43     | Dev onramp and AGENTS.md | Done             |
+| 31     | Scheduled broadcasts     | Done                   |
+| 32     | Repo documentation       | Done (this file)       |
+| 40     | Backup and data export   | Done                   |
+| 43     | Dev onramp and AGENTS.md | Done                   |
 
 ## Active Development
 

@@ -37,7 +37,12 @@ export async function GET(request: NextRequest) {
           take: 10,
         });
 
-        const results: Array<{ id: string; status: string; recipientCount?: number; error?: string }> = [];
+        const results: Array<{
+          id: string;
+          status: string;
+          recipientCount?: number;
+          error?: string;
+        }> = [];
 
         for (const broadcast of due) {
           try {
@@ -107,14 +112,26 @@ export async function GET(request: NextRequest) {
               data: { status: ScheduledBroadcastStatus.SENT, processedAt: new Date() },
             });
 
-            results.push({ id: broadcast.id, status: ScheduledBroadcastStatus.SENT, recipientCount: targetUserIds.length });
+            results.push({
+              id: broadcast.id,
+              status: ScheduledBroadcastStatus.SENT,
+              recipientCount: targetUserIds.length,
+            });
           } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error';
             await prisma.scheduledBroadcast.update({
               where: { id: broadcast.id },
-              data: { status: ScheduledBroadcastStatus.FAILED, errorMessage: message, processedAt: new Date() },
+              data: {
+                status: ScheduledBroadcastStatus.FAILED,
+                errorMessage: message,
+                processedAt: new Date(),
+              },
             });
-            results.push({ id: broadcast.id, status: ScheduledBroadcastStatus.FAILED, error: message });
+            results.push({
+              id: broadcast.id,
+              status: ScheduledBroadcastStatus.FAILED,
+              error: message,
+            });
           }
         }
 
