@@ -37,5 +37,11 @@ coverage/
 # Logs
 *.log
 npm-debug.log*
+
+# Playwright
 playwright-report/
+test-results/
+playwright-tests/snapshots.spec.ts-snapshots/*.png
+
+# Misc
 .gnfh/
