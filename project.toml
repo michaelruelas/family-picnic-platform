@@ -1,0 +1,10 @@
+[_]
+schema-version = "0.2"
+
+[[io.buildpacks.build.env]]
+name = "NODE_ENV"
+value = "production"
+
+[[io.buildpacks.build.env]]
+name = "NEXT_TELEMETRY_DISABLED"
+value = "1"

@@ -2,7 +2,7 @@
 
 A private family engagement hub for an annual picnic — RSVP, potluck coordination, photo sharing, and family communication.
 
-> **Status:** Pre-MVP / scaffold. Prisma schema, auth, and tRPC middleware are in place. See [SPEC.md](SPEC.md) for the full spec and [CHANGELOG.md](CHANGELOG.md) for progress.
+See [SPEC.md](SPEC.md) for the full technical specification, [CHANGELOG.md](CHANGELOG.md) for progress, and [AGENTS.md](AGENTS.md) for developer conventions.
 
 ## Stack
 
@@ -27,30 +27,33 @@ npm run dev               # http://localhost:3000
 
 ## Scripts
 
-| Command                 | Purpose                |
-| ----------------------- | ---------------------- |
-| `npm run dev`           | Start dev server       |
-| `npm run build`         | Production build       |
-| `npm test`              | Run tests (Vitest)     |
-| `npm run test:watch`    | Watch mode             |
-| `npm run test:coverage` | Coverage report        |
-| `npm run typecheck`     | TypeScript check       |
-| `npm run lint`          | Lint                   |
-| `npm run format`        | Format with Prettier   |
-| `npm run ci`            | Full CI suite locally  |
-| `npm run db:validate`   | Validate Prisma schema |
-| `npm run db:studio`     | Prisma Studio          |
+| Command                 | Purpose                 |
+| ----------------------- | ----------------------- |
+| `npm run dev`           | Start dev server        |
+| `npm run build`         | Production build        |
+| `npm run start`         | Start production server |
+| `npm test`              | Run tests (Vitest)      |
+| `npm run test:watch`    | Watch mode              |
+| `npm run test:coverage` | Coverage report         |
+| `npm run typecheck`     | TypeScript check        |
+| `npm run lint`          | Lint                    |
+| `npm run format`        | Format with Prettier    |
+| `npm run ci`            | Full CI suite locally   |
+| `npm run db:generate`   | Generate Prisma client  |
+| `npm run db:push`       | Push schema to database |
+| `npm run db:seed`       | Seed with sample data   |
+| `npm run db:studio`     | Prisma Studio           |
+| `npm run db:validate`   | Validate Prisma schema  |
 
 ## Project Structure
 
 ```
 src/
-├── app/               # Next.js App Router routes
+├── app/               # Next.js App Router pages and API routes
 ├── components/        # UI components per domain
-├── lib/               # Prisma, tRPC, Auth, external services
-├── hooks/             # React hooks (offline, event, potluck)
-├── server/routers/    # tRPC route handlers
-└── types/             # TypeScript type augmentations
+├── lib/               # tRPC, Prisma, Auth, external services, utilities
+├── hooks/             # React hooks (offline, event, potluck, household)
+└── server/routers/    # tRPC route handlers
 
 prisma/
 ├── schema.prisma      # Data model (13 models, 14 enums)

@@ -581,22 +581,3 @@ No nested route groups; each page is a standalone route directory with its own `
 
 _Document Version: 1.0_  
 _Last Updated: 2026-07-02_
-
-```typescript
-// Middleware stack order
-const middlewareStack = [
-  // 1. Validate session exists
-  { name: 'auth', handler: authMiddleware },
-
-  // 2. Check role permissions (if required)
-  { name: 'admin', handler: requireAdmin },
-
-  // 3. Log all mutations for audit
-  { name: 'audit', handler: auditLogger },
-];
-```
-
----
-
-_Document Version: 1.0_  
-_Last Updated: 2026-07-02_
