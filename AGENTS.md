@@ -179,8 +179,9 @@ For complete documentation on:
 | `/api/admin/invitations/send`      | `src/app/api/admin/invitations/send/route.ts`      | Send invitations              |
 | `/api/admin/invitations/resend`    | `src/app/api/admin/invitations/resend/route.ts`    | Resend invitations            |
 | `/api/admin/invitations/track`     | `src/app/api/admin/invitations/track/route.ts`     | Track invitation delivery     |
-| `/api/admin/communications/send`   | `src/app/api/admin/communications/send/route.ts`   | Send broadcast                |
+| `/api/admin/communications/send`   | `src/app/api/admin/communications/send/route.ts`   | Send broadcast (immediate or scheduled) |
 | `/api/admin/communications/status` | `src/app/api/admin/communications/status/route.ts` | Broadcast status              |
+| `/api/admin/communications/process-scheduled` | `src/app/api/admin/communications/process-scheduled/route.ts` | Process due scheduled broadcasts (cron target) |
 | `/api/admin/audit-log`             | `src/app/api/admin/audit-log/route.ts`             | Audit log queries             |
 | `/api/admin/csv-import`            | `src/app/api/admin/csv-import/route.ts`            | Bulk CSV import               |
 | `/api/admin/users/search`          | `src/app/api/admin/users/search/route.ts`          | Search users by email         |
@@ -203,7 +204,7 @@ Routers are located in `src/server/routers/`:
 | `rsvp`          | `rsvp.router.ts`          | confirm, decline, update, getByEvent, getMyRsvp, getHeadcount                 |
 | `potluck`       | `potluck.router.ts`       | listSlots, signup, updateSignup, cancelSignup, getFoodSummary                 |
 | `photo`         | `photo.router.ts`         | getUploadUrl, confirmUpload, search, delete, addReaction, removeReaction      |
-| `communication` | `communication.router.ts` | sendInvite, sendRsvpReminder, sendBroadcast, unsubscribe, getRateLimitStatus  |
+| `communication` | `communication.router.ts` | sendInvite, sendRsvpReminder, sendBroadcast, scheduleMessage, unsubscribe, getRateLimitStatus |
 | `admin`         | `admin.router.ts`         | getUsers, getAuditLog, dashboard, csvImport, getDietarySummary                |
 
 ### tRPC Procedures
@@ -271,17 +272,6 @@ src/
 2. **`src/lib/auth.ts`** — Only exports `authOptions` and `getServerSession`.
 3. **`prisma/schema.prisma`** — If modified, run `npm run db:generate`. Client generated to `src/lib/generated/client`.
 4. **`src/lib/generated/`** — Prisma-generated code. Do not edit manually.
-5. **`public/sw.js`** — Service worker has known ESLint `no-undef` errors for browser globals. Safe to ignore.
-
-## Known ESLint Issues (Safe to Ignore)
-
-| File                    | Errors                          | Reason                                    |
-| ----------------------- | ------------------------------- | ----------------------------------------- |
-| `public/sw.js`          | 23x `no-undef`                  | Browser globals not in Node ESLint config |
-| `sw.js`                 | 1x `no-undef`, 1x `unused-vars` | Browser-only code                         |
-| `InvitationsClient.tsx` | React 19 lint warnings          | React 19 specific                         |
-| `HouseholdClient.tsx`   | 2x `unused-vars`                | Two unused variables                      |
-| `HelpButton.tsx`        | 1x `set-state-in-effect`        | React 19 lint warning                     |
 
 ## Tickets
 
@@ -331,11 +321,11 @@ All tickets in `tickets/` directory. See `tickets/README.md` for priority order.
 | ------ | ---------------------------------------- | ----------------------------------------- |
 | 13     | Kubernetes manifests                     | Done                                      |
 | 26     | Empty route shells cleanup               | Done (route groups removed, docs in arch) |
-| 30     | Account recovery                         | Missing                                   |
-| 31     | Scheduled broadcasts                     | Missing                                   |
+| 30     | Account recovery                         | Won't do (see ADR-001)                    |
+| 31     | Scheduled broadcasts                     | Done (round 3)                            |
 | 38     | Accessibility audit                      | Done                                      |
 | 39     | Observability (logging, metrics, Sentry) | Done                                      |
-| 40     | Backup and data export                   | Missing                                   |
+| 40     | Backup and data export                   | Done (round 3)                            |
 | 35     | Changelog and commit hygiene             | Done                                      |
 
 ## Environment Variables
@@ -356,7 +346,7 @@ cp .env.example .env
 | `TWILIO_*`           | Twilio SMS credentials                  | For SMS           |
 | `SENDGRID_*`         | SendGrid email credentials              | For email         |
 | `S3_*`               | S3-compatible storage                   | For photo uploads |
-| `PHOTOPRISM_*`       | PhotoPrism credentials                  | For photo gallery |
+| `CRON_SECRET`       | Secret for authenticating cron job requests         | For scheduled tasks |
 
 ## Prisma
 

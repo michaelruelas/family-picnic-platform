@@ -119,6 +119,7 @@ model User {
   uploadedPhotos     Photo[]
   sentCommunications CommunicationLog[] @relation("SentByUser")
   receivedCommunications CommunicationLog[] @relation("ReceivedByUser")
+  scheduledBroadcasts  ScheduledBroadcast[] @relation("ScheduledByUser")
   photoReactions     PhotoReaction[]
   adminAuditLogs     AdminAuditLog[]
   eventAdmins        EventAdmin[]
@@ -166,6 +167,7 @@ model Event {
   rsvps              RSVP[]
   potluckSlots       PotluckSlot[]
   communications     CommunicationLog[]
+  scheduledBroadcasts ScheduledBroadcast[]
   photos             Photo[]
   adminAuditLogs     AdminAuditLog[]
   admins             EventAdmin[]
@@ -343,6 +345,37 @@ enum AdminPermission {
   OWNER
   COADMIN
   INVITER
+}
+
+enum ScheduledBroadcastStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+model ScheduledBroadcast {
+  id             String                    @id @default(cuid())
+  eventId        String
+  sentByUserId   String
+  message        String
+  channel        CommunicationChannel
+  recipientType  String
+  recipientIds   Json?
+  scheduledAt    DateTime
+  status         ScheduledBroadcastStatus  @default(PENDING)
+  processedAt    DateTime?
+  errorMessage   String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sentBy  User  @relation("ScheduledByUser", fields: [sentByUserId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([sentByUserId])
+  @@index([status])
+  @@index([scheduledAt])
 }
 
 model EventAdmin {

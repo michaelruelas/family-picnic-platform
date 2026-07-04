@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
-import { CommunicationStatus, RSVPStatus } from '~/lib/generated/enums';
+import { CommunicationStatus, RSVPStatus, CommunicationChannel } from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 
@@ -27,11 +27,44 @@ export async function POST(request: NextRequest) {
 
       try {
         const body = await request.json();
-        const { eventId: reqEventId, message, channel, recipientType, recipientIds } = body;
+        const {
+          eventId: reqEventId,
+          message,
+          channel,
+          recipientType,
+          recipientIds,
+          scheduledAt,
+        } = body;
         eventId = reqEventId;
 
         if (!eventId || !message || !channel || !recipientType) {
           return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
+        if (scheduledAt) {
+          const scheduledDate = new Date(scheduledAt);
+          if (isNaN(scheduledDate.getTime())) {
+            return NextResponse.json({ error: 'Invalid scheduledAt date' }, { status: 400 });
+          }
+
+          const broadcast = await prisma.scheduledBroadcast.create({
+            data: {
+              eventId,
+              sentByUserId: session.user.id,
+              message,
+              channel: channel as CommunicationChannel,
+              recipientType,
+              recipientIds: recipientIds ?? [],
+              scheduledAt: scheduledDate,
+            },
+          });
+
+          return NextResponse.json({
+            success: true,
+            scheduled: true,
+            id: broadcast.id,
+            scheduledFor: broadcast.scheduledAt.toISOString(),
+          });
         }
 
         let targetUserIds: string[] = [];
