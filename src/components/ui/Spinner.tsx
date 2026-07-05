@@ -10,16 +10,16 @@ interface SpinnerProps extends HTMLAttributes<HTMLDivElement> {
 const sizeClasses = {
   sm: 'h-4 w-4 border-2',
   md: 'h-8 w-8 border-2',
-  lg: 'h-12 w-12 border-3',
+  lg: 'h-12 w-12 border-[3px]',
 };
 
 export default function Spinner({ size = 'md', label, className = '', ...props }: SpinnerProps) {
   return (
-    <div className={`flex items-center justify-center gap-2 ${className}`} {...props}>
+    <div className={`flex items-center justify-center gap-3 ${className}`} {...props}>
       <span
-        className={`${sizeClasses[size]} animate-spin rounded-full border-current border-t-transparent text-amber-600`}
+        className={`${sizeClasses[size]} text-terracotta animate-spin rounded-full border-current border-t-transparent`}
       />
-      {label && <span className="text-base text-stone-600">{label}</span>}
+      {label && <span className="text-muted-foreground text-base">{label}</span>}
     </div>
   );
 }
@@ -40,7 +40,7 @@ export function LoadingOverlay({
 
   return (
     <div className={`relative ${className}`} {...props}>
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+      <div className="bg-background/80 pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl backdrop-blur-sm">
         {spinner || <Spinner size="lg" />}
       </div>
       {children}

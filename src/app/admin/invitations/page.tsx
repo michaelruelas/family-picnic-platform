@@ -67,38 +67,38 @@ export default async function AdminInvitationsPage({
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-stone-900">Admin: Invitations</h1>
-        <p className="mt-2 text-stone-600">Send and manage event invitations</p>
+        <h1 className="text-foreground text-3xl font-bold">Admin: Invitations</h1>
+        <p className="text-muted-foreground mt-2">Send and manage event invitations</p>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
         <Link
           href="/admin/dashboard"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Dashboard
         </Link>
         <Link
           href="/admin/events"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Events
         </Link>
         <Link
           href="/admin/invitations"
-          className="rounded-lg bg-amber-100 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-200"
+          className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-4 py-2 text-sm font-medium"
         >
           Invitations
         </Link>
         <Link
           href="/admin/communications"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Communications
         </Link>
         <Link
           href="/admin/audit-log"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Audit Log
         </Link>

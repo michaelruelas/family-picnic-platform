@@ -7,9 +7,9 @@ interface EventStatusBadgeProps {
 }
 
 const statusConfig: Record<EventStatus, { label: string; bg: string; text: string }> = {
-  DRAFT: { label: 'Draft', bg: 'bg-stone-100', text: 'text-stone-700' },
-  PUBLISHED: { label: 'Published', bg: 'bg-green-100', text: 'text-green-700' },
-  CLOSED: { label: 'Closed', bg: 'bg-red-100', text: 'text-red-700' },
+  DRAFT: { label: 'Draft', bg: 'bg-secondary', text: 'text-foreground/85' },
+  PUBLISHED: { label: 'Published', bg: 'bg-sage/20', text: 'text-sage' },
+  CLOSED: { label: 'Closed', bg: 'bg-destructive/15', text: 'text-destructive' },
   CANCELLED: { label: 'Cancelled', bg: 'bg-gray-100', text: 'text-gray-700' },
 };
 

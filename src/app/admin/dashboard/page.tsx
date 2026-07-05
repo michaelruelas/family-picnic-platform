@@ -105,32 +105,32 @@ export default async function AdminDashboardPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-stone-900">Admin Dashboard</h1>
-        <p className="mt-2 text-stone-600">Overview of all family picnic events</p>
+        <h1 className="text-foreground text-3xl font-bold">Admin Dashboard</h1>
+        <p className="text-muted-foreground mt-2">Overview of all family picnic events</p>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
         <Link
           href="/admin/events"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Events
         </Link>
         <Link
           href="/admin/invitations"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Invitations
         </Link>
         <Link
           href="/admin/communications"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Communications
         </Link>
         <Link
           href="/admin/audit-log"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Audit Log
         </Link>
@@ -138,31 +138,31 @@ export default async function AdminDashboardPage() {
 
       <div className="mb-8 grid grid-cols-3 gap-4">
         <div className="rounded-xl bg-white p-6 shadow-sm">
-          <p className="text-sm text-stone-500">Total RSVPs</p>
-          <p className="mt-1 text-3xl font-semibold text-stone-900">
+          <p className="text-muted-foreground text-sm">Total RSVPs</p>
+          <p className="text-foreground mt-1 text-3xl font-semibold">
             {eventsWithDashboard.reduce((sum, e) => sum + e.rsvpSummary.total, 0)}
           </p>
         </div>
         <div className="rounded-xl bg-white p-6 shadow-sm">
-          <p className="text-sm text-stone-500">Total Confirmed</p>
-          <p className="mt-1 text-3xl font-semibold text-green-600">{totalConfirmed}</p>
+          <p className="text-muted-foreground text-sm">Total Confirmed</p>
+          <p className="text-sage mt-1 text-3xl font-semibold">{totalConfirmed}</p>
         </div>
         <div className="rounded-xl bg-white p-6 shadow-sm">
-          <p className="text-sm text-stone-500">Total Headcount</p>
-          <p className="mt-1 text-3xl font-semibold text-stone-900">{totalHeadcount}</p>
+          <p className="text-muted-foreground text-sm">Total Headcount</p>
+          <p className="text-foreground mt-1 text-3xl font-semibold">{totalHeadcount}</p>
         </div>
       </div>
 
       {eventsWithDashboard.length === 0 ? (
-        <div className="rounded-2xl bg-stone-100 p-12 text-center">
+        <div className="bg-secondary rounded-2xl p-12 text-center">
           <div className="text-5xl">📊</div>
-          <h2 className="mt-4 text-xl font-semibold text-stone-900">No Events Yet</h2>
-          <p className="mt-2 text-stone-600">
+          <h2 className="text-foreground mt-4 text-xl font-semibold">No Events Yet</h2>
+          <p className="text-muted-foreground mt-2">
             Create your first event to start seeing dashboard metrics.
           </p>
           <Link
             href="/admin/events/new"
-            className="mt-6 inline-block rounded-lg bg-amber-600 px-6 py-2 font-medium text-white hover:bg-amber-700"
+            className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-lg px-6 py-2 font-medium text-white"
           >
             Create First Event
           </Link>

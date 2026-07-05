@@ -23,17 +23,17 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-medium text-stone-700">
+          <label htmlFor={selectId} className="text-foreground mb-2 block text-sm font-medium">
             {label}
           </label>
         )}
         <select
           ref={ref}
           id={selectId}
-          className={`mt-1 block w-full rounded-lg border bg-white px-3 py-2 text-lg text-stone-900 shadow-sm transition-colors duration-150 focus:ring-2 focus:ring-offset-0 focus:outline-none disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500 ${
+          className={`text-foreground disabled:bg-muted disabled:text-muted-foreground block min-h-12 w-full rounded-2xl border bg-white px-4 py-3 text-base transition-all duration-200 focus:ring-0 focus:outline-none disabled:cursor-not-allowed ${
             error
-              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-              : 'border-stone-300 focus:border-amber-500 focus:ring-amber-500'
+              ? 'border-destructive focus:border-destructive focus:shadow-[0_0_0_3px_rgba(196,69,54,0.15)]'
+              : 'border-border focus:border-foreground focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)]'
           } ${className} `}
           {...props}
         >
@@ -48,8 +48,8 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
             </option>
           ))}
         </select>
-        {hint && !error && <p className="mt-1 text-sm text-stone-500">{hint}</p>}
-        {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+        {hint && !error && <p className="text-muted-foreground mt-2 text-sm">{hint}</p>}
+        {error && <p className="text-destructive mt-2 text-sm">{error}</p>}
       </div>
     );
   },

@@ -94,7 +94,7 @@ export default function BroadcastComposer({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label htmlFor="message" className="block text-sm font-medium text-stone-700">
+        <label htmlFor="message" className="text-foreground/85 block text-sm font-medium">
           Message
         </label>
         <textarea
@@ -104,9 +104,9 @@ export default function BroadcastComposer({
           placeholder="Enter your message..."
           rows={4}
           disabled={disabled || sending}
-          className="mt-1 block w-full rounded-lg border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg shadow-sm"
         />
-        <p className="mt-1 text-xs text-stone-500">
+        <p className="text-muted-foreground mt-1 text-xs">
           {channel === 'SMS'
             ? `${message.length} characters (SMS limit: 160)`
             : `${message.length} characters`}
@@ -114,7 +114,7 @@ export default function BroadcastComposer({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-stone-700">Channel</label>
+        <label className="text-foreground/85 block text-sm font-medium">Channel</label>
         <div className="mt-2 flex gap-4">
           <label className="flex items-center">
             <input
@@ -124,9 +124,9 @@ export default function BroadcastComposer({
               checked={channel === 'EMAIL'}
               onChange={() => setChannel('EMAIL')}
               disabled={disabled || sending}
-              className="h-4 w-4 border-stone-300 text-amber-600 focus:ring-amber-500"
+              className="border-border text-terracotta focus:ring-foreground/20 h-4 w-4"
             />
-            <span className="ml-2 text-sm text-stone-700">Email</span>
+            <span className="text-foreground/85 ml-2 text-sm">Email</span>
           </label>
           <label className="flex items-center">
             <input
@@ -136,9 +136,9 @@ export default function BroadcastComposer({
               checked={channel === 'SMS'}
               onChange={() => setChannel('SMS')}
               disabled={disabled || sending}
-              className="h-4 w-4 border-stone-300 text-amber-600 focus:ring-amber-500"
+              className="border-border text-terracotta focus:ring-foreground/20 h-4 w-4"
             />
-            <span className="ml-2 text-sm text-stone-700">SMS</span>
+            <span className="text-foreground/85 ml-2 text-sm">SMS</span>
           </label>
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function BroadcastComposer({
       />
 
       <div>
-        <label className="block text-sm font-medium text-stone-700">Send Time</label>
+        <label className="text-foreground/85 block text-sm font-medium">Send Time</label>
         <div className="mt-2 flex gap-4">
           <label className="flex items-center">
             <input
@@ -163,9 +163,9 @@ export default function BroadcastComposer({
               checked={sendImmediately}
               onChange={() => setSendImmediately(true)}
               disabled={disabled || sending}
-              className="h-4 w-4 border-stone-300 text-amber-600 focus:ring-amber-500"
+              className="border-border text-terracotta focus:ring-foreground/20 h-4 w-4"
             />
-            <span className="ml-2 text-sm text-stone-700">Send immediately</span>
+            <span className="text-foreground/85 ml-2 text-sm">Send immediately</span>
           </label>
           <label className="flex items-center">
             <input
@@ -174,16 +174,16 @@ export default function BroadcastComposer({
               checked={!sendImmediately}
               onChange={() => setSendImmediately(false)}
               disabled={disabled || sending}
-              className="h-4 w-4 border-stone-300 text-amber-600 focus:ring-amber-500"
+              className="border-border text-terracotta focus:ring-foreground/20 h-4 w-4"
             />
-            <span className="ml-2 text-sm text-stone-700">Schedule for later</span>
+            <span className="text-foreground/85 ml-2 text-sm">Schedule for later</span>
           </label>
         </div>
       </div>
 
       {!sendImmediately && (
         <div>
-          <label htmlFor="scheduledAt" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="scheduledAt" className="text-foreground/85 block text-sm font-medium">
             Scheduled Time (8 AM - 9 PM local time)
           </label>
           <input
@@ -192,18 +192,20 @@ export default function BroadcastComposer({
             value={scheduledAt}
             onChange={(e) => setScheduledAt(e.target.value)}
             disabled={disabled || sending}
-            className="mt-1 block w-full rounded-lg border-stone-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg shadow-sm"
           />
-          <p className="mt-1 text-xs text-stone-500">
+          <p className="text-muted-foreground mt-1 text-xs">
             Messages outside 8 AM - 9 PM will be deferred to the next available window.
           </p>
         </div>
       )}
 
-      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">{error}</div>
+      )}
 
       {success && (
-        <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
+        <div className="bg-sage/15 text-sage rounded-lg p-3 text-sm">
           Message queued successfully!
         </div>
       )}
@@ -212,7 +214,7 @@ export default function BroadcastComposer({
         <button
           type="submit"
           disabled={disabled || sending || !isValid}
-          className="rounded-lg bg-amber-600 px-6 py-2 font-medium text-white hover:bg-amber-700 disabled:bg-stone-300"
+          className="bg-terracotta hover:bg-terracotta rounded-lg px-6 py-2 font-medium text-white disabled:bg-stone-300"
         >
           {sending ? 'Queuing...' : sendImmediately ? 'Send Message' : 'Schedule Message'}
         </button>

@@ -95,13 +95,13 @@ export default function AdminCommunicationsClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2 border-b border-stone-200">
+      <div className="border-border flex gap-2 border-b">
         <button
           onClick={() => setActiveTab('compose')}
           className={`border-b-2 px-4 py-2 text-sm font-medium ${
             activeTab === 'compose'
-              ? 'border-amber-600 text-amber-600'
-              : 'border-transparent text-stone-600 hover:text-stone-900'
+              ? 'border-terracotta text-terracotta'
+              : 'text-muted-foreground hover:text-foreground border-transparent'
           }`}
         >
           Compose
@@ -113,8 +113,8 @@ export default function AdminCommunicationsClient({
           }}
           className={`border-b-2 px-4 py-2 text-sm font-medium ${
             activeTab === 'status'
-              ? 'border-amber-600 text-amber-600'
-              : 'border-transparent text-stone-600 hover:text-stone-900'
+              ? 'border-terracotta text-terracotta'
+              : 'text-muted-foreground hover:text-foreground border-transparent'
           }`}
         >
           Delivery Status
@@ -122,8 +122,8 @@ export default function AdminCommunicationsClient({
       </div>
 
       {activeTab === 'compose' ? (
-        <div className="rounded-xl border border-stone-200 bg-white p-6">
-          <h2 className="mb-4 text-lg font-semibold text-stone-900">New Broadcast Message</h2>
+        <div className="border-border rounded-xl border bg-white p-6">
+          <h2 className="text-foreground mb-4 text-lg font-semibold">New Broadcast Message</h2>
           <BroadcastComposer
             eventId={eventId}
             households={households}
@@ -134,11 +134,11 @@ export default function AdminCommunicationsClient({
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-stone-900">Delivery Status</h2>
+            <h2 className="text-foreground text-lg font-semibold">Delivery Status</h2>
             <button
               onClick={fetchLogs}
               disabled={loadingLogs}
-              className="rounded-lg bg-stone-100 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-200 disabled:opacity-50"
+              className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50"
             >
               Refresh
             </button>

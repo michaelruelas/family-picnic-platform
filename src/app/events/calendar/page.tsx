@@ -20,12 +20,14 @@ export default async function CalendarPage() {
     <main className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-stone-900">Event Calendar</h1>
-          <p className="mt-1 text-stone-600">View all family gatherings on a monthly calendar</p>
+          <h1 className="text-foreground text-3xl font-bold">Event Calendar</h1>
+          <p className="text-muted-foreground mt-1">
+            View all family gatherings on a monthly calendar
+          </p>
         </div>
         <Link
           href="/events"
-          className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
+          className="border-border text-foreground/85 hover:bg-secondary/60 rounded-lg border bg-white px-4 py-2 text-sm font-medium transition-colors"
         >
           List View
         </Link>
@@ -36,10 +38,10 @@ export default async function CalendarPage() {
       </div>
 
       {events.length === 0 && (
-        <div className="mt-8 rounded-2xl bg-amber-50 p-8 text-center">
+        <div className="bg-sunlight/20 mt-8 rounded-2xl p-8 text-center">
           <div className="text-5xl">📅</div>
-          <h2 className="mt-4 text-xl font-semibold text-amber-900">No Events Yet</h2>
-          <p className="mt-2 text-amber-700">Check back soon for our next family gathering!</p>
+          <h2 className="text-foreground mt-4 text-xl font-semibold">No Events Yet</h2>
+          <p className="text-terracotta mt-2">Check back soon for our next family gathering!</p>
         </div>
       )}
     </main>

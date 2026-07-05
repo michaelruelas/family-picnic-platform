@@ -15,13 +15,13 @@ describe('Textarea', () => {
   it('shows error message when error is set', () => {
     render(<Textarea label="Bio" name="bio" error="Bio is too long" />);
     expect(screen.getByText('Bio is too long')).toBeInTheDocument();
-    expect(screen.getByText('Bio is too long').className).toContain('text-red-600');
+    expect(screen.getByText('Bio is too long').className).toContain('text-destructive');
   });
 
   it('shows hint when hint is provided', () => {
     render(<Textarea label="Bio" name="bio" hint="Tell us about yourself" />);
     expect(screen.getByText('Tell us about yourself')).toBeInTheDocument();
-    expect(screen.getByText('Tell us about yourself').className).toContain('text-stone-500');
+    expect(screen.getByText('Tell us about yourself').className).toContain('text-muted-foreground');
   });
 
   it('hides hint when error is present', () => {
@@ -33,9 +33,7 @@ describe('Textarea', () => {
   it('applies error styles', () => {
     render(<Textarea label="Bio" name="bio" error="Error text" />);
     const textarea = screen.getByLabelText('Bio');
-    expect(textarea.className).toContain('border-red-300');
-    expect(textarea.className).toContain('focus:border-red-500');
-    expect(textarea.className).toContain('focus:ring-red-500');
+    expect(textarea.className).toContain('border-destructive');
   });
 
   it('links label htmlFor to textarea id', () => {

@@ -111,8 +111,8 @@ export default function EventAdminsClient({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-stone-900">Event Admins</h2>
-        <p className="mt-2 text-stone-600">Manage who can administer {eventName}</p>
+        <h2 className="text-foreground text-2xl font-bold">Event Admins</h2>
+        <p className="text-muted-foreground mt-2">Manage who can administer {eventName}</p>
       </div>
 
       <Card>
@@ -121,25 +121,27 @@ export default function EventAdminsClient({
         </CardHeader>
         <CardContent>
           {admins.length === 0 ? (
-            <p className="text-stone-500">No admins assigned yet.</p>
+            <p className="text-muted-foreground">No admins assigned yet.</p>
           ) : (
             <ul className="divide-y divide-stone-200">
               {admins.map((admin) => (
                 <li key={admin.id} className="flex items-center justify-between py-3">
                   <div>
-                    <p className="font-medium text-stone-900">
+                    <p className="text-foreground font-medium">
                       {admin.user.name}
                       {isCurrentUser(admin) && (
-                        <span className="ml-2 text-sm text-stone-500">(you)</span>
+                        <span className="text-muted-foreground ml-2 text-sm">(you)</span>
                       )}
                     </p>
-                    <p className="text-sm text-stone-500">{admin.user.email}</p>
+                    <p className="text-muted-foreground text-sm">{admin.user.email}</p>
                     {admin.user.household && (
-                      <p className="text-sm text-stone-400">{admin.user.household.name}</p>
+                      <p className="text-muted-foreground/70 text-sm">
+                        {admin.user.household.name}
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                    <span className="bg-terracotta/15 text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
                       {admin.role}
                     </span>
                     {!isCurrentUser(admin) && (
@@ -187,20 +189,22 @@ export default function EventAdminsClient({
             </Button>
           </div>
 
-          {searchError && <p className="text-sm text-red-600">{searchError}</p>}
+          {searchError && <p className="text-destructive text-sm">{searchError}</p>}
 
           {searchResult && (
-            <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
+            <div className="border-border bg-secondary/60 rounded-lg border p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-stone-900">{searchResult.name}</p>
-                  <p className="text-sm text-stone-500">{searchResult.email}</p>
+                  <p className="text-foreground font-medium">{searchResult.name}</p>
+                  <p className="text-muted-foreground text-sm">{searchResult.email}</p>
                   {searchResult.household && (
-                    <p className="text-sm text-stone-400">{searchResult.household.name}</p>
+                    <p className="text-muted-foreground/70 text-sm">
+                      {searchResult.household.name}
+                    </p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                  <span className="bg-terracotta/15 text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
                     {role}
                   </span>
                   <Button
@@ -212,7 +216,7 @@ export default function EventAdminsClient({
                 </div>
               </div>
               {admins.some((a) => a.userId === searchResult.id) && (
-                <p className="mt-2 text-sm text-amber-600">This user is already an admin.</p>
+                <p className="text-terracotta mt-2 text-sm">This user is already an admin.</p>
               )}
             </div>
           )}
@@ -220,7 +224,7 @@ export default function EventAdminsClient({
       </Card>
 
       <Modal isOpen={!!removeModal} onClose={() => setRemoveModal(null)} title="Remove Admin">
-        <p className="text-stone-600">
+        <p className="text-muted-foreground">
           Are you sure you want to remove <strong>{removeModal?.user.name}</strong> as an admin from
           this event? They will lose access immediately.
         </p>

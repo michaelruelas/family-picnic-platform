@@ -8,6 +8,7 @@ interface ModalProps extends HTMLAttributes<HTMLDivElement> {
   onClose: () => void;
   title?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  variant?: 'default' | 'bottom-sheet';
 }
 
 const sizeClasses = {
@@ -22,6 +23,7 @@ export default function Modal({
   onClose,
   title,
   size = 'md',
+  variant = 'default',
   className = '',
   children,
   ...props
@@ -78,34 +80,50 @@ export default function Modal({
 
   if (!isOpen) return null;
 
+  const isBottomSheet = variant === 'bottom-sheet';
+
   const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className={`fixed inset-0 z-50 p-4 ${
+        isBottomSheet
+          ? 'flex items-end justify-center md:items-center'
+          : 'flex items-center justify-center'
+      }`}
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'modal-title' : undefined}
     >
       <div
-        className="fixed inset-0 bg-black/50 transition-opacity"
+        className="bg-foreground/30 animate-fade-in fixed inset-0 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         ref={modalRef}
-        className={`relative w-full rounded-xl bg-white p-6 shadow-xl ${sizeClasses[size]} ${className} `}
+        className={`relative w-full ${sizeClasses[size]} ${
+          isBottomSheet
+            ? 'animate-breathe-in rounded-t-[2rem] md:rounded-[2rem]'
+            : 'shadow-pop animate-breathe-in rounded-2xl'
+        } bg-card p-7 pt-9 pb-10 ${className} `}
         {...props}
       >
+        {isBottomSheet && (
+          <div className="bg-muted absolute top-3 left-1/2 h-1.5 w-12 -translate-x-1/2 rounded-full md:hidden" />
+        )}
         {title && (
-          <h2 id="modal-title" className="text-xl font-semibold text-stone-900">
+          <h2
+            id="modal-title"
+            className="font-display text-foreground text-2xl font-semibold tracking-tight"
+          >
             {title}
           </h2>
         )}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+          className="text-muted-foreground hover:bg-secondary hover:text-foreground absolute top-5 right-5 rounded-full p-1.5 transition-colors"
           aria-label="Close modal"
         >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -114,7 +132,7 @@ export default function Modal({
             />
           </svg>
         </button>
-        <div className="mt-4">{children}</div>
+        <div className={`${title ? 'mt-4' : ''}`}>{children}</div>
       </div>
     </div>
   );

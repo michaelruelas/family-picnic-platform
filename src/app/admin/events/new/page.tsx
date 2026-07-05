@@ -15,8 +15,8 @@ export default async function NewEventPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-stone-900">Create New Event</h1>
-        <p className="mt-2 text-stone-600">Fill in the details for your family picnic</p>
+        <h1 className="text-foreground text-3xl font-bold">Create New Event</h1>
+        <p className="text-muted-foreground mt-2">Fill in the details for your family picnic</p>
       </div>
 
       <EventForm mode="create" />

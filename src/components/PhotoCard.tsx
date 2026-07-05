@@ -51,7 +51,7 @@ export default function PhotoCard({ photo, eventName, userId, userRole }: PhotoC
   };
 
   return (
-    <div className="group relative aspect-square overflow-hidden rounded-lg bg-stone-100">
+    <div className="group bg-secondary relative aspect-square overflow-hidden rounded-lg">
       <Image
         src={photo.thumbnailUrl || photo.url}
         alt={photo.caption || `${eventName} photo`}
@@ -86,7 +86,7 @@ export default function PhotoCard({ photo, eventName, userId, userRole }: PhotoC
             <div className="absolute top-10 right-0 z-10 w-32 rounded-lg bg-white py-1 shadow-lg ring-1 ring-stone-200">
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex w-full items-center px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                className="text-destructive hover:bg-destructive/10 flex w-full items-center px-3 py-2 text-left text-sm"
               >
                 Delete
               </button>
@@ -98,20 +98,20 @@ export default function PhotoCard({ photo, eventName, userId, userRole }: PhotoC
       {showDeleteConfirm && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
           <div className="rounded-lg bg-white p-4 shadow-lg">
-            <p className="mb-3 text-sm font-medium text-stone-900">Delete this photo?</p>
-            <p className="mb-3 text-xs text-stone-500">This action cannot be undone.</p>
+            <p className="text-foreground mb-3 text-sm font-medium">Delete this photo?</p>
+            <p className="text-muted-foreground mb-3 text-xs">This action cannot be undone.</p>
             <div className="flex gap-2">
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="flex-1 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                className="bg-destructive hover:bg-destructive flex-1 rounded-lg px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isDeleting}
-                className="flex-1 rounded-lg bg-stone-200 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
+                className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50"
               >
                 Cancel
               </button>

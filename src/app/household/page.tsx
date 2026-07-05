@@ -68,11 +68,11 @@ export default async function HouseholdPage() {
   if (!user.household) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-12">
-        <h1 className="text-3xl font-bold text-stone-900">My Household</h1>
-        <div className="mt-8 rounded-xl bg-amber-50 p-8 text-center">
+        <h1 className="text-foreground text-3xl font-bold">My Household</h1>
+        <div className="bg-sunlight/20 mt-8 rounded-xl p-8 text-center">
           <div className="text-5xl">🏠</div>
-          <h2 className="mt-4 text-xl font-semibold text-amber-900">No Household Yet</h2>
-          <p className="mt-2 text-amber-700">
+          <h2 className="text-foreground mt-4 text-xl font-semibold">No Household Yet</h2>
+          <p className="text-terracotta mt-2">
             You are not part of a household. Contact an admin to be added to a household.
           </p>
         </div>
@@ -116,12 +116,12 @@ export default async function HouseholdPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-stone-900">{household.name}</h1>
-          <p className="mt-2 text-stone-600">Your family household dashboard</p>
+          <h1 className="text-foreground text-3xl font-bold">{household.name}</h1>
+          <p className="text-muted-foreground mt-2">Your family household dashboard</p>
         </div>
         <Link
           href="/household/tree"
-          className="rounded-lg bg-amber-100 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-200"
+          className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-4 py-2 text-sm font-medium"
         >
           View Family Tree
         </Link>
@@ -129,21 +129,21 @@ export default async function HouseholdPage() {
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
-          <h2 className="text-lg font-semibold text-stone-900">Household Members</h2>
-          <p className="mt-1 text-sm text-stone-500">Adults in this household</p>
+          <h2 className="text-foreground text-lg font-semibold">Household Members</h2>
+          <p className="text-muted-foreground mt-1 text-sm">Adults in this household</p>
 
           {household.users.length === 0 ? (
-            <p className="mt-4 text-sm text-stone-500">No members yet.</p>
+            <p className="text-muted-foreground mt-4 text-sm">No members yet.</p>
           ) : (
             <ul className="mt-4 space-y-3">
               {household.users.map((member) => (
                 <li key={member.id} className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 font-medium text-amber-700">
+                  <div className="bg-terracotta/15 text-terracotta flex h-10 w-10 items-center justify-center rounded-full font-medium">
                     {member.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-medium text-stone-900">{member.name}</p>
-                    <p className="text-xs text-stone-500">{member.email}</p>
+                    <p className="text-foreground font-medium">{member.name}</p>
+                    <p className="text-muted-foreground text-xs">{member.email}</p>
                   </div>
                 </li>
               ))}
@@ -152,23 +152,23 @@ export default async function HouseholdPage() {
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
-          <h2 className="text-lg font-semibold text-stone-900">Cumulative RSVP Headcount</h2>
-          <p className="mt-1 text-sm text-stone-500">Total attendees from your household</p>
+          <h2 className="text-foreground text-lg font-semibold">Cumulative RSVP Headcount</h2>
+          <p className="text-muted-foreground mt-1 text-sm">Total attendees from your household</p>
 
           <div className="mt-4">
-            <div className="text-4xl font-bold text-amber-700">{totalHeadcount}</div>
-            <p className="mt-1 text-sm text-stone-500">
+            <div className="text-terracotta text-4xl font-bold">{totalHeadcount}</div>
+            <p className="text-muted-foreground mt-1 text-sm">
               {totalHeadcount === 1 ? 'person' : 'people'} attending upcoming events
             </p>
           </div>
 
           {cumulativeRsvps.length > 0 && (
             <div className="mt-4 space-y-2">
-              <p className="text-sm font-medium text-stone-700">By event:</p>
+              <p className="text-foreground/85 text-sm font-medium">By event:</p>
               {cumulativeRsvps.map((rsvp) => (
                 <div key={rsvp.eventId} className="flex items-center justify-between text-sm">
-                  <span className="text-stone-600">{rsvp.eventName}</span>
-                  <span className="font-medium text-amber-700">
+                  <span className="text-muted-foreground">{rsvp.eventName}</span>
+                  <span className="text-terracotta font-medium">
                     {rsvp.headcount} {rsvp.headcount === 1 ? 'person' : 'people'}
                   </span>
                 </div>
@@ -177,7 +177,7 @@ export default async function HouseholdPage() {
           )}
 
           {totalHeadcount === 0 && (
-            <p className="mt-4 text-sm text-stone-500">
+            <p className="text-muted-foreground mt-4 text-sm">
               No upcoming RSVPs yet. Browse events to RSVP.
             </p>
           )}

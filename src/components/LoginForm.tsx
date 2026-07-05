@@ -28,66 +28,80 @@ export default function LoginForm({ devAuthEnabled }: LoginFormProps) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-stone-50 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
-        <div className="text-center">
-          <div className="text-5xl">🏕️</div>
-          <h1 className="mt-4 text-2xl font-bold text-stone-900">Welcome Back</h1>
-          <p className="mt-2 text-stone-600">
-            Sign in to RSVP for events and join potluck sign-ups
+    <main className="bg-background flex min-h-screen items-center justify-center px-5 py-12">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <div className="bg-terracotta shadow-soft mx-auto inline-flex h-16 w-16 items-center justify-center rounded-3xl text-3xl">
+            🏡
+          </div>
+          <h1 className="font-display text-foreground mt-5 text-4xl font-medium tracking-tight">
+            Welcome back
+          </h1>
+          <p className="text-muted-foreground mt-2 text-base">
+            Sign in to RSVP for events and join the potluck.
           </p>
         </div>
 
-        {devAuthEnabled && (
-          <form onSubmit={handleDevLogin} className="mt-8 space-y-4">
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-stone-700">
-                Username
-              </label>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
-                placeholder="Dev username"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-stone-700">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
-                placeholder="Dev password"
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="submit"
-              className="flex w-full items-center justify-center gap-3 rounded-lg bg-amber-600 px-4 py-3 text-white shadow-sm transition-all hover:bg-amber-700"
-            >
-              Sign in (Dev)
-            </button>
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-stone-200" />
+        <div className="bg-card shadow-card ring-border/60 rounded-3xl p-8 ring-1">
+          {devAuthEnabled && (
+            <form onSubmit={handleDevLogin} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="username"
+                  className="text-foreground mb-2 block text-sm font-medium"
+                >
+                  Username
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block min-h-12 w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                  placeholder="Dev username"
+                />
               </div>
-              <div className="relative flex justify-center text-xs text-stone-500">
-                <span className="bg-white px-2">or</span>
+              <div>
+                <label
+                  htmlFor="password"
+                  className="text-foreground mb-2 block text-sm font-medium"
+                >
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block min-h-12 w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                  placeholder="Dev password"
+                />
               </div>
-            </div>
-          </form>
-        )}
+              {error && (
+                <p className="bg-destructive/10 text-destructive ring-destructive/30 rounded-2xl px-4 py-3 text-sm ring-1">
+                  {error}
+                </p>
+              )}
+              <button
+                type="submit"
+                className="rounded-pill bg-foreground text-background press hover:bg-foreground/90 w-full px-5 py-3 font-semibold transition-all"
+              >
+                Sign in (Dev)
+              </button>
+              <div className="relative my-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="border-border w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-card text-muted-foreground px-3">or</span>
+                </div>
+              </div>
+            </form>
+          )}
 
-        <div className="mt-8 space-y-4">
           <button
             onClick={() => signIn('google', { callbackUrl: '/' })}
-            className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-stone-700 shadow-sm ring-1 ring-stone-200 transition-all hover:bg-stone-50 hover:shadow-md"
+            className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
@@ -107,30 +121,35 @@ export default function LoginForm({ devAuthEnabled }: LoginFormProps) {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            <span className="font-medium">Continue with Google</span>
+            Continue with Google
           </button>
         </div>
 
-        <div className="mt-8 rounded-lg bg-amber-50 p-4">
-          <h2 className="font-medium text-amber-900">After signing in, you can:</h2>
-          <ul className="mt-2 space-y-1 text-sm text-amber-800">
+        <div className="bg-sunlight/20 ring-sunlight/40 mt-6 rounded-3xl p-6 ring-1">
+          <h2 className="font-display text-foreground text-lg font-semibold">
+            Once you&apos;re in:
+          </h2>
+          <ul className="text-foreground/80 mt-3 space-y-2 text-sm">
             <li className="flex items-center gap-2">
-              <span>✓</span> RSVP for upcoming events
+              <span className="text-sage">✓</span> RSVP for upcoming events
             </li>
             <li className="flex items-center gap-2">
-              <span>✓</span> Sign up for potluck dishes
+              <span className="text-sage">✓</span> Sign up for potluck dishes
             </li>
             <li className="flex items-center gap-2">
-              <span>✓</span> Share photos from events
+              <span className="text-sage">✓</span> Share photos from events
             </li>
             <li className="flex items-center gap-2">
-              <span>✓</span> Track dietary needs for your household
+              <span className="text-sage">✓</span> Track dietary needs for your household
             </li>
           </ul>
         </div>
 
         <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-stone-500 hover:text-amber-700">
+          <Link
+            href="/"
+            className="text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
+          >
             ← Back to home
           </Link>
         </div>

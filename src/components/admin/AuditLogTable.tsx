@@ -50,11 +50,11 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
     <div className="space-y-4">
       <div className="flex flex-wrap gap-4 rounded-lg bg-white p-4 shadow-sm">
         <div>
-          <label className="block text-sm font-medium text-stone-600">Event</label>
+          <label className="text-muted-foreground block text-sm font-medium">Event</label>
           <select
             value={eventId}
             onChange={(e) => setEventId(e.target.value)}
-            className="mt-1 rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
           >
             <option value="">All Events</option>
             {events.map((event) => (
@@ -66,11 +66,11 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-stone-600">User</label>
+          <label className="text-muted-foreground block text-sm font-medium">User</label>
           <select
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
-            className="mt-1 rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
           >
             <option value="">All Users</option>
             {users.map((user) => (
@@ -82,13 +82,13 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-stone-600">Action</label>
+          <label className="text-muted-foreground block text-sm font-medium">Action</label>
           <input
             type="text"
             value={action}
             onChange={(e) => setAction(e.target.value)}
             placeholder="e.g., event.create"
-            className="mt-1 rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
           />
         </div>
 
@@ -96,7 +96,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
           <button
             onClick={handleFilter}
             disabled={loading}
-            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+            className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {loading ? 'Loading...' : 'Filter'}
           </button>
@@ -104,63 +104,67 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
       </div>
 
       {logs.length === 0 ? (
-        <div className="rounded-2xl bg-stone-100 p-12 text-center">
+        <div className="bg-secondary rounded-2xl p-12 text-center">
           <div className="text-5xl">📋</div>
-          <h2 className="mt-4 text-xl font-semibold text-stone-900">No Audit Logs</h2>
-          <p className="mt-2 text-stone-600">
+          <h2 className="text-foreground mt-4 text-xl font-semibold">No Audit Logs</h2>
+          <p className="text-muted-foreground mt-2">
             Audit logs will appear here as admin actions are performed.
           </p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
           <table className="min-w-full divide-y divide-stone-200">
-            <thead className="bg-stone-50">
+            <thead className="bg-secondary/60">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
+                <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                   Timestamp
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
+                <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                   User
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
+                <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                   Action
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
+                <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                   Event
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
+                <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                   Details
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-200">
               {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-stone-50">
-                  <td className="px-4 py-3 text-sm whitespace-nowrap text-stone-600">
+                <tr key={log.id} className="hover:bg-secondary/60">
+                  <td className="text-muted-foreground px-4 py-3 text-sm whitespace-nowrap">
                     {new Date(log.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <div className="font-medium text-stone-900">{log.user.name || 'Unknown'}</div>
-                    <div className="text-xs text-stone-500">{log.user.email}</div>
+                    <div className="text-foreground font-medium">{log.user.name || 'Unknown'}</div>
+                    <div className="text-muted-foreground text-xs">{log.user.email}</div>
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <code className="rounded bg-stone-100 px-2 py-1 text-xs">{log.action}</code>
+                    <code className="bg-secondary rounded px-2 py-1 text-xs">{log.action}</code>
                   </td>
-                  <td className="px-4 py-3 text-sm text-stone-600">{log.event?.name || '-'}</td>
+                  <td className="text-muted-foreground px-4 py-3 text-sm">
+                    {log.event?.name || '-'}
+                  </td>
                   <td className="max-w-xs px-4 py-3 text-xs">
                     {log.oldValue || log.newValue ? (
                       <details className="cursor-pointer">
-                        <summary className="text-amber-600 hover:text-amber-700">View JSON</summary>
-                        <pre className="mt-2 max-h-48 overflow-auto rounded bg-stone-100 p-2 text-xs">
+                        <summary className="text-terracotta hover:text-terracotta">
+                          View JSON
+                        </summary>
+                        <pre className="bg-secondary mt-2 max-h-48 overflow-auto rounded p-2 text-xs">
                           {log.oldValue && (
                             <div className="mb-2">
-                              <span className="font-medium text-red-600">Old:</span>{' '}
+                              <span className="text-destructive font-medium">Old:</span>{' '}
                               {formatJson(log.oldValue)}
                             </div>
                           )}
                           {log.newValue && (
                             <div>
-                              <span className="font-medium text-green-600">New:</span>{' '}
+                              <span className="text-sage font-medium">New:</span>{' '}
                               {formatJson(log.newValue)}
                             </div>
                           )}

@@ -3,7 +3,6 @@
 import { SessionProvider } from 'next-auth/react';
 import { useEffect } from 'react';
 import { ThemeProvider } from '~/components/theme-provider';
-import { getThemeVariants } from '~/lib/themes';
 import TRPCProvider from './TRPCProvider';
 import OfflineBanner from './ui/OfflineBanner';
 
@@ -23,7 +22,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         defaultTheme="system"
         enableSystem
         disableTransitionOnChange
-        themes={getThemeVariants()}
+        themes={['light', 'dark']}
       >
         <TRPCProvider>
           <OfflineBanner />

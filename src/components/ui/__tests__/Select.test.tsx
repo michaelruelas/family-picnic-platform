@@ -38,13 +38,13 @@ describe('Select', () => {
   it('shows error when error prop is set', () => {
     render(<Select options={options} error="Selection required" />);
     expect(screen.getByText('Selection required')).toBeInTheDocument();
-    expect(screen.getByText('Selection required').className).toContain('text-red-600');
+    expect(screen.getByText('Selection required').className).toContain('text-destructive');
   });
 
   it('shows hint when hint is provided', () => {
     render(<Select options={options} hint="Pick one category" />);
     expect(screen.getByText('Pick one category')).toBeInTheDocument();
-    expect(screen.getByText('Pick one category').className).toContain('text-stone-500');
+    expect(screen.getByText('Pick one category').className).toContain('text-muted-foreground');
   });
 
   it('hides hint when error is present', () => {

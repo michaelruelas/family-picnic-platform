@@ -15,14 +15,14 @@ describe('Input', () => {
   it('shows error message when error prop is set', () => {
     render(<Input label="Email" name="email" error="This field is required" />);
     expect(screen.getByText('This field is required')).toBeInTheDocument();
-    expect(screen.getByText('This field is required').className).toContain('text-red-600');
+    expect(screen.getByText('This field is required').className).toContain('text-destructive');
   });
 
   it('shows hint when hint prop is provided (and no error)', () => {
     render(<Input label="Email" name="email" hint="We will never share your email" />);
     expect(screen.getByText('We will never share your email')).toBeInTheDocument();
     expect(screen.getByText('We will never share your email').className).toContain(
-      'text-stone-500',
+      'text-muted-foreground',
     );
   });
 
@@ -35,9 +35,7 @@ describe('Input', () => {
   it('applies error styles when error is set', () => {
     render(<Input label="Email" name="email" error="Error" />);
     const input = screen.getByLabelText('Email');
-    expect(input.className).toContain('border-red-300');
-    expect(input.className).toContain('focus:border-red-500');
-    expect(input.className).toContain('focus:ring-red-500');
+    expect(input.className).toContain('border-destructive');
   });
 
   it('applies custom className', () => {
@@ -49,5 +47,10 @@ describe('Input', () => {
     render(<Input label="Name" name="user_name" />);
     const input = screen.getByLabelText('Name');
     expect(input).toHaveAttribute('id', 'user_name');
+  });
+
+  it('has minimum 48px touch target', () => {
+    render(<Input name="test" />);
+    expect(screen.getByRole('textbox').className).toContain('min-h-12');
   });
 });

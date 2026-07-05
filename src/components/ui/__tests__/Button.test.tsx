@@ -11,28 +11,33 @@ describe('Button', () => {
   it('applies default variant class (primary)', () => {
     render(<Button>Test</Button>);
     const button = screen.getByRole('button');
-    expect(button.className).toContain('bg-amber-600');
+    expect(button.className).toContain('bg-terracotta');
   });
 
-  it.each(['secondary', 'danger', 'ghost'] as const)('applies %s variant class', (variant) => {
-    render(<Button variant={variant}>Test</Button>);
-    const button = screen.getByRole('button');
-    const variantMap: Record<string, string> = {
-      secondary: 'bg-stone-200',
-      danger: 'bg-red-600',
-      ghost: 'bg-transparent',
-    };
-    expect(button.className).toContain(variantMap[variant]);
-  });
+  it.each(['secondary', 'danger', 'ghost', 'outline', 'sage'] as const)(
+    'applies %s variant class',
+    (variant) => {
+      render(<Button variant={variant}>Test</Button>);
+      const button = screen.getByRole('button');
+      const variantMap: Record<string, string> = {
+        secondary: 'bg-secondary',
+        danger: 'bg-destructive',
+        ghost: 'bg-transparent',
+        outline: 'border-border',
+        sage: 'bg-sage',
+      };
+      expect(button.className).toContain(variantMap[variant]);
+    },
+  );
 
   it.each(['sm', 'md', 'lg', 'xl'] as const)('applies %s size class', (size) => {
     render(<Button size={size}>Test</Button>);
     const button = screen.getByRole('button');
     const sizeMap: Record<string, string> = {
-      sm: 'px-3 py-1',
-      md: 'px-4 py-2',
-      lg: 'px-5 py-2.5',
-      xl: 'px-6 py-3',
+      sm: 'px-4 py-2',
+      md: 'px-5 py-2.5',
+      lg: 'px-6 py-3',
+      xl: 'px-8 py-3.5',
     };
     expect(button.className).toContain(sizeMap[size]);
   });
@@ -65,5 +70,16 @@ describe('Button', () => {
     const ref = createRef<HTMLButtonElement>();
     render(<Button ref={ref}>Ref</Button>);
     expect(ref.current).toBeInstanceOf(HTMLButtonElement);
+  });
+
+  it('defaults to pill shape', () => {
+    render(<Button>Test</Button>);
+    expect(screen.getByRole('button').className).toContain('rounded-pill');
+  });
+
+  it('supports non-pill shape', () => {
+    render(<Button pill={false}>Test</Button>);
+    expect(screen.getByRole('button').className).toContain('rounded-xl');
+    expect(screen.getByRole('button').className).not.toContain('rounded-pill');
   });
 });

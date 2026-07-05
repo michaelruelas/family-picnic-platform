@@ -23,9 +23,7 @@ describe('OfflineBanner', () => {
   it('shows banner when offline', () => {
     mockUseOffline.mockReturnValue({ isOnline: false, lastOnline: null });
     render(<OfflineBanner />);
-    expect(
-      screen.getByText('You are currently offline. Some features are disabled.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/You.{0,3}re offline/i)).toBeInTheDocument();
   });
 
   it('renders the offline icon when offline', () => {

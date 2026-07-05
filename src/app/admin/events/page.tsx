@@ -35,25 +35,25 @@ export default async function AdminEventsPage() {
     <main className="mx-auto max-w-5xl px-4 py-12">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-stone-900">Admin: Events</h1>
-          <p className="mt-2 text-stone-600">Manage family picnic events</p>
+          <h1 className="text-foreground text-3xl font-bold">Admin: Events</h1>
+          <p className="text-muted-foreground mt-2">Manage family picnic events</p>
         </div>
         <Link
           href="/admin/events/new"
-          className="rounded-lg bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700"
+          className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white"
         >
           + New Event
         </Link>
       </div>
 
       {events.length === 0 ? (
-        <div className="rounded-2xl bg-stone-100 p-12 text-center">
+        <div className="bg-secondary rounded-2xl p-12 text-center">
           <div className="text-5xl">📅</div>
-          <h2 className="mt-4 text-xl font-semibold text-stone-900">No Events Yet</h2>
-          <p className="mt-2 text-stone-600">Create your first event to get started.</p>
+          <h2 className="text-foreground mt-4 text-xl font-semibold">No Events Yet</h2>
+          <p className="text-muted-foreground mt-2">Create your first event to get started.</p>
           <Link
             href="/admin/events/new"
-            className="mt-6 inline-block rounded-lg bg-amber-600 px-6 py-2 font-medium text-white hover:bg-amber-700"
+            className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-lg px-6 py-2 font-medium text-white"
           >
             Create First Event
           </Link>
@@ -71,10 +71,10 @@ export default async function AdminEventsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <h3 className="text-xl font-semibold text-stone-900">{event.name}</h3>
+                      <h3 className="text-foreground text-xl font-semibold">{event.name}</h3>
                       <EventStatusBadge status={event.status} />
                     </div>
-                    <p className="mt-1 text-sm text-stone-500">
+                    <p className="text-muted-foreground mt-1 text-sm">
                       {eventDate.toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
@@ -87,34 +87,35 @@ export default async function AdminEventsPage() {
                         minute: '2-digit',
                       })}
                     </p>
-                    <p className="mt-1 text-stone-600">📍 {event.location}</p>
+                    <p className="text-muted-foreground mt-1">📍 {event.location}</p>
                   </div>
                   <div className="flex gap-2">
                     <EventActions eventId={event.id} status={event.status} />
                     <Link
                       href={`/admin/events/${event.id}/edit`}
-                      className="rounded-lg bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 hover:bg-amber-200"
+                      className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-3 py-1 text-sm font-medium"
                     >
                       Edit
                     </Link>
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-6 text-sm text-stone-500">
+                <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-6 text-sm">
                   <span>
-                    <strong className="text-stone-700">{event._count.rsvps}</strong> RSVPs
+                    <strong className="text-foreground/85">{event._count.rsvps}</strong> RSVPs
                   </span>
                   <span>
-                    <strong className="text-stone-700">{event._count.potluckSlots}</strong> Potluck
-                    Slots
+                    <strong className="text-foreground/85">{event._count.potluckSlots}</strong>{' '}
+                    Potluck Slots
                   </span>
                   {event.maxCapacity && (
                     <span>
-                      <strong className="text-stone-700">{event.maxCapacity}</strong> max capacity
+                      <strong className="text-foreground/85">{event.maxCapacity}</strong> max
+                      capacity
                     </span>
                   )}
                   {event.rsvpDeadline && (
-                    <span className="text-amber-600">
+                    <span className="text-terracotta">
                       RSVP by{' '}
                       {new Date(event.rsvpDeadline).toLocaleDateString('en-US', {
                         month: 'short',

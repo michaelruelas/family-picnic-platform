@@ -85,15 +85,17 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-xl bg-white p-4 shadow-sm">
-      <h3 className="text-lg font-semibold text-stone-900">
+      <h3 className="text-foreground text-lg font-semibold">
         {initialData ? 'Edit Potluck Slot' : 'Add Potluck Slot'}
       </h3>
 
-      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">{error}</div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label htmlFor="category" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="category" className="text-foreground/85 block text-sm font-medium">
             Category *
           </label>
           <select
@@ -103,7 +105,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
             onChange={handleChange}
             required
             disabled={!!initialData}
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none disabled:bg-stone-100 disabled:text-stone-500"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 disabled:bg-secondary disabled:text-muted-foreground mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           >
             <option value="MAIN">Main Dishes</option>
             <option value="SIDE">Side Dishes</option>
@@ -114,7 +116,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
         </div>
 
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="name" className="text-foreground/85 block text-sm font-medium">
             Slot Name *
           </label>
           <input
@@ -125,12 +127,12 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
             onChange={handleChange}
             required
             placeholder="e.g., Salad, Brownies, Lemonade"
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-stone-700">Slot Type *</label>
+          <label className="text-foreground/85 block text-sm font-medium">Slot Type *</label>
           <div className="mt-2 flex gap-4">
             <label className="flex items-center gap-2">
               <input
@@ -139,9 +141,9 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
                 value="LIMITED"
                 checked={formData.slotType === 'LIMITED'}
                 onChange={handleChange}
-                className="h-4 w-4 text-amber-600 focus:ring-amber-500"
+                className="text-terracotta focus:ring-foreground/20 h-4 w-4"
               />
-              <span className="text-sm text-stone-700">Limited</span>
+              <span className="text-foreground/85 text-sm">Limited</span>
             </label>
             <label className="flex items-center gap-2">
               <input
@@ -150,16 +152,16 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
                 value="UNLIMITED"
                 checked={formData.slotType === 'UNLIMITED'}
                 onChange={handleChange}
-                className="h-4 w-4 text-amber-600 focus:ring-amber-500"
+                className="text-terracotta focus:ring-foreground/20 h-4 w-4"
               />
-              <span className="text-sm text-stone-700">Unlimited</span>
+              <span className="text-foreground/85 text-sm">Unlimited</span>
             </label>
           </div>
         </div>
 
         {formData.slotType === 'LIMITED' && (
           <div>
-            <label htmlFor="maxSignups" className="block text-sm font-medium text-stone-700">
+            <label htmlFor="maxSignups" className="text-foreground/85 block text-sm font-medium">
               Max Signups *
             </label>
             <input
@@ -171,7 +173,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
               required
               min="1"
               max="100"
-              className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             />
           </div>
         )}
@@ -181,7 +183,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 rounded-lg bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+          className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
         >
           {isSubmitting ? 'Saving...' : initialData ? 'Update Slot' : 'Add Slot'}
         </button>
@@ -189,7 +191,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 rounded-lg bg-stone-200 px-4 py-2 font-medium text-stone-700 hover:bg-stone-300"
+            className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-4 py-2 font-medium"
           >
             Cancel
           </button>

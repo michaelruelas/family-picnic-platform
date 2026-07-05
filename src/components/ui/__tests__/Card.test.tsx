@@ -15,27 +15,35 @@ describe('Card', () => {
     expect(screen.getByText('Test').className).toContain('p-3');
 
     rerender(<Card padding="md">Test</Card>);
-    expect(screen.getByText('Test').className).toContain('p-4');
+    expect(screen.getByText('Test').className).toContain('p-5');
 
     rerender(<Card padding="lg">Test</Card>);
-    expect(screen.getByText('Test').className).toContain('p-6');
+    expect(screen.getByText('Test').className).toContain('p-7');
+
+    rerender(<Card padding="xl">Test</Card>);
+    expect(screen.getByText('Test').className).toContain('p-9');
   });
 
   it('applies variant classes', () => {
     const { rerender } = render(<Card variant="success">Test</Card>);
-    expect(screen.getByText('Test').className).toContain('bg-green-50');
+    expect(screen.getByText('Test').className).toContain('bg-sage/10');
 
     rerender(<Card variant="warning">Test</Card>);
-    expect(screen.getByText('Test').className).toContain('bg-amber-50');
+    expect(screen.getByText('Test').className).toContain('bg-sunlight/20');
 
     rerender(<Card variant="error">Test</Card>);
-    expect(screen.getByText('Test').className).toContain('bg-red-50');
+    expect(screen.getByText('Test').className).toContain('bg-destructive/10');
 
     rerender(<Card variant="muted">Test</Card>);
-    expect(screen.getByText('Test').className).toContain('bg-stone-100');
+    expect(screen.getByText('Test').className).toContain('bg-secondary');
 
     rerender(<Card variant="default">Test</Card>);
-    expect(screen.getByText('Test').className).toContain('bg-white');
+    expect(screen.getByText('Test').className).toContain('bg-card');
+  });
+
+  it('uses rounded-2xl by default', () => {
+    render(<Card>Test</Card>);
+    expect(screen.getByText('Test').className).toContain('rounded-2xl');
   });
 
   it('CardHeader renders with correct structure', () => {
@@ -48,12 +56,13 @@ describe('Card', () => {
     expect(header.className).toContain('flex items-center justify-between');
   });
 
-  it('CardTitle renders heading', () => {
+  it('CardTitle renders heading with display font', () => {
     render(<CardTitle>My Title</CardTitle>);
     const heading = screen.getByRole('heading', { name: /my title/i });
     expect(heading).toBeInTheDocument();
     expect(heading.tagName).toBe('H3');
-    expect(heading.className).toContain('text-lg font-semibold');
+    expect(heading.className).toContain('font-display');
+    expect(heading.className).toContain('font-semibold');
   });
 
   it('CardContent renders children', () => {
@@ -82,5 +91,10 @@ describe('Card', () => {
       </Card>,
     );
     expect(ref.current).toBeInstanceOf(HTMLDivElement);
+  });
+
+  it('supports hover lift', () => {
+    render(<Card hover>Test</Card>);
+    expect(screen.getByText('Test').className).toContain('hover-lift');
   });
 });

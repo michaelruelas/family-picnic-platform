@@ -57,7 +57,7 @@ export default async function EventAdminsPage({ params }: PageProps) {
       <div className="mb-8">
         <a
           href={`/admin/events/${id}/edit`}
-          className="text-sm text-stone-500 hover:text-stone-700"
+          className="text-muted-foreground hover:text-foreground/85 text-sm"
         >
           ← Back to Event Edit
         </a>

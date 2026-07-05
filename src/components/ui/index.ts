@@ -7,3 +7,6 @@ export { default as Modal } from './Modal';
 export { Toast, ToastProvider, useToast } from './Toast';
 export { default as EmptyState } from './EmptyState';
 export { default as Spinner, LoadingOverlay } from './Spinner';
+export { BreatheSection } from './BreatheSection';
+export { ThemeToggle } from './ThemeToggle';
+export { PhotoCredit } from './PhotoCredit';
