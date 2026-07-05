@@ -53,9 +53,11 @@ brew install wrkflw
 ```bash
 wrkflw validate .github/workflows/ci.yml   # Validate workflow YAML syntax
 ```
-wrkflw watch --event push            # Watch mode for auto-rerun
-wrkflw run --job validate .github/workflows/ci.yml  # Specific job
-```
+
+wrkflw watch --event push # Watch mode for auto-rerun
+wrkflw run --job validate .github/workflows/ci.yml # Specific job
+
+````
 
 ## Database
 
@@ -66,7 +68,7 @@ bun run db:migrate   # Run migrations (creates revision history)
 bun run db:seed      # Seed database with sample data
 bun run db:studio    # Open Prisma Studio (GUI)
 bun run db:validate  # Validate Prisma schema
-```
+````
 
 ## One-Command Dev Setup
 
