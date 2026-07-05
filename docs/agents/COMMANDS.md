@@ -1,39 +1,40 @@
 # Commands Reference
 
-All npm scripts and CLI commands for the Family Picnic Platform.
+All commands use `bun` (not `npm`).
 
 ## Development
 
 ```bash
-npm run dev          # Start Next.js dev server on localhost:3000
-npm run build        # Production build
-npm run start        # Start production server (requires build first)
+bun run dev          # Start Next.js dev server on localhost:3000
+bun run build        # Production build
+bun run start        # Start production server (requires build first)
 ```
 
 ## Testing
 
 ```bash
-npm test             # Run all tests (Vitest) - excludes playwright-tests/
-npm run test:watch   # Watch mode for development
-npm run test:coverage # Coverage report
+bun test             # Run all tests (Vitest) - excludes playwright-tests/
+bun run test:watch   # Watch mode for development
+bun run test:coverage # Coverage report
 
-npm run test:e2e    # Run Playwright e2e tests (playwright-tests/)
-npm run test:e2e -- --ui  # Run with Playwright UI
+bun run test:e2e    # Run Playwright e2e tests (playwright-tests/)
+bun run test:e2e -- --ui  # Run with Playwright UI
 ```
 
 ## Quality
 
 ```bash
-npm run lint         # ESLint
-npm run typecheck    # TypeScript type checking
-npm run ci           # Full CI suite: typecheck + lint + test
-npm run format       # Format all files with Prettier
-npm run format:check # Check formatting without modifying
+bun run lint         # ESLint
+bun run typecheck    # TypeScript type checking
+bun run ci           # Full CI suite: typecheck + lint + format:check + test:coverage
+bun run format       # Format all files with Prettier
+bun run format:check # Check formatting without modifying
 ```
 
 ## Local CI Validation (wrkflw)
 
-The pre-commit hook runs `wrkflw` automatically before each commit. Install wrkflw to validate CI will pass before pushing.
+The pre-commit hook validates the CI YAML with `wrkflw` then runs `bun run ci` locally.
+Install wrkflw to validate CI YAML syntax before pushing:
 
 ### Installation
 
@@ -50,14 +51,8 @@ brew install wrkflw
 ### Manual Usage
 
 ```bash
-wrkflw run --runtime emulation .github/workflows/ci.yml
+wrkflw validate .github/workflows/ci.yml   # Validate workflow YAML syntax
 ```
-
-### Other Commands
-
-```bash
-wrkflw validate                       # Validate workflow YAML syntax
-wrkflw tui                           # Interactive TUI
 wrkflw watch --event push            # Watch mode for auto-rerun
 wrkflw run --job validate .github/workflows/ci.yml  # Specific job
 ```
@@ -65,12 +60,12 @@ wrkflw run --job validate .github/workflows/ci.yml  # Specific job
 ## Database
 
 ```bash
-npm run db:generate  # Generate Prisma client after schema changes
-npm run db:push      # Push schema to database (dev)
-npm run db:migrate   # Run migrations (creates revision history)
-npm run db:seed      # Seed database with sample data
-npm run db:studio    # Open Prisma Studio (GUI)
-npm run db:validate  # Validate Prisma schema
+bun run db:generate  # Generate Prisma client after schema changes
+bun run db:push      # Push schema to database (dev)
+bun run db:migrate   # Run migrations (creates revision history)
+bun run db:seed      # Seed database with sample data
+bun run db:studio    # Open Prisma Studio (GUI)
+bun run db:validate  # Validate Prisma schema
 ```
 
 ## One-Command Dev Setup
@@ -83,7 +78,7 @@ This script:
 
 1. Starts PostgreSQL via Docker
 2. Creates `.env` from `.env.example` if missing
-3. Runs `npm install`
+3. Runs `bun install`
 4. Generates Prisma client
 5. Pushes schema to database
 6. Seeds with sample data
@@ -95,8 +90,8 @@ This script:
 Before running e2e tests for the first time:
 
 ```bash
-npm run db:push      # Push schema (needed after schema changes)
-npm run db:seed      # Seed test users
+bun run db:push      # Push schema (needed after schema changes)
+bun run db:seed      # Seed test users
 npx playwright install chromium  # Install browser
 ```
 
@@ -147,4 +142,4 @@ Test accounts (all use password `password123`):
 | bob.thompson@example.com        | User  |
 | priya.patel@example.com         | User  |
 
-Seeding resets data - run `npm run db:seed` after `db:push` or `db:migrate`.
+Seeding resets data - run `bun run db:seed` after `db:push` or `db:migrate`.

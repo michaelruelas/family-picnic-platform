@@ -7,49 +7,50 @@ Developer guide for the Family Picnic Platform codebase. Full documentation is i
 ### Development
 
 ```bash
-npm run dev          # Start Next.js dev server on localhost:3000
-npm run build        # Production build
-npm run start        # Start production server (requires build first)
+bun run dev          # Start Next.js dev server on localhost:3000
+bun run build        # Production build
+bun run start        # Start production server (requires build first)
 ```
 
 ### Testing & Quality
 
 ```bash
-npm test             # Run all tests (Vitest)
-npm run test:watch   # Watch mode for development
-npm run test:coverage # Coverage report
+bun test             # Run all tests (Vitest)
+bun run test:watch   # Watch mode for development
+bun run test:coverage # Coverage report
 
-npm run lint         # ESLint
-npm run typecheck    # TypeScript type checking
-npm run ci           # Full CI suite: typecheck + lint + test
+bun run lint         # ESLint
+bun run typecheck    # TypeScript type checking
+bun run ci           # Full CI suite: typecheck + lint + format:check + test:coverage
 ```
 
 ### Local CI (wrkflw)
 
-The pre-commit hook runs `wrkflw` automatically. Install wrkflw for local CI validation:
+The pre-commit hook validates the CI YAML with `wrkflw` then runs `bun run ci` locally.
+Install wrkflw for local CI validation:
 
 ```bash
 cargo install wrkflw
 ```
 
-Manual run: `wrkflw run --runtime emulation .github/workflows/ci.yml`
+Manual validation: `wrkflw validate .github/workflows/ci.yml`
 
 ### Code Formatting
 
 ```bash
-npm run format       # Format all files with Prettier
-npm run format:check # Check formatting without modifying
+bun run format       # Format all files with Prettier
+bun run format:check # Check formatting without modifying
 ```
 
 ### Database
 
 ```bash
-npm run db:generate  # Generate Prisma client after schema changes
-npm run db:push      # Push schema to database (dev)
-npm run db:migrate   # Run migrations (creates revision history)
-npm run db:seed      # Seed database with sample data
-npm run db:studio    # Open Prisma Studio (GUI)
-npm run db:validate  # Validate Prisma schema
+bun run db:generate  # Generate Prisma client after schema changes
+bun run db:push      # Push schema to database (dev)
+bun run db:migrate   # Run migrations (creates revision history)
+bun run db:seed      # Seed database with sample data
+bun run db:studio    # Open Prisma Studio (GUI)
+bun run db:validate  # Validate Prisma schema
 ```
 
 ### One-Command Dev Setup
@@ -61,15 +62,15 @@ bash scripts/dev.sh
 ### E2E Testing
 
 ```bash
-npm run test:e2e          # Run Playwright e2e tests
-npm run test:e2e -- --ui   # Run with Playwright UI
+bun run test:e2e          # Run Playwright e2e tests
+bun run test:e2e -- --ui   # Run with Playwright UI
 ```
 
 Setup for first run:
 
 ```bash
-npm run db:push            # Push schema
-npm run db:seed            # Seed test users
+bun run db:push            # Push schema
+bun run db:seed            # Seed test users
 npx playwright install chromium
 ```
 
@@ -97,7 +98,7 @@ Test accounts (all passwords: `password123`):
 
 **Login flow:** Go to `/login`, enter email + `password123`.
 
-Seeding resets data — run `npm run db:seed` after `db:push` or `db:migrate`.
+Seeding resets data — run `bun run db:seed` after `db:push` or `db:migrate`.
 
 ## Commit Messages
 
@@ -270,7 +271,7 @@ src/
 
 1. **`src/app/api/auth/[...nextauth]/route.ts`** — NextAuth handler is the single source of truth for auth.
 2. **`src/lib/auth.ts`** — Only exports `authOptions` and `getServerSession`.
-3. **`prisma/schema.prisma`** — If modified, run `npm run db:generate`. Client generated to `src/lib/generated/client`.
+3. **`prisma/schema.prisma`** — If modified, run `bun run db:generate`. Client generated to `src/lib/generated/client`.
 4. **`src/lib/generated/`** — Prisma-generated code. Do not edit manually.
 
 ## Tickets
@@ -353,8 +354,8 @@ cp .env.example .env
 After modifying `prisma/schema.prisma`, always run:
 
 ```bash
-npm run db:generate  # Regenerate Prisma client
-npm run db:push      # Push changes to dev database
+bun run db:generate  # Regenerate Prisma client
+bun run db:push      # Push changes to dev database
 ```
 
 The Prisma client is generated to `src/lib/generated/client` (not the default `@prisma/client` location).
