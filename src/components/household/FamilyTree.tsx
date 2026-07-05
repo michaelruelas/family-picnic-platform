@@ -39,14 +39,14 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
     <li className="relative">
       <div
         className={`flex flex-wrap items-center gap-2 rounded-lg p-3 transition-colors ${
-          level === 0 ? 'border border-amber-200 bg-amber-50' : 'border border-stone-200 bg-white'
+          level === 0 ? 'border-sunlight/40 bg-sunlight/20 border' : 'border-border border bg-white'
         } hover:shadow-sm`}
         style={{ marginLeft: level > 0 ? '1.5rem' : 0 }}
       >
         {hasChildren && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex h-6 w-6 items-center justify-center rounded bg-stone-200 text-xs font-bold text-stone-600 hover:bg-stone-300"
+            className="bg-secondary text-muted-foreground hover:bg-secondary flex h-6 w-6 items-center justify-center rounded text-xs font-bold"
             aria-label={isExpanded ? 'Collapse' : 'Expand'}
           >
             {isExpanded ? '−' : '+'}
@@ -56,13 +56,13 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
 
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-stone-900">{node.name}</span>
-            <span className="text-xs text-stone-500">
+            <span className="text-foreground font-semibold">{node.name}</span>
+            <span className="text-muted-foreground text-xs">
               ({totalMembers} {totalMembers === 1 ? 'member' : 'members'})
             </span>
           </div>
 
-          <div className="mt-1 flex flex-wrap gap-2 text-xs text-stone-500">
+          <div className="text-muted-foreground mt-1 flex flex-wrap gap-2 text-xs">
             {node.users.length > 0 && (
               <span>
                 {node.users.length} adult{node.users.length !== 1 ? 's' : ''}
@@ -79,7 +79,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
 
         <button
           onClick={() => setShowDetails(!showDetails)}
-          className="rounded px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50"
+          className="text-terracotta hover:bg-sunlight/20 rounded px-2 py-1 text-xs font-medium"
         >
           {showDetails ? 'Hide' : 'Details'}
         </button>
@@ -87,18 +87,21 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
 
       {showDetails && (
         <div
-          className="rounded-lg border border-stone-200 bg-white p-4"
+          className="border-border rounded-lg border bg-white p-4"
           style={{ marginLeft: level > 0 ? '1.5rem' : 0, marginTop: '0.5rem' }}
         >
           {node.users.length > 0 && (
             <div className="mb-3">
-              <h4 className="text-sm font-medium text-stone-700">Adults</h4>
+              <h4 className="text-foreground/85 text-sm font-medium">Adults</h4>
               <ul className="mt-1 space-y-1">
                 {node.users.map((user) => (
-                  <li key={user.id} className="flex items-center gap-2 text-sm text-stone-600">
+                  <li
+                    key={user.id}
+                    className="text-muted-foreground flex items-center gap-2 text-sm"
+                  >
                     <span className="h-2 w-2 rounded-full bg-amber-400" />
                     {user.name}
-                    <span className="text-xs text-stone-400">({user.email})</span>
+                    <span className="text-muted-foreground/70 text-xs">({user.email})</span>
                   </li>
                 ))}
               </ul>
@@ -107,15 +110,18 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
 
           {node.dependents.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-stone-700">Dependents</h4>
+              <h4 className="text-foreground/85 text-sm font-medium">Dependents</h4>
               <ul className="mt-1 space-y-1">
                 {node.dependents.map((dep) => (
-                  <li key={dep.id} className="flex items-center gap-2 text-sm text-stone-600">
+                  <li
+                    key={dep.id}
+                    className="text-muted-foreground flex items-center gap-2 text-sm"
+                  >
                     <span
                       className={`h-2 w-2 rounded-full ${dep.isChild ? 'bg-blue-400' : 'bg-green-400'}`}
                     />
                     {dep.name}
-                    <span className="text-xs text-stone-400">
+                    <span className="text-muted-foreground/70 text-xs">
                       ({dep.relationship}
                       {dep.age !== null ? `, ${dep.age} years old` : ''})
                     </span>
@@ -126,13 +132,13 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
           )}
 
           {node.users.length === 0 && node.dependents.length === 0 && (
-            <p className="text-sm text-stone-400">No members yet</p>
+            <p className="text-muted-foreground/70 text-sm">No members yet</p>
           )}
         </div>
       )}
 
       {isExpanded && hasChildren && (
-        <ul className="mt-2 space-y-2 border-l-2 border-stone-200 pl-4">
+        <ul className="border-border mt-2 space-y-2 border-l-2 pl-4">
           {node.children.map((child) => (
             <HouseholdNodeComponent key={child.id} node={child} level={level + 1} />
           ))}
@@ -145,10 +151,10 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
 export default function FamilyTree({ households }: FamilyTreeProps) {
   if (households.length === 0) {
     return (
-      <div className="rounded-xl bg-stone-100 p-8 text-center">
+      <div className="bg-secondary rounded-xl p-8 text-center">
         <div className="text-4xl">🌳</div>
-        <h3 className="mt-4 text-lg font-medium text-stone-700">No Households Yet</h3>
-        <p className="mt-2 text-sm text-stone-500">
+        <h3 className="text-foreground/85 mt-4 text-lg font-medium">No Households Yet</h3>
+        <p className="text-muted-foreground mt-2 text-sm">
           Households will appear here once families start signing up.
         </p>
       </div>

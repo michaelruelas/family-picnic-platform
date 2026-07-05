@@ -3,5 +3,8 @@
 echo "[wrkflw] Validating CI pipeline..."
 wrkflw validate .github/workflows/ci.yml
 
-echo "[wrkflw] Running CI pipeline locally..."
-wrkflw run --runtime emulation .github/workflows/ci.yml
+echo "[format] Auto-fixing formatting..."
+bun run format
+
+echo "[ci] Running CI suite..."
+bun run ci

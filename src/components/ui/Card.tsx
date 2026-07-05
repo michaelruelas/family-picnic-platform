@@ -2,34 +2,41 @@
 
 import { HTMLAttributes, forwardRef } from 'react';
 
-type CardVariant = 'default' | 'success' | 'warning' | 'error' | 'muted';
+type CardVariant = 'default' | 'success' | 'warning' | 'error' | 'muted' | 'sunlight' | 'sage';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   variant?: CardVariant;
-  padding?: 'none' | 'sm' | 'md' | 'lg';
+  padding?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+  hover?: boolean;
 }
 
 const variantClasses: Record<CardVariant, string> = {
-  default: 'bg-white ring-1 ring-stone-200',
-  success: 'bg-green-50',
-  warning: 'bg-amber-50',
-  error: 'bg-red-50',
-  muted: 'bg-stone-100 text-stone-600',
+  default: 'bg-card text-card-foreground ring-1 ring-border/60 shadow-card',
+  success: 'bg-sage/10 text-foreground ring-1 ring-sage/30',
+  warning: 'bg-sunlight/20 text-foreground ring-1 ring-sunlight/40',
+  error: 'bg-destructive/10 text-foreground ring-1 ring-destructive/30',
+  muted: 'bg-secondary text-foreground',
+  sunlight: 'bg-sunlight/20 text-foreground',
+  sage: 'bg-sage/15 text-foreground ring-1 ring-sage/30',
 };
 
-const paddingClasses: Record<'none' | 'sm' | 'md' | 'lg', string> = {
+const paddingClasses: Record<'none' | 'sm' | 'md' | 'lg' | 'xl', string> = {
   none: '',
   sm: 'p-3',
-  md: 'p-4',
-  lg: 'p-6',
+  md: 'p-5',
+  lg: 'p-7',
+  xl: 'p-9',
 };
 
 const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ variant = 'default', padding = 'md', className = '', children, ...props }, ref) => {
+  (
+    { variant = 'default', padding = 'md', hover = false, className = '', children, ...props },
+    ref,
+  ) => {
     return (
       <div
         ref={ref}
-        className={`rounded-lg shadow-sm ${variantClasses[variant]} ${paddingClasses[padding]} ${className} `}
+        className={`rounded-2xl ${variantClasses[variant]} ${paddingClasses[padding]} ${hover ? 'hover-lift' : ''} ${className} `}
         {...props}
       >
         {children}
@@ -59,7 +66,11 @@ interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {}
 const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ className = '', children, ...props }, ref) => {
     return (
-      <h3 ref={ref} className={`text-lg font-semibold text-stone-900 ${className}`} {...props}>
+      <h3
+        ref={ref}
+        className={`font-display text-foreground text-xl font-semibold ${className}`}
+        {...props}
+      >
         {children}
       </h3>
     );

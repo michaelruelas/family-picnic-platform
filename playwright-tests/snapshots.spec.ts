@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { getAllThemeCombinations } from '../src/lib/themes';
 
 const pages = [
   { path: '/login', name: 'login-page' },
@@ -9,33 +8,22 @@ const pages = [
   { path: '/photos', name: 'photos-page' },
 ];
 
+const themes = ['light', 'dark'] as const;
+
 for (const page of pages) {
-  for (const { theme, colorMode } of getAllThemeCombinations()) {
-    const snapshotName = `${page.name}-${theme.id}-${colorMode}.png`;
-
-    test(`screenshot ${snapshotName}`, async ({ page: pw }) => {
-      const themeClass = theme.className(colorMode);
-
+  for (const theme of themes) {
+    test(`screenshot ${page.name}-${theme}`, async ({ page: pw }) => {
       await pw.goto(page.path, { waitUntil: 'networkidle' });
 
       await pw.evaluate((cls: string) => {
-        document.documentElement.classList.remove(
-          'dark',
-          'light',
-          'notion',
-          'notion-dark',
-          'notion-light',
-          'workspace',
-          'workspace-dark',
-          'workspace-light',
-        );
+        document.documentElement.classList.remove('dark', 'light');
         document.documentElement.classList.add(cls);
         document.documentElement.setAttribute('data-theme', cls);
-        localStorage.setItem('next-themes-theme', cls);
-      }, themeClass);
+        localStorage.setItem('theme', cls);
+      }, theme);
 
       await pw.waitForTimeout(300);
-      await expect(pw).toHaveScreenshot(snapshotName);
+      await expect(pw).toHaveScreenshot(`${page.name}-${theme}.png`);
     });
   }
 

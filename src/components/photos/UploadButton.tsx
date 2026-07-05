@@ -180,16 +180,16 @@ export default function UploadButton({
       />
 
       <div
-        className="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 p-6 transition-colors hover:border-amber-400 hover:bg-amber-100"
+        className="border-sunlight/50 bg-sunlight/20 hover:bg-terracotta/15 relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-colors hover:border-amber-400"
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       >
         <div className="text-center">
           <div className="text-4xl">📷</div>
-          <p className="mt-2 text-sm font-medium text-stone-700">
+          <p className="text-foreground/85 mt-2 text-sm font-medium">
             Drop photos here or click to upload
           </p>
-          <p className="mt-1 text-xs text-stone-500">
+          <p className="text-muted-foreground mt-1 text-xs">
             JPEG, PNG, WebP, HEIC up to {maxFileSizeMB}MB each
           </p>
         </div>
@@ -197,7 +197,7 @@ export default function UploadButton({
         <button
           onClick={handlePick}
           disabled={isUploading}
-          className="mt-4 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+          className="bg-terracotta hover:bg-terracotta mt-4 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
         >
           {isUploading ? 'Uploading...' : 'Select Photos'}
         </button>
@@ -208,26 +208,26 @@ export default function UploadButton({
           {uploadingFiles.map((uploadingFile) => (
             <div
               key={uploadingFile.id}
-              className="flex items-center gap-3 rounded-lg bg-stone-50 p-3"
+              className="bg-secondary/60 flex items-center gap-3 rounded-lg p-3"
             >
               <div className="flex-1">
-                <p className="truncate text-sm font-medium text-stone-700">
+                <p className="text-foreground/85 truncate text-sm font-medium">
                   {uploadingFile.file.name}
                 </p>
                 <div className="mt-1 flex items-center gap-2">
-                  <div className="h-1.5 flex-1 rounded-full bg-stone-200">
+                  <div className="bg-secondary h-1.5 flex-1 rounded-full">
                     <div
                       className={`h-1.5 rounded-full transition-all ${
                         uploadingFile.status === 'error'
-                          ? 'bg-red-500'
+                          ? 'bg-destructive/100'
                           : uploadingFile.status === 'done'
-                            ? 'bg-green-500'
-                            : 'bg-amber-500'
+                            ? 'bg-sage/150'
+                            : 'bg-sunlight/200'
                       }`}
                       style={{ width: `${uploadingFile.progress}%` }}
                     />
                   </div>
-                  <span className="text-xs text-stone-500">
+                  <span className="text-muted-foreground text-xs">
                     {uploadingFile.status === 'done'
                       ? 'Done'
                       : uploadingFile.status === 'error'
@@ -236,8 +236,8 @@ export default function UploadButton({
                   </span>
                 </div>
               </div>
-              {uploadingFile.status === 'done' && <span className="text-green-500">✓</span>}
-              {uploadingFile.status === 'error' && <span className="text-red-500">✗</span>}
+              {uploadingFile.status === 'done' && <span className="text-sage">✓</span>}
+              {uploadingFile.status === 'error' && <span className="text-destructive">✗</span>}
             </div>
           ))}
         </div>

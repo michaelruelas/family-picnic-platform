@@ -89,11 +89,13 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 rounded-xl bg-white p-6 shadow-sm">
-      {error && <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="name" className="text-foreground/85 block text-sm font-medium">
             Event Name *
           </label>
           <input
@@ -103,13 +105,13 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             value={formData.name}
             onChange={handleChange}
             required
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="Annual Family Picnic"
           />
         </div>
 
         <div>
-          <label htmlFor="location" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="location" className="text-foreground/85 block text-sm font-medium">
             Location *
           </label>
           <input
@@ -119,13 +121,13 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             value={formData.location}
             onChange={handleChange}
             required
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="Central Park Pavilion"
           />
         </div>
 
         <div>
-          <label htmlFor="date" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="date" className="text-foreground/85 block text-sm font-medium">
             Event Date *
           </label>
           <input
@@ -135,12 +137,12 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             value={formData.date}
             onChange={handleChange}
             required
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           />
         </div>
 
         <div>
-          <label htmlFor="rsvpDeadline" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="rsvpDeadline" className="text-foreground/85 block text-sm font-medium">
             RSVP Deadline
           </label>
           <input
@@ -149,12 +151,12 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             name="rsvpDeadline"
             value={formData.rsvpDeadline}
             onChange={handleChange}
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           />
         </div>
 
         <div>
-          <label htmlFor="maxCapacity" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="maxCapacity" className="text-foreground/85 block text-sm font-medium">
             Max Capacity
           </label>
           <input
@@ -164,13 +166,13 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             value={formData.maxCapacity ?? ''}
             onChange={handleChange}
             min="1"
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="Leave empty for unlimited"
           />
         </div>
 
         <div>
-          <label htmlFor="mapImageUrl" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="mapImageUrl" className="text-foreground/85 block text-sm font-medium">
             Map Image URL
           </label>
           <input
@@ -179,14 +181,14 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             name="mapImageUrl"
             value={formData.mapImageUrl}
             onChange={handleChange}
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="https://..."
           />
         </div>
       </div>
 
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-stone-700">
+        <label htmlFor="description" className="text-foreground/85 block text-sm font-medium">
           Description
         </label>
         <textarea
@@ -195,7 +197,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
           value={formData.description}
           onChange={handleChange}
           rows={4}
-          className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           placeholder="Join us for our annual family picnic..."
         />
       </div>
@@ -204,14 +206,14 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 rounded-lg bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+          className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
         >
           {isSubmitting ? 'Saving...' : mode === 'create' ? 'Create Event' : 'Save Changes'}
         </button>
         <button
           type="button"
           onClick={() => router.push('/admin/events')}
-          className="flex-1 rounded-lg bg-stone-200 px-4 py-2 font-medium text-stone-700 hover:bg-stone-300"
+          className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-4 py-2 font-medium"
         >
           Cancel
         </button>

@@ -60,7 +60,7 @@ export default function HelpButton({ context = 'events', className = '' }: HelpB
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed right-6 bottom-6 flex h-14 w-14 items-center justify-center rounded-full bg-amber-700 text-2xl text-white shadow-lg hover:bg-amber-800 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:outline-none ${className}`}
+        className={`bg-terracotta hover:bg-terracotta focus:ring-foreground/20 fixed right-6 bottom-6 flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white shadow-lg focus:ring-2 focus:ring-offset-2 focus:outline-none ${className}`}
         aria-label="Open help"
       >
         ?
@@ -74,18 +74,18 @@ export default function HelpButton({ context = 'events', className = '' }: HelpB
             aria-labelledby="help-title"
           >
             <div className="mb-4 flex items-start justify-between">
-              <h2 id="help-title" className="text-xl font-bold text-stone-900">
+              <h2 id="help-title" className="text-foreground text-xl font-bold">
                 {content.title}
               </h2>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-2xl text-stone-400 hover:text-stone-600"
+                className="text-muted-foreground/70 hover:text-muted-foreground text-2xl"
                 aria-label="Close help"
               >
                 ×
               </button>
             </div>
-            <p className="text-lg text-stone-600">{content.content}</p>
+            <p className="text-muted-foreground text-lg">{content.content}</p>
             <div className="mt-6 flex flex-wrap gap-2">
               {(Object.keys(HELP_CONTENT) as Array<keyof typeof HELP_CONTENT>).map((key) => (
                 <button
@@ -93,16 +93,16 @@ export default function HelpButton({ context = 'events', className = '' }: HelpB
                   onClick={() => setSelectedContext(key)}
                   className={`rounded-lg px-3 py-1 text-sm capitalize transition-colors ${
                     selectedContext === key
-                      ? 'bg-amber-100 text-amber-700'
-                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      ? 'bg-terracotta/15 text-terracotta'
+                      : 'bg-secondary text-muted-foreground hover:bg-secondary'
                   }`}
                 >
                   {key}
                 </button>
               ))}
             </div>
-            <div className="mt-6 rounded-lg bg-amber-50 p-4">
-              <p className="text-sm text-amber-800">
+            <div className="bg-sunlight/20 mt-6 rounded-lg p-4">
+              <p className="text-foreground text-sm">
                 <strong>Need more help?</strong> Contact your family admin or email
                 support@example.com
               </p>

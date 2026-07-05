@@ -20,6 +20,13 @@ export default tseslint.config(
     },
   },
   {
+    files: ['**/*.test.ts', '**/*.test.tsx', '**/__tests__/**'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  {
     plugins: {
       '@next/next': nextPlugin,
       'react-hooks': reactHooks,

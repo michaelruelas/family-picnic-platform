@@ -18,8 +18,19 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      include: ['src/**', 'prisma/**'],
-      exclude: ['src/lib/generated', 'src/**/*.test.ts', 'src/**/*.test.tsx'],
+      include: ['src/lib/**', 'src/hooks/**', 'src/components/ui/**', 'src/server/**'],
+      exclude: [
+        'src/lib/generated',
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
+        'src/**/__tests__/**',
+      ],
+      thresholds: {
+        statements: 60,
+        branches: 50,
+        functions: 55,
+        lines: 60,
+      },
     },
   },
 });

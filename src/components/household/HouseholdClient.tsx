@@ -170,13 +170,13 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-stone-900">Family Members & Dependents</h2>
-          <p className="mt-1 text-sm text-stone-500">Manage dependents in your household</p>
+          <h2 className="text-foreground text-lg font-semibold">Family Members & Dependents</h2>
+          <p className="text-muted-foreground mt-1 text-sm">Manage dependents in your household</p>
         </div>
         {!showDependentForm && (
           <button
             onClick={() => setShowDependentForm(true)}
-            className="rounded-lg bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 hover:bg-amber-200"
+            className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-3 py-1 text-sm font-medium"
           >
             + Add Member
           </button>
@@ -184,7 +184,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
       </div>
 
       {dependents.length === 0 && !showDependentForm ? (
-        <p className="mt-4 text-sm text-stone-500">
+        <p className="text-muted-foreground mt-4 text-sm">
           No dependents added yet. Add your spouse, children, or other family members.
         </p>
       ) : (
@@ -192,7 +192,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
           {dependents.map((dependent) => (
             <li
               key={dependent.id}
-              className="flex items-center justify-between rounded-lg border border-stone-200 p-3"
+              className="border-border flex items-center justify-between rounded-lg border p-3"
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 font-medium text-blue-700">
@@ -200,8 +200,8 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
                 </div>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-stone-900">{dependent.name}</span>
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 capitalize">
+                    <span className="text-foreground font-medium">{dependent.name}</span>
+                    <span className="bg-terracotta/15 text-terracotta rounded-full px-2 py-0.5 text-xs capitalize">
                       {RELATIONSHIP_LABELS[dependent.relationship]?.toLowerCase() ||
                         dependent.relationship.toLowerCase()}
                     </span>
@@ -211,10 +211,10 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-stone-500">
+                  <div className="text-muted-foreground flex items-center gap-3 text-xs">
                     {dependent.age !== null && <span>{dependent.age} yrs</span>}
                     {dependent.dietaryLabels.length > 0 && (
-                      <span className="text-amber-600">
+                      <span className="text-terracotta">
                         🥗 {dependent.dietaryLabels.join(', ')}
                       </span>
                     )}
@@ -230,7 +230,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
                 </button>
                 <button
                   onClick={() => handleDeleteDependent(dependent.id)}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-destructive hover:text-foreground"
                 >
                   Remove
                 </button>
@@ -243,39 +243,39 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
       {showDependentForm && (
         <form
           onSubmit={editingDependentId ? handleUpdateDependent : handleAddDependent}
-          className="mt-6 rounded-lg border border-stone-200 bg-stone-50 p-4"
+          className="border-border bg-secondary/60 mt-6 rounded-lg border p-4"
         >
-          <h3 className="text-lg font-medium text-stone-900">
+          <h3 className="text-foreground text-lg font-medium">
             {editingDependentId ? 'Edit Family Member' : 'Add Family Member'}
           </h3>
 
           {dependentError && (
-            <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            <div className="bg-destructive/10 text-destructive mt-3 rounded-lg p-3 text-sm">
               {dependentError}
             </div>
           )}
 
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-stone-700">Name</label>
+              <label className="text-foreground/85 block text-sm font-medium">Name</label>
               <input
                 type="text"
                 value={dependentForm.name}
                 onChange={(e) => setDependentForm({ ...dependentForm, name: e.target.value })}
                 required
                 placeholder="Full name"
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-700">Relationship</label>
+              <label className="text-foreground/85 block text-sm font-medium">Relationship</label>
               <select
                 value={dependentForm.relationship}
                 onChange={(e) =>
                   setDependentForm({ ...dependentForm, relationship: e.target.value })
                 }
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               >
                 <option value="SPOUSE">Spouse</option>
                 <option value="CHILD">Child</option>
@@ -287,7 +287,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-700">Age (optional)</label>
+              <label className="text-foreground/85 block text-sm font-medium">Age (optional)</label>
               <input
                 type="number"
                 value={dependentForm.age}
@@ -295,12 +295,12 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
                 min="0"
                 max="120"
                 placeholder="Age in years"
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-stone-700">
+              <label className="text-foreground/85 block text-sm font-medium">
                 Dietary Labels (optional)
               </label>
               <input
@@ -310,7 +310,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
                   setDependentForm({ ...dependentForm, dietaryLabels: e.target.value })
                 }
                 placeholder="vegetarian, gluten-free, nut-free"
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />
             </div>
           </div>
@@ -321,9 +321,9 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
                 type="checkbox"
                 checked={dependentForm.isChild}
                 onChange={(e) => setDependentForm({ ...dependentForm, isChild: e.target.checked })}
-                className="h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                className="border-border text-terracotta focus:ring-foreground/20 h-4 w-4 rounded"
               />
-              <span className="text-sm text-stone-700">This is a child (under 18)</span>
+              <span className="text-foreground/85 text-sm">This is a child (under 18)</span>
             </label>
           </div>
 
@@ -331,7 +331,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
             <button
               type="submit"
               disabled={dependentSubmitting}
-              className="flex-1 rounded-lg bg-amber-700 px-4 py-2 font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+              className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
             >
               {dependentSubmitting
                 ? 'Saving...'
@@ -343,7 +343,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
               type="button"
               onClick={resetDependentForm}
               disabled={dependentSubmitting}
-              className="flex-1 rounded-lg bg-stone-200 px-4 py-2 font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
+              className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-4 py-2 font-medium disabled:opacity-50"
             >
               Cancel
             </button>

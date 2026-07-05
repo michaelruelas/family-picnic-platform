@@ -1,138 +1,309 @@
-import { describe, it, expect } from 'vitest';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook } from '@testing-library/react';
 
-describe('React Hooks Layer', () => {
-  const hooksDir = path.join(process.cwd(), 'src/hooks');
+function mockQueryResult(overrides: Record<string, unknown> = {}) {
+  return {
+    data: null,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    ...overrides,
+  };
+}
 
-  describe('useOffline', () => {
-    const hookPath = path.join(hooksDir, 'useOffline.ts');
+function mockMutationResult(overrides: Record<string, unknown> = {}) {
+  return {
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isLoading: false,
+    isError: false,
+    error: null,
+    ...overrides,
+  };
+}
 
-    it('exists and exports a useOffline function', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('export function useOffline()');
-    });
+const mockUseUtils = vi.fn(() => ({
+  rsvp: { getMyRsvp: { invalidate: vi.fn() }, getHeadcount: { invalidate: vi.fn() } },
+  potluck: { listSlots: { invalidate: vi.fn() } },
+  dependent: { list: { invalidate: vi.fn() } },
+  household: { getById: { invalidate: vi.fn() } },
+  photo: { list: { invalidate: vi.fn() } },
+  user: { getProfile: { invalidate: vi.fn() } },
+}));
 
-    it('returns isOnline and lastOnline properties', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('isOnline: boolean');
-      expect(content).toContain('lastOnline: Date | null');
-    });
+const mockQueries = {
+  event: {
+    getById: vi.fn(() => mockQueryResult()),
+  },
+  rsvp: {
+    getMyRsvp: vi.fn(() => mockQueryResult()),
+    getHeadcount: vi.fn(() => mockQueryResult()),
+    confirm: { useMutation: vi.fn(() => mockMutationResult()) },
+    decline: { useMutation: vi.fn(() => mockMutationResult()) },
+  },
+  potluck: {
+    listSlots: vi.fn(() => mockQueryResult()),
+    getFoodSummary: vi.fn(() => mockQueryResult()),
+    signup: { useMutation: vi.fn(() => mockMutationResult()) },
+    updateSignup: { useMutation: vi.fn(() => mockMutationResult()) },
+    cancelSignup: { useMutation: vi.fn(() => mockMutationResult()) },
+  },
+  household: {
+    getById: vi.fn(() => mockQueryResult()),
+    getCumulativeHeadcount: vi.fn(() => mockQueryResult()),
+  },
+  dependent: {
+    list: vi.fn(() => mockQueryResult()),
+    getByHousehold: vi.fn(() => mockQueryResult()),
+    create: { useMutation: vi.fn(() => mockMutationResult()) },
+    update: { useMutation: vi.fn(() => mockMutationResult()) },
+    delete: { useMutation: vi.fn(() => mockMutationResult()) },
+  },
+  photo: {
+    addReaction: { useMutation: vi.fn(() => mockMutationResult()) },
+    removeReaction: { useMutation: vi.fn(() => mockMutationResult()) },
+  },
+  user: {
+    updatePreferences: { useMutation: vi.fn(() => mockMutationResult()) },
+  },
+};
 
-    it('listens to online and offline events', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain("window.addEventListener('online'");
-      expect(content).toContain("window.addEventListener('offline'");
-    });
+vi.mock('~/lib/trpc-client', () => ({
+  trpc: {
+    event: {
+      getById: { useQuery: mockQueries.event.getById },
+    },
+    rsvp: {
+      getMyRsvp: { useQuery: mockQueries.rsvp.getMyRsvp },
+      getHeadcount: { useQuery: mockQueries.rsvp.getHeadcount },
+      confirm: { useMutation: mockQueries.rsvp.confirm.useMutation },
+      decline: { useMutation: mockQueries.rsvp.decline.useMutation },
+    },
+    potluck: {
+      listSlots: { useQuery: mockQueries.potluck.listSlots },
+      getFoodSummary: { useQuery: mockQueries.potluck.getFoodSummary },
+      signup: { useMutation: mockQueries.potluck.signup.useMutation },
+      updateSignup: { useMutation: mockQueries.potluck.updateSignup.useMutation },
+      cancelSignup: { useMutation: mockQueries.potluck.cancelSignup.useMutation },
+    },
+    household: {
+      getById: { useQuery: mockQueries.household.getById },
+      getCumulativeHeadcount: { useQuery: mockQueries.household.getCumulativeHeadcount },
+    },
+    dependent: {
+      list: { useQuery: mockQueries.dependent.list },
+      getByHousehold: { useQuery: mockQueries.dependent.getByHousehold },
+      create: { useMutation: mockQueries.dependent.create.useMutation },
+      update: { useMutation: mockQueries.dependent.update.useMutation },
+      delete: { useMutation: mockQueries.dependent.delete.useMutation },
+    },
+    photo: {
+      addReaction: { useMutation: mockQueries.photo.addReaction.useMutation },
+      removeReaction: { useMutation: mockQueries.photo.removeReaction.useMutation },
+    },
+    user: {
+      updatePreferences: { useMutation: mockQueries.user.updatePreferences.useMutation },
+    },
+    useUtils: mockUseUtils,
+  },
+}));
 
-    it('handles SSR gracefully', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain("typeof window === 'undefined'");
-    });
+beforeEach(() => {
+  vi.clearAllMocks();
+  for (const query of Object.values(mockQueries.event)) {
+    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
+  }
+  for (const query of Object.values(mockQueries.rsvp)) {
+    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
+  }
+  for (const query of Object.values(mockQueries.potluck)) {
+    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
+  }
+  for (const query of Object.values(mockQueries.household)) {
+    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
+  }
+  for (const query of Object.values(mockQueries.dependent)) {
+    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
+  }
+});
+
+describe('useEvent', () => {
+  it('calls trpc.event.getById.useQuery with correct params', async () => {
+    const { useEvent } = await import('~/hooks/useEvent');
+    renderHook(() => useEvent({ eventId: 'evt-1' }));
+    expect(mockQueries.event.getById).toHaveBeenCalledWith({ id: 'evt-1' }, { enabled: true });
   });
 
-  describe('useEvent', () => {
-    const hookPath = path.join(hooksDir, 'useEvent.ts');
+  it('returns event data from query', async () => {
+    const mockEvent = { id: 'evt-1', name: 'Picnic' };
+    mockQueries.event.getById.mockReturnValue(
+      mockQueryResult({ data: mockEvent, isLoading: false, error: null }),
+    );
+    const { useEvent } = await import('~/hooks/useEvent');
+    const { result } = renderHook(() => useEvent({ eventId: 'evt-1' }));
+    expect(result.current.event).toEqual(mockEvent);
+    expect(result.current.isLoading).toBe(false);
+  });
+});
 
-    it('exists and exports useEvent, useEventRsvp, and useEventHeadcount', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('export function useEvent');
-      expect(content).toContain('export function useEventRsvp');
-      expect(content).toContain('export function useEventHeadcount');
-    });
+describe('useEventRsvp', () => {
+  it('calls trpc.rsvp.getMyRsvp.useQuery with correct params', async () => {
+    const { useEventRsvp } = await import('~/hooks/useEvent');
+    renderHook(() => useEventRsvp({ eventId: 'evt-1' }));
+    expect(mockQueries.rsvp.getMyRsvp).toHaveBeenCalledWith(
+      { eventId: 'evt-1' },
+      { enabled: true },
+    );
+  });
+});
 
-    it('wraps tRPC event.getById query', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('trpc.event.getById.useQuery');
-    });
-
-    it('wraps tRPC rsvp.getMyRsvp query', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('trpc.rsvp.getMyRsvp.useQuery');
-    });
-
-    it('wraps tRPC rsvp.getHeadcount query', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('trpc.rsvp.getHeadcount.useQuery');
-    });
-
-    it('accepts eventId parameter', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('eventId: string');
-    });
+describe('useEventHeadcount', () => {
+  it('calls trpc.rsvp.getHeadcount.useQuery with correct params', async () => {
+    const { useEventHeadcount } = await import('~/hooks/useEvent');
+    renderHook(() => useEventHeadcount({ eventId: 'evt-1' }));
+    expect(mockQueries.rsvp.getHeadcount).toHaveBeenCalledWith(
+      { eventId: 'evt-1' },
+      { enabled: true },
+    );
   });
 
-  describe('usePotluck', () => {
-    const hookPath = path.join(hooksDir, 'usePotluck.ts');
+  it('provides default headcount when data is null', async () => {
+    mockQueries.rsvp.getHeadcount.mockReturnValue(
+      mockQueryResult({ data: null, isLoading: false, error: null }),
+    );
+    const { useEventHeadcount } = await import('~/hooks/useEvent');
+    const { result } = renderHook(() => useEventHeadcount({ eventId: 'evt-1' }));
+    expect(result.current.headcount).toEqual({ totalHeadcount: 0, totalRsvps: 0 });
+  });
+});
 
-    it('exists and exports usePotluckSlots and usePotluckFoodSummary', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('export function usePotluckSlots');
-      expect(content).toContain('export function usePotluckFoodSummary');
-      expect(content).toContain('export function usePotluckSignupMutation');
-    });
+describe('usePotluckSlots', () => {
+  it('calls trpc.potluck.listSlots.useQuery with correct params', async () => {
+    const { usePotluckSlots } = await import('~/hooks/usePotluck');
+    renderHook(() => usePotluckSlots({ eventId: 'evt-1' }));
+    expect(mockQueries.potluck.listSlots).toHaveBeenCalledWith(
+      { eventId: 'evt-1' },
+      { enabled: true },
+    );
+  });
+});
 
-    it('wraps tRPC potluck.listSlots query', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('trpc.potluck.listSlots.useQuery');
-    });
+describe('usePotluckFoodSummary', () => {
+  it('calls trpc.potluck.getFoodSummary.useQuery with correct params', async () => {
+    const { usePotluckFoodSummary } = await import('~/hooks/usePotluck');
+    renderHook(() => usePotluckFoodSummary({ eventId: 'evt-1' }));
+    expect(mockQueries.potluck.getFoodSummary).toHaveBeenCalledWith(
+      { eventId: 'evt-1' },
+      { enabled: true },
+    );
+  });
+});
 
-    it('wraps tRPC potluck.getFoodSummary query', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('trpc.potluck.getFoodSummary.useQuery');
-    });
-
-    it('wraps tRPC potluck signup/updateSignup/cancelSignup mutations', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('trpc.potluck.signup.useMutation');
-      expect(content).toContain('trpc.potluck.updateSignup.useMutation');
-      expect(content).toContain('trpc.potluck.cancelSignup.useMutation');
-    });
+describe('usePotluckSignupMutation', () => {
+  it('returns signup, updateSignup, cancelSignup', async () => {
+    const { usePotluckSignupMutation } = await import('~/hooks/usePotluck');
+    const { result } = renderHook(() => usePotluckSignupMutation());
+    expect(result.current).toHaveProperty('signup');
+    expect(result.current).toHaveProperty('updateSignup');
+    expect(result.current).toHaveProperty('cancelSignup');
   });
 
-  describe('useHousehold', () => {
-    const hookPath = path.join(hooksDir, 'useHousehold.ts');
-
-    it('exists and exports household hooks', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('export function useHousehold');
-      expect(content).toContain('export function useHouseholdCumulativeHeadcount');
-      expect(content).toContain('export function useDependents');
-      expect(content).toContain('export function useHouseholdDependents');
-      expect(content).toContain('export function useDependentMutations');
-    });
-
-    it('wraps tRPC household.getById query', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('trpc.household.getById.useQuery');
-    });
-
-    it('wraps tRPC household.getCumulativeHeadcount query', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('trpc.household.getCumulativeHeadcount.useQuery');
-    });
-
-    it('wraps tRPC dependent queries and mutations', async () => {
-      const content = await fs.readFile(hookPath, 'utf-8');
-      expect(content).toContain('trpc.dependent.list.useQuery');
-      expect(content).toContain('trpc.dependent.getByHousehold.useQuery');
-      expect(content).toContain('trpc.dependent.create.useMutation');
-      expect(content).toContain('trpc.dependent.update.useMutation');
-      expect(content).toContain('trpc.dependent.delete.useMutation');
-    });
+  it('calls trpc.useUtils', async () => {
+    const { usePotluckSignupMutation } = await import('~/hooks/usePotluck');
+    renderHook(() => usePotluckSignupMutation());
+    expect(mockUseUtils).toHaveBeenCalled();
   });
 
-  describe('index', () => {
-    const indexPath = path.join(hooksDir, 'index.ts');
+  it('sets up onSuccess with listSlots invalidation for signup', async () => {
+    const { usePotluckSignupMutation } = await import('~/hooks/usePotluck');
+    renderHook(() => usePotluckSignupMutation());
+    expect(mockQueries.potluck.signup.useMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    );
+  });
+});
 
-    it('exports all hooks from index', async () => {
-      const content = await fs.readFile(indexPath, 'utf-8');
-      expect(content).toContain('export { useOffline }');
-      expect(content).toContain('export { useEvent, useEventRsvp, useEventHeadcount }');
-      expect(content).toContain(
-        'export { usePotluckSlots, usePotluckFoodSummary, usePotluckSignupMutation }',
-      );
-      expect(content).toContain('export {');
-    });
+describe('useRsvpMutation', () => {
+  it('returns confirm and decline', async () => {
+    const { useRsvpMutation } = await import('~/hooks/useRsvp');
+    const { result } = renderHook(() => useRsvpMutation());
+    expect(result.current).toHaveProperty('confirm');
+    expect(result.current).toHaveProperty('decline');
+  });
+
+  it('sets up onSuccess with invalidate calls for confirm', async () => {
+    const { useRsvpMutation } = await import('~/hooks/useRsvp');
+    renderHook(() => useRsvpMutation());
+    expect(mockQueries.rsvp.confirm.useMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    );
+  });
+
+  it('sets up onSuccess for decline', async () => {
+    const { useRsvpMutation } = await import('~/hooks/useRsvp');
+    renderHook(() => useRsvpMutation());
+    expect(mockQueries.rsvp.decline.useMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    );
+  });
+});
+
+describe('useHousehold', () => {
+  it('calls trpc.household.getById.useQuery with correct params', async () => {
+    const { useHousehold } = await import('~/hooks/useHousehold');
+    renderHook(() => useHousehold({ householdId: 'hh-1' }));
+    expect(mockQueries.household.getById).toHaveBeenCalledWith({ id: 'hh-1' }, { enabled: true });
+  });
+});
+
+describe('useMounted', () => {
+  it('returns true when called on client', async () => {
+    const { useMounted } = await import('~/hooks/useMounted');
+    const { result } = renderHook(() => useMounted());
+    expect(result.current).toBe(true);
+  });
+});
+
+describe('useOffline', () => {
+  it('returns isOnline and lastOnline', async () => {
+    const { useOffline } = await import('~/hooks/useOffline');
+    const { result } = renderHook(() => useOffline());
+    expect(result.current).toHaveProperty('isOnline');
+    expect(result.current).toHaveProperty('lastOnline');
+  });
+});
+
+describe('usePhotoReactionMutation', () => {
+  it('returns addReaction and removeReaction', async () => {
+    const { usePhotoReactionMutation } = await import('~/hooks/usePhoto');
+    const { result } = renderHook(() => usePhotoReactionMutation());
+    expect(result.current).toHaveProperty('addReaction');
+    expect(result.current).toHaveProperty('removeReaction');
+  });
+
+  it('calls trpc.useUtils', async () => {
+    const { usePhotoReactionMutation } = await import('~/hooks/usePhoto');
+    renderHook(() => usePhotoReactionMutation());
+    expect(mockUseUtils).toHaveBeenCalled();
+  });
+});
+
+describe('useUserProfileMutation', () => {
+  it('returns updatePreferences', async () => {
+    const { useUserProfileMutation } = await import('~/hooks/useUser');
+    const { result } = renderHook(() => useUserProfileMutation());
+    expect(result.current).toHaveProperty('updatePreferences');
+  });
+
+  it('calls trpc.useUtils', async () => {
+    const { useUserProfileMutation } = await import('~/hooks/useUser');
+    renderHook(() => useUserProfileMutation());
+    expect(mockUseUtils).toHaveBeenCalled();
   });
 });

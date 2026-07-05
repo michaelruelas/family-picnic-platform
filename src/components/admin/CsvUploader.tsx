@@ -127,15 +127,17 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
   };
 
   return (
-    <div className="rounded-xl border border-stone-200 bg-white p-4">
+    <div className="border-border rounded-xl border bg-white p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-stone-900">Bulk CSV Import</h3>
-          <p className="mt-1 text-sm text-stone-600">Import households and RSVPs from a CSV file</p>
+          <h3 className="text-foreground text-lg font-semibold">Bulk CSV Import</h3>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Import households and RSVPs from a CSV file
+          </p>
         </div>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="rounded-lg bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700"
+          className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white"
         >
           {isOpen ? 'Close' : 'Import CSV'}
         </button>
@@ -146,7 +148,7 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
           <div className="flex gap-2">
             <button
               onClick={handleDownloadSample}
-              className="rounded-lg bg-stone-100 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-200"
+              className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-3 py-1.5 text-sm font-medium"
             >
               Download Template
             </button>
@@ -154,7 +156,7 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
 
           <div
             className={`relative rounded-lg border-2 border-dashed p-8 text-center ${
-              dragActive ? 'border-amber-500 bg-amber-50' : 'border-stone-300'
+              dragActive ? 'border-terracotta bg-sunlight/20' : 'border-border'
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -168,9 +170,9 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
               onChange={handleFileChange}
               className="hidden"
             />
-            <p className="text-stone-600">
+            <p className="text-muted-foreground">
               {file ? (
-                <span className="font-medium text-stone-900">{file.name}</span>
+                <span className="text-foreground font-medium">{file.name}</span>
               ) : (
                 'Drag and drop a CSV file here, or'
               )}{' '}
@@ -181,14 +183,14 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
                     setParseResult(null);
                     setImportResult(null);
                   }}
-                  className="ml-2 text-amber-600 hover:text-amber-700"
+                  className="text-terracotta hover:text-terracotta ml-2"
                 >
                   Remove
                 </button>
               ) : (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="ml-1 font-medium text-amber-600 hover:text-amber-700"
+                  className="text-terracotta hover:text-terracotta ml-1 font-medium"
                 >
                   browse
                 </button>
@@ -198,18 +200,18 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
 
           {parseResult && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-lg bg-stone-50 p-3">
+              <div className="bg-secondary/60 flex items-center justify-between rounded-lg p-3">
                 <div className="text-sm">
-                  <span className="font-medium text-stone-900">{parseResult.totalRows}</span> rows
-                  <span className="mx-2 text-stone-400">|</span>
-                  <span className="font-medium text-green-600">
+                  <span className="text-foreground font-medium">{parseResult.totalRows}</span> rows
+                  <span className="text-muted-foreground/70 mx-2">|</span>
+                  <span className="text-sage font-medium">
                     {parseResult.households.length}
                   </span>{' '}
                   households parsed
                   {parseResult.errors.length > 0 && (
                     <>
-                      <span className="mx-2 text-stone-400">|</span>
-                      <span className="font-medium text-red-600">
+                      <span className="text-muted-foreground/70 mx-2">|</span>
+                      <span className="text-destructive font-medium">
                         {parseResult.errors.length} errors
                       </span>
                     </>
@@ -217,18 +219,18 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
                 </div>
                 <button
                   onClick={handleDryRun}
-                  className="text-sm font-medium text-amber-600 hover:text-amber-700"
+                  className="text-terracotta hover:text-terracotta text-sm font-medium"
                 >
                   Re-parse
                 </button>
               </div>
 
               {parseResult.errors.length > 0 && (
-                <div className="max-h-40 overflow-y-auto rounded-lg border border-red-200 bg-red-50 p-3">
-                  <h4 className="mb-2 text-sm font-medium text-red-800">Errors</h4>
+                <div className="border-destructive/30 bg-destructive/10 max-h-40 overflow-y-auto rounded-lg border p-3">
+                  <h4 className="text-foreground mb-2 text-sm font-medium">Errors</h4>
                   <ul className="space-y-1">
                     {parseResult.errors.map((err, i) => (
-                      <li key={i} className="text-sm text-red-700">
+                      <li key={i} className="text-destructive text-sm">
                         {err.message}
                       </li>
                     ))}
@@ -237,16 +239,16 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
               )}
 
               {parseResult.households.length > 0 && (
-                <div className="max-h-60 overflow-y-auto rounded-lg border border-stone-200 p-3">
-                  <h4 className="mb-2 text-sm font-medium text-stone-700">Preview</h4>
+                <div className="border-border max-h-60 overflow-y-auto rounded-lg border p-3">
+                  <h4 className="text-foreground/85 mb-2 text-sm font-medium">Preview</h4>
                   <ul className="space-y-2">
                     {parseResult.households.slice(0, 10).map((hh, i) => (
                       <li key={i} className="text-sm">
-                        <span className="font-medium text-stone-900">{hh.name}</span>
-                        <span className="ml-2 text-stone-500">
+                        <span className="text-foreground font-medium">{hh.name}</span>
+                        <span className="text-muted-foreground ml-2">
                           ({hh.members.length} member{hh.members.length !== 1 ? 's' : ''})
                         </span>
-                        <ul className="ml-4 text-stone-600">
+                        <ul className="text-muted-foreground ml-4">
                           {hh.members.map((m, j) => (
                             <li key={j}>
                               {m.name} ({m.email})
@@ -256,7 +258,7 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
                       </li>
                     ))}
                     {parseResult.households.length > 10 && (
-                      <li className="text-sm text-stone-500">
+                      <li className="text-muted-foreground text-sm">
                         ...and {parseResult.households.length - 10} more households
                       </li>
                     )}
@@ -267,7 +269,9 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
               {importResult && (
                 <div
                   className={`rounded-lg p-3 ${
-                    importResult.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+                    importResult.success
+                      ? 'bg-sage/15 text-foreground'
+                      : 'bg-destructive/10 text-foreground'
                   }`}
                 >
                   {importResult.message}
@@ -278,14 +282,14 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
                 <button
                   onClick={() => handleImport(true)}
                   disabled={importing || parseResult.errors.length > 0}
-                  className="rounded-lg bg-stone-100 px-4 py-2 font-medium text-stone-700 hover:bg-stone-200 disabled:bg-stone-300"
+                  className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 font-medium disabled:bg-stone-300"
                 >
                   Dry Run
                 </button>
                 <button
                   onClick={() => handleImport(false)}
                   disabled={importing || parseResult.errors.length > 0}
-                  className="rounded-lg bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700 disabled:bg-stone-300"
+                  className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white disabled:bg-stone-300"
                 >
                   {importing ? 'Importing...' : 'Import'}
                 </button>

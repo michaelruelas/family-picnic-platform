@@ -116,7 +116,7 @@ export default function PotluckSignupForm({
 
   if (!userId) {
     return (
-      <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm text-stone-500">
+      <span className="bg-secondary text-muted-foreground rounded-lg px-3 py-2 text-sm">
         Sign in to sign up
       </span>
     );
@@ -126,9 +126,9 @@ export default function PotluckSignupForm({
     return (
       <div className="mt-2">
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-green-500">✓</span>
-          <span className="font-medium text-stone-700">You&apos;re bringing:</span>
-          <span className="text-stone-600">{userSignup.dishName}</span>
+          <span className="text-sage">✓</span>
+          <span className="text-foreground/85 font-medium">You&apos;re bringing:</span>
+          <span className="text-muted-foreground">{userSignup.dishName}</span>
         </div>
         <div className="mt-1 flex gap-2">
           {!isExpanded ? (
@@ -139,14 +139,14 @@ export default function PotluckSignupForm({
                 setDietaryLabels(userSignup.dietaryLabels.join(', '));
                 setIsExpanded(true);
               }}
-              className="mt-1 rounded-lg bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 hover:bg-amber-200"
+              className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 mt-1 rounded-lg px-3 py-1 text-sm font-medium"
             >
               Edit
             </button>
           ) : (
             <button
               onClick={() => setIsExpanded(false)}
-              className="mt-1 rounded-lg bg-stone-100 px-3 py-1 text-sm font-medium text-stone-600 hover:bg-stone-200"
+              className="bg-secondary text-muted-foreground hover:bg-secondary mt-1 rounded-lg px-3 py-1 text-sm font-medium"
             >
               Cancel
             </button>
@@ -154,30 +154,32 @@ export default function PotluckSignupForm({
         </div>
 
         {isExpanded && (
-          <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
-            <h4 className="text-sm font-medium text-stone-900">Edit Your Signup</h4>
+          <div className="border-border bg-secondary/60 mt-3 rounded-lg border p-3">
+            <h4 className="text-foreground text-sm font-medium">Edit Your Signup</h4>
             {error && (
-              <div className="mt-2 rounded bg-red-50 p-2 text-sm text-red-700">{error}</div>
+              <div className="bg-destructive/10 text-destructive mt-2 rounded p-2 text-sm">
+                {error}
+              </div>
             )}
 
             <div className="mt-3 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-stone-700">Dish Name</label>
+                <label className="text-foreground/85 block text-xs font-medium">Dish Name</label>
                 <input
                   type="text"
                   value={dishName}
                   onChange={(e) => setDishName(e.target.value)}
                   placeholder="What are you bringing?"
-                  className="mt-1 block w-full rounded-lg border border-stone-300 px-2 py-1 text-sm shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-stone-700">Servings</label>
+                <label className="text-foreground/85 block text-xs font-medium">Servings</label>
                 <select
                   value={servings}
                   onChange={(e) => setServings(Number(e.target.value))}
-                  className="mt-1 block w-full rounded-lg border border-stone-300 px-2 py-1 text-sm shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                     <option key={n} value={n}>
@@ -188,7 +190,7 @@ export default function PotluckSignupForm({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-stone-700">
+                <label className="text-foreground/85 block text-xs font-medium">
                   Dietary Labels (optional, comma-separated)
                 </label>
                 <input
@@ -196,7 +198,7 @@ export default function PotluckSignupForm({
                   value={dietaryLabels}
                   onChange={(e) => setDietaryLabels(e.target.value)}
                   placeholder="vegetarian, gluten-free, nut-free"
-                  className="mt-1 block w-full rounded-lg border border-stone-300 px-2 py-1 text-sm shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
                 />
               </div>
 
@@ -204,14 +206,14 @@ export default function PotluckSignupForm({
                 <button
                   onClick={() => handleSubmit('signup')}
                   disabled={isSubmitting || !dishName.trim()}
-                  className="flex-1 rounded-lg bg-amber-600 px-3 py-1 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                  className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
                 <button
                   onClick={() => handleSubmit('cancel')}
                   disabled={isSubmitting}
-                  className="rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
+                  className="bg-destructive/15 text-destructive hover:bg-destructive/20 rounded-lg px-3 py-1 text-sm font-medium disabled:opacity-50"
                 >
                   Remove
                 </button>
@@ -224,14 +226,16 @@ export default function PotluckSignupForm({
   }
 
   if (isFull) {
-    return <span className="rounded-lg bg-stone-100 px-3 py-2 text-sm text-stone-500">Full</span>;
+    return (
+      <span className="bg-secondary text-muted-foreground rounded-lg px-3 py-2 text-sm">Full</span>
+    );
   }
 
   if (!isExpanded) {
     return (
       <button
         onClick={() => setIsExpanded(true)}
-        className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+        className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 text-sm font-medium text-white"
       >
         Sign Up
       </button>
@@ -239,28 +243,30 @@ export default function PotluckSignupForm({
   }
 
   return (
-    <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
-      <h4 className="text-sm font-medium text-stone-900">Sign Up for {slot.name}</h4>
-      {error && <div className="mt-2 rounded bg-red-50 p-2 text-sm text-red-700">{error}</div>}
+    <div className="border-border bg-secondary/60 mt-3 rounded-lg border p-3">
+      <h4 className="text-foreground text-sm font-medium">Sign Up for {slot.name}</h4>
+      {error && (
+        <div className="bg-destructive/10 text-destructive mt-2 rounded p-2 text-sm">{error}</div>
+      )}
 
       <div className="mt-3 space-y-3">
         <div>
-          <label className="block text-xs font-medium text-stone-700">Dish Name</label>
+          <label className="text-foreground/85 block text-xs font-medium">Dish Name</label>
           <input
             type="text"
             value={dishName}
             onChange={(e) => setDishName(e.target.value)}
             placeholder="What are you bringing?"
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-2 py-1 text-sm shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-stone-700">Servings</label>
+          <label className="text-foreground/85 block text-xs font-medium">Servings</label>
           <select
             value={servings}
             onChange={(e) => setServings(Number(e.target.value))}
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-2 py-1 text-sm shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
           >
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <option key={n} value={n}>
@@ -271,7 +277,7 @@ export default function PotluckSignupForm({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-stone-700">
+          <label className="text-foreground/85 block text-xs font-medium">
             Dietary Labels (optional, comma-separated)
           </label>
           <input
@@ -279,7 +285,7 @@ export default function PotluckSignupForm({
             value={dietaryLabels}
             onChange={(e) => setDietaryLabels(e.target.value)}
             placeholder="vegetarian, gluten-free, nut-free"
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-2 py-1 text-sm shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
           />
         </div>
 
@@ -287,14 +293,14 @@ export default function PotluckSignupForm({
           <button
             onClick={() => handleSubmit('signup')}
             disabled={isSubmitting || !dishName.trim()}
-            className="flex-1 rounded-lg bg-amber-600 px-3 py-1 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+            className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
           >
             {isSubmitting ? 'Signing up...' : 'Sign Up'}
           </button>
           <button
             onClick={() => setIsExpanded(false)}
             disabled={isSubmitting}
-            className="rounded-lg bg-stone-200 px-3 py-1 text-sm font-medium text-stone-600 hover:bg-stone-300 disabled:opacity-50"
+            className="bg-secondary text-muted-foreground hover:bg-secondary rounded-lg px-3 py-1 text-sm font-medium disabled:opacity-50"
           >
             Cancel
           </button>

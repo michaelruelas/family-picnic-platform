@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { redirect } from 'next/navigation';
 import ProfileClient from '~/components/ProfileClient';
+import { ThemeToggle } from '~/components/ui/ThemeToggle';
+import { BreatheSection } from '~/components/ui/BreatheSection';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,34 +45,64 @@ export default async function ProfilePage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-12">
-      <h1 className="text-3xl font-bold text-stone-900">My Profile</h1>
-      <p className="mt-2 text-stone-600">Manage your account settings</p>
+    <main className="mx-auto max-w-2xl px-5 py-12 md:py-20">
+      <BreatheSection>
+        <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Settings</p>
+        <h1 className="font-display text-foreground mt-2 text-5xl font-medium tracking-tight md:text-6xl">
+          My Profile
+        </h1>
+        <p className="text-muted-foreground mt-3 max-w-xl text-lg">
+          Manage your account settings and how the app feels.
+        </p>
+      </BreatheSection>
 
-      <div className="mt-8">
-        <ProfileClient user={user} initialDependents={user.managedDependents} />
-      </div>
+      <BreatheSection className="mt-12">
+        <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
+          <ProfileClient user={user} initialDependents={user.managedDependents} />
+        </div>
+      </BreatheSection>
 
-      <div className="mt-8 rounded-xl bg-stone-100 p-6">
-        <h2 className="text-lg font-semibold text-stone-800">Account Info</h2>
-        <dl className="mt-4 space-y-3">
-          <div className="flex justify-between">
-            <dt className="text-stone-500">Member since</dt>
-            <dd className="text-stone-900">
-              {user.createdAt.toLocaleDateString('en-US', {
-                month: 'long',
-                year: 'numeric',
-              })}
-            </dd>
+      <BreatheSection className="mt-8">
+        <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
+          <div className="flex items-start gap-4">
+            <div className="bg-sunlight/30 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl">
+              🎨
+            </div>
+            <div className="flex-1">
+              <h2 className="font-display text-foreground text-2xl font-semibold">Appearance</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Choose how the picnic looks. We&apos;ll remember on this device.
+              </p>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-stone-500">Role</dt>
-            <dd className="text-stone-900 capitalize">
-              {session.user.role?.replace('_', ' ').toLowerCase() || 'Member'}
-            </dd>
+          <div className="mt-6">
+            <ThemeToggle />
           </div>
-        </dl>
-      </div>
+        </div>
+      </BreatheSection>
+
+      <BreatheSection className="mt-8">
+        <div className="bg-secondary rounded-3xl p-7">
+          <h2 className="font-display text-foreground text-xl font-semibold">Account Info</h2>
+          <dl className="mt-4 space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Member since</dt>
+              <dd className="text-foreground font-medium">
+                {user.createdAt.toLocaleDateString('en-US', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-muted-foreground">Role</dt>
+              <dd className="text-foreground font-medium capitalize">
+                {session.user.role?.replace('_', ' ').toLowerCase() || 'Member'}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </BreatheSection>
     </main>
   );
 }

@@ -7,6 +7,43 @@ import { z } from 'zod';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 
+async function triggerWorkflow(
+  eventId: string,
+  userId: string,
+  action: 'confirm' | 'decline',
+  headcount?: number,
+  dietaryNotes?: string,
+) {
+  try {
+    const { getOpenWorkflow } = await import('~/lib/ow-client');
+    const { rsvpConfirm, rsvpDecline } = await import('~/lib/ow-workflows');
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { householdId: true },
+    });
+    if (!user) return;
+
+    const ow = await getOpenWorkflow();
+    if (action === 'confirm') {
+      await ow.runWorkflow(rsvpConfirm.spec, {
+        eventId,
+        userId,
+        householdId: user.householdId || userId,
+        headcount: headcount ?? 1,
+        dietaryNotes,
+      });
+    } else {
+      await ow.runWorkflow(rsvpDecline.spec, {
+        eventId,
+        userId,
+        householdId: user.householdId || userId,
+      });
+    }
+  } catch (error) {
+    console.error(`Failed to trigger ${action} workflow:`, error);
+  }
+}
+
 export async function POST(request: Request) {
   const requestId = generateRequestId();
   const session = await getServerSession(authOptions);
@@ -278,6 +315,8 @@ export async function POST(request: Request) {
               }
             });
 
+            triggerWorkflow(eventId!, session.user.id, 'decline');
+
             return NextResponse.json({ success: true, status: RSVPStatus.DECLINED });
           }
 
@@ -296,6 +335,8 @@ export async function POST(request: Request) {
             },
             create: rsvpData,
           });
+
+          triggerWorkflow(eventId!, session.user.id, 'confirm', headcount, dietaryNotes);
 
           return NextResponse.json({ success: true, status: rsvpData.status });
         }

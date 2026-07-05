@@ -135,20 +135,22 @@ export default async function HouseholdTreePage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-12">
       <div className="mb-8">
-        <Link href="/household" className="text-sm text-amber-600 hover:text-amber-700">
+        <Link href="/household" className="text-terracotta hover:text-terracotta text-sm">
           ← Back to Household
         </Link>
       </div>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-stone-900">Family Tree</h1>
-        <p className="mt-2 text-stone-600">View the household hierarchy and family relationships</p>
+        <h1 className="text-foreground text-3xl font-bold">Family Tree</h1>
+        <p className="text-muted-foreground mt-2">
+          View the household hierarchy and family relationships
+        </p>
       </div>
 
       <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-stone-900">Household Network</h2>
-          <div className="flex items-center gap-4 text-xs text-stone-500">
+          <h2 className="text-foreground text-lg font-semibold">Household Network</h2>
+          <div className="text-muted-foreground flex items-center gap-4 text-xs">
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-amber-400" /> Adults
             </span>

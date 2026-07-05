@@ -26,10 +26,10 @@ type DeliveryStatusProps = {
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { bg: string; text: string; label: string }> = {
-    QUEUED: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Queued' },
+    QUEUED: { bg: 'bg-sunlight/30', text: 'text-[#a07c2f]', label: 'Queued' },
     SENT: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Sent' },
-    DELIVERED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Delivered' },
-    FAILED: { bg: 'bg-red-100', text: 'text-red-700', label: 'Failed' },
+    DELIVERED: { bg: 'bg-sage/20', text: 'text-sage', label: 'Delivered' },
+    FAILED: { bg: 'bg-destructive/15', text: 'text-destructive', label: 'Failed' },
     UNSUBSCRIBED: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Unsubscribed' },
   };
 
@@ -50,18 +50,20 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-600 border-t-transparent" />
-        <span className="ml-2 text-stone-600">Loading delivery status...</span>
+        <div className="border-terracotta h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
+        <span className="text-muted-foreground ml-2">Loading delivery status...</span>
       </div>
     );
   }
 
   if (logs.length === 0) {
     return (
-      <div className="rounded-xl bg-stone-100 p-8 text-center">
+      <div className="bg-secondary rounded-xl p-8 text-center">
         <div className="text-4xl">📭</div>
-        <h3 className="mt-2 text-lg font-medium text-stone-900">No Messages Sent</h3>
-        <p className="mt-1 text-stone-600">Send a broadcast message to see delivery status here.</p>
+        <h3 className="text-foreground mt-2 text-lg font-medium">No Messages Sent</h3>
+        <p className="text-muted-foreground mt-1">
+          Send a broadcast message to see delivery status here.
+        </p>
       </div>
     );
   }
@@ -78,25 +80,25 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-6 gap-2 text-center text-sm">
-        <div className="rounded-lg bg-stone-100 p-3">
-          <div className="text-2xl font-bold text-stone-900">{summary.total}</div>
-          <div className="text-stone-600">Total</div>
+        <div className="bg-secondary rounded-lg p-3">
+          <div className="text-foreground text-2xl font-bold">{summary.total}</div>
+          <div className="text-muted-foreground">Total</div>
         </div>
-        <div className="rounded-lg bg-yellow-100 p-3">
-          <div className="text-2xl font-bold text-yellow-700">{summary.queued}</div>
+        <div className="bg-sunlight/30 rounded-lg p-3">
+          <div className="text-2xl font-bold text-[#a07c2f]">{summary.queued}</div>
           <div className="text-yellow-600">Queued</div>
         </div>
         <div className="rounded-lg bg-blue-100 p-3">
           <div className="text-2xl font-bold text-blue-700">{summary.sent}</div>
           <div className="text-blue-600">Sent</div>
         </div>
-        <div className="rounded-lg bg-green-100 p-3">
-          <div className="text-2xl font-bold text-green-700">{summary.delivered}</div>
-          <div className="text-green-600">Delivered</div>
+        <div className="bg-sage/20 rounded-lg p-3">
+          <div className="text-sage text-2xl font-bold">{summary.delivered}</div>
+          <div className="text-sage">Delivered</div>
         </div>
-        <div className="rounded-lg bg-red-100 p-3">
-          <div className="text-2xl font-bold text-red-700">{summary.failed}</div>
-          <div className="text-red-600">Failed</div>
+        <div className="bg-destructive/15 rounded-lg p-3">
+          <div className="text-destructive text-2xl font-bold">{summary.failed}</div>
+          <div className="text-destructive">Failed</div>
         </div>
         <div className="rounded-lg bg-gray-100 p-3">
           <div className="text-2xl font-bold text-gray-700">{summary.unsubscribed}</div>
@@ -104,55 +106,55 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+      <div className="border-border overflow-x-auto rounded-xl border bg-white">
         <table className="min-w-full divide-y divide-stone-200">
-          <thead className="bg-stone-50">
+          <thead className="bg-secondary/60">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
+              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                 Recipient
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
+              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                 Channel
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
+              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
+              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                 Attempted
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-stone-500 uppercase">
+              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
                 Delivered
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-200">
             {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-stone-50">
+              <tr key={log.id} className="hover:bg-secondary/60">
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <div className="font-medium text-stone-900">
+                  <div className="text-foreground font-medium">
                     {log.recipient?.name || 'Unknown'}
                   </div>
-                  <div className="text-sm text-stone-500">
+                  <div className="text-muted-foreground text-sm">
                     {log.recipient?.email || log.recipientUserId}
                   </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <span className="inline-flex rounded-full bg-stone-100 px-2 py-1 text-xs font-medium text-stone-700">
+                  <span className="bg-secondary text-foreground/85 inline-flex rounded-full px-2 py-1 text-xs font-medium">
                     {log.channel}
                   </span>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <StatusBadge status={log.status} />
                   {log.errorMessage && (
-                    <div className="mt-1 text-xs text-red-600" title={log.errorMessage}>
+                    <div className="text-destructive mt-1 text-xs" title={log.errorMessage}>
                       {log.errorCode || 'Error'}
                     </div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-sm whitespace-nowrap text-stone-600">
+                <td className="text-muted-foreground px-4 py-3 text-sm whitespace-nowrap">
                   {new Date(log.attemptedAt).toLocaleString()}
                 </td>
-                <td className="px-4 py-3 text-sm whitespace-nowrap text-stone-600">
+                <td className="text-muted-foreground px-4 py-3 text-sm whitespace-nowrap">
                   {log.deliveredAt ? new Date(log.deliveredAt).toLocaleString() : '-'}
                 </td>
               </tr>

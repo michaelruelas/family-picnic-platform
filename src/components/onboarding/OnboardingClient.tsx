@@ -180,20 +180,24 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       onNext={() => setHouseholdMode('create')}
       nextDisabled={!householdMode}
     >
-      {error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="bg-destructive/10 text-destructive mb-4 rounded-lg p-3 text-sm">
+          {error}
+        </div>
+      )}
 
       {!householdMode ? (
         <div className="space-y-4">
-          <p className="text-lg text-stone-700">How would you like to set up your household?</p>
+          <p className="text-foreground/85 text-lg">How would you like to set up your household?</p>
           <div className="flex flex-col gap-4">
             <button
               onClick={() => setHouseholdMode('create')}
-              className="flex items-center gap-4 rounded-lg border-2 border-stone-200 p-6 text-left hover:border-amber-500 hover:bg-amber-50"
+              className="border-border hover:border-terracotta hover:bg-sunlight/20 flex items-center gap-4 rounded-lg border-2 p-6 text-left"
             >
               <span className="text-3xl">🏠</span>
               <div>
-                <p className="text-lg font-semibold text-stone-900">Create a new household</p>
-                <p className="text-sm text-stone-600">
+                <p className="text-foreground text-lg font-semibold">Create a new household</p>
+                <p className="text-muted-foreground text-sm">
                   Start fresh and invite family members later
                 </p>
               </div>
@@ -202,12 +206,14 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
             {households.length > 0 && (
               <button
                 onClick={() => setHouseholdMode('join')}
-                className="flex items-center gap-4 rounded-lg border-2 border-stone-200 p-6 text-left hover:border-amber-500 hover:bg-amber-50"
+                className="border-border hover:border-terracotta hover:bg-sunlight/20 flex items-center gap-4 rounded-lg border-2 p-6 text-left"
               >
                 <span className="text-3xl">👨‍👩‍👧‍👦</span>
                 <div>
-                  <p className="text-lg font-semibold text-stone-900">Join an existing household</p>
-                  <p className="text-sm text-stone-600">
+                  <p className="text-foreground text-lg font-semibold">
+                    Join an existing household
+                  </p>
+                  <p className="text-muted-foreground text-sm">
                     Connect with family already on the platform
                   </p>
                 </div>
@@ -219,13 +225,13 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
         <div className="space-y-6">
           <button
             onClick={() => setHouseholdMode(null)}
-            className="text-sm text-stone-500 hover:text-stone-700"
+            className="text-muted-foreground hover:text-foreground/85 text-sm"
           >
             ← Change option
           </button>
           <div>
-            <label className="block text-lg font-medium text-stone-700">Household Name</label>
-            <p className="mb-2 text-sm text-stone-500">
+            <label className="text-foreground/85 block text-lg font-medium">Household Name</label>
+            <p className="text-muted-foreground mb-2 text-sm">
               This is how your family will appear to other members
             </p>
             <input
@@ -233,13 +239,13 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
               value={newHouseholdName}
               onChange={(e) => setNewHouseholdName(e.target.value)}
               placeholder="The Johnson Family"
-              className="mt-1 block w-full rounded-lg border border-stone-300 px-4 py-3 text-lg shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-4 py-3 text-lg shadow-sm focus:ring-1 focus:outline-none"
             />
           </div>
           <button
             onClick={handleCreateHousehold}
             disabled={!newHouseholdName.trim() || isLoading}
-            className="w-full rounded-lg bg-amber-700 px-6 py-3 text-lg font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+            className="bg-terracotta hover:bg-terracotta w-full rounded-lg px-6 py-3 text-lg font-medium text-white disabled:opacity-50"
           >
             {isLoading ? 'Creating...' : 'Create Household'}
           </button>
@@ -248,17 +254,19 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
         <div className="space-y-6">
           <button
             onClick={() => setHouseholdMode(null)}
-            className="text-sm text-stone-500 hover:text-stone-700"
+            className="text-muted-foreground hover:text-foreground/85 text-sm"
           >
             ← Change option
           </button>
           <div>
-            <label className="block text-lg font-medium text-stone-700">Select a Household</label>
-            <p className="mb-2 text-sm text-stone-500">Choose the household you belong to</p>
+            <label className="text-foreground/85 block text-lg font-medium">
+              Select a Household
+            </label>
+            <p className="text-muted-foreground mb-2 text-sm">Choose the household you belong to</p>
             <select
               value={selectedHouseholdId || ''}
               onChange={(e) => setSelectedHouseholdId(e.target.value || null)}
-              className="mt-1 block w-full rounded-lg border border-stone-300 px-4 py-3 text-lg shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-4 py-3 text-lg shadow-sm focus:ring-1 focus:outline-none"
             >
               <option value="">Select a household...</option>
               {households.map((h) => (
@@ -271,7 +279,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
           <button
             onClick={handleJoinHousehold}
             disabled={!selectedHouseholdId || isLoading}
-            className="w-full rounded-lg bg-amber-700 px-6 py-3 text-lg font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+            className="bg-terracotta hover:bg-terracotta w-full rounded-lg px-6 py-3 text-lg font-medium text-white disabled:opacity-50"
           >
             {isLoading ? 'Joining...' : 'Join Household'}
           </button>
@@ -292,20 +300,24 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       nextDisabled={isLoading}
       isLoading={isLoading}
     >
-      {error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="bg-destructive/10 text-destructive mb-4 rounded-lg p-3 text-sm">
+          {error}
+        </div>
+      )}
 
       {familyMembers.length > 0 ? (
         <ul className="mb-4 space-y-2">
           {familyMembers.map((member, index) => (
             <li
               key={index}
-              className="flex items-center justify-between rounded-lg bg-stone-50 p-3"
+              className="bg-secondary/60 flex items-center justify-between rounded-lg p-3"
             >
               <div className="flex items-center gap-3">
                 <span className="text-lg">{member.isChild ? '👶' : '👤'}</span>
                 <div>
-                  <p className="font-medium text-stone-900">{member.name}</p>
-                  <p className="text-sm text-stone-500">
+                  <p className="text-foreground font-medium">{member.name}</p>
+                  <p className="text-muted-foreground text-sm">
                     {member.relationship}
                     {member.age ? ` • ${member.age} years old` : ''}
                   </p>
@@ -313,7 +325,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
               </div>
               <button
                 onClick={() => handleRemoveFamilyMember(index)}
-                className="text-sm text-red-600 hover:text-red-800"
+                className="text-destructive hover:text-foreground text-sm"
               >
                 Remove
               </button>
@@ -321,25 +333,25 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
           ))}
         </ul>
       ) : (
-        <p className="mb-4 text-lg text-stone-600">No family members added yet.</p>
+        <p className="text-muted-foreground mb-4 text-lg">No family members added yet.</p>
       )}
 
       {showFamilyForm ? (
-        <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
-          <h3 className="mb-4 text-lg font-medium text-stone-900">Add Family Member</h3>
+        <div className="border-border bg-secondary/60 rounded-lg border p-4">
+          <h3 className="text-foreground mb-4 text-lg font-medium">Add Family Member</h3>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-stone-700">Name</label>
+              <label className="text-foreground/85 block text-sm font-medium">Name</label>
               <input
                 type="text"
                 value={newFamilyMember.name}
                 onChange={(e) => setNewFamilyMember({ ...newFamilyMember, name: e.target.value })}
                 placeholder="Full name"
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-stone-700">Relationship</label>
+              <label className="text-foreground/85 block text-sm font-medium">Relationship</label>
               <select
                 value={newFamilyMember.relationship}
                 onChange={(e) =>
@@ -348,7 +360,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
                     relationship: e.target.value as typeof newFamilyMember.relationship,
                   })
                 }
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               >
                 <option value="SPOUSE">Spouse</option>
                 <option value="CHILD">Child</option>
@@ -359,13 +371,13 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-stone-700">Age (optional)</label>
+              <label className="text-foreground/85 block text-sm font-medium">Age (optional)</label>
               <input
                 type="number"
                 value={newFamilyMember.age}
                 onChange={(e) => setNewFamilyMember({ ...newFamilyMember, age: e.target.value })}
                 placeholder="Age in years"
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />
             </div>
             <div className="flex items-end">
@@ -376,9 +388,9 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
                   onChange={(e) =>
                     setNewFamilyMember({ ...newFamilyMember, isChild: e.target.checked })
                   }
-                  className="h-5 w-5 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                  className="border-border text-terracotta focus:ring-foreground/20 h-5 w-5 rounded"
                 />
-                <span className="text-sm text-stone-700">Under 18 (child)</span>
+                <span className="text-foreground/85 text-sm">Under 18 (child)</span>
               </label>
             </div>
           </div>
@@ -386,7 +398,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
             <button
               onClick={handleAddFamilyMember}
               disabled={!newFamilyMember.name.trim()}
-              className="flex-1 rounded-lg bg-amber-700 px-4 py-2 font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+              className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
             >
               Add Member
             </button>
@@ -395,7 +407,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
                 setShowFamilyForm(false);
                 setNewFamilyMember({ name: '', relationship: 'SPOUSE', age: '', isChild: false });
               }}
-              className="flex-1 rounded-lg border border-stone-300 px-4 py-2 font-medium text-stone-700 hover:bg-stone-50"
+              className="border-border text-foreground/85 hover:bg-secondary/60 flex-1 rounded-lg border px-4 py-2 font-medium"
             >
               Cancel
             </button>
@@ -404,7 +416,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       ) : (
         <button
           onClick={() => setShowFamilyForm(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-stone-300 p-4 text-lg font-medium text-stone-600 hover:border-amber-500 hover:text-amber-600"
+          className="border-border text-muted-foreground hover:border-terracotta hover:text-terracotta flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 text-lg font-medium"
         >
           + Add Family Member
         </button>
@@ -423,10 +435,14 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       isLast={true}
       isLoading={isLoading}
     >
-      {error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="bg-destructive/10 text-destructive mb-4 rounded-lg p-3 text-sm">
+          {error}
+        </div>
+      )}
 
       <div className="space-y-4">
-        <p className="text-lg text-stone-700">Choose your notification preference:</p>
+        <p className="text-foreground/85 text-lg">Choose your notification preference:</p>
 
         <div className="space-y-3">
           {[
@@ -462,17 +478,17 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
               }
               className={`flex w-full items-center gap-4 rounded-lg border-2 p-4 text-left transition-colors ${
                 communicationPreference === option.value
-                  ? 'border-amber-500 bg-amber-50'
-                  : 'border-stone-200 hover:border-stone-300'
+                  ? 'border-terracotta bg-sunlight/20'
+                  : 'border-border hover:border-border'
               }`}
             >
               <span className="text-3xl">{option.icon}</span>
               <div>
-                <p className="text-lg font-semibold text-stone-900">{option.label}</p>
-                <p className="text-sm text-stone-600">{option.description}</p>
+                <p className="text-foreground text-lg font-semibold">{option.label}</p>
+                <p className="text-muted-foreground text-sm">{option.description}</p>
               </div>
               {communicationPreference === option.value && (
-                <span className="ml-auto text-2xl text-amber-600">✓</span>
+                <span className="text-terracotta ml-auto text-2xl">✓</span>
               )}
             </button>
           ))}
@@ -482,27 +498,27 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
   );
 
   return (
-    <div className="rounded-xl bg-stone-50 p-6 shadow-sm ring-1 ring-stone-200">
+    <div className="bg-secondary/60 rounded-xl p-6 shadow-sm ring-1 ring-stone-200">
       <div className="mb-6 flex items-center justify-between">
         {STEPS.map((step, index) => (
           <div key={step.key} className="flex items-center">
             <div
               className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-bold ${
                 index <= currentStepIndex
-                  ? 'bg-amber-700 text-white'
-                  : 'bg-stone-200 text-stone-500'
+                  ? 'bg-terracotta text-white'
+                  : 'bg-secondary text-muted-foreground'
               }`}
             >
               {index < currentStepIndex ? '✓' : index + 1}
             </div>
             <span
-              className={`ml-2 text-sm ${index === currentStepIndex ? 'font-medium text-amber-700' : 'text-stone-500'}`}
+              className={`ml-2 text-sm ${index === currentStepIndex ? 'text-terracotta font-medium' : 'text-muted-foreground'}`}
             >
               {step.label}
             </span>
             {index < STEPS.length - 1 && (
               <div
-                className={`mx-4 h-0.5 w-12 ${index < currentStepIndex ? 'bg-amber-700' : 'bg-stone-200'}`}
+                className={`mx-4 h-0.5 w-12 ${index < currentStepIndex ? 'bg-terracotta' : 'bg-secondary'}`}
               />
             )}
           </div>

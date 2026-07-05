@@ -40,8 +40,8 @@ jobs:
       - name: Format check
         run: bun run format:check
 
-      - name: Test
-        run: bun test --path-ignore-patterns='**/playwright-tests/**'
+      - name: Test with coverage
+        run: bun run test:coverage -- --exclude='**/playwright-tests/**'
 
       - name: Prisma validate
         run: bun run db:validate

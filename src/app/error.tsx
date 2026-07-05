@@ -15,23 +15,26 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-24">
-      <div className="rounded-2xl bg-white p-12 text-center shadow-sm">
-        <div className="text-8xl">😔</div>
-        <h1 className="mt-6 text-4xl font-bold text-stone-900">Something Went Wrong</h1>
-        <p className="mt-4 text-lg text-stone-600">
-          We encountered an unexpected error. Our team has been notified.
+    <main className="mx-auto max-w-2xl px-5 py-24">
+      <div className="bg-card shadow-card ring-border/60 rounded-3xl p-12 text-center ring-1">
+        <div className="text-7xl">🌧️</div>
+        <h1 className="font-display text-foreground mt-6 text-4xl font-semibold tracking-tight">
+          A little rain on the picnic
+        </h1>
+        <p className="text-muted-foreground mt-4 text-lg leading-relaxed">
+          We hit a snag loading this page. Give it another try, and if the clouds stick around, let
+          us know.
         </p>
-        <div className="mt-8 flex justify-center gap-4">
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button
             onClick={reset}
-            className="rounded-lg bg-amber-600 px-6 py-3 text-lg font-medium text-white hover:bg-amber-700"
+            className="rounded-pill bg-terracotta shadow-soft press px-7 py-3 font-semibold text-white hover:bg-[#cf6c52]"
           >
             Try Again
           </button>
           <Link
             href="/"
-            className="rounded-lg bg-stone-200 px-6 py-3 text-lg font-medium text-stone-700 hover:bg-stone-300"
+            className="rounded-pill border-border bg-card text-foreground press hover:border-foreground border px-7 py-3 font-semibold"
           >
             Go Home
           </Link>

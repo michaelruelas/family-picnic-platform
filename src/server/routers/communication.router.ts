@@ -130,11 +130,31 @@ export const communicationRouter = router({
         recipientIds: z.array(z.string()).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const scheduledDate = new Date(input.scheduledAt);
+      if (isNaN(scheduledDate.getTime())) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invalid scheduledAt date',
+        });
+      }
+
+      const broadcast = await prisma.scheduledBroadcast.create({
+        data: {
+          eventId: input.eventId,
+          sentByUserId: ctx.session.user.id,
+          message: input.message,
+          channel: input.channel,
+          recipientType: input.recipientType,
+          recipientIds: input.recipientIds ?? [],
+          scheduledAt: scheduledDate,
+        },
+      });
+
       return {
         success: true,
-        message: 'Message scheduled',
-        scheduledFor: input.scheduledAt,
+        id: broadcast.id,
+        scheduledFor: broadcast.scheduledAt.toISOString(),
       };
     }),
 

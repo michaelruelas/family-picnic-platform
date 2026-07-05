@@ -61,8 +61,8 @@ export default async function AdminAuditLogPage() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-stone-900">Admin: Audit Log</h1>
-        <p className="mt-2 text-stone-600">Track all administrative actions</p>
+        <h1 className="text-foreground text-3xl font-bold">Admin: Audit Log</h1>
+        <p className="text-muted-foreground mt-2">Track all administrative actions</p>
       </div>
 
       <AuditLogTable initialLogs={logs} events={events} users={users} />

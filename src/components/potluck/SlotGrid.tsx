@@ -105,13 +105,13 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
 
   if (slots.length === 0 && !showAddForm) {
     return (
-      <div className="rounded-xl bg-amber-50 p-8 text-center">
+      <div className="bg-sunlight/20 rounded-xl p-8 text-center">
         <div className="text-5xl">🍴</div>
-        <h3 className="mt-4 text-xl font-semibold text-amber-900">No Potluck Slots Yet</h3>
-        <p className="mt-2 text-amber-700">Add slots to let attendees sign up to bring dishes.</p>
+        <h3 className="text-foreground mt-4 text-xl font-semibold">No Potluck Slots Yet</h3>
+        <p className="text-terracotta mt-2">Add slots to let attendees sign up to bring dishes.</p>
         <button
           onClick={() => setShowAddForm(true)}
-          className="mt-4 rounded-lg bg-amber-600 px-6 py-2 font-medium text-white hover:bg-amber-700"
+          className="bg-terracotta hover:bg-terracotta mt-4 rounded-lg px-6 py-2 font-medium text-white"
         >
           Add First Slot
         </button>
@@ -121,14 +121,16 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
 
   return (
     <div className="space-y-6">
-      {error && <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>
+      )}
 
       {showAddForm && <SlotForm eventId={eventId} onSuccess={() => setShowAddForm(false)} />}
 
       {!showAddForm && (
         <button
           onClick={() => setShowAddForm(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 px-4 py-3 text-sm font-medium text-stone-600 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700"
+          className="border-border bg-secondary/60 text-muted-foreground hover:bg-sunlight/20 hover:text-terracotta flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-sm font-medium hover:border-amber-400"
         >
           <span className="text-lg">+</span> Add Potluck Slot
         </button>
@@ -136,14 +138,14 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
 
       {Object.entries(slotsByCategory).map(([category, categorySlots]) => (
         <div key={category} className="rounded-xl bg-white p-6 shadow-sm">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-stone-900">
+          <h3 className="text-foreground flex items-center gap-2 text-lg font-semibold">
             <span className="text-2xl">{categoryEmojis[category] || '📦'}</span>
             {categoryLabels[category] || category}
           </h3>
 
           <div className="mt-4 space-y-3">
             {categorySlots.map((slot) => (
-              <div key={slot.id} className="rounded-lg border border-stone-200 p-4">
+              <div key={slot.id} className="border-border rounded-lg border p-4">
                 {editingSlot === slot.id ? (
                   <div className="space-y-3">
                     <input
@@ -157,7 +159,7 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                           slot.slotType === 'LIMITED' ? (slot.maxSignups ?? 1) : undefined,
                         );
                       }}
-                      className="block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                      className="border-border focus:border-terracotta focus:ring-foreground/20 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
                       placeholder="Slot name"
                     />
                     {slot.slotType === 'LIMITED' && (
@@ -170,13 +172,13 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                         }}
                         min="1"
                         max="100"
-                        className="block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                        className="border-border focus:border-terracotta focus:ring-foreground/20 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
                       />
                     )}
                     <div className="flex gap-2">
                       <button
                         onClick={() => setEditingSlot(null)}
-                        className="flex-1 rounded-lg bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700 hover:bg-stone-300"
+                        className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-3 py-1 text-sm font-medium"
                       >
                         Done
                       </button>
@@ -184,20 +186,20 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                   </div>
                 ) : deleteConfirm === slot.id ? (
                   <div className="space-y-2">
-                    <p className="text-sm text-stone-700">
+                    <p className="text-foreground/85 text-sm">
                       Delete <strong>{slot.name}</strong>? This will also remove all signups.
                     </p>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleDelete(slot.id)}
                         disabled={false}
-                        className="flex-1 rounded-lg bg-red-600 px-3 py-1 text-sm font-medium text-white hover:bg-red-700"
+                        className="bg-destructive hover:bg-destructive flex-1 rounded-lg px-3 py-1 text-sm font-medium text-white"
                       >
                         Confirm Delete
                       </button>
                       <button
                         onClick={() => setDeleteConfirm(null)}
-                        className="flex-1 rounded-lg bg-stone-200 px-3 py-1 text-sm font-medium text-stone-700 hover:bg-stone-300"
+                        className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-3 py-1 text-sm font-medium"
                       >
                         Cancel
                       </button>
@@ -206,14 +208,14 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                 ) : (
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium text-stone-900">{slot.name}</p>
-                      <p className="text-sm text-stone-500">
+                      <p className="text-foreground font-medium">{slot.name}</p>
+                      <p className="text-muted-foreground text-sm">
                         {slot.slotType === 'UNLIMITED'
                           ? `${slot.currentSignups} signups`
                           : `${slot.currentSignups}/${slot.maxSignups} slots filled`}
                       </p>
                       {slot.signups.length > 0 && (
-                        <p className="mt-1 text-xs text-stone-400">
+                        <p className="text-muted-foreground/70 mt-1 text-xs">
                           {slot.signups.map((s) => s.dishName).join(', ')}
                         </p>
                       )}
@@ -221,13 +223,13 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setEditingSlot(slot.id)}
-                        className="rounded-lg bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 hover:bg-amber-200"
+                        className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-3 py-1 text-sm font-medium"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => setDeleteConfirm(slot.id)}
-                        className="rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200"
+                        className="bg-destructive/15 text-destructive hover:bg-destructive/20 rounded-lg px-3 py-1 text-sm font-medium"
                       >
                         Delete
                       </button>

@@ -83,17 +83,17 @@ export function Calendar({ events }: CalendarProps) {
         <div className="flex items-center gap-4">
           <button
             onClick={prevMonth}
-            className="rounded-lg border border-stone-200 bg-white px-4 py-2 text-lg font-medium text-stone-700 transition-colors hover:bg-stone-50 active:bg-stone-100"
+            className="border-border text-foreground/85 hover:bg-secondary/60 active:bg-secondary rounded-lg border bg-white px-4 py-2 text-lg font-medium transition-colors"
             aria-label="Previous month"
           >
             ‹
           </button>
-          <h2 className="text-xl font-semibold text-stone-900">
+          <h2 className="text-foreground text-xl font-semibold">
             {MONTHS[month]} {year}
           </h2>
           <button
             onClick={nextMonth}
-            className="rounded-lg border border-stone-200 bg-white px-4 py-2 text-lg font-medium text-stone-700 transition-colors hover:bg-stone-50 active:bg-stone-100"
+            className="border-border text-foreground/85 hover:bg-secondary/60 active:bg-secondary rounded-lg border bg-white px-4 py-2 text-lg font-medium transition-colors"
             aria-label="Next month"
           >
             ›
@@ -101,17 +101,17 @@ export function Calendar({ events }: CalendarProps) {
         </div>
         <button
           onClick={goToToday}
-          className="rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-50 active:bg-stone-100"
+          className="border-border text-muted-foreground hover:bg-secondary/60 active:bg-secondary rounded-lg border bg-white px-4 py-2 text-sm font-medium transition-colors"
         >
           Today
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-stone-200 bg-stone-200">
+      <div className="border-border bg-secondary grid grid-cols-7 gap-px overflow-hidden rounded-lg border">
         {DAYS_OF_WEEK.map((day) => (
           <div
             key={day}
-            className="bg-stone-100 px-2 py-3 text-center text-sm font-semibold text-stone-600"
+            className="bg-secondary text-muted-foreground px-2 py-3 text-center text-sm font-semibold"
           >
             {day}
           </div>
@@ -132,7 +132,7 @@ export function Calendar({ events }: CalendarProps) {
             >
               <div
                 className={`mb-1 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium ${
-                  isCurrentDay ? 'bg-green-600 text-white' : 'text-stone-700'
+                  isCurrentDay ? 'bg-sage text-white' : 'text-foreground/85'
                 }`}
               >
                 {day}
@@ -142,7 +142,7 @@ export function Calendar({ events }: CalendarProps) {
                   <CalendarEventChip key={event.id} event={event} />
                 ))}
                 {dayEvents.length > 3 && (
-                  <div className="text-xs text-stone-500">+{dayEvents.length - 3} more</div>
+                  <div className="text-muted-foreground text-xs">+{dayEvents.length - 3} more</div>
                 )}
               </div>
             </div>
@@ -150,25 +150,25 @@ export function Calendar({ events }: CalendarProps) {
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-4 text-sm text-stone-600">
+      <div className="text-muted-foreground mt-4 flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded bg-green-500" />
+          <span className="bg-sage/150 h-3 w-3 rounded" />
           <span>Today</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded border border-green-300 bg-green-200" />
+          <span className="bg-sage/30 h-3 w-3 rounded border border-green-300" />
           <span>Published</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded border border-amber-300 bg-amber-200" />
+          <span className="border-sunlight/50 bg-terracotta/20 h-3 w-3 rounded border" />
           <span>Draft</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded border border-stone-300 bg-stone-200" />
+          <span className="border-border bg-secondary h-3 w-3 rounded border" />
           <span>Closed</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded border border-red-300 bg-red-200" />
+          <span className="border-destructive/40 bg-destructive/20 h-3 w-3 rounded border" />
           <span>Cancelled</span>
         </div>
       </div>

@@ -2,9 +2,41 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
-import { CommunicationStatus, RSVPStatus } from '~/lib/generated/enums';
+import { CommunicationStatus, RSVPStatus, CommunicationChannel } from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
+
+async function scheduleWorkflow(
+  eventId: string,
+  message: string,
+  channel: CommunicationChannel,
+  recipientType: string,
+  recipientIds: string[] | undefined,
+  sentByUserId: string,
+  broadcastId: string,
+  scheduledDate: Date,
+) {
+  try {
+    const { getOpenWorkflow } = await import('~/lib/ow-client');
+    const { scheduledBroadcastDelivery } = await import('~/lib/ow-workflows');
+    const ow = await getOpenWorkflow();
+    await ow.runWorkflow(
+      scheduledBroadcastDelivery.spec,
+      {
+        broadcastId,
+        eventId,
+        message,
+        channel,
+        recipientType,
+        recipientIds,
+        sentByUserId,
+      },
+      { availableAt: scheduledDate },
+    );
+  } catch (error) {
+    console.error('Failed to schedule OpenWorkflow broadcast:', error);
+  }
+}
 
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId();
@@ -27,11 +59,55 @@ export async function POST(request: NextRequest) {
 
       try {
         const body = await request.json();
-        const { eventId: reqEventId, message, channel, recipientType, recipientIds } = body;
+        const {
+          eventId: reqEventId,
+          message,
+          channel,
+          recipientType,
+          recipientIds,
+          scheduledAt,
+        } = body;
         eventId = reqEventId;
 
         if (!eventId || !message || !channel || !recipientType) {
           return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
+        if (scheduledAt) {
+          const scheduledDate = new Date(scheduledAt);
+          if (isNaN(scheduledDate.getTime())) {
+            return NextResponse.json({ error: 'Invalid scheduledAt date' }, { status: 400 });
+          }
+
+          const broadcast = await prisma.scheduledBroadcast.create({
+            data: {
+              eventId,
+              sentByUserId: session.user.id,
+              message,
+              channel: channel as CommunicationChannel,
+              recipientType,
+              recipientIds: recipientIds ?? [],
+              scheduledAt: scheduledDate,
+            },
+          });
+
+          scheduleWorkflow(
+            eventId,
+            message,
+            channel as CommunicationChannel,
+            recipientType,
+            recipientIds,
+            session.user.id,
+            broadcast.id,
+            scheduledDate,
+          );
+
+          return NextResponse.json({
+            success: true,
+            scheduled: true,
+            id: broadcast.id,
+            scheduledFor: broadcast.scheduledAt.toISOString(),
+          });
         }
 
         let targetUserIds: string[] = [];

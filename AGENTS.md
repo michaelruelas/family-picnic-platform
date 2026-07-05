@@ -7,49 +7,50 @@ Developer guide for the Family Picnic Platform codebase. Full documentation is i
 ### Development
 
 ```bash
-npm run dev          # Start Next.js dev server on localhost:3000
-npm run build        # Production build
-npm run start        # Start production server (requires build first)
+bun run dev          # Start Next.js dev server on localhost:3000
+bun run build        # Production build
+bun run start        # Start production server (requires build first)
 ```
 
 ### Testing & Quality
 
 ```bash
-npm test             # Run all tests (Vitest)
-npm run test:watch   # Watch mode for development
-npm run test:coverage # Coverage report
+bun test             # Run all tests (Vitest)
+bun run test:watch   # Watch mode for development
+bun run test:coverage # Coverage report
 
-npm run lint         # ESLint
-npm run typecheck    # TypeScript type checking
-npm run ci           # Full CI suite: typecheck + lint + test
+bun run lint         # ESLint
+bun run typecheck    # TypeScript type checking
+bun run ci           # Full CI suite: typecheck + lint + format:check + test:coverage
 ```
 
 ### Local CI (wrkflw)
 
-The pre-commit hook runs `wrkflw` automatically. Install wrkflw for local CI validation:
+The pre-commit hook validates the CI YAML with `wrkflw` then runs `bun run ci` locally.
+Install wrkflw for local CI validation:
 
 ```bash
 cargo install wrkflw
 ```
 
-Manual run: `wrkflw run --runtime emulation .github/workflows/ci.yml`
+Manual validation: `wrkflw validate .github/workflows/ci.yml`
 
 ### Code Formatting
 
 ```bash
-npm run format       # Format all files with Prettier
-npm run format:check # Check formatting without modifying
+bun run format       # Format all files with Prettier
+bun run format:check # Check formatting without modifying
 ```
 
 ### Database
 
 ```bash
-npm run db:generate  # Generate Prisma client after schema changes
-npm run db:push      # Push schema to database (dev)
-npm run db:migrate   # Run migrations (creates revision history)
-npm run db:seed      # Seed database with sample data
-npm run db:studio    # Open Prisma Studio (GUI)
-npm run db:validate  # Validate Prisma schema
+bun run db:generate  # Generate Prisma client after schema changes
+bun run db:push      # Push schema to database (dev)
+bun run db:migrate   # Run migrations (creates revision history)
+bun run db:seed      # Seed database with sample data
+bun run db:studio    # Open Prisma Studio (GUI)
+bun run db:validate  # Validate Prisma schema
 ```
 
 ### One-Command Dev Setup
@@ -61,15 +62,15 @@ bash scripts/dev.sh
 ### E2E Testing
 
 ```bash
-npm run test:e2e          # Run Playwright e2e tests
-npm run test:e2e -- --ui   # Run with Playwright UI
+bun run test:e2e          # Run Playwright e2e tests
+bun run test:e2e -- --ui   # Run with Playwright UI
 ```
 
 Setup for first run:
 
 ```bash
-npm run db:push            # Push schema
-npm run db:seed            # Seed test users
+bun run db:push            # Push schema
+bun run db:seed            # Seed test users
 npx playwright install chromium
 ```
 
@@ -97,7 +98,7 @@ Test accounts (all passwords: `password123`):
 
 **Login flow:** Go to `/login`, enter email + `password123`.
 
-Seeding resets data — run `npm run db:seed` after `db:push` or `db:migrate`.
+Seeding resets data — run `bun run db:seed` after `db:push` or `db:migrate`.
 
 ## Commit Messages
 
@@ -157,54 +158,55 @@ For complete documentation on:
 
 ### API Routes
 
-| Route                              | File                                               | Description                   |
-| ---------------------------------- | -------------------------------------------------- | ----------------------------- |
-| `/api/auth/[...nextauth]`          | `src/app/api/auth/[...nextauth]/route.ts`          | NextAuth handler              |
-| `/api/rsvp`                        | `src/app/api/rsvp/route.ts`                        | RSVP create/update/decline    |
-| `/api/potluck-signup`              | `src/app/api/potluck-signup/route.ts`              | Potluck slot signup           |
-| `/api/dependents`                  | `src/app/api/dependents/route.ts`                  | Dependent CRUD                |
-| `/api/profile`                     | `src/app/api/profile/route.ts`                     | Profile preferences           |
-| `/api/photo-reaction`              | `src/app/api/photo-reaction/route.ts`              | Photo reactions               |
-| `/api/photo-upload-url`            | `src/app/api/photo-upload-url/route.ts`            | S3 presigned URL generation   |
-| `/api/photos`                      | `src/app/api/photos/route.ts`                      | Photo record CRUD             |
-| `/api/trpc/[trpc]`                 | `src/app/api/trpc/[trpc]/route.ts`                 | tRPC API handler              |
-| `/api/admin/events`                | `src/app/api/admin/events/route.ts`                | Admin event CRUD              |
-| `/api/admin/events/[id]`           | `src/app/api/admin/events/[id]/route.ts`           | Admin single event operations |
-| `/api/admin/events/[id]/publish`   | `src/app/api/admin/events/[id]/publish/route.ts`   | Publish event                 |
-| `/api/admin/events/[id]/close`     | `src/app/api/admin/events/[id]/close/route.ts`     | Close event                   |
-| `/api/admin/events/[id]/cancel`    | `src/app/api/admin/events/[id]/cancel/route.ts`    | Cancel event                  |
-| `/api/admin/events/[id]/admins`    | `src/app/api/admin/events/[id]/admins/route.ts`    | Event admin management        |
-| `/api/admin/potluck-slots`         | `src/app/api/admin/potluck-slots/route.ts`         | Create potluck slots          |
-| `/api/admin/potluck-slots/[id]`    | `src/app/api/admin/potluck-slots/[id]/route.ts`    | Update/delete potluck slots   |
-| `/api/admin/invitations/send`      | `src/app/api/admin/invitations/send/route.ts`      | Send invitations              |
-| `/api/admin/invitations/resend`    | `src/app/api/admin/invitations/resend/route.ts`    | Resend invitations            |
-| `/api/admin/invitations/track`     | `src/app/api/admin/invitations/track/route.ts`     | Track invitation delivery     |
-| `/api/admin/communications/send`   | `src/app/api/admin/communications/send/route.ts`   | Send broadcast                |
-| `/api/admin/communications/status` | `src/app/api/admin/communications/status/route.ts` | Broadcast status              |
-| `/api/admin/audit-log`             | `src/app/api/admin/audit-log/route.ts`             | Audit log queries             |
-| `/api/admin/csv-import`            | `src/app/api/admin/csv-import/route.ts`            | Bulk CSV import               |
-| `/api/admin/users/search`          | `src/app/api/admin/users/search/route.ts`          | Search users by email         |
-| `/api/onboarding/household`        | `src/app/api/onboarding/household/route.ts`        | Onboarding household setup    |
-| `/api/onboarding/dependent`        | `src/app/api/onboarding/dependent/route.ts`        | Onboarding dependent creation |
-| `/api/onboarding/complete`         | `src/app/api/onboarding/complete/route.ts`         | Complete onboarding           |
+| Route                                         | File                                                          | Description                                    |
+| --------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------- |
+| `/api/auth/[...nextauth]`                     | `src/app/api/auth/[...nextauth]/route.ts`                     | NextAuth handler                               |
+| `/api/rsvp`                                   | `src/app/api/rsvp/route.ts`                                   | RSVP create/update/decline                     |
+| `/api/potluck-signup`                         | `src/app/api/potluck-signup/route.ts`                         | Potluck slot signup                            |
+| `/api/dependents`                             | `src/app/api/dependents/route.ts`                             | Dependent CRUD                                 |
+| `/api/profile`                                | `src/app/api/profile/route.ts`                                | Profile preferences                            |
+| `/api/photo-reaction`                         | `src/app/api/photo-reaction/route.ts`                         | Photo reactions                                |
+| `/api/photo-upload-url`                       | `src/app/api/photo-upload-url/route.ts`                       | S3 presigned URL generation                    |
+| `/api/photos`                                 | `src/app/api/photos/route.ts`                                 | Photo record CRUD                              |
+| `/api/trpc/[trpc]`                            | `src/app/api/trpc/[trpc]/route.ts`                            | tRPC API handler                               |
+| `/api/admin/events`                           | `src/app/api/admin/events/route.ts`                           | Admin event CRUD                               |
+| `/api/admin/events/[id]`                      | `src/app/api/admin/events/[id]/route.ts`                      | Admin single event operations                  |
+| `/api/admin/events/[id]/publish`              | `src/app/api/admin/events/[id]/publish/route.ts`              | Publish event                                  |
+| `/api/admin/events/[id]/close`                | `src/app/api/admin/events/[id]/close/route.ts`                | Close event                                    |
+| `/api/admin/events/[id]/cancel`               | `src/app/api/admin/events/[id]/cancel/route.ts`               | Cancel event                                   |
+| `/api/admin/events/[id]/admins`               | `src/app/api/admin/events/[id]/admins/route.ts`               | Event admin management                         |
+| `/api/admin/potluck-slots`                    | `src/app/api/admin/potluck-slots/route.ts`                    | Create potluck slots                           |
+| `/api/admin/potluck-slots/[id]`               | `src/app/api/admin/potluck-slots/[id]/route.ts`               | Update/delete potluck slots                    |
+| `/api/admin/invitations/send`                 | `src/app/api/admin/invitations/send/route.ts`                 | Send invitations                               |
+| `/api/admin/invitations/resend`               | `src/app/api/admin/invitations/resend/route.ts`               | Resend invitations                             |
+| `/api/admin/invitations/track`                | `src/app/api/admin/invitations/track/route.ts`                | Track invitation delivery                      |
+| `/api/admin/communications/send`              | `src/app/api/admin/communications/send/route.ts`              | Send broadcast (immediate or scheduled)        |
+| `/api/admin/communications/status`            | `src/app/api/admin/communications/status/route.ts`            | Broadcast status                               |
+| `/api/admin/communications/process-scheduled` | `src/app/api/admin/communications/process-scheduled/route.ts` | Process due scheduled broadcasts (cron target) |
+| `/api/admin/audit-log`                        | `src/app/api/admin/audit-log/route.ts`                        | Audit log queries                              |
+| `/api/admin/csv-import`                       | `src/app/api/admin/csv-import/route.ts`                       | Bulk CSV import                                |
+| `/api/admin/users/search`                     | `src/app/api/admin/users/search/route.ts`                     | Search users by email                          |
+| `/api/onboarding/household`                   | `src/app/api/onboarding/household/route.ts`                   | Onboarding household setup                     |
+| `/api/onboarding/dependent`                   | `src/app/api/onboarding/dependent/route.ts`                   | Onboarding dependent creation                  |
+| `/api/onboarding/complete`                    | `src/app/api/onboarding/complete/route.ts`                    | Complete onboarding                            |
 
 ## tRPC Router Structure
 
 Routers are located in `src/server/routers/`:
 
-| Router          | File                      | Procedures                                                                    |
-| --------------- | ------------------------- | ----------------------------------------------------------------------------- |
-| `auth`          | `auth.router.ts`          | session, signIn, signOut, callback                                            |
-| `user`          | `user.router.ts`          | me, update, updatePreferences, completeOnboarding, linkHousehold              |
-| `household`     | `household.router.ts`     | create, get, getById, update, addMember, removeMember, getCumulativeHeadcount |
-| `dependent`     | `dependent.router.ts`     | create, update, remove, list                                                  |
-| `event`         | `event.router.ts`         | create, list, getById, update, listAdmins, addAdmin, removeAdmin              |
-| `invitation`    | `invitation.router.ts`    | create, send, resend, track, consume                                          |
-| `rsvp`          | `rsvp.router.ts`          | confirm, decline, update, getByEvent, getMyRsvp, getHeadcount                 |
-| `potluck`       | `potluck.router.ts`       | listSlots, signup, updateSignup, cancelSignup, getFoodSummary                 |
-| `photo`         | `photo.router.ts`         | getUploadUrl, confirmUpload, search, delete, addReaction, removeReaction      |
-| `communication` | `communication.router.ts` | sendInvite, sendRsvpReminder, sendBroadcast, unsubscribe, getRateLimitStatus  |
-| `admin`         | `admin.router.ts`         | getUsers, getAuditLog, dashboard, csvImport, getDietarySummary                |
+| Router          | File                      | Procedures                                                                                    |
+| --------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| `auth`          | `auth.router.ts`          | session, signIn, signOut, callback                                                            |
+| `user`          | `user.router.ts`          | me, update, updatePreferences, completeOnboarding, linkHousehold                              |
+| `household`     | `household.router.ts`     | create, get, getById, update, addMember, removeMember, getCumulativeHeadcount                 |
+| `dependent`     | `dependent.router.ts`     | create, update, remove, list                                                                  |
+| `event`         | `event.router.ts`         | create, list, getById, update, listAdmins, addAdmin, removeAdmin                              |
+| `invitation`    | `invitation.router.ts`    | create, send, resend, track, consume                                                          |
+| `rsvp`          | `rsvp.router.ts`          | confirm, decline, update, getByEvent, getMyRsvp, getHeadcount                                 |
+| `potluck`       | `potluck.router.ts`       | listSlots, signup, updateSignup, cancelSignup, getFoodSummary                                 |
+| `photo`         | `photo.router.ts`         | getUploadUrl, confirmUpload, search, delete, addReaction, removeReaction                      |
+| `communication` | `communication.router.ts` | sendInvite, sendRsvpReminder, sendBroadcast, scheduleMessage, unsubscribe, getRateLimitStatus |
+| `admin`         | `admin.router.ts`         | getUsers, getAuditLog, dashboard, csvImport, getDietarySummary                                |
 
 ### tRPC Procedures
 
@@ -269,19 +271,8 @@ src/
 
 1. **`src/app/api/auth/[...nextauth]/route.ts`** — NextAuth handler is the single source of truth for auth.
 2. **`src/lib/auth.ts`** — Only exports `authOptions` and `getServerSession`.
-3. **`prisma/schema.prisma`** — If modified, run `npm run db:generate`. Client generated to `src/lib/generated/client`.
+3. **`prisma/schema.prisma`** — If modified, run `bun run db:generate`. Client generated to `src/lib/generated/client`.
 4. **`src/lib/generated/`** — Prisma-generated code. Do not edit manually.
-5. **`public/sw.js`** — Service worker has known ESLint `no-undef` errors for browser globals. Safe to ignore.
-
-## Known ESLint Issues (Safe to Ignore)
-
-| File                    | Errors                          | Reason                                    |
-| ----------------------- | ------------------------------- | ----------------------------------------- |
-| `public/sw.js`          | 23x `no-undef`                  | Browser globals not in Node ESLint config |
-| `sw.js`                 | 1x `no-undef`, 1x `unused-vars` | Browser-only code                         |
-| `InvitationsClient.tsx` | React 19 lint warnings          | React 19 specific                         |
-| `HouseholdClient.tsx`   | 2x `unused-vars`                | Two unused variables                      |
-| `HelpButton.tsx`        | 1x `set-state-in-effect`        | React 19 lint warning                     |
 
 ## Tickets
 
@@ -331,11 +322,11 @@ All tickets in `tickets/` directory. See `tickets/README.md` for priority order.
 | ------ | ---------------------------------------- | ----------------------------------------- |
 | 13     | Kubernetes manifests                     | Done                                      |
 | 26     | Empty route shells cleanup               | Done (route groups removed, docs in arch) |
-| 30     | Account recovery                         | Missing                                   |
-| 31     | Scheduled broadcasts                     | Missing                                   |
+| 30     | Account recovery                         | Won't do (see ADR-001)                    |
+| 31     | Scheduled broadcasts                     | Done (round 3)                            |
 | 38     | Accessibility audit                      | Done                                      |
 | 39     | Observability (logging, metrics, Sentry) | Done                                      |
-| 40     | Backup and data export                   | Missing                                   |
+| 40     | Backup and data export                   | Done (round 3)                            |
 | 35     | Changelog and commit hygiene             | Done                                      |
 
 ## Environment Variables
@@ -346,25 +337,25 @@ Copy `.env.example` to `.env` and fill in:
 cp .env.example .env
 ```
 
-| Variable             | Description                             | Required          |
-| -------------------- | --------------------------------------- | ----------------- |
-| `DATABASE_URL`       | PostgreSQL connection string            | Yes               |
-| `NEXTAUTH_URL`       | App URL (http://localhost:3000 for dev) | Yes               |
-| `NEXTAUTH_SECRET`    | Random string for session encryption    | Yes               |
-| `AUTH_GOOGLE_ID`     | Google OAuth client ID                  | Yes               |
-| `AUTH_GOOGLE_SECRET` | Google OAuth client secret              | Yes               |
-| `TWILIO_*`           | Twilio SMS credentials                  | For SMS           |
-| `SENDGRID_*`         | SendGrid email credentials              | For email         |
-| `S3_*`               | S3-compatible storage                   | For photo uploads |
-| `PHOTOPRISM_*`       | PhotoPrism credentials                  | For photo gallery |
+| Variable             | Description                                 | Required            |
+| -------------------- | ------------------------------------------- | ------------------- |
+| `DATABASE_URL`       | PostgreSQL connection string                | Yes                 |
+| `NEXTAUTH_URL`       | App URL (http://localhost:3000 for dev)     | Yes                 |
+| `NEXTAUTH_SECRET`    | Random string for session encryption        | Yes                 |
+| `AUTH_GOOGLE_ID`     | Google OAuth client ID                      | Yes                 |
+| `AUTH_GOOGLE_SECRET` | Google OAuth client secret                  | Yes                 |
+| `TWILIO_*`           | Twilio SMS credentials                      | For SMS             |
+| `SENDGRID_*`         | SendGrid email credentials                  | For email           |
+| `S3_*`               | S3-compatible storage                       | For photo uploads   |
+| `CRON_SECRET`        | Secret for authenticating cron job requests | For scheduled tasks |
 
 ## Prisma
 
 After modifying `prisma/schema.prisma`, always run:
 
 ```bash
-npm run db:generate  # Regenerate Prisma client
-npm run db:push      # Push changes to dev database
+bun run db:generate  # Regenerate Prisma client
+bun run db:push      # Push changes to dev database
 ```
 
 The Prisma client is generated to `src/lib/generated/client` (not the default `@prisma/client` location).

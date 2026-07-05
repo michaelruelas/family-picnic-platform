@@ -195,32 +195,39 @@ export default async function PhotosPage({
   const now = new Date();
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-12">
-      <h1 className="text-3xl font-bold text-stone-900">Photo Gallery</h1>
-      <p className="mt-2 text-stone-600">Share and enjoy photos from our family moments</p>
+    <main className="mx-auto max-w-6xl px-5 py-12 md:py-20">
+      <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Memories</p>
+      <h1 className="font-display text-foreground mt-2 text-5xl font-medium tracking-tight md:text-6xl">
+        Photo Gallery
+      </h1>
+      <p className="text-muted-foreground mt-3 max-w-xl text-lg">
+        Share and enjoy the candid moments from our family gatherings.
+      </p>
 
-      <div className="mt-6">
-        <Suspense fallback={<div className="rounded-xl bg-white p-4 shadow-sm">Loading...</div>}>
+      <div className="mt-8">
+        <Suspense fallback={<div className="bg-card shadow-card rounded-3xl p-6">Loading...</div>}>
           <PhotoSearch events={events} />
         </Suspense>
       </div>
 
       {searchResults !== null && (
-        <div className="mt-6">
+        <div className="mt-8">
           {searchResults.length === 0 ? (
-            <div className="rounded-2xl bg-amber-50 p-8 text-center">
+            <div className="bg-sunlight/20 ring-sunlight/40 rounded-3xl p-12 text-center ring-1">
               <div className="text-5xl">🔍</div>
-              <h2 className="mt-4 text-xl font-semibold text-amber-900">No Photos Found</h2>
-              <p className="mt-2 text-amber-700">
+              <h2 className="font-display text-foreground mt-4 text-2xl font-semibold">
+                No photos found
+              </h2>
+              <p className="text-muted-foreground mt-2">
                 Try adjusting your search filters or search terms.
               </p>
             </div>
           ) : (
-            <div className="mt-6 space-y-6">
-              <p className="text-sm text-stone-500">
+            <div className="space-y-5">
+              <p className="text-muted-foreground text-sm">
                 Found {searchResults.length} photo{searchResults.length !== 1 ? 's' : ''}
               </p>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                 {searchResults.map((photo) => (
                   <PhotoCard
                     key={photo.id}
@@ -237,53 +244,53 @@ export default async function PhotosPage({
       )}
 
       {eventsWithPhotos && eventsWithPhotos.length === 0 && !hasSearchParams && (
-        <div className="mt-12 rounded-2xl bg-amber-50 p-8 text-center">
-          <div className="text-5xl">📸</div>
-          <h2 className="mt-4 text-xl font-semibold text-amber-900">No Photos Yet</h2>
-          <p className="mt-2 text-amber-700">
+        <div className="bg-sunlight/20 ring-sunlight/40 mt-14 rounded-3xl p-16 text-center ring-1">
+          <div className="text-6xl">📸</div>
+          <h2 className="font-display text-foreground mt-6 text-3xl font-semibold">
+            No photos yet
+          </h2>
+          <p className="text-muted-foreground mt-3">
             Photo sharing will be available after our first event with photos.
           </p>
         </div>
       )}
 
       {eventsWithPhotos && eventsWithPhotos.length > 0 && !hasSearchParams && (
-        <div className="mt-8 space-y-12">
+        <div className="mt-12 space-y-12">
           {eventsWithPhotos.map((event) => {
             const eventDate = new Date(event.date);
             const isPast = eventDate < now;
 
             return (
-              <div key={event.id} className="rounded-2xl bg-white p-6 shadow-sm">
-                <div className="mb-4 flex items-start justify-between">
+              <div
+                key={event.id}
+                className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1"
+              >
+                <div className="mb-5 flex items-start justify-between">
                   <div>
                     <Link
                       href={`/events/${event.id}`}
-                      className="text-xl font-semibold text-stone-900 hover:text-amber-700"
+                      className="font-display text-foreground hover:text-terracotta text-2xl font-medium transition-colors"
                     >
                       {event.name}
                     </Link>
-                    <p className="mt-1 text-sm text-stone-500">
+                    <p className="text-muted-foreground mt-1 text-sm">
                       {eventDate.toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',
-                      })}{' '}
-                      at{' '}
-                      {eventDate.toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
                       })}
                     </p>
                   </div>
                   {isPast && (
-                    <span className="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
+                    <span className="rounded-pill bg-secondary text-muted-foreground px-3 py-1 text-xs font-semibold">
                       Past
                     </span>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                   {event.photos.map((photo) => (
                     <PhotoCard
                       key={photo.id}
@@ -297,9 +304,9 @@ export default async function PhotosPage({
 
                 <Link
                   href={`/events/${event.id}`}
-                  className="mt-4 block w-full rounded-lg bg-amber-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-amber-700"
+                  className="rounded-pill border-border bg-card text-foreground press hover:border-foreground mt-5 block w-full border px-5 py-3 text-center text-sm font-semibold transition-all"
                 >
-                  View All Photos from {event.name}
+                  View all photos from {event.name}
                 </Link>
               </div>
             );

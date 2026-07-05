@@ -83,45 +83,45 @@ export default async function AdminCommunicationsPage({
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-stone-900">Admin: Communications</h1>
-        <p className="mt-2 text-stone-600">Send broadcast messages to families</p>
+        <h1 className="text-foreground text-3xl font-bold">Admin: Communications</h1>
+        <p className="text-muted-foreground mt-2">Send broadcast messages to families</p>
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
         <Link
           href="/admin/dashboard"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Dashboard
         </Link>
         <Link
           href="/admin/events"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Events
         </Link>
         <Link
           href="/admin/invitations"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Invitations
         </Link>
         <Link
           href="/admin/communications"
-          className="rounded-lg bg-amber-100 px-4 py-2 text-sm font-medium text-amber-700 hover:bg-amber-200"
+          className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-4 py-2 text-sm font-medium"
         >
           Communications
         </Link>
         <Link
           href="/admin/audit-log"
-          className="rounded-lg bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-200"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >
           Audit Log
         </Link>
       </div>
 
       <div className="mb-6">
-        <label htmlFor="event-select" className="block text-sm font-medium text-stone-700">
+        <label htmlFor="event-select" className="text-foreground/85 block text-sm font-medium">
           Event
         </label>
         <EventSelect events={events} selectedEventId={effectiveEventId} />
@@ -135,10 +135,12 @@ export default async function AdminCommunicationsPage({
           initialLogs={logs}
         />
       ) : (
-        <div className="rounded-xl bg-stone-100 p-12 text-center">
+        <div className="bg-secondary rounded-xl p-12 text-center">
           <div className="text-5xl">📢</div>
-          <h2 className="mt-4 text-xl font-semibold text-stone-900">No Event Selected</h2>
-          <p className="mt-2 text-stone-600">Select an event to compose and send broadcasts.</p>
+          <h2 className="text-foreground mt-4 text-xl font-semibold">No Event Selected</h2>
+          <p className="text-muted-foreground mt-2">
+            Select an event to compose and send broadcasts.
+          </p>
         </div>
       )}
     </main>

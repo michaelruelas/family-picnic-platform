@@ -92,19 +92,19 @@ export default async function MyEventsPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-12">
-      <h1 className="text-3xl font-bold text-stone-900">My Events</h1>
-      <p className="mt-2 text-stone-600">Track your event RSVPs and potluck signups</p>
+      <h1 className="text-foreground text-3xl font-bold">My Events</h1>
+      <p className="text-muted-foreground mt-2">Track your event RSVPs and potluck signups</p>
 
       {!hasAnyRSVPs ? (
-        <div className="mt-12 rounded-2xl bg-amber-50 p-8 text-center">
+        <div className="bg-sunlight/20 mt-12 rounded-2xl p-8 text-center">
           <div className="text-5xl">📋</div>
-          <h2 className="mt-4 text-xl font-semibold text-amber-900">No RSVPs Yet</h2>
-          <p className="mt-2 text-amber-700">
+          <h2 className="text-foreground mt-4 text-xl font-semibold">No RSVPs Yet</h2>
+          <p className="text-terracotta mt-2">
             You haven&apos;t responded to any events yet. Browse upcoming events to RSVP!
           </p>
           <Link
             href="/events"
-            className="mt-6 inline-block rounded-lg bg-amber-700 px-6 py-3 text-white hover:bg-amber-900"
+            className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-lg px-6 py-3 text-white"
           >
             Browse Events
           </Link>
@@ -113,7 +113,7 @@ export default async function MyEventsPage() {
         <>
           {upcomingRSVPs.length > 0 && (
             <section className="mt-8">
-              <h2 className="text-xl font-semibold text-stone-800">Upcoming Events</h2>
+              <h2 className="text-foreground text-xl font-semibold">Upcoming Events</h2>
               <div className="mt-4 space-y-4">
                 {upcomingRSVPs.map((rsvp) => {
                   const eventDate = new Date(rsvp.event.date);
@@ -128,22 +128,22 @@ export default async function MyEventsPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-xl font-semibold text-stone-900">
+                            <h3 className="text-foreground text-xl font-semibold">
                               {rsvp.event.name}
                             </h3>
                             <span
                               className={`rounded-full px-2 py-1 text-xs font-medium ${
                                 rsvp.status === 'CONFIRMED'
-                                  ? 'bg-green-100 text-green-700'
+                                  ? 'bg-sage/20 text-sage'
                                   : rsvp.status === 'DECLINED'
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-amber-100 text-amber-700'
+                                    ? 'bg-destructive/15 text-destructive'
+                                    : 'bg-terracotta/15 text-terracotta'
                               }`}
                             >
                               {rsvp.status.charAt(0) + rsvp.status.slice(1).toLowerCase()}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm text-stone-500">
+                          <p className="text-muted-foreground mt-1 text-sm">
                             {eventDate.toLocaleDateString('en-US', {
                               weekday: 'long',
                               year: 'numeric',
@@ -161,22 +161,22 @@ export default async function MyEventsPage() {
                           <span>📍 {rsvp.event.location}</span>
                           <span>
                             {rsvp.status === 'CONFIRMED' && (
-                              <span className="text-green-600">✓ {rsvp.headcount} attending</span>
+                              <span className="text-sage">✓ {rsvp.headcount} attending</span>
                             )}
                             {rsvp.status === 'PENDING' && (
-                              <span className="text-amber-600">⏳ Awaiting response</span>
+                              <span className="text-terracotta">⏳ Awaiting response</span>
                             )}
                             {rsvp.status === 'DECLINED' && (
-                              <span className="text-red-600">✗ Not attending</span>
+                              <span className="text-destructive">✗ Not attending</span>
                             )}
                           </span>
                         </div>
                       </div>
                       {rsvp.dietaryNotes && (
-                        <p className="mt-2 text-sm text-amber-600">🥗 {rsvp.dietaryNotes}</p>
+                        <p className="text-terracotta mt-2 text-sm">🥗 {rsvp.dietaryNotes}</p>
                       )}
                       {hasPotluck && rsvp.status === 'CONFIRMED' && (
-                        <p className="mt-2 text-sm text-stone-500">
+                        <p className="text-muted-foreground mt-2 text-sm">
                           {userPotluckSignups.length > 0 ? (
                             <>🍴 Bringing: {userPotluckSignups.map((s) => s.dishName).join(', ')}</>
                           ) : (
@@ -193,7 +193,7 @@ export default async function MyEventsPage() {
 
           {pastRSVPs.length > 0 && (
             <section className="mt-12">
-              <h2 className="text-xl font-semibold text-stone-800">Past Events</h2>
+              <h2 className="text-foreground text-xl font-semibold">Past Events</h2>
               <div className="mt-4 space-y-4">
                 {pastRSVPs.map((rsvp) => {
                   const eventDate = new Date(rsvp.event.date);
@@ -208,25 +208,25 @@ export default async function MyEventsPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-xl font-semibold text-stone-900">
+                            <h3 className="text-foreground text-xl font-semibold">
                               {rsvp.event.name}
                             </h3>
-                            <span className="rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-600">
+                            <span className="bg-secondary text-muted-foreground rounded-full px-2 py-1 text-xs">
                               Past
                             </span>
                             <span
                               className={`rounded-full px-2 py-1 text-xs font-medium ${
                                 rsvp.status === 'CONFIRMED'
-                                  ? 'bg-green-100 text-green-700'
+                                  ? 'bg-sage/20 text-sage'
                                   : rsvp.status === 'DECLINED'
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-amber-100 text-amber-700'
+                                    ? 'bg-destructive/15 text-destructive'
+                                    : 'bg-terracotta/15 text-terracotta'
                               }`}
                             >
                               {rsvp.status.charAt(0) + rsvp.status.slice(1).toLowerCase()}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm text-stone-500">
+                          <p className="text-muted-foreground mt-1 text-sm">
                             {eventDate.toLocaleDateString('en-US', {
                               weekday: 'long',
                               year: 'numeric',
@@ -240,18 +240,18 @@ export default async function MyEventsPage() {
                             })}
                           </p>
                         </div>
-                        <div className="flex flex-col items-end gap-1 text-sm text-stone-500">
+                        <div className="text-muted-foreground flex flex-col items-end gap-1 text-sm">
                           <span>📍 {rsvp.event.location}</span>
                           {rsvp.status === 'CONFIRMED' && (
-                            <span className="text-green-600">✓ {rsvp.headcount} attended</span>
+                            <span className="text-sage">✓ {rsvp.headcount} attended</span>
                           )}
                         </div>
                       </div>
                       {rsvp.dietaryNotes && (
-                        <p className="mt-2 text-sm text-amber-600">🥗 {rsvp.dietaryNotes}</p>
+                        <p className="text-terracotta mt-2 text-sm">🥗 {rsvp.dietaryNotes}</p>
                       )}
                       {hasPotluck && rsvp.status === 'CONFIRMED' && (
-                        <p className="mt-2 text-sm text-stone-500">
+                        <p className="text-muted-foreground mt-2 text-sm">
                           {userPotluckSignups.length > 0 ? (
                             <>🍴 Brought: {userPotluckSignups.map((s) => s.dishName).join(', ')}</>
                           ) : (
@@ -268,12 +268,12 @@ export default async function MyEventsPage() {
         </>
       )}
 
-      <div className="mt-12 rounded-2xl bg-amber-100 p-8 text-center">
-        <h2 className="text-xl font-semibold text-amber-900">Want to see more events?</h2>
-        <p className="mt-2 text-amber-700">Browse all upcoming family gatherings.</p>
+      <div className="bg-terracotta/15 mt-12 rounded-2xl p-8 text-center">
+        <h2 className="text-foreground text-xl font-semibold">Want to see more events?</h2>
+        <p className="text-terracotta mt-2">Browse all upcoming family gatherings.</p>
         <Link
           href="/events"
-          className="mt-4 inline-block rounded-lg bg-amber-700 px-6 py-3 text-white hover:bg-amber-900"
+          className="bg-terracotta hover:bg-terracotta mt-4 inline-block rounded-lg px-6 py-3 text-white"
         >
           View All Events
         </Link>

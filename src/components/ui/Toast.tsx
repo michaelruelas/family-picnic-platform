@@ -83,26 +83,30 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
     }
   }, [duration, onDismiss]);
 
-  const typeStyles: Record<ToastType, { bg: string; text: string; icon: string }> = {
+  const typeStyles: Record<ToastType, { bg: string; text: string; icon: string; ring: string }> = {
     success: {
-      bg: 'bg-green-50 border-green-200',
-      text: 'text-green-800',
-      icon: 'text-green-500',
+      bg: 'bg-sage/15',
+      text: 'text-foreground',
+      icon: 'text-sage',
+      ring: 'ring-sage/30',
     },
     error: {
-      bg: 'bg-red-50 border-red-200',
-      text: 'text-red-800',
-      icon: 'text-red-500',
+      bg: 'bg-destructive/10',
+      text: 'text-foreground',
+      icon: 'text-destructive',
+      ring: 'ring-destructive/30',
     },
     warning: {
-      bg: 'bg-amber-50 border-amber-200',
-      text: 'text-amber-800',
-      icon: 'text-amber-500',
+      bg: 'bg-sunlight/25',
+      text: 'text-foreground',
+      icon: 'text-[#a07c2f]',
+      ring: 'ring-sunlight/40',
     },
     info: {
-      bg: 'bg-blue-50 border-blue-200',
-      text: 'text-blue-800',
-      icon: 'text-blue-500',
+      bg: 'bg-secondary',
+      text: 'text-foreground',
+      icon: 'text-terracotta',
+      ring: 'ring-border',
     },
   };
 
@@ -117,19 +121,19 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 
   return (
     <div
-      className={`flex max-w-md min-w-[300px] items-center gap-3 rounded-lg border p-4 shadow-lg ${styles.bg} `}
+      className={`shadow-pop flex max-w-md min-w-[300px] items-center gap-3 rounded-2xl p-4 ring-1 ${styles.bg} ${styles.ring} `}
       role="alert"
       aria-live="polite"
       aria-atomic="true"
     >
-      <span className={`text-xl ${styles.icon}`}>{icons[type]}</span>
+      <span className={`text-xl font-bold ${styles.icon}`}>{icons[type]}</span>
       <p className={`flex-1 text-base font-medium ${styles.text}`}>{message}</p>
       <button
         onClick={onDismiss}
-        className={`rounded-lg p-1 hover:bg-black/5 ${styles.text}`}
+        className={`rounded-full p-1.5 transition-colors hover:bg-black/5 ${styles.text}`}
         aria-label="Dismiss"
       >
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"

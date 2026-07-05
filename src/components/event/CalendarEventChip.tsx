@@ -14,10 +14,10 @@ interface CalendarEventChipProps {
 
 export function CalendarEventChip({ event }: CalendarEventChipProps) {
   const statusColors: Record<EventStatus, string> = {
-    PUBLISHED: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200',
-    DRAFT: 'bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200',
-    CLOSED: 'bg-stone-100 text-stone-600 border-stone-200',
-    CANCELLED: 'bg-red-100 text-red-800 border-red-200 line-through',
+    PUBLISHED: 'bg-sage/20 text-foreground border-green-200 hover:bg-sage/30',
+    DRAFT: 'bg-terracotta/15 text-foreground border-sunlight/40 hover:bg-terracotta/20',
+    CLOSED: 'bg-secondary text-muted-foreground border-border',
+    CANCELLED: 'bg-destructive/15 text-foreground border-destructive/30 line-through',
   };
 
   return (

@@ -188,59 +188,65 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
     <div className="space-y-6">
       <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-stone-900">Profile Settings</h2>
+          <h2 className="text-foreground text-xl font-semibold">Profile Settings</h2>
           {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
-              className="rounded-lg bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 hover:bg-amber-200"
+              className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-3 py-1 text-sm font-medium"
             >
               Edit
             </button>
           )}
         </div>
 
-        {error && <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+        {error && (
+          <div className="bg-destructive/10 text-destructive mt-4 rounded-lg p-3 text-sm">
+            {error}
+          </div>
+        )}
 
         {success && !isEditing && (
-          <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+          <div className="bg-sage/15 text-sage mt-4 rounded-lg p-3 text-sm">
             Profile updated successfully!
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-stone-700">Display Name</label>
+            <label className="text-foreground/85 block text-sm font-medium">Display Name</label>
             {isEditing ? (
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />
             ) : (
-              <p className="mt-1 text-stone-900">{user.name}</p>
+              <p className="text-foreground mt-1">{user.name}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700">Email</label>
-            <p className="mt-1 text-stone-500">{user.email}</p>
-            <p className="mt-1 text-xs text-stone-400">Email cannot be changed</p>
+            <label className="text-foreground/85 block text-sm font-medium">Email</label>
+            <p className="text-muted-foreground mt-1">{user.email}</p>
+            <p className="text-muted-foreground/70 mt-1 text-xs">Email cannot be changed</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700">Household</label>
+            <label className="text-foreground/85 block text-sm font-medium">Household</label>
             {user.household ? (
-              <p className="mt-1 text-stone-900">{user.household.name}</p>
+              <p className="text-foreground mt-1">{user.household.name}</p>
             ) : (
-              <p className="mt-1 text-stone-500">Not assigned to a household</p>
+              <p className="text-muted-foreground mt-1">Not assigned to a household</p>
             )}
-            <p className="mt-1 text-xs text-stone-400">Contact an admin to change household</p>
+            <p className="text-muted-foreground/70 mt-1 text-xs">
+              Contact an admin to change household
+            </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-stone-700">
+            <label className="text-foreground/85 block text-sm font-medium">
               Communication Preference
             </label>
             {isEditing ? (
@@ -249,7 +255,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                 onChange={(e) =>
                   setCommunicationPreference(e.target.value as CommunicationPreference)
                 }
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               >
                 <option value="EMAIL">Email only</option>
                 <option value="SMS">SMS only</option>
@@ -257,7 +263,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                 <option value="NONE">No notifications</option>
               </select>
             ) : (
-              <p className="mt-1 text-stone-900">
+              <p className="text-foreground mt-1">
                 {communicationPreference === 'EMAIL' && 'Email only'}
                 {communicationPreference === 'SMS' && 'SMS only'}
                 {communicationPreference === 'BOTH' && 'Email and SMS'}
@@ -271,7 +277,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 rounded-lg bg-amber-700 px-4 py-2 font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+                className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
               >
                 {isSubmitting ? 'Saving...' : 'Save Changes'}
               </button>
@@ -279,7 +285,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                 type="button"
                 onClick={handleCancel}
                 disabled={isSubmitting}
-                className="flex-1 rounded-lg bg-stone-200 px-4 py-2 font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
+                className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-4 py-2 font-medium disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -290,11 +296,11 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
 
       <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-stone-900">Family Members</h2>
+          <h2 className="text-foreground text-xl font-semibold">Family Members</h2>
           {!showDependentForm && (
             <button
               onClick={() => setShowDependentForm(true)}
-              className="rounded-lg bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 hover:bg-amber-200"
+              className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-3 py-1 text-sm font-medium"
             >
               + Add
             </button>
@@ -302,7 +308,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
         </div>
 
         {dependents.length === 0 && !showDependentForm ? (
-          <p className="mt-4 text-sm text-stone-500">
+          <p className="text-muted-foreground mt-4 text-sm">
             No family members added yet. Add your spouse, children, or other family members to help
             us plan for everyone.
           </p>
@@ -311,8 +317,8 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
             {dependents.map((dependent) => (
               <li key={dependent.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-stone-700">{dependent.name}</span>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 capitalize">
+                  <span className="text-foreground/85">{dependent.name}</span>
+                  <span className="bg-terracotta/15 text-terracotta rounded-full px-2 py-0.5 text-xs capitalize">
                     {RELATIONSHIP_LABELS[dependent.relationship]?.toLowerCase() ||
                       dependent.relationship.toLowerCase()}
                   </span>
@@ -322,10 +328,10 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3 text-sm text-stone-500">
+                <div className="text-muted-foreground flex items-center gap-3 text-sm">
                   {dependent.age !== null && <span>{dependent.age} yrs</span>}
                   {dependent.dietaryLabels.length > 0 && (
-                    <span className="text-amber-600">🥗 {dependent.dietaryLabels.join(', ')}</span>
+                    <span className="text-terracotta">🥗 {dependent.dietaryLabels.join(', ')}</span>
                   )}
                   <button
                     onClick={() => startEditDependent(dependent)}
@@ -335,7 +341,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                   </button>
                   <button
                     onClick={() => handleDeleteDependent(dependent.id)}
-                    className="text-red-600 hover:text-red-800"
+                    className="text-destructive hover:text-foreground"
                   >
                     Remove
                   </button>
@@ -348,39 +354,39 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
         {showDependentForm && (
           <form
             onSubmit={editingDependentId ? handleUpdateDependent : handleAddDependent}
-            className="mt-6 rounded-lg border border-stone-200 bg-stone-50 p-4"
+            className="border-border bg-secondary/60 mt-6 rounded-lg border p-4"
           >
-            <h3 className="text-lg font-medium text-stone-900">
+            <h3 className="text-foreground text-lg font-medium">
               {editingDependentId ? 'Edit Family Member' : 'Add Family Member'}
             </h3>
 
             {dependentError && (
-              <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              <div className="bg-destructive/10 text-destructive mt-3 rounded-lg p-3 text-sm">
                 {dependentError}
               </div>
             )}
 
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-stone-700">Name</label>
+                <label className="text-foreground/85 block text-sm font-medium">Name</label>
                 <input
                   type="text"
                   value={dependentForm.name}
                   onChange={(e) => setDependentForm({ ...dependentForm, name: e.target.value })}
                   required
                   placeholder="Full name"
-                  className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-stone-700">Relationship</label>
+                <label className="text-foreground/85 block text-sm font-medium">Relationship</label>
                 <select
                   value={dependentForm.relationship}
                   onChange={(e) =>
                     setDependentForm({ ...dependentForm, relationship: e.target.value })
                   }
-                  className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
                 >
                   <option value="SPOUSE">Spouse</option>
                   <option value="CHILD">Child</option>
@@ -392,7 +398,9 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-stone-700">Age (optional)</label>
+                <label className="text-foreground/85 block text-sm font-medium">
+                  Age (optional)
+                </label>
                 <input
                   type="number"
                   value={dependentForm.age}
@@ -400,12 +408,12 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                   min="0"
                   max="120"
                   placeholder="Age in years"
-                  className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-stone-700">
+                <label className="text-foreground/85 block text-sm font-medium">
                   Dietary Labels (optional)
                 </label>
                 <input
@@ -415,7 +423,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                     setDependentForm({ ...dependentForm, dietaryLabels: e.target.value })
                   }
                   placeholder="vegetarian, gluten-free, nut-free"
-                  className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
                 />
               </div>
             </div>
@@ -428,9 +436,9 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                   onChange={(e) =>
                     setDependentForm({ ...dependentForm, isChild: e.target.checked })
                   }
-                  className="h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                  className="border-border text-terracotta focus:ring-foreground/20 h-4 w-4 rounded"
                 />
-                <span className="text-sm text-stone-700">This is a child (under 18)</span>
+                <span className="text-foreground/85 text-sm">This is a child (under 18)</span>
               </label>
             </div>
 
@@ -438,7 +446,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
               <button
                 type="submit"
                 disabled={dependentSubmitting}
-                className="flex-1 rounded-lg bg-amber-700 px-4 py-2 font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+                className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
               >
                 {dependentSubmitting
                   ? 'Saving...'
@@ -450,7 +458,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                 type="button"
                 onClick={resetDependentForm}
                 disabled={dependentSubmitting}
-                className="flex-1 rounded-lg bg-stone-200 px-4 py-2 font-medium text-stone-700 hover:bg-stone-300 disabled:opacity-50"
+                className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-4 py-2 font-medium disabled:opacity-50"
               >
                 Cancel
               </button>
