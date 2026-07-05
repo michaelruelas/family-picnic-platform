@@ -41,7 +41,7 @@ jobs:
         run: bun run format:check
 
       - name: Test with coverage
-        run: bun test --coverage --path-ignore-patterns='**/playwright-tests/**'
+        run: bun run test:coverage -- --exclude='**/playwright-tests/**'
 
       - name: Prisma validate
         run: bun run db:validate
