@@ -18,7 +18,7 @@ export const POTLUCK_CATEGORY_LABELS: Record<string, string> = {
 
 export const HERO_IMAGES = {
   home: {
-    url: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=2400&q=80',
+    url: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1920&q=80',
     alt: 'Family toasting with raised wine glasses in golden hour light',
     credit: {
       photographer: 'Alasdair Elmes',
