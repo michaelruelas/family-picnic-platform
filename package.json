@@ -26,7 +26,7 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "postinstall": "prisma generate",
-    "prepare": "husky",
+    "prepare": "which husky && husky || true",
     "release:dry": "release-please --dry-run",
     "release:full": "release-please"
   },
