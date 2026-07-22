@@ -9,7 +9,7 @@ FROM base AS prisma
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY prisma ./prisma
-RUN bun run db:generate
+RUN bunx prisma generate
 
 FROM base AS builder
 WORKDIR /app
