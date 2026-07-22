@@ -16,7 +16,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=prisma /app/src/lib/generated ./src/lib/generated
 COPY . .
-RUN bun run build
+RUN rm -rf .next && bun run build
 
 FROM base AS runner
 WORKDIR /app
