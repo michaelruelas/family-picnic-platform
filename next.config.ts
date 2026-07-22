@@ -2,6 +2,9 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  typescript: {
+    ignoreBuildErrors: process.env.NEXT_IGNORE_BUILD_ERRORS === 'true',
+  },
   images: {
     remotePatterns: [{ protocol: 'https', hostname: 'picsum.photos' }],
   },
