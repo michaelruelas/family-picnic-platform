@@ -35,9 +35,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern="{{version}}"
-            type=semver,pattern="{{major}}.{{minor}}"
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.default_branch) }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{ github.ref == format('refs/heads/main', github.default_branch) }}
 
       - name: Build and push
         id: build
