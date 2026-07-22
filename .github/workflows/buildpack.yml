@@ -23,7 +23,7 @@ env:
 
 jobs:
   build-builder:
-    runs-on: pugquilt-runner-set
+    runs-on: family-picnic-runner-set
     steps:
       - name: Checkout
         uses: https://code.forgejo.org/actions/checkout@v4

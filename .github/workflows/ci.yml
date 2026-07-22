@@ -15,7 +15,7 @@ env:
 
 jobs:
   validate:
-    runs-on: pugquilt-runner-set
+    runs-on: family-picnic-runner-set
     timeout-minutes: 15
 
     strategy:
