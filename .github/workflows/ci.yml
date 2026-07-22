@@ -15,7 +15,7 @@ env:
 
 jobs:
   validate:
-    runs-on: forgejo-pugquilt-runner
+    runs-on: pugquilt-runner-set
     timeout-minutes: 15
 
     strategy:
