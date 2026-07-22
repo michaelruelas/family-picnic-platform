@@ -23,7 +23,6 @@ scripts
 *.yml
 *.yaml
 docker-compose*
-bun.lockb
 tsconfig.json
 eslint.config.*
 .prettierrc*
