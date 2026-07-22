@@ -37,7 +37,6 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{ github.ref == format('refs/heads/main', github.default_branch) }}
 
       - name: Build and push
         id: build
