@@ -1,3 +1,4 @@
+---
 name: Docker
 
 on:
@@ -29,7 +30,7 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" >> $GITHUB_OUTPUT
 
       - name: Log in to Container Registry
-        uses: redhat-actions/buildah-login@v1
+        uses: redhat-actions/podman-login@v1
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -37,7 +38,7 @@ jobs:
 
       - name: Build
         id: build
-        uses: redhat-actions/buildah-build@v2
+        uses: redhat-actions/buildah-build@v3
         with:
           image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -47,14 +48,10 @@ jobs:
           platforms: linux/arm64
 
       - name: Push
-        id: push
-        uses: redhat-actions/buildah-push@v1
-        with:
-          image: ${{ steps.build.outputs.image }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          extra-args: |
-            --platform=linux/arm64
+        run: |
+          buildah push \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tags }} \
+            docker://${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tags }}
 
       - name: Image digest
         run: 'echo "Pushed with tag: ${{ steps.meta.outputs.tags }}"'
