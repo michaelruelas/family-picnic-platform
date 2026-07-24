@@ -27,10 +27,6 @@ jobs:
           driver-opts: |
             namespace=buildx-builder
             loadbalance=true
-          buildkitd-config: |
-            [registry."ghcr.io"]
-              http = false
-              insecure = false
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
