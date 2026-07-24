@@ -4,7 +4,7 @@ name: Docker
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 env:
   REGISTRY: ghcr.io
@@ -51,7 +51,7 @@ jobs:
 
       - name: Build and push
         id: build
-        uses: docker/buildx-action@v6
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
