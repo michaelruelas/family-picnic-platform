@@ -16,6 +16,33 @@ patches:
   - path: postgres-patch.yaml
   - path: photoprism-patch.yaml
   - path: pvc-patch.yaml
+  - patch: |-
+      - op: remove
+        path: /spec/template/spec/topologySpreadConstraints
+    target:
+      kind: Deployment
+      name: nextjs
+  - patch: |-
+      - op: replace
+        path: /spec/refreshInterval
+        value: 1m
+    target:
+      kind: ExternalSecret
+      name: postgres-credentials
+  - patch: |-
+      - op: replace
+        path: /spec/refreshInterval
+        value: 1m
+    target:
+      kind: ExternalSecret
+      name: nextjs-secrets
+  - patch: |-
+      - op: replace
+        path: /spec/refreshInterval
+        value: 1m
+    target:
+      kind: ExternalSecret
+      name: photoprism-credentials
 
 images:
   - name: ghcr.io/family-picnic/platform
