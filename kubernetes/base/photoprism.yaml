@@ -57,7 +57,7 @@ spec:
                   name: postgres-credentials
                   key: password
             - name: PHOTOPRISM_ORIGINALS_LIMIT
-              value: "50000"
+              value: '50000'
             - name: PHOTOPRISM_IMPORT_PATH
               value: /photoprism/import
             - name: PHOTOPRISM_EXPORT_PATH
@@ -67,7 +67,7 @@ spec:
               cpu: 500m
               memory: 2Gi
             limits:
-              cpu: "4"
+              cpu: '4'
               memory: 8Gi
           securityContext:
             allowPrivilegeEscalation: false
@@ -96,6 +96,10 @@ spec:
               mountPath: /photoprism/database
             - name: temp
               mountPath: /tmp
+            - name: run
+              mountPath: /run
+            - name: var-run
+              mountPath: /var/run
       volumes:
         - name: originals
           persistentVolumeClaim:
@@ -104,7 +108,14 @@ spec:
           persistentVolumeClaim:
             claimName: photoprism-database
         - name: temp
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: run
+          emptyDir:
+            sizeLimit: 10Mi
+        - name: var-run
+          emptyDir:
+            sizeLimit: 10Mi
 ---
 apiVersion: v1
 kind: Service

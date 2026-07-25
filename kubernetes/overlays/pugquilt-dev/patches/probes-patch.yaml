@@ -1,0 +1,12 @@
+- op: replace
+  path: /spec/template/spec/containers/0/readinessProbe/httpGet/path
+  value: /
+- op: replace
+  path: /spec/template/spec/containers/0/livenessProbe/httpGet/path
+  value: /
+- op: replace
+  path: /spec/template/spec/containers/0/readinessProbe/initialDelaySeconds
+  value: 15
+- op: replace
+  path: /spec/template/spec/containers/0/livenessProbe/initialDelaySeconds
+  value: 30
