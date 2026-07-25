@@ -18,3 +18,11 @@ spec:
           env:
             - name: NODE_ENV
               value: development
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nextjs
+spec:
+  minReplicas: 1
+  maxReplicas: 3

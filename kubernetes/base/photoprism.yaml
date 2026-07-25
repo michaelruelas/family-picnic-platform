@@ -5,7 +5,6 @@ metadata:
   labels:
     app.kubernetes.io/name: photoprism
     app.kubernetes.io/component: media
-    app.kubernetes.io/part-of: family-picnic
 spec:
   replicas: 1
   revisionHistoryLimit: 3
@@ -20,7 +19,6 @@ spec:
       labels:
         app.kubernetes.io/name: photoprism
         app.kubernetes.io/component: media
-        app.kubernetes.io/part-of: family-picnic
     spec:
       securityContext:
         runAsNonRoot: true
@@ -44,11 +42,11 @@ spec:
                   name: photoprism-credentials
                   key: admin-password
             - name: PHOTOPRISM_SITE_URL
-              value: https://photos.family.example.com/
+              value: https://photos.family-picnic.dev.qubitquilt.dev/
             - name: PHOTOPRISM_DATABASE_DRIVER
               value: postgres
             - name: PHOTOPRISM_DATABASE_SERVER
-              value: postgres.family-picnic.svc.cluster.local:5432
+              value: postgres:5432
             - name: PHOTOPRISM_DATABASE_NAME
               value: photoprism
             - name: PHOTOPRISM_DATABASE_USER
@@ -59,7 +57,7 @@ spec:
                   name: postgres-credentials
                   key: password
             - name: PHOTOPRISM_ORIGINALS_LIMIT
-              value: '50000'
+              value: "50000"
             - name: PHOTOPRISM_IMPORT_PATH
               value: /photoprism/import
             - name: PHOTOPRISM_EXPORT_PATH
@@ -69,7 +67,7 @@ spec:
               cpu: 500m
               memory: 2Gi
             limits:
-              cpu: '4'
+              cpu: "4"
               memory: 8Gi
           securityContext:
             allowPrivilegeEscalation: false
@@ -155,16 +153,6 @@ spec:
     requests:
       storage: 100Gi
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: photoprism-credentials
-  labels:
-    app.kubernetes.io/name: photoprism
-type: Opaque
-stringData:
-  admin-password: REPLACE_WITH_SECURE_PASSWORD
----
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -189,6 +177,13 @@ spec:
     - Ingress
     - Egress
   ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
     - from:
         - podSelector:
             matchLabels:

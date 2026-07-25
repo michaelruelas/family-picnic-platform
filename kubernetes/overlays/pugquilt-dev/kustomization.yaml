@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: family-picnic-dev
+
+commonLabels:
+  app.kubernetes.io/part-of: family-picnic
+  environment: dev
+  cluster: pugquilt
+
+resources:
+  - ../../base
+
+patches:
+  - path: nextjs-patch.yaml
+  - path: postgres-patch.yaml
+  - path: photoprism-patch.yaml
+  - path: pvc-patch.yaml
+
+images:
+  - name: ghcr.io/family-picnic/platform
+    newName: ghcr.io/family-picnic/platform
+    newTag: dev
+  - name: photoprism/photoprism
+    newName: photoprism/photoprism
+    newTag: latest

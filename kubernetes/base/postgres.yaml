@@ -15,6 +15,23 @@ spec:
       targetPort: 5432
       protocol: TCP
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: database
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -22,7 +39,6 @@ metadata:
   labels:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/component: database
-    app.kubernetes.io/part-of: family-picnic
 spec:
   serviceName: postgres-headless
   replicas: 3
@@ -72,7 +88,7 @@ spec:
               cpu: 500m
               memory: 1Gi
             limits:
-              cpu: '2'
+              cpu: "2"
               memory: 2Gi
           securityContext:
             allowPrivilegeEscalation: false
@@ -105,11 +121,18 @@ spec:
               mountPath: /tmp
             - name: run
               mountPath: /var/run/postgresql
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
         - name: run
           emptyDir: {}
+        - name: init-scripts
+          configMap:
+            name: postgres-init
+            optional: true
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -122,14 +145,14 @@ spec:
             storage: 50Gi
 ---
 apiVersion: v1
-kind: Secret
+kind: ConfigMap
 metadata:
-  name: postgres-credentials
+  name: postgres-init
   labels:
     app.kubernetes.io/name: postgres
-type: Opaque
-stringData:
-  password: REPLACE_WITH_SECURE_PASSWORD
+data:
+  01-databases.sql: |
+    CREATE DATABASE photoprism;
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -159,6 +182,9 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: nextjs
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: photoprism
       ports:
         - protocol: TCP
           port: 5432

@@ -1,0 +1,33 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: nextjs-route
+  labels:
+    app.kubernetes.io/name: nextjs
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`family-picnic.dev.qubitquilt.dev`) && PathPrefix(`/`)
+      services:
+        - name: nextjs
+          port: 80
+  tls: {}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: photoprism-route
+  labels:
+    app.kubernetes.io/name: photoprism
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`photos.family-picnic.dev.qubitquilt.dev`) && PathPrefix(`/`)
+      services:
+        - name: photoprism
+          port: 8080
+  tls: {}

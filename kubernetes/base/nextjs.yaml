@@ -5,7 +5,6 @@ metadata:
   labels:
     app.kubernetes.io/name: nextjs
     app.kubernetes.io/component: frontend
-    app.kubernetes.io/part-of: family-picnic
 spec:
   replicas: 2
   revisionHistoryLimit: 5
@@ -23,7 +22,6 @@ spec:
       labels:
         app.kubernetes.io/name: nextjs
         app.kubernetes.io/component: frontend
-        app.kubernetes.io/part-of: family-picnic
     spec:
       securityContext:
         runAsNonRoot: true
@@ -46,45 +44,43 @@ spec:
             - containerPort: 3000
               protocol: TCP
           env:
-            - name: NODE_ENV
-              value: production
             - name: PORT
-              value: '3000'
+              value: "3000"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: nextjs-secrets
-                  key: DATABASE_URL
+                  key: database-url
             - name: AUTH_GOOGLE_ID
               valueFrom:
                 secretKeyRef:
                   name: nextjs-secrets
-                  key: AUTH_GOOGLE_ID
+                  key: auth-google-id
             - name: AUTH_GOOGLE_SECRET
               valueFrom:
                 secretKeyRef:
                   name: nextjs-secrets
-                  key: AUTH_GOOGLE_SECRET
+                  key: auth-google-secret
             - name: NEXTAUTH_SECRET
               valueFrom:
                 secretKeyRef:
                   name: nextjs-secrets
-                  key: NEXTAUTH_SECRET
+                  key: nextauth-secret
             - name: SENDGRID_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: nextjs-secrets
-                  key: SENDGRID_API_KEY
+                  key: sendgrid-api-key
             - name: TWILIO_ACCOUNT_SID
               valueFrom:
                 secretKeyRef:
                   name: nextjs-secrets
-                  key: TWILIO_ACCOUNT_SID
+                  key: twilio-account-sid
             - name: TWILIO_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: nextjs-secrets
-                  key: TWILIO_AUTH_TOKEN
+                  key: twilio-auth-token
           envFrom:
             - configMapRef:
                 name: nextjs-env
@@ -93,7 +89,7 @@ spec:
               cpu: 250m
               memory: 512Mi
             limits:
-              cpu: '1'
+              cpu: "1"
               memory: 1Gi
           securityContext:
             allowPrivilegeEscalation: false
@@ -145,7 +141,6 @@ metadata:
   name: nextjs
   labels:
     app.kubernetes.io/name: nextjs
-    app.kubernetes.io/component: frontend
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -193,37 +188,6 @@ spec:
       app.kubernetes.io/name: nextjs
 ---
 apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: nextjs
-  labels:
-    app.kubernetes.io/name: nextjs
-  annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
-    nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
-    nginx.ingress.kubernetes.io/proxy-body-size: '50m'
-    nginx.ingress.kubernetes.io/proxy-read-timeout: '300'
-    nginx.ingress.kubernetes.io/proxy-send-timeout: '300'
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - family.example.com
-      secretName: nextjs-tls-cert
-  rules:
-    - host: family.example.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: nextjs
-                port:
-                  number: 80
----
-apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: nextjs-netpol
@@ -238,7 +202,7 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: ingress-nginx
+              kubernetes.io/metadata.name: kube-system
       ports:
         - protocol: TCP
           port: 3000
