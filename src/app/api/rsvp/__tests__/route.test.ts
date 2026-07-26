@@ -226,9 +226,7 @@ describe('POST /api/rsvp', () => {
       maxCapacity: null,
     } as never);
     p.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
-    p.$transaction.mockImplementation(
-      async (fn: (tx: typeof p) => unknown) => fn(p) as never,
-    );
+    p.$transaction.mockImplementation(async (fn: (tx: typeof p) => unknown) => fn(p) as never);
     p.rSVP.findUnique.mockResolvedValue({
       id: 'r-1',
       status: 'CONFIRMED',
@@ -262,9 +260,7 @@ describe('POST /api/rsvp', () => {
       maxCapacity: null,
     } as never);
     p.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
-    p.$transaction.mockImplementation(
-      async (fn: (tx: typeof p) => unknown) => fn(p) as never,
-    );
+    p.$transaction.mockImplementation(async (fn: (tx: typeof p) => unknown) => fn(p) as never);
     p.rSVP.findUnique.mockResolvedValue({
       id: 'r-1',
       status: 'CONFIRMED',

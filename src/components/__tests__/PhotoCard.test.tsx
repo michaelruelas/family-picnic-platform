@@ -8,9 +8,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('next/image', () => ({
-  default: ({ src, alt }: { src: string; alt: string }) => (
-    <img src={src} alt={alt} />
-  ),
+  default: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />,
 }));
 
 vi.mock('~/hooks', () => ({
@@ -80,7 +78,9 @@ describe('PhotoCard', () => {
   });
 
   it('shows delete button for admin', async () => {
-    const { container } = render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-2" userRole="ADMIN" />);
+    const { container } = render(
+      <PhotoCard photo={basePhoto} eventName="Picnic" userId="u-2" userRole="ADMIN" />,
+    );
     const menuTrigger = container.querySelector('button svg')!.parentElement!;
     fireEvent.click(menuTrigger);
     expect(screen.getByText('Delete')).toBeInTheDocument();

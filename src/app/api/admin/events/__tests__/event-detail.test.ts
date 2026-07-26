@@ -13,7 +13,10 @@ vi.mock('next/server', () => ({
     json: (body: unknown, init?: ResponseInit) =>
       new Response(JSON.stringify(body), {
         status: init?.status ?? 200,
-        headers: { 'content-type': 'application/json', ...(init?.headers as Record<string, string>) },
+        headers: {
+          'content-type': 'application/json',
+          ...(init?.headers as Record<string, string>),
+        },
       }),
   },
 }));
@@ -23,7 +26,11 @@ import { GET, PATCH, DELETE } from '~/app/api/admin/events/[id]/route';
 
 const mockedSession = vi.mocked(getServerSession);
 const p = prismaMock as unknown as {
-  event: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
+  event: {
+    findUnique: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+  };
 };
 
 function makePatchReq(body: unknown): Request {

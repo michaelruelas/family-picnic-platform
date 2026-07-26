@@ -11,7 +11,10 @@ vi.mock('next/server', () => ({
     json: (body: unknown, init?: ResponseInit) =>
       new Response(JSON.stringify(body), {
         status: init?.status ?? 200,
-        headers: { 'content-type': 'application/json', ...(init?.headers as Record<string, string>) },
+        headers: {
+          'content-type': 'application/json',
+          ...(init?.headers as Record<string, string>),
+        },
       }),
   },
 }));
@@ -42,14 +45,18 @@ beforeEach(() => {
 describe('POST /api/photo-upload-url', () => {
   it('returns 401 when no session', async () => {
     mockedSession.mockResolvedValue(null);
-    const res = await POST(makeReq({ eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }));
+    const res = await POST(
+      makeReq({ eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }),
+    );
     expect(res.status).toBe(401);
   });
 
   it('returns 503 when S3 is not configured', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     mockedS3.mockReturnValue(false);
-    const res = await POST(makeReq({ eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }));
+    const res = await POST(
+      makeReq({ eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }),
+    );
     expect(res.status).toBe(503);
   });
 

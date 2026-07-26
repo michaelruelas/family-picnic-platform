@@ -15,7 +15,10 @@ vi.mock('next/server', () => ({
     json: (body: unknown, init?: ResponseInit) =>
       new Response(JSON.stringify(body), {
         status: init?.status ?? 200,
-        headers: { 'content-type': 'application/json', ...(init?.headers as Record<string, string>) },
+        headers: {
+          'content-type': 'application/json',
+          ...(init?.headers as Record<string, string>),
+        },
       }),
   },
 }));
@@ -43,12 +46,7 @@ function makeReq(body: unknown): Request {
 beforeEach(() => {
   vi.clearAllMocks();
   mockedSession.mockReset();
-  for (const fn of [
-    p.user.update,
-    p.user.findUnique,
-    p.household.create,
-    p.dependent.create,
-  ]) {
+  for (const fn of [p.user.update, p.user.findUnique, p.household.create, p.dependent.create]) {
     fn.mockReset();
   }
 });

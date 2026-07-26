@@ -22,7 +22,13 @@ const baseSlot = {
   slotType: SlotType.UNLIMITED,
   maxSignups: null,
   currentSignups: 0,
-  signups: [] as Array<{ id: string; dishName: string; servings: number; dietaryLabels: string[]; rsvp: { userId: string } }>,
+  signups: [] as Array<{
+    id: string;
+    dishName: string;
+    servings: number;
+    dietaryLabels: string[];
+    rsvp: { userId: string };
+  }>,
 };
 
 beforeEach(() => {

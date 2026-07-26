@@ -110,21 +110,19 @@ describe('RSVPForm', () => {
         isPast={false}
         currentAttending={50}
         maxCapacity={50}
-        existingRsvp={{ status: 'WAITLISTED', headcount: 1, dietaryNotes: null, waitlistPosition: 3 }}
+        existingRsvp={{
+          status: 'WAITLISTED',
+          headcount: 1,
+          dietaryNotes: null,
+          waitlistPosition: 3,
+        }}
       />,
     );
     expect(screen.getByText(/On Waitlist/i)).toBeInTheDocument();
   });
 
   it('shows full event message when capacity reached', () => {
-    render(
-      <RSVPForm
-        eventId="e1"
-        isPast={false}
-        currentAttending={50}
-        maxCapacity={50}
-      />,
-    );
+    render(<RSVPForm eventId="e1" isPast={false} currentAttending={50} maxCapacity={50} />);
     expect(screen.getByText(/This event is full/i)).toBeInTheDocument();
   });
 });

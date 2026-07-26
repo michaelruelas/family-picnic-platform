@@ -15,7 +15,10 @@ vi.mock('next/server', () => ({
     json: (body: unknown, init?: ResponseInit) =>
       new Response(JSON.stringify(body), {
         status: init?.status ?? 200,
-        headers: { 'content-type': 'application/json', ...(init?.headers as Record<string, string>) },
+        headers: {
+          'content-type': 'application/json',
+          ...(init?.headers as Record<string, string>),
+        },
       }),
   },
 }));
@@ -80,9 +83,7 @@ describe('POST /api/admin/invitations/send', () => {
     p.invitation.create.mockResolvedValue({ id: 'inv-1' } as never);
     p.user.findMany.mockResolvedValue([{ id: 'u-2' }, { id: 'u-3' }] as never);
     p.communicationLog.create.mockResolvedValue({} as never);
-    const res = await POSTSend(
-      makeReq({ eventId: 'e-1', householdId: 'h-1', channel: 'SMS' }),
-    );
+    const res = await POSTSend(makeReq({ eventId: 'e-1', householdId: 'h-1', channel: 'SMS' }));
     expect(res.status).toBe(200);
     expect(p.communicationLog.create).toHaveBeenCalledTimes(2);
   });

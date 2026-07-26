@@ -28,7 +28,11 @@ import { POST as POSTCsv } from '~/app/api/admin/csv-import/route';
 
 const mockedSession = vi.mocked(getServerSession);
 const p = prismaMock as unknown as {
-  user: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+  user: {
+    findUnique: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
   event: { findUnique: ReturnType<typeof vi.fn> };
   adminAuditLog: { findMany: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
   household: { create: ReturnType<typeof vi.fn> };
@@ -123,9 +127,7 @@ describe('GET /api/admin/audit-log', () => {
 describe('POST /api/admin/csv-import', () => {
   it('returns 401 when not admin', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
-    const res = await POSTCsv(
-      makeReq('http://x', { eventId: 'e-1', households: [] }),
-    );
+    const res = await POSTCsv(makeReq('http://x', { eventId: 'e-1', households: [] }));
     expect(res.status).toBe(401);
   });
 

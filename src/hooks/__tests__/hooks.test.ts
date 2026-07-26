@@ -402,7 +402,10 @@ describe('useDependentMutations', () => {
   it('wires onSuccess for create to invalidate dependent.list and household.getById', async () => {
     const { useDependentMutations } = await import('~/hooks/useHousehold');
     renderHook(() => useDependentMutations());
-    const opts = (mockQueries.dependent.create.useMutation.mock.calls[0] as unknown as Array<{ onSuccess: () => void }> | undefined)?.[0];
+    const opts = (
+      mockQueries.dependent.create.useMutation.mock.calls[0] as unknown as
+        Array<{ onSuccess: () => void }> | undefined
+    )?.[0];
     expect(opts).toBeDefined();
     opts!.onSuccess();
     expect(mockUseUtils).toHaveBeenCalled();
@@ -411,7 +414,10 @@ describe('useDependentMutations', () => {
   it('wires onSuccess for update to invalidate dependent.list and household.getById', async () => {
     const { useDependentMutations } = await import('~/hooks/useHousehold');
     renderHook(() => useDependentMutations());
-    const opts = (mockQueries.dependent.update.useMutation.mock.calls[0] as unknown as Array<{ onSuccess: () => void }> | undefined)?.[0];
+    const opts = (
+      mockQueries.dependent.update.useMutation.mock.calls[0] as unknown as
+        Array<{ onSuccess: () => void }> | undefined
+    )?.[0];
     expect(opts).toBeDefined();
     opts!.onSuccess();
     expect(mockUseUtils).toHaveBeenCalled();
@@ -420,7 +426,10 @@ describe('useDependentMutations', () => {
   it('wires onSuccess for remove to invalidate dependent.list and household.getById', async () => {
     const { useDependentMutations } = await import('~/hooks/useHousehold');
     renderHook(() => useDependentMutations());
-    const opts = (mockQueries.dependent.delete.useMutation.mock.calls[0] as unknown as Array<{ onSuccess: () => void }> | undefined)?.[0];
+    const opts = (
+      mockQueries.dependent.delete.useMutation.mock.calls[0] as unknown as
+        Array<{ onSuccess: () => void }> | undefined
+    )?.[0];
     expect(opts).toBeDefined();
     opts!.onSuccess();
     expect(mockUseUtils).toHaveBeenCalled();

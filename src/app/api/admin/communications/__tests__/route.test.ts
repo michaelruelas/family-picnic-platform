@@ -30,7 +30,10 @@ vi.mock('next/server', async (importOriginal) => {
       json: (body: unknown, init?: ResponseInit) =>
         new Response(JSON.stringify(body), {
           status: init?.status ?? 200,
-          headers: { 'content-type': 'application/json', ...(init?.headers as Record<string, string>) },
+          headers: {
+            'content-type': 'application/json',
+            ...(init?.headers as Record<string, string>),
+          },
         }),
     },
   };

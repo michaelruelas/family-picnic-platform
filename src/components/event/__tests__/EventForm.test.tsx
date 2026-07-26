@@ -72,7 +72,9 @@ describe('EventForm', () => {
     } as never);
     render(<EventForm mode="create" />);
     fireEvent.change(screen.getByLabelText(/event name/i), { target: { value: 'New' } });
-    fireEvent.change(screen.getByLabelText(/event date/i), { target: { value: '2026-08-15T10:00' } });
+    fireEvent.change(screen.getByLabelText(/event date/i), {
+      target: { value: '2026-08-15T10:00' },
+    });
     fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
     const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
     fireEvent.submit(form);
@@ -114,7 +116,9 @@ describe('EventForm', () => {
     } as never);
     render(<EventForm mode="create" />);
     fireEvent.change(screen.getByLabelText(/event name/i), { target: { value: 'New' } });
-    fireEvent.change(screen.getByLabelText(/event date/i), { target: { value: '2026-08-15T10:00' } });
+    fireEvent.change(screen.getByLabelText(/event date/i), {
+      target: { value: '2026-08-15T10:00' },
+    });
     fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
     const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
     fireEvent.submit(form);
@@ -127,7 +131,9 @@ describe('EventForm', () => {
     mockFetch.mockRejectedValue(new Error('Network error') as never);
     render(<EventForm mode="create" />);
     fireEvent.change(screen.getByLabelText(/event name/i), { target: { value: 'New' } });
-    fireEvent.change(screen.getByLabelText(/event date/i), { target: { value: '2026-08-15T10:00' } });
+    fireEvent.change(screen.getByLabelText(/event date/i), {
+      target: { value: '2026-08-15T10:00' },
+    });
     fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
     const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
     fireEvent.submit(form);

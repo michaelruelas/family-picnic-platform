@@ -258,8 +258,7 @@ describe('dev credentials provider', () => {
       vi.stubEnv('DEV_AUTH_ENABLED', 'true');
       const { authOptions } = await import('../auth');
       const devProvider = authOptions.providers.find((p) => p.id === 'dev-credentials') as
-        | { authorize: (creds: Record<string, unknown>) => Promise<unknown> }
-        | undefined;
+        { authorize: (creds: Record<string, unknown>) => Promise<unknown> } | undefined;
       if (!devProvider) throw new Error('dev provider missing');
       return devProvider;
     }
@@ -268,8 +267,7 @@ describe('dev credentials provider', () => {
       vi.stubEnv('DEV_AUTH_ENABLED', 'true');
       const { authOptions } = await import('../auth');
       const devProvider = authOptions.providers.find((p) => p.id === 'dev-credentials') as
-        | { authorize: (creds: Record<string, unknown>) => Promise<unknown> }
-        | undefined;
+        { authorize: (creds: Record<string, unknown>) => Promise<unknown> } | undefined;
       vi.stubEnv('DEV_AUTH_ENABLED', 'false');
       const result = await devProvider!.authorize({ username: 'admin', password: 'pass' });
       expect(result).toBeNull();
