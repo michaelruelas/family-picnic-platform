@@ -252,4 +252,122 @@ describe('dev credentials provider', () => {
     const devProvider = authOptions.providers.find((p) => p.id === 'dev-credentials');
     expect(devProvider).toBeUndefined();
   });
+
+  describe('authorize function', () => {
+    async function getDevProvider() {
+      vi.stubEnv('DEV_AUTH_ENABLED', 'true');
+      const { authOptions } = await import('../auth');
+      const devProvider = authOptions.providers.find((p) => p.id === 'dev-credentials') as
+        | { authorize: (creds: Record<string, unknown>) => Promise<unknown> }
+        | undefined;
+      if (!devProvider) throw new Error('dev provider missing');
+      return devProvider;
+    }
+
+    it('returns null when DEV_AUTH_ENABLED is not true at authorize time', async () => {
+      vi.stubEnv('DEV_AUTH_ENABLED', 'true');
+      const { authOptions } = await import('../auth');
+      const devProvider = authOptions.providers.find((p) => p.id === 'dev-credentials') as
+        | { authorize: (creds: Record<string, unknown>) => Promise<unknown> }
+        | undefined;
+      vi.stubEnv('DEV_AUTH_ENABLED', 'false');
+      const result = await devProvider!.authorize({ username: 'admin', password: 'pass' });
+      expect(result).toBeNull();
+    });
+
+    it('returns null when credentials are missing', async () => {
+      const devProvider = await getDevProvider();
+      expect(await devProvider.authorize({})).toBeNull();
+      expect(await devProvider.authorize({ username: 'u' })).toBeNull();
+      expect(await devProvider.authorize({ password: 'p' })).toBeNull();
+    });
+
+    it('signs in as ADMIN when username/password match dev credentials', async () => {
+      vi.stubEnv('DEV_AUTH_USERNAME', 'admin');
+      vi.stubEnv('DEV_AUTH_PASSWORD', 'pass');
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: 'u-1',
+        email: 'dev-admin@family-picnic.local',
+        name: 'admin',
+      } as never);
+      const devProvider = await getDevProvider();
+      const result = await devProvider.authorize({ username: 'admin', password: 'pass' });
+      expect(result).toEqual({
+        id: 'u-1',
+        email: 'dev-admin@family-picnic.local',
+        name: 'admin',
+      });
+    });
+
+    it('creates dev-admin user on first sign-in if not in database', async () => {
+      vi.stubEnv('DEV_AUTH_USERNAME', 'admin');
+      vi.stubEnv('DEV_AUTH_PASSWORD', 'pass');
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.create).mockResolvedValue({
+        id: 'u-new',
+        email: 'dev-admin@family-picnic.local',
+        name: 'admin',
+      } as never);
+      const devProvider = await getDevProvider();
+      const result = await devProvider.authorize({ username: 'admin', password: 'pass' });
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: { email: 'dev-admin@family-picnic.local', name: 'admin', role: 'ADMIN' },
+      });
+      expect(result).toEqual({
+        id: 'u-new',
+        email: 'dev-admin@family-picnic.local',
+        name: 'admin',
+      });
+    });
+
+    it('falls through to prisma lookup when dev creds do not match', async () => {
+      vi.stubEnv('DEV_AUTH_USERNAME', 'admin');
+      vi.stubEnv('DEV_AUTH_PASSWORD', 'pass');
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.user.findFirst).mockResolvedValue({
+        id: 'u-2',
+        email: 'member@example.com',
+        name: 'Member',
+      } as never);
+      const devProvider = await getDevProvider();
+      const result = await devProvider.authorize({
+        username: 'member@example.com',
+        password: 'pwd',
+      });
+      expect(prisma.user.findFirst).toHaveBeenCalledWith({
+        where: { email: 'member@example.com', devPassword: 'pwd', deletedAt: null },
+      });
+      expect(result).toEqual({
+        id: 'u-2',
+        email: 'member@example.com',
+        name: 'Member',
+      });
+    });
+
+    it('returns null when no user matches prisma lookup', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      const devProvider = await getDevProvider();
+      const result = await devProvider.authorize({
+        username: 'nobody@example.com',
+        password: 'wrong',
+      });
+      expect(result).toBeNull();
+    });
+
+    it('returns null when dev creds are not configured (env empty) and lookup fails', async () => {
+      delete process.env.DEV_AUTH_USERNAME;
+      delete process.env.DEV_AUTH_PASSWORD;
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      const devProvider = await getDevProvider();
+      const result = await devProvider.authorize({
+        username: 'u@example.com',
+        password: 'p',
+      });
+      expect(result).toBeNull();
+    });
+  });
 });

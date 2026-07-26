@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import Modal from '../Modal';
 
 vi.mock('react-dom', async () => {
-  const actual = await vi.importActual('react-dom');
+  const actual = await vi.importActual<typeof import('react-dom')>('react-dom');
   return { ...actual, createPortal: (node: React.ReactNode) => node };
 });
 
@@ -115,29 +115,95 @@ describe('Modal', () => {
   });
 });
 
-describe('Modal - server side rendering', () => {
+describe('Modal focus trap', () => {
+  const onClose = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('does not render on server (typeof window === undefined)', () => {
-    vi.stubGlobal('window', undefined);
-    // re-mock createPortal since window is undefined
-    vi.mock('react-dom', async () => {
-      const actual = await vi.importActual('react-dom');
-      return { ...actual, createPortal: (node: React.ReactNode) => node };
-    });
-    // Dynamic import to get fresh Modal
-    const { render: serverRender, cleanup } = vi.hoisted(() => ({
-      render: (ui: React.ReactElement) => {
-        // Simulate SSR: just call the module directly
-        return null;
-      },
-      cleanup: () => {},
-    }));
+  function setupFocusTrap() {
+    render(
+      <Modal isOpen={true} onClose={onClose}>
+        <button>First</button>
+        <button>Second</button>
+        <button>Third</button>
+      </Modal>,
+    );
+    // DOM order: Close button (rendered first inside modal), then children wrapper with First, Second, Third
+    const dialog = screen.getByRole('dialog');
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    return {
+      focusable,
+      firstFocusable: focusable[0],
+      lastFocusable: focusable[focusable.length - 1],
+    };
+  }
 
-    // Just test the guard directly
-    const check = typeof window === 'undefined' ? null : 'not null';
-    expect(check).toBeNull();
+  it('wraps focus from last to first on Tab when on last element', () => {
+    const { lastFocusable, firstFocusable } = setupFocusTrap();
+    lastFocusable!.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(firstFocusable);
+  });
+
+  it('wraps focus from first to last on Shift+Tab when on first element', () => {
+    const { firstFocusable, lastFocusable } = setupFocusTrap();
+    firstFocusable!.focus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(lastFocusable);
+  });
+
+  it('does not wrap when Tab pressed on a middle element', () => {
+    const { focusable } = setupFocusTrap();
+    const middle = focusable[1]!;
+    middle.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(middle);
+  });
+});
+
+describe('Modal variants', () => {
+  const onClose = vi.fn();
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('renders bottom-sheet variant', () => {
+    render(
+      <Modal isOpen={true} onClose={onClose} variant="bottom-sheet">
+        <p>Sheet</p>
+      </Modal>,
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('renders different size variants', () => {
+    const { rerender } = render(
+      <Modal isOpen={true} onClose={onClose} size="sm">
+        <p>SM</p>
+      </Modal>,
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    rerender(
+      <Modal isOpen={true} onClose={onClose} size="lg">
+        <p>LG</p>
+      </Modal>,
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    rerender(
+      <Modal isOpen={true} onClose={onClose} size="xl">
+        <p>XL</p>
+      </Modal>,
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
