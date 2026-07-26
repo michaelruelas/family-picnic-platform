@@ -12,5 +12,4 @@ resources:
   - postgres.yaml
   - photoprism.yaml
   - configmap.yaml
-  - external-secrets.yaml
   - ingressroute.yaml

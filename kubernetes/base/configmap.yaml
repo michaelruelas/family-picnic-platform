@@ -11,5 +11,5 @@ data:
   NEXT_PUBLIC_APP_URL: https://family-picnic.dev.qubitquilt.dev
   S3_BUCKET: family-picnic-photos
   S3_REGION: us-east-1
-  S3_ENDPOINT: ""
+  S3_ENDPOINT: ''
   PHOTOPRISM_URL: http://photoprism:8080

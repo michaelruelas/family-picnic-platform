@@ -2,12 +2,19 @@
 #
 # populate-openbao-secrets.sh
 #
-# Populates the OpenBao secret paths required by the family-picnic-dev
-# ArgoCD Application. Runs `bao kv put` via `kubectl exec` into the
-# openbao-0 pod, so no local OpenBao CLI is required.
+# Idempotently populates the OpenBao secret paths required by the
+# family-picnic-dev ArgoCD Application. Runs `bao kv get` / `bao kv put`
+# via `kubectl exec` into the openbao-0 pod, so no local OpenBao CLI is
+# required.
 #
-# Generated values are also written to ./family-picnic-dev-secrets.txt
-# (mode 0600) so they can be referenced later. That file is gitignored.
+# Precedence for each value: existing OpenBao > existing .env.dev > generate
+# or empty. Re-running the script never wipes a value that is already set
+# somewhere; it only fills in the gaps.
+#
+# Generated random values are also written to
+# ./family-picnic-dev-secrets.txt (mode 0600, gitignored) so they can be
+# referenced later. A matching ./.env.dev (mode 0600, gitignored) is kept
+# in sync for `bun run dev` against a port-forwarded cluster.
 #
 # Usage:
 #   ./scripts/populate-openbao-secrets.sh
@@ -17,6 +24,9 @@
 #   OPENBAO_POD        default: openbao-0
 #   SECRET_PREFIX      default: secret/family-picnic-dev
 #   LOCAL_OUTPUT       default: ./family-picnic-dev-secrets.txt
+#   ENV_DEV_OUTPUT     default: ./.env.dev
+#   APP_DOMAIN         default: family-picnic.dev.qubitquilt.dev
+#   PHOTOS_DOMAIN      default: photos.family-picnic.dev.qubitquilt.dev
 
 set -euo pipefail
 
@@ -40,6 +50,11 @@ if ! command -v openssl >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq not found in PATH" >&2
+  exit 1
+fi
+
 if ! kubectl -n "$OPENBAO_NAMESPACE" get pod "$OPENBAO_POD" >/dev/null 2>&1; then
   echo "ERROR: pod $OPENBAO_POD not found in namespace $OPENBAO_NAMESPACE" >&2
   echo "Set OPENBAO_POD / OPENBAO_NAMESPACE if it lives elsewhere." >&2
@@ -52,20 +67,141 @@ bao_exec() {
   kubectl -n "$OPENBAO_NAMESPACE" exec -i "$OPENBAO_POD" -- bao "$@"
 }
 
+# bao_get_json <path>
+# Prints the JSON body of an OpenBao KV v2 secret, or empty string if unset.
+bao_get_json() {
+  local path="$1"
+  bao_exec kv get -format=json "$path" 2>/dev/null || true
+}
+
+# extract <json> <key>
+# Pulls .data.data.<key> out of an OpenBao KV v2 response.
+extract() {
+  local json="$1" key="$2"
+  [ -n "$json" ] || return 0
+  printf '%s' "$json" | jq -r --arg k "$key" '.data.data[$k] // empty' 2>/dev/null || true
+}
+
+# env_dev_get <key>
+# Reads <key>=... from $ENV_DEV_OUTPUT, stripping surrounding quotes.
+env_dev_get() {
+  local key="$1"
+  [ -f "$ENV_DEV_OUTPUT" ] || return 0
+  grep -E "^${key}=" "$ENV_DEV_OUTPUT" 2>/dev/null \
+    | head -n 1 \
+    | cut -d'=' -f2- \
+    | sed -E "s/^['\"]|['\"]$//g" \
+    || true
+}
+
+# resolve <openbao_value> <env_dev_value> <generator>
+# Returns the first non-empty value, or runs the generator.
+resolve() {
+  local bao_val="$1" env_val="$2" generator="$3"
+  if [ -n "$bao_val" ]; then
+    printf '%s' "$bao_val"
+  elif [ -n "$env_val" ]; then
+    printf '%s' "$env_val"
+  else
+    eval "$generator"
+  fi
+}
+
 gen_secret() {
   local bytes="${1:-32}"
   openssl rand -base64 "$bytes" 2>/dev/null | tr -d '/+=\n' | head -c "$bytes"
 }
 
-# --- generate ----------------------------------------------------------------
+# --- read existing state -----------------------------------------------------
 
-echo "==> Generating random secrets for ${SECRET_PREFIX}/{postgres,nextjs,photoprism}"
+echo "==> Reading existing secrets from ${SECRET_PREFIX}/* and ${ENV_DEV_OUTPUT}"
 
-PG_PASS="$(gen_secret 32)"
-NEXTAUTH_SECRET="$(gen_secret 32)"
-PHOTOPRISM_ADMIN_PASS="$(gen_secret 16)"
+POSTGRES_JSON=$(bao_get_json "${SECRET_PREFIX}/postgres")
+NEXTJS_JSON=$(bao_get_json "${SECRET_PREFIX}/nextjs")
+PHOTOPRISM_JSON=$(bao_get_json "${SECRET_PREFIX}/photoprism")
 
-DATABASE_URL="postgresql://postgres:${PG_PASS}@postgres:5432/familypicnic?schema=public"
+# Track which values were freshly generated so we can summarize at the end.
+GENERATED=()
+PRESERVED=()
+
+# --- resolve each value ------------------------------------------------------
+
+# Random-generated secrets: OpenBao > .env.dev > openssl rand
+# External-service keys: OpenBao > .env.dev > empty (never auto-generate)
+
+PG_PASS=$(resolve \
+  "$(extract "$POSTGRES_JSON" password)" \
+  "$(env_dev_get PG_PASS)" \
+  "gen_secret 32")
+if [ -n "$(extract "$POSTGRES_JSON" password)" ] || [ -n "$(env_dev_get PG_PASS)" ]; then
+  PRESERVED+=("postgres/password")
+else
+  GENERATED+=("postgres/password")
+fi
+
+NEXTAUTH_SECRET=$(resolve \
+  "$(extract "$NEXTJS_JSON" nextauth-secret)" \
+  "$(env_dev_get NEXTAUTH_SECRET)" \
+  "gen_secret 32")
+if [ -n "$(extract "$NEXTJS_JSON" nextauth-secret)" ] || [ -n "$(env_dev_get NEXTAUTH_SECRET)" ]; then
+  PRESERVED+=("nextjs/nextauth-secret")
+else
+  GENERATED+=("nextjs/nextauth-secret")
+fi
+
+PHOTOPRISM_ADMIN_PASS=$(resolve \
+  "$(extract "$PHOTOPRISM_JSON" admin-password)" \
+  "$(env_dev_get PHOTOPRISM_ADMIN_PASS)" \
+  "gen_secret 16")
+if [ -n "$(extract "$PHOTOPRISM_JSON" admin-password)" ] || [ -n "$(env_dev_get PHOTOPRISM_ADMIN_PASS)" ]; then
+  PRESERVED+=("photoprism/admin-password")
+else
+  GENERATED+=("photoprism/admin-password")
+fi
+
+# External-service keys: never auto-generated.
+AUTH_GOOGLE_ID=$(resolve \
+  "$(extract "$NEXTJS_JSON" auth-google-id)" \
+  "$(env_dev_get AUTH_GOOGLE_ID)" \
+  "printf ''")
+[ -n "$AUTH_GOOGLE_ID" ] && PRESERVED+=("nextjs/auth-google-id") || true
+
+AUTH_GOOGLE_SECRET=$(resolve \
+  "$(extract "$NEXTJS_JSON" auth-google-secret)" \
+  "$(env_dev_get AUTH_GOOGLE_SECRET)" \
+  "printf ''")
+[ -n "$AUTH_GOOGLE_SECRET" ] && PRESERVED+=("nextjs/auth-google-secret") || true
+
+SENDGRID_API_KEY=$(resolve \
+  "$(extract "$NEXTJS_JSON" sendgrid-api-key)" \
+  "$(env_dev_get SENDGRID_API_KEY)" \
+  "printf ''")
+[ -n "$SENDGRID_API_KEY" ] && PRESERVED+=("nextjs/sendgrid-api-key") || true
+
+TWILIO_ACCOUNT_SID=$(resolve \
+  "$(extract "$NEXTJS_JSON" twilio-account-sid)" \
+  "$(env_dev_get TWILIO_ACCOUNT_SID)" \
+  "printf ''")
+[ -n "$TWILIO_ACCOUNT_SID" ] && PRESERVED+=("nextjs/twilio-account-sid") || true
+
+TWILIO_AUTH_TOKEN=$(resolve \
+  "$(extract "$NEXTJS_JSON" twilio-auth-token)" \
+  "$(env_dev_get TWILIO_AUTH_TOKEN)" \
+  "printf ''")
+[ -n "$TWILIO_AUTH_TOKEN" ] && PRESERVED+=("nextjs/twilio-auth-token") || true
+
+# DATABASE_URL: in-cluster form for OpenBao, localhost form for .env.dev.
+# Each form is preserved independently if the user has set it.
+IN_CLUSTER_DATABASE_URL="postgresql://postgres:${PG_PASS}@postgres:5432/familypicnic?schema=public"
+DATABASE_URL=$(resolve \
+  "$(extract "$NEXTJS_JSON" database-url)" \
+  "" \
+  "printf '%s' \"$IN_CLUSTER_DATABASE_URL\"")
+
+LOCAL_DATABASE_URL=$(env_dev_get DATABASE_URL)
+if [ -z "$LOCAL_DATABASE_URL" ]; then
+  LOCAL_DATABASE_URL="postgresql://postgres:${PG_PASS}@localhost:5432/familypicnic-dev?schema=public"
+fi
 
 # --- write to OpenBao --------------------------------------------------------
 
@@ -77,12 +213,12 @@ bao_exec kv put "${SECRET_PREFIX}/postgres" \
 echo "==> Writing ${SECRET_PREFIX}/nextjs"
 bao_exec kv put "${SECRET_PREFIX}/nextjs" \
   database-url="$DATABASE_URL" \
-  auth-google-id="" \
-  auth-google-secret="" \
+  auth-google-id="$AUTH_GOOGLE_ID" \
+  auth-google-secret="$AUTH_GOOGLE_SECRET" \
   nextauth-secret="$NEXTAUTH_SECRET" \
-  sendgrid-api-key="" \
-  twilio-account-sid="" \
-  twilio-auth-token="" \
+  sendgrid-api-key="$SENDGRID_API_KEY" \
+  twilio-account-sid="$TWILIO_ACCOUNT_SID" \
+  twilio-auth-token="$TWILIO_AUTH_TOKEN" \
   >/dev/null
 
 echo "==> Writing ${SECRET_PREFIX}/photoprism"
@@ -116,7 +252,7 @@ cat > "$ENV_DEV_OUTPUT" <<EOF
 #   kubectl port-forward svc/photoprism 2342:8080 -n family-picnic-dev
 
 # --- Database ---
-DATABASE_URL="postgresql://postgres:${PG_PASS}@localhost:5432/familypicnic-dev?schema=public"
+DATABASE_URL="$LOCAL_DATABASE_URL"
 
 # --- NextAuth ---
 NEXTAUTH_URL="http://localhost:3000"
@@ -128,16 +264,16 @@ DEV_AUTH_USERNAME=admin
 DEV_AUTH_PASSWORD="${PHOTOPRISM_ADMIN_PASS}"
 
 # --- Google OAuth (leave empty for now) ---
-AUTH_GOOGLE_ID=""
-AUTH_GOOGLE_SECRET=""
+AUTH_GOOGLE_ID="${AUTH_GOOGLE_ID}"
+AUTH_GOOGLE_SECRET="${AUTH_GOOGLE_SECRET}"
 
 # --- Twilio (leave empty) ---
-TWILIO_ACCOUNT_SID=""
-TWILIO_AUTH_TOKEN=""
+TWILIO_ACCOUNT_SID="${TWILIO_ACCOUNT_SID}"
+TWILIO_AUTH_TOKEN="${TWILIO_AUTH_TOKEN}"
 TWILIO_PHONE_NUMBER=""
 
 # --- SendGrid (leave empty) ---
-SENDGRID_API_KEY=""
+SENDGRID_API_KEY="${SENDGRID_API_KEY}"
 SENDGRID_FROM_EMAIL="dev@${APP_DOMAIN}"
 
 # --- S3 (using photoprism via Next.js; no S3 in dev) ---
@@ -161,10 +297,28 @@ CRON_SECRET="${NEXTAUTH_SECRET}"
 EOF
 chmod 600 "$ENV_DEV_OUTPUT"
 
+# --- summary -----------------------------------------------------------------
+
 echo ""
 echo "==> All three OpenBao paths written under ${SECRET_PREFIX}"
 echo "==> Raw values: $LOCAL_OUTPUT (mode 0600)"
 echo "==> .env.dev:   $ENV_DEV_OUTPUT (mode 0600)"
+echo ""
+
+if [ "${#GENERATED[@]}" -gt 0 ]; then
+  echo "Generated (new):"
+  for k in "${GENERATED[@]}"; do
+    echo "  + $k"
+  done
+fi
+
+if [ "${#PRESERVED[@]}" -gt 0 ]; then
+  echo "Preserved (already set):"
+  for k in "${PRESERVED[@]}"; do
+    echo "  = $k"
+  done
+fi
+
 echo ""
 echo "Next steps:"
 echo "  1. Forward cluster services to localhost:"

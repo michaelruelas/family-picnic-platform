@@ -9,6 +9,7 @@ commonLabels:
   cluster: pugquilt
 
 resources:
+  - external-secrets.yaml
   - ../../base
 
 patches:
@@ -50,7 +51,7 @@ images:
     newTag: 0.1.10
   - name: photoprism/photoprism
     newName: photoprism/photoprism
-    newTag: 260601
+    newTag: '260601'
 
 patchesJson6902:
   - path: patches/probes-patch.yaml
