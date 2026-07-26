@@ -47,6 +47,9 @@ jobs:
       - name: Test
         run: npx vitest run
 
+      - name: Coverage
+        run: bun run test:coverage
+
       - name: Prisma validate
         run: bun run db:validate
 

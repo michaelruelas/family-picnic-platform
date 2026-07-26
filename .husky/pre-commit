@@ -6,5 +6,8 @@ wrkflw validate .github/workflows/ci.yml
 echo "[format] Auto-fixing formatting..."
 bun run format
 
-echo "[ci] Running CI suite..."
-bun run ci
+echo "[lint] Running lint..."
+bun run lint
+
+echo "[typecheck] Running type check..."
+bun run typecheck
