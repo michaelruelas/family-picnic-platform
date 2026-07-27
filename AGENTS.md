@@ -352,6 +352,7 @@ cp .env.example .env
 | `SENDGRID_*`         | SendGrid email credentials                  | For email           |
 | `S3_*`               | S3-compatible storage                       | For photo uploads   |
 | `CRON_SECRET`        | Secret for authenticating cron job requests | For scheduled tasks |
+| `RENOVATE_TOKEN`     | GitHub PAT used by the Renovate workflow    | For dep updates     |
 
 ## Prisma
 
@@ -363,3 +364,25 @@ bun run db:push      # Push changes to dev database
 ```
 
 The Prisma client is generated to `src/lib/generated/client` (not the default `@prisma/client` location).
+
+## Dependency Updates
+
+This project uses [Renovate](https://docs.renovatebot.com/) (not Dependabot) to keep dependencies current. The bun manager updates `package.json` and `bun.lock` together, so PRs pass `bun install --frozen-lockfile` in CI.
+
+- Config: `renovate.json` at the repo root
+- Schedule: weekly on Monday mornings (PT), GitHub Actions workflow at `.github/workflows/renovate.yml`
+- Managers enabled: `bun`, `github-actions`
+- Major version updates are skipped (apply majors manually after review)
+- Production deps land as `chore(deps):`, dev deps as `chore(deps-dev):`, GitHub Actions as `ci:`
+- Self-hosted via the `renovatebot/github-action` Docker image; requires a `RENOVATE_TOKEN` secret (GitHub PAT with `repo` + `workflow` scopes)
+
+Local dep workflow:
+
+```bash
+bun add <pkg>          # Add a dependency (updates package.json + bun.lock)
+bun add -d <pkg>       # Add a dev dependency
+bun update <pkg>       # Update an existing dependency
+bun install            # Re-sync bun.lock from package.json
+```
+
+Never commit `package-lock.json` — it is not used by this project.

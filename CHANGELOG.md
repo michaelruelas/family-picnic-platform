@@ -6,6 +6,19 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- **Renovate for dependency updates** — Replaced Dependabot with [Renovate](https://docs.renovatebot.com/) self-hosted via `renovatebot/github-action`. `renovate.json` enables the `bun` and `github-actions` managers, groups production and development dependencies, and skips major version updates. Weekly Monday morning schedule via `.github/workflows/renovate.yml`. Closes the loop on the dependabot/bun-lockfile conflict — the previous dependabot config updated `package-lock.json` only and could never pass `bun install --frozen-lockfile` in CI.
+
+### Changed
+
+- **Prisma 7.9.0 → 7.9.1** — Security patch release for a transitive dependency advisory in `@prisma/dev` (prisma/prisma#29780). No production behavior change.
+
+### Removed
+
+- **`package-lock.json`** — Stale npm lockfile. Project uses `bun.lock` exclusively; `package.json`, `Dockerfile`, and CI all read from `bun.lock`. Regenerate with `bun install` if needed.
+- **`.github/dependabot.yml`** — Replaced by Renovate (see above).
+
+### Added
+
 - **Observability Infrastructure (Ticket 39)** — Implemented structured logging with pino (`src/lib/logger.ts`) providing request-scoped loggers with JSON output, requestId/userId/route correlation fields. Created `src/lib/tracing.ts` with AsyncLocalStorage for per-request trace context and `runWithTraceContext` helper. Added LOG_LEVEL, SENTRY_DSN, and OTEL_EXPORTER_OTLP_ENDPOINT to `.env.example`. Instrumented key API routes (`/api/rsvp`, `/api/potluck-signup`, `/api/profile`, `/api/admin/events`, `/api/admin/communications/send`) with structured logging replacing console.error calls. Every error log now includes correlation context for debugging.
 
 - **Kubernetes Manifests (Ticket 13)** — Created `kubernetes/` directory with base manifests for Next.js (Deployment, Service, Ingress, HPA, PDB, NetworkPolicy), PostgreSQL (StatefulSet with 3 replicas, headless Service, PVC, Secret), and PhotoPrism (Deployment with 50TB PVC, Service, NetworkPolicy restricting egress). Added Kustomize overlay at `kubernetes/overlays/dev/` for development with reduced resource requests. Included `kubernetes/README.md` with deployment instructions, prerequisites (nginx-ingress, cert-manager), and health check details. Ticket 13 Done.
