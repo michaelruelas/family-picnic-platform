@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { resetPrismaMock } from 'tests/helpers/route';
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 
@@ -9,7 +10,6 @@ const prismaMock = vi.hoisted(() => ({
   household: { create: vi.fn() },
   rSVP: { create: vi.fn() },
 }));
-
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
 
 vi.mock('next/server', async () => {
@@ -27,72 +27,48 @@ import { GET as GETAudit } from '~/app/api/admin/audit-log/route';
 import { POST as POSTCsv } from '~/app/api/admin/csv-import/route';
 
 const mockedSession = vi.mocked(getServerSession);
-const p = prismaMock as unknown as {
-  user: {
-    findUnique: ReturnType<typeof vi.fn>;
-    create: ReturnType<typeof vi.fn>;
-    update: ReturnType<typeof vi.fn>;
-  };
-  event: { findUnique: ReturnType<typeof vi.fn> };
-  adminAuditLog: { findMany: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
-  household: { create: ReturnType<typeof vi.fn> };
-  rSVP: { create: ReturnType<typeof vi.fn> };
-};
 
-function makeReq(url: string, body?: unknown, method = 'POST'): NextRequest {
+function makeNextReq(url: string, body: unknown, method = 'POST'): NextRequest {
   return new NextRequest(url, {
     method,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
     headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
   });
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  mockedSession.mockReset();
-  for (const fn of [
-    p.user.findUnique,
-    p.user.create,
-    p.user.update,
-    p.event.findUnique,
-    p.adminAuditLog.findMany,
-    p.adminAuditLog.create,
-    p.household.create,
-    p.rSVP.create,
-  ]) {
-    fn.mockReset();
-  }
+  resetPrismaMock(prismaMock);
 });
 
 describe('GET /api/admin/users/search', () => {
   it('returns 401 when not admin', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
-    const res = await GETSearch(makeReq('http://x?email=a@b.com', undefined, 'GET'));
+    const res = await GETSearch(new NextRequest('http://x?email=a@b.com', { method: 'GET' }));
     expect(res.status).toBe(401);
   });
 
   it('returns 400 when email missing', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    const res = await GETSearch(makeReq('http://x', undefined, 'GET'));
+    const res = await GETSearch(new NextRequest('http://x', { method: 'GET' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when user not found', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.user.findUnique.mockResolvedValue(null);
-    const res = await GETSearch(makeReq('http://x?email=a@b.com', undefined, 'GET'));
+    prismaMock.user.findUnique.mockResolvedValue(null);
+    const res = await GETSearch(new NextRequest('http://x?email=a@b.com', { method: 'GET' }));
     expect(res.status).toBe(404);
   });
 
   it('returns user with household', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.user.findUnique.mockResolvedValue({
+    prismaMock.user.findUnique.mockResolvedValue({
       id: 'u-2',
       name: 'Alice',
       email: 'a@b.com',
       household: { name: 'The Smiths' },
     } as never);
-    const res = await GETSearch(makeReq('http://x?email=a@b.com', undefined, 'GET'));
+    const res = await GETSearch(new NextRequest('http://x?email=a@b.com', { method: 'GET' }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.id).toBe('u-2');
@@ -102,107 +78,115 @@ describe('GET /api/admin/users/search', () => {
 describe('GET /api/admin/audit-log', () => {
   it('returns 401 when not admin', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
-    const res = await GETAudit(makeReq('http://x', undefined, 'GET'));
+    const res = await GETAudit(new NextRequest('http://x', { method: 'GET' }));
     expect(res.status).toBe(401);
   });
 
   it('returns logs without filters', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.adminAuditLog.findMany.mockResolvedValue([{ id: 'log-1' }] as never);
-    const res = await GETAudit(makeReq('http://x', undefined, 'GET'));
+    prismaMock.adminAuditLog.findMany.mockResolvedValue([{ id: 'log-1' }] as never);
+    const res = await GETAudit(new NextRequest('http://x', { method: 'GET' }));
     expect(res.status).toBe(200);
   });
 
   it('passes through filter params', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.adminAuditLog.findMany.mockResolvedValue([] as never);
+    prismaMock.adminAuditLog.findMany.mockResolvedValue([] as never);
     const res = await GETAudit(
-      makeReq('http://x?eventId=e-1&userId=u-1&action=CREATE', undefined, 'GET'),
+      new NextRequest('http://x?eventId=e-1&userId=u-1&action=CREATE', { method: 'GET' }),
     );
     expect(res.status).toBe(200);
-    expect(p.adminAuditLog.findMany).toHaveBeenCalled();
+    expect(prismaMock.adminAuditLog.findMany).toHaveBeenCalled();
   });
 });
 
 describe('POST /api/admin/csv-import', () => {
   it('returns 401 when not admin', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
-    const res = await POSTCsv(makeReq('http://x', { eventId: 'e-1', households: [] }));
+    const res = await POSTCsv(makeNextReq('http://x', { eventId: 'e-1', households: [] }, 'POST'));
     expect(res.status).toBe(401);
   });
 
   it('returns 400 on invalid body', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    const res = await POSTCsv(makeReq('http://x', { eventId: 123 }));
+    const res = await POSTCsv(makeNextReq('http://x', { eventId: 123 }, 'POST'));
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when event not found', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.event.findUnique.mockResolvedValue(null);
+    prismaMock.event.findUnique.mockResolvedValue(null);
     const res = await POSTCsv(
-      makeReq('http://x', { eventId: 'e-1', households: [], dryRun: true }),
+      makeNextReq('http://x', { eventId: 'e-1', households: [], dryRun: true }, 'POST'),
     );
     expect(res.status).toBe(404);
   });
 
   it('returns dry run result without writing', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.event.findUnique.mockResolvedValue({ id: 'e-1' } as never);
+    prismaMock.event.findUnique.mockResolvedValue({ id: 'e-1' } as never);
     const res = await POSTCsv(
-      makeReq('http://x', {
-        eventId: 'e-1',
-        households: [
-          { name: 'Smiths', members: [{ email: 'a@b.com', name: 'Alice', headcount: 1 }] },
-        ],
-        dryRun: true,
-      }),
+      makeNextReq(
+        'http://x',
+        {
+          eventId: 'e-1',
+          households: [
+            { name: 'Smiths', members: [{ email: 'a@b.com', name: 'Alice', headcount: 1 }] },
+          ],
+          dryRun: true,
+        },
+        'POST',
+      ),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.message).toBe('Dry run successful');
     expect(body.householdsCreated).toBe(1);
-    expect(p.household.create).not.toHaveBeenCalled();
+    expect(prismaMock.household.create).not.toHaveBeenCalled();
   });
 
   it('imports households with new and existing users', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.event.findUnique.mockResolvedValue({ id: 'e-1' } as never);
-    p.household.create.mockResolvedValue({ id: 'h-1' } as never);
-    p.user.findUnique
+    prismaMock.event.findUnique.mockResolvedValue({ id: 'e-1' } as never);
+    prismaMock.household.create.mockResolvedValue({ id: 'h-1' } as never);
+    prismaMock.user.findUnique
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ id: 'u-new' } as never)
       .mockResolvedValueOnce({ id: 'u-existing' } as never)
       .mockResolvedValueOnce({ id: 'u-existing' } as never);
-    p.user.create.mockResolvedValue({ id: 'u-new' } as never);
-    p.user.update.mockResolvedValue({} as never);
-    p.rSVP.create.mockResolvedValue({} as never);
-    p.adminAuditLog.create.mockResolvedValue({} as never);
+    prismaMock.user.create.mockResolvedValue({ id: 'u-new' } as never);
+    prismaMock.user.update.mockResolvedValue({} as never);
+    prismaMock.rSVP.create.mockResolvedValue({} as never);
+    prismaMock.adminAuditLog.create.mockResolvedValue({} as never);
     const res = await POSTCsv(
-      makeReq('http://x', {
-        eventId: 'e-1',
-        households: [
-          {
-            name: 'Smiths',
-            members: [
-              { email: 'a@b.com', name: 'Alice', headcount: 1 },
-              { email: 'c@d.com', name: 'Bob', headcount: 2 },
-            ],
-          },
-        ],
-      }),
+      makeNextReq(
+        'http://x',
+        {
+          eventId: 'e-1',
+          households: [
+            {
+              name: 'Smiths',
+              members: [
+                { email: 'a@b.com', name: 'Alice', headcount: 1 },
+                { email: 'c@d.com', name: 'Bob', headcount: 2 },
+              ],
+            },
+          ],
+        },
+        'POST',
+      ),
     );
     expect(res.status).toBe(200);
-    expect(p.household.create).toHaveBeenCalledTimes(1);
-    expect(p.user.create).toHaveBeenCalledTimes(1);
-    expect(p.user.update).toHaveBeenCalledTimes(1);
+    expect(prismaMock.household.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.user.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.user.update).toHaveBeenCalledTimes(1);
   });
 
   it('returns 500 on unexpected error', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.event.findUnique.mockRejectedValue(new Error('boom'));
+    prismaMock.event.findUnique.mockRejectedValue(new Error('boom'));
     const res = await POSTCsv(
-      makeReq('http://x', { eventId: 'e-1', households: [], dryRun: true }),
+      makeNextReq('http://x', { eventId: 'e-1', households: [], dryRun: true }, 'POST'),
     );
     expect(res.status).toBe(500);
   });

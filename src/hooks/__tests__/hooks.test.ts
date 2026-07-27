@@ -110,20 +110,10 @@ vi.mock('~/lib/trpc-client', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const query of Object.values(mockQueries.event)) {
-    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
-  }
-  for (const query of Object.values(mockQueries.rsvp)) {
-    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
-  }
-  for (const query of Object.values(mockQueries.potluck)) {
-    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
-  }
-  for (const query of Object.values(mockQueries.household)) {
-    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
-  }
-  for (const query of Object.values(mockQueries.dependent)) {
-    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
+  for (const namespace of Object.values(mockQueries)) {
+    for (const query of Object.values(namespace)) {
+      if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
+    }
   }
 });
 

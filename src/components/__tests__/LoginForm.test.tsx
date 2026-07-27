@@ -65,13 +65,19 @@ describe('LoginForm', () => {
     });
   });
 
-  it('shows error message on signIn failure', async () => {
+  it('shows the "Invalid credentials" message on any signIn error', async () => {
     mockedSignIn.mockResolvedValue({ error: 'Invalid credentials' } as never);
     render(<LoginForm devAuthEnabled={true} />);
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'admin' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong' } });
     fireEvent.click(screen.getByRole('button', { name: /sign in \(dev\)/i }));
     await waitFor(() => {
+      expect(mockedSignIn).toHaveBeenCalledWith('dev-credentials', {
+        username: 'admin',
+        password: 'wrong',
+        redirect: true,
+        callbackUrl: '/',
+      });
       expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
     });
   });

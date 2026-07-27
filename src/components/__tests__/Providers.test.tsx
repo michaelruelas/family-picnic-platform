@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, waitFor } from '@testing-library/react';
 
 vi.mock('next-auth/react', () => ({
   SessionProvider: ({ children }: { children: React.ReactNode }) => children,
@@ -29,8 +30,6 @@ vi.mock('./ui/OfflineBanner', () => ({
 }));
 
 const { default: Providers } = await import('../Providers');
-
-import { render } from '@testing-library/react';
 
 describe('Providers', () => {
   const originalSW = (navigator as { serviceWorker?: unknown }).serviceWorker;
@@ -69,7 +68,7 @@ describe('Providers', () => {
     expect(registerMock).toHaveBeenCalledWith('/sw.js');
   });
 
-  it('handles service worker registration failure', () => {
+  it('handles service worker registration failure', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const registerMock = vi.fn().mockRejectedValue(new Error('SW failed') as never);
     Object.defineProperty(navigator, 'serviceWorker', {
@@ -82,6 +81,12 @@ describe('Providers', () => {
       </Providers>,
     );
     expect(registerMock).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Service worker registration failed:',
+        expect.any(Error),
+      );
+    });
     warnSpy.mockRestore();
   });
 });

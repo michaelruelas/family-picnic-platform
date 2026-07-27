@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '~': path.resolve(__dirname, './src'),
+      tests: path.resolve(__dirname, './tests'),
     },
   },
   test: {
@@ -18,19 +19,20 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      include: ['src/**/*.ts', 'src/**/*.tsx'],
+      include: [
+        'src/app/api/**/*.ts',
+        'src/components/**/*.{ts,tsx}',
+        'src/hooks/**/*.{ts,tsx}',
+        'src/lib/**/*.{ts,tsx}',
+        'src/server/**/*.ts',
+      ],
       exclude: [
-        'src/lib/generated',
         'src/**/*.test.ts',
         'src/**/*.test.tsx',
         'src/**/__tests__/**',
-        'src/app/**/page.tsx',
-        'src/app/**/layout.tsx',
-        'src/app/**/loading.tsx',
-        'src/app/**/error.tsx',
-        'src/app/**/not-found.tsx',
         'src/app/api/auth/**',
         'src/app/api/trpc/**',
+        'src/lib/generated/**',
         'src/lib/ow-workflows.ts',
         'src/openworkflow/**',
         'src/server/trpc.ts',

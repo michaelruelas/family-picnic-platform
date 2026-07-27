@@ -12,17 +12,20 @@ interface MockObserverInstance {
 let mockObserverInstances: MockObserverInstance[] = [];
 
 function Wrapper({ children }: { children: React.ReactNode }) {
-  const [ref] = useBreatheIn<HTMLDivElement>();
+  const [ref, isVisible] = useBreatheIn<HTMLDivElement>();
   return (
-    <div ref={ref} data-testid="observed">
+    <div ref={ref} data-testid="observed" data-isvisible={String(isVisible)}>
       {children}
     </div>
   );
 }
 
 let MockCtor: ReturnType<typeof vi.fn>;
+let savedIntersectionObserver: unknown;
 beforeEach(() => {
   mockObserverInstances = [];
+  savedIntersectionObserver = (globalThis as unknown as { IntersectionObserver?: unknown })
+    .IntersectionObserver;
   const ctorImpl = function (this: unknown, callback: IntersectionObserverCallback) {
     const instance: MockObserverInstance = {
       observe: vi.fn(),
@@ -43,6 +46,12 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  if (savedIntersectionObserver === undefined) {
+    delete (globalThis as unknown as { IntersectionObserver?: unknown }).IntersectionObserver;
+  } else {
+    (globalThis as unknown as { IntersectionObserver: unknown }).IntersectionObserver =
+      savedIntersectionObserver;
+  }
 });
 
 describe('useBreatheIn (standalone hook)', () => {
@@ -69,7 +78,7 @@ describe('useBreatheIn (with DOM attachment)', () => {
   it('flips isVisible to true when intersection entry is intersecting', () => {
     render(<Wrapper>content</Wrapper>);
     const section = screen.getByTestId('observed');
-    expect(section.className).not.toContain('is-visible');
+    expect(section.getAttribute('data-isvisible')).toBe('false');
     const instance = mockObserverInstances[0]!;
     act(() => {
       instance.callback(
@@ -77,11 +86,13 @@ describe('useBreatheIn (with DOM attachment)', () => {
         instance as unknown as IntersectionObserver,
       );
     });
+    expect(section.getAttribute('data-isvisible')).toBe('true');
     expect(instance.disconnect).toHaveBeenCalled();
   });
 
   it('does not flip to visible on non-intersecting entries', () => {
     render(<Wrapper>content</Wrapper>);
+    const section = screen.getByTestId('observed');
     const instance = mockObserverInstances[0]!;
     act(() => {
       instance.callback(
@@ -89,6 +100,7 @@ describe('useBreatheIn (with DOM attachment)', () => {
         instance as unknown as IntersectionObserver,
       );
     });
+    expect(section.getAttribute('data-isvisible')).toBe('false');
     expect(instance.disconnect).not.toHaveBeenCalled();
   });
 

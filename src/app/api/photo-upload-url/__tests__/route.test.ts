@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { nextResponseJson, makeJsonRequest } from 'tests/helpers/route';
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('~/lib/s3', () => ({
@@ -6,18 +7,13 @@ vi.mock('~/lib/s3', () => ({
   isS3Configured: vi.fn(),
 }));
 
-vi.mock('next/server', () => ({
-  NextResponse: {
-    json: (body: unknown, init?: ResponseInit) =>
-      new Response(JSON.stringify(body), {
-        status: init?.status ?? 200,
-        headers: {
-          'content-type': 'application/json',
-          ...(init?.headers as Record<string, string>),
-        },
-      }),
-  },
-}));
+vi.mock('next/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/server')>();
+  return {
+    ...actual,
+    NextResponse: { ...actual.NextResponse, json: nextResponseJson() },
+  };
+});
 
 import { getServerSession } from 'next-auth';
 import { generatePresignedUploadUrl, isS3Configured } from '~/lib/s3';
@@ -26,14 +22,6 @@ import { POST } from '~/app/api/photo-upload-url/route';
 const mockedSession = vi.mocked(getServerSession);
 const mockedPresign = vi.mocked(generatePresignedUploadUrl);
 const mockedS3 = vi.mocked(isS3Configured);
-
-function makeReq(body: unknown): Request {
-  return new Request('http://localhost/api/photo-upload-url', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -46,7 +34,7 @@ describe('POST /api/photo-upload-url', () => {
   it('returns 401 when no session', async () => {
     mockedSession.mockResolvedValue(null);
     const res = await POST(
-      makeReq({ eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }),
+      makeJsonRequest('http://x', { eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }),
     );
     expect(res.status).toBe(401);
   });
@@ -55,7 +43,7 @@ describe('POST /api/photo-upload-url', () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     mockedS3.mockReturnValue(false);
     const res = await POST(
-      makeReq({ eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }),
+      makeJsonRequest('http://x', { eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }),
     );
     expect(res.status).toBe(503);
   });
@@ -63,7 +51,7 @@ describe('POST /api/photo-upload-url', () => {
   it('returns 400 when fields are missing', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     mockedS3.mockReturnValue(true);
-    const res = await POST(makeReq({ eventId: 'e1' }));
+    const res = await POST(makeJsonRequest('http://x', { eventId: 'e1' }));
     expect(res.status).toBe(400);
   });
 
@@ -71,7 +59,11 @@ describe('POST /api/photo-upload-url', () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     mockedS3.mockReturnValue(true);
     const res = await POST(
-      makeReq({ eventId: 'e1', filename: 'a.exe', contentType: 'application/octet-stream' }),
+      makeJsonRequest('http://x', {
+        eventId: 'e1',
+        filename: 'a.exe',
+        contentType: 'application/octet-stream',
+      }),
     );
     expect(res.status).toBe(400);
   });
@@ -85,7 +77,7 @@ describe('POST /api/photo-upload-url', () => {
       expiresAt: new Date('2025-01-01T00:00:00Z'),
     });
     const res = await POST(
-      makeReq({ eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }),
+      makeJsonRequest('http://x', { eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -99,7 +91,7 @@ describe('POST /api/photo-upload-url', () => {
     mockedS3.mockReturnValue(true);
     mockedPresign.mockRejectedValue(new Error('S3 down'));
     const res = await POST(
-      makeReq({ eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }),
+      makeJsonRequest('http://x', { eventId: 'e1', filename: 'a.jpg', contentType: 'image/jpeg' }),
     );
     expect(res.status).toBe(500);
   });

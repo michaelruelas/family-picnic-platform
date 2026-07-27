@@ -69,7 +69,9 @@ export default function PhotoCard({ photo, eventName, userId, userRole }: PhotoC
       {canDelete && (
         <div className="absolute top-2 right-2">
           <button
+            type="button"
             onClick={() => setShowMenu(!showMenu)}
+            aria-label="Photo options"
             className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:bg-black/70"
           >
             <svg

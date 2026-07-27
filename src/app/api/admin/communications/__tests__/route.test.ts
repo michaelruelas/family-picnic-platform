@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { nextResponseJson, resetPrismaMock } from 'tests/helpers/route';
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 
@@ -11,7 +12,6 @@ const prismaMock = vi.hoisted(() => ({
     update: vi.fn(),
   },
 }));
-
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
 
 vi.mock('~/lib/ow-client', () => ({
@@ -26,16 +26,7 @@ vi.mock('next/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/server')>();
   return {
     ...actual,
-    NextResponse: {
-      json: (body: unknown, init?: ResponseInit) =>
-        new Response(JSON.stringify(body), {
-          status: init?.status ?? 200,
-          headers: {
-            'content-type': 'application/json',
-            ...(init?.headers as Record<string, string>),
-          },
-        }),
-    },
+    NextResponse: { ...actual.NextResponse, json: nextResponseJson() },
   };
 });
 
@@ -46,17 +37,8 @@ import { GET as GETStatus } from '~/app/api/admin/communications/status/route';
 import { GET as GETProcess } from '~/app/api/admin/communications/process-scheduled/route';
 
 const mockedSession = vi.mocked(getServerSession);
-const p = prismaMock as unknown as {
-  user: { findMany: ReturnType<typeof vi.fn> };
-  communicationLog: { findMany: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
-  scheduledBroadcast: {
-    findMany: ReturnType<typeof vi.fn>;
-    create: ReturnType<typeof vi.fn>;
-    update: ReturnType<typeof vi.fn>;
-  };
-};
 
-function makeReq(body: unknown, url = 'http://localhost'): NextRequest {
+function makeNextReq(url: string, body: unknown): NextRequest {
   return new NextRequest(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -65,18 +47,7 @@ function makeReq(body: unknown, url = 'http://localhost'): NextRequest {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  mockedSession.mockReset();
-  for (const fn of [
-    p.user.findMany,
-    p.communicationLog.findMany,
-    p.communicationLog.create,
-    p.scheduledBroadcast.findMany,
-    p.scheduledBroadcast.create,
-    p.scheduledBroadcast.update,
-  ]) {
-    fn.mockReset();
-  }
+  resetPrismaMock(prismaMock);
   delete process.env.CRON_SECRET;
 });
 
@@ -84,21 +55,26 @@ describe('POST /api/admin/communications/send', () => {
   it('returns 401 when not admin', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
     const res = await POSTSend(
-      makeReq({ eventId: 'e-1', message: 'Hi', channel: 'EMAIL', recipientType: 'ALL' }),
+      makeNextReq('http://x', {
+        eventId: 'e-1',
+        message: 'Hi',
+        channel: 'EMAIL',
+        recipientType: 'ALL',
+      }),
     );
     expect(res.status).toBe(401);
   });
 
   it('returns 400 when fields missing', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    const res = await POSTSend(makeReq({ eventId: 'e-1' }));
+    const res = await POSTSend(makeNextReq('http://x', { eventId: 'e-1' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 400 for invalid scheduledAt', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
     const res = await POSTSend(
-      makeReq({
+      makeNextReq('http://x', {
         eventId: 'e-1',
         message: 'Hi',
         channel: 'EMAIL',
@@ -111,12 +87,12 @@ describe('POST /api/admin/communications/send', () => {
 
   it('schedules a broadcast with valid scheduledAt', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.scheduledBroadcast.create.mockResolvedValue({
+    prismaMock.scheduledBroadcast.create.mockResolvedValue({
       id: 'sb-1',
       scheduledAt: new Date('2026-12-01'),
     } as never);
     const res = await POSTSend(
-      makeReq({
+      makeNextReq('http://x', {
         eventId: 'e-1',
         message: 'Hi',
         channel: 'EMAIL',
@@ -131,10 +107,15 @@ describe('POST /api/admin/communications/send', () => {
 
   it('sends to ALL recipients immediately', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.user.findMany.mockResolvedValue([{ id: 'u-2' }, { id: 'u-3' }] as never);
-    p.communicationLog.create.mockResolvedValue({} as never);
+    prismaMock.user.findMany.mockResolvedValue([{ id: 'u-2' }, { id: 'u-3' }] as never);
+    prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const res = await POSTSend(
-      makeReq({ eventId: 'e-1', message: 'Hi', channel: 'EMAIL', recipientType: 'ALL' }),
+      makeNextReq('http://x', {
+        eventId: 'e-1',
+        message: 'Hi',
+        channel: 'EMAIL',
+        recipientType: 'ALL',
+      }),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -143,10 +124,10 @@ describe('POST /api/admin/communications/send', () => {
 
   it('sends to NOT_RESPONDED recipients', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.user.findMany.mockResolvedValue([{ id: 'u-2' }] as never);
-    p.communicationLog.create.mockResolvedValue({} as never);
+    prismaMock.user.findMany.mockResolvedValue([{ id: 'u-2' }] as never);
+    prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const res = await POSTSend(
-      makeReq({
+      makeNextReq('http://x', {
         eventId: 'e-1',
         message: 'Hi',
         channel: 'EMAIL',
@@ -159,7 +140,16 @@ describe('POST /api/admin/communications/send', () => {
   it('returns 400 for HOUSEHOLD without recipientIds', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
     const res = await POSTSend(
-      makeReq({ eventId: 'e-1', message: 'Hi', channel: 'EMAIL', recipientType: 'HOUSEHOLD' }),
+      new NextRequest('http://x', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          eventId: 'e-1',
+          message: 'Hi',
+          channel: 'EMAIL',
+          recipientType: 'HOUSEHOLD',
+        }),
+      }),
     );
     expect(res.status).toBe(400);
   });
@@ -167,22 +157,35 @@ describe('POST /api/admin/communications/send', () => {
   it('returns 400 for INDIVIDUAL without recipientIds', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
     const res = await POSTSend(
-      makeReq({ eventId: 'e-1', message: 'Hi', channel: 'EMAIL', recipientType: 'INDIVIDUAL' }),
+      new NextRequest('http://x', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          eventId: 'e-1',
+          message: 'Hi',
+          channel: 'EMAIL',
+          recipientType: 'INDIVIDUAL',
+        }),
+      }),
     );
     expect(res.status).toBe(400);
   });
 
   it('sends to HOUSEHOLD recipients', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.user.findMany.mockResolvedValue([{ id: 'u-2' }] as never);
-    p.communicationLog.create.mockResolvedValue({} as never);
+    prismaMock.user.findMany.mockResolvedValue([{ id: 'u-2' }] as never);
+    prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const res = await POSTSend(
-      makeReq({
-        eventId: 'e-1',
-        message: 'Hi',
-        channel: 'EMAIL',
-        recipientType: 'HOUSEHOLD',
-        recipientIds: ['h-1'],
+      new NextRequest('http://x', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          eventId: 'e-1',
+          message: 'Hi',
+          channel: 'EMAIL',
+          recipientType: 'HOUSEHOLD',
+          recipientIds: ['h-1'],
+        }),
       }),
     );
     expect(res.status).toBe(200);
@@ -190,14 +193,18 @@ describe('POST /api/admin/communications/send', () => {
 
   it('sends to INDIVIDUAL recipients', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.communicationLog.create.mockResolvedValue({} as never);
+    prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const res = await POSTSend(
-      makeReq({
-        eventId: 'e-1',
-        message: 'Hi',
-        channel: 'EMAIL',
-        recipientType: 'INDIVIDUAL',
-        recipientIds: ['u-2', 'u-3'],
+      new NextRequest('http://x', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          eventId: 'e-1',
+          message: 'Hi',
+          channel: 'EMAIL',
+          recipientType: 'INDIVIDUAL',
+          recipientIds: ['u-2', 'u-3'],
+        }),
       }),
     );
     expect(res.status).toBe(200);
@@ -207,9 +214,14 @@ describe('POST /api/admin/communications/send', () => {
 
   it('returns 500 on error', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.user.findMany.mockRejectedValue(new Error('boom'));
+    prismaMock.user.findMany.mockRejectedValue(new Error('boom'));
     const res = await POSTSend(
-      makeReq({ eventId: 'e-1', message: 'Hi', channel: 'EMAIL', recipientType: 'ALL' }),
+      makeNextReq('http://x', {
+        eventId: 'e-1',
+        message: 'Hi',
+        channel: 'EMAIL',
+        recipientType: 'ALL',
+      }),
     );
     expect(res.status).toBe(500);
   });
@@ -230,14 +242,14 @@ describe('GET /api/admin/communications/status', () => {
 
   it('returns logs', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.communicationLog.findMany.mockResolvedValue([{ id: 'log-1' }] as never);
+    prismaMock.communicationLog.findMany.mockResolvedValue([{ id: 'log-1' }] as never);
     const res = await GETStatus(new NextRequest('http://x?eventId=e-1'));
     expect(res.status).toBe(200);
   });
 
   it('returns 500 on error', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
-    p.communicationLog.findMany.mockRejectedValue(new Error('boom'));
+    prismaMock.communicationLog.findMany.mockRejectedValue(new Error('boom'));
     const res = await GETStatus(new NextRequest('http://x?eventId=e-1'));
     expect(res.status).toBe(500);
   });
@@ -260,21 +272,21 @@ describe('GET /api/admin/communications/process-scheduled', () => {
 
   it('processes when auth header matches CRON_SECRET', async () => {
     process.env.CRON_SECRET = 'test-secret';
-    p.scheduledBroadcast.findMany.mockResolvedValue([] as never);
+    prismaMock.scheduledBroadcast.findMany.mockResolvedValue([] as never);
     const req = new NextRequest('http://x', { headers: { authorization: 'Bearer test-secret' } });
     const res = await GETProcess(req);
     expect(res.status).toBe(200);
   });
 
   it('processes when CRON_SECRET is not configured', async () => {
-    p.scheduledBroadcast.findMany.mockResolvedValue([] as never);
+    prismaMock.scheduledBroadcast.findMany.mockResolvedValue([] as never);
     const req = new NextRequest('http://x');
     const res = await GETProcess(req);
     expect(res.status).toBe(200);
   });
 
   it('processes ALL recipient type broadcast', async () => {
-    p.scheduledBroadcast.findMany.mockResolvedValue([
+    prismaMock.scheduledBroadcast.findMany.mockResolvedValue([
       {
         id: 'sb-1',
         eventId: 'e-1',
@@ -284,9 +296,9 @@ describe('GET /api/admin/communications/process-scheduled', () => {
         channel: 'EMAIL',
       },
     ] as never);
-    p.scheduledBroadcast.update.mockResolvedValue({} as never);
-    p.user.findMany.mockResolvedValue([{ id: 'u-2' }] as never);
-    p.communicationLog.create.mockResolvedValue({} as never);
+    prismaMock.scheduledBroadcast.update.mockResolvedValue({} as never);
+    prismaMock.user.findMany.mockResolvedValue([{ id: 'u-2' }] as never);
+    prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const req = new NextRequest('http://x');
     const res = await GETProcess(req);
     expect(res.status).toBe(200);
@@ -295,10 +307,10 @@ describe('GET /api/admin/communications/process-scheduled', () => {
   });
 
   it('handles per-broadcast failure', async () => {
-    p.scheduledBroadcast.findMany.mockResolvedValue([
+    prismaMock.scheduledBroadcast.findMany.mockResolvedValue([
       { id: 'sb-1', eventId: 'e-1', recipientType: 'ALL' },
     ] as never);
-    p.scheduledBroadcast.update
+    prismaMock.scheduledBroadcast.update
       .mockRejectedValueOnce(new Error('boom'))
       .mockResolvedValueOnce({} as never);
     const req = new NextRequest('http://x');
@@ -310,7 +322,7 @@ describe('GET /api/admin/communications/process-scheduled', () => {
   });
 
   it('returns 500 on top-level error', async () => {
-    p.scheduledBroadcast.findMany.mockRejectedValue(new Error('boom'));
+    prismaMock.scheduledBroadcast.findMany.mockRejectedValue(new Error('boom'));
     const req = new NextRequest('http://x');
     const res = await GETProcess(req);
     expect(res.status).toBe(500);

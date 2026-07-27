@@ -71,33 +71,27 @@ describe('PhotoCard', () => {
   });
 
   it('shows delete button for uploader', async () => {
-    const { container } = render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-1" />);
-    const menuTrigger = container.querySelector('button svg')!.parentElement!;
-    fireEvent.click(menuTrigger);
+    render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /photo options/i }));
     expect(screen.getByText('Delete')).toBeInTheDocument();
   });
 
   it('shows delete button for admin', async () => {
-    const { container } = render(
-      <PhotoCard photo={basePhoto} eventName="Picnic" userId="u-2" userRole="ADMIN" />,
-    );
-    const menuTrigger = container.querySelector('button svg')!.parentElement!;
-    fireEvent.click(menuTrigger);
+    render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-2" userRole="ADMIN" />);
+    fireEvent.click(screen.getByRole('button', { name: /photo options/i }));
     expect(screen.getByText('Delete')).toBeInTheDocument();
   });
 
   it('shows delete confirmation dialog', async () => {
-    const { container } = render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-1" />);
-    const menuTrigger = container.querySelector('button svg')!.parentElement!;
-    fireEvent.click(menuTrigger);
+    render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /photo options/i }));
     fireEvent.click(screen.getByText('Delete'));
     expect(screen.getByText(/Delete this photo\?/)).toBeInTheDocument();
   });
 
   it('calls delete API and refreshes router on confirm', async () => {
-    const { container } = render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-1" />);
-    const menuTrigger = container.querySelector('button svg')!.parentElement!;
-    fireEvent.click(menuTrigger);
+    render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /photo options/i }));
     fireEvent.click(screen.getByText('Delete'));
     const deleteButtons = screen.getAllByText('Delete');
     fireEvent.click(deleteButtons[deleteButtons.length - 1]!);
@@ -113,9 +107,8 @@ describe('PhotoCard', () => {
   });
 
   it('hides dialog on cancel', async () => {
-    const { container } = render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-1" />);
-    const menuTrigger = container.querySelector('button svg')!.parentElement!;
-    fireEvent.click(menuTrigger);
+    render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /photo options/i }));
     fireEvent.click(screen.getByText('Delete'));
     fireEvent.click(screen.getByText('Cancel'));
     expect(screen.queryByText(/Delete this photo\?/)).not.toBeInTheDocument();
