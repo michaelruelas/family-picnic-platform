@@ -110,20 +110,10 @@ vi.mock('~/lib/trpc-client', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const query of Object.values(mockQueries.event)) {
-    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
-  }
-  for (const query of Object.values(mockQueries.rsvp)) {
-    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
-  }
-  for (const query of Object.values(mockQueries.potluck)) {
-    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
-  }
-  for (const query of Object.values(mockQueries.household)) {
-    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
-  }
-  for (const query of Object.values(mockQueries.dependent)) {
-    if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
+  for (const namespace of Object.values(mockQueries)) {
+    for (const query of Object.values(namespace)) {
+      if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
+    }
   }
 });
 
@@ -259,6 +249,180 @@ describe('useHousehold', () => {
     const { useHousehold } = await import('~/hooks/useHousehold');
     renderHook(() => useHousehold({ householdId: 'hh-1' }));
     expect(mockQueries.household.getById).toHaveBeenCalledWith({ id: 'hh-1' }, { enabled: true });
+  });
+
+  it('returns household data with isLoading and error', async () => {
+    mockQueries.household.getById.mockReturnValue(
+      mockQueryResult({ data: { id: 'hh-1' }, isLoading: false, error: null }),
+    );
+    const { useHousehold } = await import('~/hooks/useHousehold');
+    const { result } = renderHook(() => useHousehold({ householdId: 'hh-1' }));
+    expect(result.current.household).toEqual({ id: 'hh-1' });
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('exposes refetch from the underlying query', async () => {
+    const refetch = vi.fn();
+    mockQueries.household.getById.mockReturnValue(mockQueryResult({ refetch }));
+    const { useHousehold } = await import('~/hooks/useHousehold');
+    const { result } = renderHook(() => useHousehold({ householdId: 'hh-1' }));
+    expect(result.current.refetch).toBe(refetch);
+  });
+
+  it('coerces error to Error | null', async () => {
+    const err = new Error('boom');
+    mockQueries.household.getById.mockReturnValue(mockQueryResult({ error: err }));
+    const { useHousehold } = await import('~/hooks/useHousehold');
+    const { result } = renderHook(() => useHousehold({ householdId: 'hh-1' }));
+    expect(result.current.error).toBe(err);
+  });
+
+  it('disables query when householdId is empty', async () => {
+    const { useHousehold } = await import('~/hooks/useHousehold');
+    renderHook(() => useHousehold({ householdId: '' }));
+    expect(mockQueries.household.getById).toHaveBeenCalledWith({ id: '' }, { enabled: false });
+  });
+});
+
+describe('useHouseholdCumulativeHeadcount', () => {
+  it('calls trpc.household.getCumulativeHeadcount.useQuery', async () => {
+    const { useHouseholdCumulativeHeadcount } = await import('~/hooks/useHousehold');
+    renderHook(() => useHouseholdCumulativeHeadcount({ householdId: 'hh-1' }));
+    expect(mockQueries.household.getCumulativeHeadcount).toHaveBeenCalledWith(
+      { householdId: 'hh-1' },
+      { enabled: true },
+    );
+  });
+
+  it('falls back to zeroed default when data is null', async () => {
+    mockQueries.household.getCumulativeHeadcount.mockReturnValue(
+      mockQueryResult({ data: null, isLoading: false, error: null }),
+    );
+    const { useHouseholdCumulativeHeadcount } = await import('~/hooks/useHousehold');
+    const { result } = renderHook(() => useHouseholdCumulativeHeadcount({ householdId: 'hh-1' }));
+    expect(result.current.data).toEqual({ totalHeadcount: 0, byEvent: [] });
+  });
+
+  it('passes through data, isLoading, and error', async () => {
+    const data = {
+      totalHeadcount: 5,
+      byEvent: [
+        { eventId: 'e1', eventName: 'Picnic', eventDate: new Date('2025-01-01'), headcount: 5 },
+      ],
+    };
+    mockQueries.household.getCumulativeHeadcount.mockReturnValue(
+      mockQueryResult({ data, isLoading: true, error: null }),
+    );
+    const { useHouseholdCumulativeHeadcount } = await import('~/hooks/useHousehold');
+    const { result } = renderHook(() => useHouseholdCumulativeHeadcount({ householdId: 'hh-1' }));
+    expect(result.current.data).toEqual(data);
+    expect(result.current.isLoading).toBe(true);
+  });
+
+  it('disables query when householdId is empty', async () => {
+    const { useHouseholdCumulativeHeadcount } = await import('~/hooks/useHousehold');
+    renderHook(() => useHouseholdCumulativeHeadcount({ householdId: '' }));
+    expect(mockQueries.household.getCumulativeHeadcount).toHaveBeenCalledWith(
+      { householdId: '' },
+      { enabled: false },
+    );
+  });
+});
+
+describe('useDependents', () => {
+  it('calls trpc.dependent.list.useQuery with no args', async () => {
+    const { useDependents } = await import('~/hooks/useHousehold');
+    renderHook(() => useDependents());
+    expect(mockQueries.dependent.list).toHaveBeenCalledWith();
+  });
+
+  it('returns dependents, isLoading, error, and refetch', async () => {
+    const refetch = vi.fn();
+    const data = [{ id: 'd-1' }];
+    mockQueries.dependent.list.mockReturnValue(
+      mockQueryResult({ data, isLoading: false, error: null, refetch }),
+    );
+    const { useDependents } = await import('~/hooks/useHousehold');
+    const { result } = renderHook(() => useDependents());
+    expect(result.current.dependents).toEqual(data);
+    expect(result.current.refetch).toBe(refetch);
+  });
+});
+
+describe('useHouseholdDependents', () => {
+  it('calls trpc.dependent.getByHousehold.useQuery with correct params', async () => {
+    const { useHouseholdDependents } = await import('~/hooks/useHousehold');
+    renderHook(() => useHouseholdDependents({ householdId: 'hh-1' }));
+    expect(mockQueries.dependent.getByHousehold).toHaveBeenCalledWith(
+      { householdId: 'hh-1' },
+      { enabled: true },
+    );
+  });
+
+  it('returns data and loading state', async () => {
+    const data = [{ id: 'd-1', householdId: 'hh-1' }];
+    mockQueries.dependent.getByHousehold.mockReturnValue(
+      mockQueryResult({ data, isLoading: false, error: null }),
+    );
+    const { useHouseholdDependents } = await import('~/hooks/useHousehold');
+    const { result } = renderHook(() => useHouseholdDependents({ householdId: 'hh-1' }));
+    expect(result.current.dependents).toEqual(data);
+  });
+
+  it('disables query when householdId is empty', async () => {
+    const { useHouseholdDependents } = await import('~/hooks/useHousehold');
+    renderHook(() => useHouseholdDependents({ householdId: '' }));
+    expect(mockQueries.dependent.getByHousehold).toHaveBeenCalledWith(
+      { householdId: '' },
+      { enabled: false },
+    );
+  });
+});
+
+describe('useDependentMutations', () => {
+  it('returns create, update, remove mutations', async () => {
+    const { useDependentMutations } = await import('~/hooks/useHousehold');
+    const { result } = renderHook(() => useDependentMutations());
+    expect(result.current).toHaveProperty('create');
+    expect(result.current).toHaveProperty('update');
+    expect(result.current).toHaveProperty('remove');
+  });
+
+  it('wires onSuccess for create to invalidate dependent.list and household.getById', async () => {
+    const { useDependentMutations } = await import('~/hooks/useHousehold');
+    renderHook(() => useDependentMutations());
+    const opts = (
+      mockQueries.dependent.create.useMutation.mock.calls[0] as unknown as
+        Array<{ onSuccess: () => void }> | undefined
+    )?.[0];
+    expect(opts).toBeDefined();
+    opts!.onSuccess();
+    expect(mockUseUtils).toHaveBeenCalled();
+  });
+
+  it('wires onSuccess for update to invalidate dependent.list and household.getById', async () => {
+    const { useDependentMutations } = await import('~/hooks/useHousehold');
+    renderHook(() => useDependentMutations());
+    const opts = (
+      mockQueries.dependent.update.useMutation.mock.calls[0] as unknown as
+        Array<{ onSuccess: () => void }> | undefined
+    )?.[0];
+    expect(opts).toBeDefined();
+    opts!.onSuccess();
+    expect(mockUseUtils).toHaveBeenCalled();
+  });
+
+  it('wires onSuccess for remove to invalidate dependent.list and household.getById', async () => {
+    const { useDependentMutations } = await import('~/hooks/useHousehold');
+    renderHook(() => useDependentMutations());
+    const opts = (
+      mockQueries.dependent.delete.useMutation.mock.calls[0] as unknown as
+        Array<{ onSuccess: () => void }> | undefined
+    )?.[0];
+    expect(opts).toBeDefined();
+    opts!.onSuccess();
+    expect(mockUseUtils).toHaveBeenCalled();
   });
 });
 

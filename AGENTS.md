@@ -26,7 +26,11 @@ bun run ci           # Full CI suite: typecheck + lint + format:check + test:cov
 
 ### Local CI (wrkflw)
 
-The pre-commit hook validates the CI YAML with `wrkflw` then runs `bun run ci` locally.
+The pre-commit hook validates the CI YAML with `wrkflw`, auto-formats, and runs
+`bun run lint` and `bun run typecheck` (fast). The full test suite plus the
+coverage gate run in CI on every push; `lint-staged` also runs
+`vitest run --passWithNoTests` per staged file as a partial local mirror.
+
 Install wrkflw for local CI validation:
 
 ```bash
