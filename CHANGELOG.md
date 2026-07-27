@@ -6,19 +6,6 @@ All notable changes to this project are documented here.
 
 ### Added
 
-- **Renovate for dependency updates** — Replaced Dependabot with [Renovate](https://docs.renovatebot.com/) self-hosted via `renovatebot/github-action`. `renovate.json` enables the `bun` and `github-actions` managers, groups production and development dependencies, and skips major version updates. Weekly Monday morning schedule via `.github/workflows/renovate.yml`. Closes the loop on the dependabot/bun-lockfile conflict — the previous dependabot config updated `package-lock.json` only and could never pass `bun install --frozen-lockfile` in CI.
-
-### Changed
-
-- **Prisma 7.9.0 → 7.9.1** — Security patch release for a transitive dependency advisory in `@prisma/dev` (prisma/prisma#29780). No production behavior change.
-
-### Removed
-
-- **`package-lock.json`** — Stale npm lockfile. Project uses `bun.lock` exclusively; `package.json`, `Dockerfile`, and CI all read from `bun.lock`. Regenerate with `bun install` if needed.
-- **`.github/dependabot.yml`** — Replaced by Renovate (see above).
-
-### Added
-
 - **Observability Infrastructure (Ticket 39)** — Implemented structured logging with pino (`src/lib/logger.ts`) providing request-scoped loggers with JSON output, requestId/userId/route correlation fields. Created `src/lib/tracing.ts` with AsyncLocalStorage for per-request trace context and `runWithTraceContext` helper. Added LOG_LEVEL, SENTRY_DSN, and OTEL_EXPORTER_OTLP_ENDPOINT to `.env.example`. Instrumented key API routes (`/api/rsvp`, `/api/potluck-signup`, `/api/profile`, `/api/admin/events`, `/api/admin/communications/send`) with structured logging replacing console.error calls. Every error log now includes correlation context for debugging.
 
 - **Kubernetes Manifests (Ticket 13)** — Created `kubernetes/` directory with base manifests for Next.js (Deployment, Service, Ingress, HPA, PDB, NetworkPolicy), PostgreSQL (StatefulSet with 3 replicas, headless Service, PVC, Secret), and PhotoPrism (Deployment with 50TB PVC, Service, NetworkPolicy restricting egress). Added Kustomize overlay at `kubernetes/overlays/dev/` for development with reduced resource requests. Included `kubernetes/README.md` with deployment instructions, prerequisites (nginx-ingress, cert-manager), and health check details. Ticket 13 Done.
@@ -126,3 +113,33 @@ All notable changes to this project are documented here.
 - Restructured `PotluckSignup` to reference RSVP (not User/Household directly)
 - Upgraded to Prisma 7 driver-adapter pattern (`prisma.config.ts`, `@prisma/adapter-pg`)
 - Removed deprecated `dependentSlots` relation and ReactionType enum
+
+## [0.1.11] — 2026-07-27
+
+### Added
+
+- **Renovate replaces Dependabot** — Self-hosted [Renovate](https://docs.renovatebot.com/) bot via `renovatebot/github-action` for weekly dependency updates. `renovate.json` configures the `bun` and `github-actions` managers, groups production and development dependencies separately, and skips major version updates. Weekly Monday morning schedule via `.github/workflows/renovate.yml`. Closes the loop on the dependabot/bun-lockfile conflict — the previous dependabot config updated `package-lock.json` only and could never pass `bun install --frozen-lockfile` in CI.
+- **Release-please manifest** — Added `.release-please-manifest.json` and `release-please-config.json` to track the current release version and configure changelog generation from conventional commits.
+- **CI test pipeline** — Tests moved from the pre-commit hook to the CI pipeline. Full `bun test` (with coverage gate) now runs on every push; `lint-staged` runs a partial mirror (`vitest run --passWithNoTests`) for staged files. `bun run ci` script added for the full local suite.
+
+### Changed
+
+- **Prisma 7.9.0 → 7.9.1** — Security patch for a transitive dependency advisory in `@prisma/dev` (prisma/prisma#29780). No production behavior change.
+- **Next.js 16.2.11 and NextAuth 4.24.15** — Patch upgrades addressing a NextAuth session-handling security advisory and pulling the latest Next.js stable patches.
+- **GitHub Actions kept current** — Renovate/Dependabot bumped `actions/*` (5 updates) and production (11) plus development (19) dependency groups.
+
+### Fixed
+
+- **Vulnerable transitive dependencies** — Added npm overrides to force patched versions of `brace-expansion` (1.1.16) and six other packages with open Dependabot security alerts. See commit `2a75818` for the full list.
+- **Renovate runner setup** — Switched from Docker-based to `npx renovate` on the self-hosted runner, dropped the unsupported `--config-file` flag, pinned Node 24, and removed the invalid `bunVersion` option. Iterative fixes landed in `eb5d7bc`, `3dd9b5c`, `7f3cb7e`, `c5ef572`.
+
+### Removed
+
+- **`package-lock.json`** — Stale npm lockfile. Project uses `bun.lock` exclusively; `package.json`, `Dockerfile`, and CI all read from `bun.lock`. Regenerate with `bun install` if needed.
+- **`.github/dependabot.yml`** — Replaced by Renovate (see above).
+
+## [0.1.10] — 2026-07-26
+
+### Fixed
+
+- **Docker buildx for Node 24** — Upgraded `setup-buildx-action` from v3 to v4 to restore Docker image builds under the Node 24 CI runtime. Removed the invalid `driver-opt: name=name` flag that v4 rejects. See commits `7631897` and `addb679`.
