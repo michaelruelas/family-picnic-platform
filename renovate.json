@@ -2,7 +2,6 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "enabledManagers": ["bun", "github-actions"],
-  "bunVersion": "1.3",
   "schedule": ["* 0-8 * * 1"],
   "timezone": "America/Los_Angeles",
   "prConcurrentLimit": 5,
