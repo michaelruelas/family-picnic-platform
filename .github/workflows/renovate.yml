@@ -19,9 +19,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Run Renovate
-        run: npx --yes renovate@43
+        run: npx --yes renovate@43 ${{ github.repository }}
         env:
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
