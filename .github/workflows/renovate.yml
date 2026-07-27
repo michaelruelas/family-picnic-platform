@@ -22,6 +22,6 @@ jobs:
           node-version: '22'
 
       - name: Run Renovate
-        run: npx --yes renovate@43 --config-file renovate.json
+        run: npx --yes renovate@43
         env:
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
