@@ -31,7 +31,7 @@ beforeEach(() => {
 
 describe('POST /api/admin/potluck-slots', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POST(
       makeJsonRequest('http://x', {
         eventId: 'e1',
@@ -125,7 +125,7 @@ describe('POST /api/admin/potluck-slots', () => {
 
 describe('PATCH /api/admin/potluck-slots/[id]', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await PATCH(makeJsonRequest('http://x', { name: 'New' }, 'PATCH'), slotParams);
     expect(res.status).toBe(401);
   });
@@ -184,7 +184,7 @@ describe('PATCH /api/admin/potluck-slots/[id]', () => {
 
 describe('DELETE /api/admin/potluck-slots/[id]', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await DELETE(new Request('http://x'), slotParams);
     expect(res.status).toBe(401);
   });

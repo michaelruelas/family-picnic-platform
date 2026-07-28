@@ -2,6 +2,13 @@ import type { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from './prisma';
+import type { Role } from './generated/enums';
+
+export const ADMIN_ROLES: readonly Role[] = ['ADMIN', 'ADMIN_ADULT'] as const;
+
+export function isAdminRole(role: Role | null | undefined): boolean {
+  return role !== null && role !== undefined && (ADMIN_ROLES as readonly string[]).includes(role);
+}
 
 function devCredentialsProvider() {
   const adminUsername = process.env.DEV_AUTH_USERNAME;
@@ -72,6 +79,22 @@ export const authOptions: NextAuthOptions = {
     signIn: '/login',
   },
   callbacks: {
+    async jwt({ token, user, account, profile }) {
+      if (account?.provider === 'google' && profile?.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: profile.email },
+          select: { id: true, role: true, householdId: true },
+        });
+        if (dbUser) {
+          token.sub = dbUser.id;
+          token.role = dbUser.role;
+          token.householdId = dbUser.householdId;
+        }
+      } else if (user) {
+        if (user.id) token.sub = user.id;
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (session.user && token.sub) {
         const user = await prisma.user.findUnique({

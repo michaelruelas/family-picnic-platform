@@ -54,7 +54,7 @@ describe('tRPC setup', () => {
         id: '1',
         name: 'Test',
         email: 'a@b.com',
-        role: 'ADMIN_ADULT' as Role,
+        role: 'GUEST' as Role,
         householdId: null,
       },
       expires: 'x',
@@ -65,7 +65,7 @@ describe('tRPC setup', () => {
     await expect(caller.adminOnly()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
-  it('allows admin users through admin procedures', async () => {
+  it('allows ADMIN users through admin procedures', async () => {
     const adminOnly = adminProcedure.query(() => 'admin-secret');
 
     const r = router({ adminOnly });
@@ -80,6 +80,25 @@ describe('tRPC setup', () => {
       expires: 'x',
     };
     const caller = r.createCaller({ session: adminSession });
+
+    await expect(caller.adminOnly()).resolves.toBe('admin-secret');
+  });
+
+  it('allows ADMIN_ADULT users through admin procedures', async () => {
+    const adminOnly = adminProcedure.query(() => 'admin-secret');
+
+    const r = router({ adminOnly });
+    const adultSession = {
+      user: {
+        id: '3',
+        name: 'Adult',
+        email: 'adult@x.com',
+        role: 'ADMIN_ADULT' as Role,
+        householdId: 'house-1',
+      },
+      expires: 'x',
+    };
+    const caller = r.createCaller({ session: adultSession });
 
     await expect(caller.adminOnly()).resolves.toBe('admin-secret');
   });

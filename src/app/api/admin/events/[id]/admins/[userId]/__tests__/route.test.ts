@@ -29,7 +29,7 @@ beforeEach(() => {
 
 describe('DELETE /api/admin/events/[id]/admins/[userId]', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await DELETE(new NextRequest('http://x'), adminParams);
     expect(res.status).toBe(401);
   });

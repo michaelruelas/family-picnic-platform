@@ -31,7 +31,7 @@ beforeEach(() => {
 
 describe('POST /api/admin/invitations/send', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POSTSend(makeJsonRequest('http://x', { eventId: 'e-1', householdId: 'h-1' }));
     expect(res.status).toBe(401);
   });
@@ -73,7 +73,7 @@ describe('POST /api/admin/invitations/send', () => {
 
 describe('POST /api/admin/invitations/resend', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POSTResend(makeJsonRequest('http://x', { id: 'inv-1' }));
     expect(res.status).toBe(401);
   });
@@ -123,7 +123,7 @@ describe('POST /api/admin/invitations/resend', () => {
 
 describe('POST /api/admin/invitations/track', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POSTTrack(makeJsonRequest('http://x', { id: 'inv-1', status: 'SENT' }));
     expect(res.status).toBe(401);
   });

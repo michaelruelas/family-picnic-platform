@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '~/lib/auth';
+import { authOptions, isAdminRole } from '~/lib/auth';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       select: { role: true },
     });
 
-    const isAdmin = user?.role === 'ADMIN';
+    const isAdmin = isAdminRole(user?.role);
     const isUploader = photo.uploadedByUserId === session.user.id;
 
     if (!isAdmin && !isUploader) {

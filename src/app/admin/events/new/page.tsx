@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '~/lib/auth';
+import { authOptions, isAdminRole } from '~/lib/auth';
 import EventForm from '~/components/event/EventForm';
 
 export const metadata = { title: 'New Event - Admin' };
@@ -8,7 +8,7 @@ export const metadata = { title: 'New Event - Admin' };
 export default async function NewEventPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || session.user.role !== 'ADMIN') {
+  if (!session?.user?.id || !isAdminRole(session.user.role)) {
     redirect('/');
   }
 

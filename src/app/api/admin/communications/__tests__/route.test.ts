@@ -53,7 +53,7 @@ beforeEach(() => {
 
 describe('POST /api/admin/communications/send', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POSTSend(
       makeNextReq('http://x', {
         eventId: 'e-1',
@@ -229,7 +229,7 @@ describe('POST /api/admin/communications/send', () => {
 
 describe('GET /api/admin/communications/status', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await GETStatus(new NextRequest('http://x?eventId=e-1'));
     expect(res.status).toBe(401);
   });

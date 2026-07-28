@@ -42,7 +42,7 @@ beforeEach(() => {
 
 describe('GET /api/admin/users/search', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await GETSearch(new NextRequest('http://x?email=a@b.com', { method: 'GET' }));
     expect(res.status).toBe(401);
   });
@@ -77,7 +77,7 @@ describe('GET /api/admin/users/search', () => {
 
 describe('GET /api/admin/audit-log', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await GETAudit(new NextRequest('http://x', { method: 'GET' }));
     expect(res.status).toBe(401);
   });
@@ -102,7 +102,7 @@ describe('GET /api/admin/audit-log', () => {
 
 describe('POST /api/admin/csv-import', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POSTCsv(makeNextReq('http://x', { eventId: 'e-1', households: [] }, 'POST'));
     expect(res.status).toBe(401);
   });

@@ -84,6 +84,7 @@ vi.mock('next-auth', () => ({
 vi.mock('~/lib/auth', () => ({
   authOptions: {},
   getServerSession: vi.fn(),
+  isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
 }));
 
 vi.mock('~/lib/invitation-token', () => ({
@@ -312,7 +313,11 @@ describe('event.router', () => {
 
     const { eventRouter } = await import('~/server/routers/event.router');
     const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(eventRouter)({ session: userSession });
+    const nonAdminSession = {
+      user: { ...userSession.user, role: 'GUEST' as unknown as 'ADMIN' },
+      expires: userSession.expires,
+    };
+    const caller = createCallerFactory(eventRouter)({ session: nonAdminSession });
     await expect(
       caller.create({
         name: 'Test',
@@ -1619,7 +1624,11 @@ describe('potluck.router', () => {
   it('createSlot is restricted to admin', async () => {
     const { potluckRouter } = await import('~/server/routers/potluck.router');
     const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(potluckRouter)({ session: userSession });
+    const nonAdminSession = {
+      user: { ...userSession.user, role: 'GUEST' as unknown as 'ADMIN' },
+      expires: userSession.expires,
+    };
+    const caller = createCallerFactory(potluckRouter)({ session: nonAdminSession });
     await expect(
       caller.createSlot({
         eventId: 'evt-1',
@@ -2410,7 +2419,7 @@ describe('photo.router', () => {
       url: 'x',
       event: { id: 'evt-1' },
     });
-    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', role: 'ADMIN_ADULT' });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', role: 'GUEST' });
 
     const { photoRouter } = await import('~/server/routers/photo.router');
     const { createCallerFactory } = await import('~/lib/trpc');

@@ -33,7 +33,7 @@ describe('GET /api/admin/events', () => {
   });
 
   it('returns 401 when user is not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await GET();
     expect(res.status).toBe(401);
   });
@@ -57,7 +57,7 @@ describe('GET /api/admin/events', () => {
 
 describe('POST /api/admin/events', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POST(
       makeJsonRequest('http://x', { name: 'Picnic', date: '2026-01-01', location: 'Park' }),
     );

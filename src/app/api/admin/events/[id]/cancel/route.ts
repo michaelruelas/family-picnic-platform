@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '~/lib/auth';
+import { authOptions, isAdminRole } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { EventStatus } from '~/lib/generated/enums';
 
@@ -9,7 +9,7 @@ type RouteParams = { params: Promise<{ id: string }> };
 export async function POST(_request: Request, { params }: RouteParams) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || session.user.role !== 'ADMIN') {
+  if (!session?.user?.id || !isAdminRole(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

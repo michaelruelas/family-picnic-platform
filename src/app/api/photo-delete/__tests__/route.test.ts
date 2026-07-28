@@ -54,7 +54,7 @@ describe('POST /api/photo-delete', () => {
       uploadedByUserId: 'u-other',
       eventId: 'e1',
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ role: 'ADMIN_ADULT' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({ role: 'GUEST' } as never);
     const res = await POST(makeJsonRequest('http://x', { photoId: 'p1' }));
     expect(res.status).toBe(403);
   });

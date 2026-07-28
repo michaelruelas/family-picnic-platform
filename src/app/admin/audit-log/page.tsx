@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '~/lib/auth';
+import { authOptions, isAdminRole } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import AuditLogTable from '~/components/admin/AuditLogTable';
 
@@ -52,7 +52,7 @@ async function getUsers() {
 export default async function AdminAuditLogPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || session.user.role !== 'ADMIN') {
+  if (!session?.user?.id || !isAdminRole(session.user.role)) {
     redirect('/');
   }
 

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '~/lib/auth';
+import { authOptions, isAdminRole } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import AdminCommunicationsClient from './CommunicationsClient';
 import EventSelect from '~/components/admin/EventSelect';
@@ -67,7 +67,7 @@ export default async function AdminCommunicationsPage({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id || session.user.role !== 'ADMIN') {
+  if (!session?.user?.id || !isAdminRole(session.user.role)) {
     redirect('/');
   }
 

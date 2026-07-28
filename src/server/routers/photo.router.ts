@@ -1,6 +1,7 @@
 import { router, protectedProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
+import { isAdminRole } from '~/lib/auth';
 import { generatePresignedUploadUrl, isS3Configured } from '~/lib/s3';
 import { importPhotoToPhotoPrism, isPhotoPrismConfigured } from '~/lib/photo-prism';
 
@@ -11,7 +12,7 @@ async function isAdmin(userId: string): Promise<boolean> {
     where: { id: userId },
     select: { role: true },
   });
-  return user?.role === 'ADMIN';
+  return isAdminRole(user?.role);
 }
 
 export const photoRouter = router({

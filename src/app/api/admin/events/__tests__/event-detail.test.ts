@@ -35,7 +35,7 @@ describe('GET /api/admin/events/[id]', () => {
   });
 
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await GET(new Request('http://x'), eventParams);
     expect(res.status).toBe(401);
   });
@@ -64,7 +64,7 @@ describe('GET /api/admin/events/[id]', () => {
 
 describe('PATCH /api/admin/events/[id]', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await PATCH(makeJsonRequest('http://x', { name: 'New' }, 'PATCH'), eventParams);
     expect(res.status).toBe(401);
   });
@@ -115,7 +115,7 @@ describe('PATCH /api/admin/events/[id]', () => {
 
 describe('DELETE /api/admin/events/[id]', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await DELETE(new Request('http://x'), eventParams);
     expect(res.status).toBe(401);
   });

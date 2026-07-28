@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '~/lib/auth';
+import { authOptions, isAdminRole } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { CommunicationStatus, RSVPStatus, CommunicationChannel } from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   return runWithTraceContext(
     createTraceContext(requestId, session?.user?.id, '/api/admin/communications/send'),
     async () => {
-      if (!session?.user?.id || session.user.role !== 'ADMIN') {
+      if (!session?.user?.id || !isAdminRole(session.user.role)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
