@@ -119,15 +119,23 @@ export const authOptions: NextAuthOptions = {
         const existing = await prisma.user.findUnique({
           where: { email: profile.email, deletedAt: null },
         });
-        if (!existing) {
-          await prisma.user.create({
-            data: {
-              email: profile.email,
-              name: profile.name ?? profile.email,
-              role: 'ADMIN_ADULT',
-            },
-          });
+        if (existing) {
+          return true;
         }
+        const tombstone = await prisma.user.findUnique({
+          where: { email: profile.email },
+          select: { id: true, deletedAt: true },
+        });
+        if (tombstone?.deletedAt) {
+          return false;
+        }
+        await prisma.user.create({
+          data: {
+            email: profile.email,
+            name: profile.name ?? profile.email,
+            role: 'ADMIN_ADULT',
+          },
+        });
         return true;
       }
       return false;

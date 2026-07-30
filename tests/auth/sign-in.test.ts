@@ -16,9 +16,9 @@ describe('signIn callback', () => {
     expect(authContent).toContain('where: { email:');
   });
 
-  it('only creates user if they do not exist', async () => {
+  it('only creates user if no soft-deleted tombstone exists', async () => {
     const authContent = await fs.readFile(authPath, 'utf-8');
-    expect(authContent).toContain('if (!existing)');
+    expect(authContent).toContain('tombstone?.deletedAt');
     expect(authContent).toContain('prisma.user.create');
   });
 
