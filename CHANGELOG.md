@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.1.12] — 2026-07-30
+
+### Fixed
+
+- **Google OAuth admin signups blocked from admin pages (#16)** — Google signups land with role `admin_adult` (the schema default), but every admin gate checked `role !== 'admin'` and silently redirected to `/`. Promoted admins signing in via Google were locked out of the admin dashboard. Introduced `isAdminRole` helper and `ADMIN_ROLES` set in `src/lib/auth.ts`; switched tRPC `isAdmin` middleware, all 7 admin pages, 18 admin API routes, photo-delete, and the photo router to use it. Added a `jwt` callback to stamp the local Prisma user id into `token.sub` so the `session` callback's Prisma lookup resolves Google users. Audit-log user filter now matches against `ADMIN_ROLES` so `admin_adult` users appear in the picker.
+
+### Refactoring
+
+- **`requireAdmin` helper extraction (#17)** — Pulled the `session.user.role ∈ ADMIN_ROLES` check into `src/lib/admin-auth.ts` so admin gating is a single import across pages, route handlers, and tRPC procedures.
+
 ## [0.1.0] — 2026-07-02
 
 ### Added
