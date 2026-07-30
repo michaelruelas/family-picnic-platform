@@ -1,18 +1,11 @@
 import { router, protectedProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
+import { isAdminRole } from '~/lib/auth';
 import { generatePresignedUploadUrl, isS3Configured } from '~/lib/s3';
 import { importPhotoToPhotoPrism, isPhotoPrismConfigured } from '~/lib/photo-prism';
 
 const VALID_REACTIONS = ['❤️', '👍', '👏', '🎉', '😂'];
-
-async function isAdmin(userId: string): Promise<boolean> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-  return user?.role === 'ADMIN';
-}
 
 export const photoRouter = router({
   list: protectedProcedure.input(z.object({ eventId: z.string() })).query(async ({ input }) => {
@@ -316,10 +309,10 @@ export const photoRouter = router({
         throw new Error('Photo not found');
       }
 
-      const userIsAdmin = await isAdmin(ctx.session.user.id);
+      const isAdmin = isAdminRole(ctx.session.user.role);
       const isUploader = photo.uploadedByUserId === ctx.session.user.id;
 
-      if (!userIsAdmin && !isUploader) {
+      if (!isAdmin && !isUploader) {
         throw new Error('Only the uploader or an admin can delete this photo');
       }
 

@@ -1,4 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Role } from '~/lib/generated/enums';
+
+// 'GUEST' is a sentinel value used only in tests to represent "not an admin" —
+// it is not a real value in the Role enum. The isAdminRole mock returns false
+// for any role string that is not in ADMIN_ROLES.
+const NON_ADMIN_ROLE = 'GUEST' as unknown as Role;
 
 const mockPrisma = {
   event: {
@@ -84,6 +90,7 @@ vi.mock('next-auth', () => ({
 vi.mock('~/lib/auth', () => ({
   authOptions: {},
   getServerSession: vi.fn(),
+  isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
 }));
 
 vi.mock('~/lib/invitation-token', () => ({
@@ -312,7 +319,11 @@ describe('event.router', () => {
 
     const { eventRouter } = await import('~/server/routers/event.router');
     const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(eventRouter)({ session: userSession });
+    const nonAdminSession = {
+      user: { ...userSession.user, role: NON_ADMIN_ROLE },
+      expires: userSession.expires,
+    };
+    const caller = createCallerFactory(eventRouter)({ session: nonAdminSession });
     await expect(
       caller.create({
         name: 'Test',
@@ -1619,7 +1630,11 @@ describe('potluck.router', () => {
   it('createSlot is restricted to admin', async () => {
     const { potluckRouter } = await import('~/server/routers/potluck.router');
     const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(potluckRouter)({ session: userSession });
+    const nonAdminSession = {
+      user: { ...userSession.user, role: NON_ADMIN_ROLE },
+      expires: userSession.expires,
+    };
+    const caller = createCallerFactory(potluckRouter)({ session: nonAdminSession });
     await expect(
       caller.createSlot({
         eventId: 'evt-1',
@@ -2410,11 +2425,14 @@ describe('photo.router', () => {
       url: 'x',
       event: { id: 'evt-1' },
     });
-    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', role: 'ADMIN_ADULT' });
 
     const { photoRouter } = await import('~/server/routers/photo.router');
     const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(photoRouter)({ session: userSession });
+    const nonAdminSession = {
+      user: { ...userSession.user, role: NON_ADMIN_ROLE },
+      expires: userSession.expires,
+    };
+    const caller = createCallerFactory(photoRouter)({ session: nonAdminSession });
     await expect(caller.delete({ id: 'photo-1' })).rejects.toThrow(
       'Only the uploader or an admin can delete this photo',
     );

@@ -28,7 +28,7 @@ beforeEach(() => {
 
 describe('POST /api/admin/events/[id]/cancel', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POST(makeJsonRequest('http://x', undefined, 'POST'), eventParams);
     expect(res.status).toBe(401);
   });

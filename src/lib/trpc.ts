@@ -3,7 +3,7 @@ import superjson from 'superjson';
 import { ZodError } from 'zod';
 import type { Session } from 'next-auth';
 import { getServerSession } from 'next-auth';
-import { authOptions } from './auth';
+import { authOptions, isAdminRole } from './auth';
 import { writeAuditLog } from './audit';
 
 interface Ctx {
@@ -41,13 +41,15 @@ const isAuthenticated = t.middleware(({ ctx, next }) => {
 
 const isAdmin = t.middleware(({ ctx, next }) => {
   const authedCtx = ctx as AuthedCtx;
-  if (authedCtx.session.user.role !== 'ADMIN') {
+  if (!isAdminRole(authedCtx.session.user.role)) {
     throw new TRPCError({ code: 'FORBIDDEN' });
   }
   return next({
     ctx: authedCtx,
   });
 });
+
+// Note: must run after `isAuthenticated` so `ctx.session.user` is non-nullable.
 
 const auditLog = t.middleware(async ({ ctx, next, type, path }) => {
   const authedCtx = ctx as AuthedCtx;

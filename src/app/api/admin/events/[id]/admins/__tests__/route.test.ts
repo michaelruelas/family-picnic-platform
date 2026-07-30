@@ -30,7 +30,7 @@ beforeEach(() => {
 
 describe('POST /api/admin/events/[id]/admins', () => {
   it('returns 401 when not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POST(
       new NextRequest('http://x', {
         method: 'POST',
