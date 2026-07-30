@@ -48,7 +48,7 @@ patches:
 images:
   - name: ghcr.io/family-picnic/platform
     newName: ghcr.io/michaelruelas/family-picnic-platform
-    newTag: 0.1.11
+    newTag: 0.1.12
   - name: photoprism/photoprism
     newName: photoprism/photoprism
     newTag: '260601'
