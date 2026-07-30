@@ -1,6 +1,5 @@
-import { redirect, notFound } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions, isAdminRole } from '~/lib/auth';
+import { notFound } from 'next/navigation';
+import { requireAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import EventForm from '~/components/event/EventForm';
 import EventStatusBadge from '~/components/event/EventStatusBadge';
@@ -38,11 +37,7 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function EditEventPage({ params }: PageProps) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || !isAdminRole(session.user.role)) {
-    redirect('/');
-  }
+  await requireAdminPage();
 
   const { id } = await params;
   const event = await getEvent(id);

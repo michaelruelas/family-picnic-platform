@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions, isAdminRole } from '~/lib/auth';
+import { requireAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { CommunicationStatus, RSVPStatus, CommunicationChannel } from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
@@ -40,21 +39,19 @@ async function scheduleWorkflow(
 
 export async function POST(request: NextRequest) {
   const requestId = generateRequestId();
-  const session = await getServerSession(authOptions);
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+  const { session } = auth;
 
   const log = createRequestLogger({
     requestId,
-    userId: session?.user?.id,
+    userId: session.user.id,
     route: '/api/admin/communications/send',
   });
 
   return runWithTraceContext(
-    createTraceContext(requestId, session?.user?.id, '/api/admin/communications/send'),
+    createTraceContext(requestId, session.user.id, '/api/admin/communications/send'),
     async () => {
-      if (!session?.user?.id || !isAdminRole(session.user.role)) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-
       let eventId: string | undefined;
 
       try {

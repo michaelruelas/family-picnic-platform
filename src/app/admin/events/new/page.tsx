@@ -1,16 +1,10 @@
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions, isAdminRole } from '~/lib/auth';
+import { requireAdminPage } from '~/lib/admin-auth';
 import EventForm from '~/components/event/EventForm';
 
 export const metadata = { title: 'New Event - Admin' };
 
 export default async function NewEventPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || !isAdminRole(session.user.role)) {
-    redirect('/');
-  }
+  await requireAdminPage();
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">

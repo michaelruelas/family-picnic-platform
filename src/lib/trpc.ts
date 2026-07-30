@@ -39,6 +39,7 @@ const isAuthenticated = t.middleware(({ ctx, next }) => {
   });
 });
 
+// Must run after `isAuthenticated` so `ctx.session.user` is non-nullable.
 const isAdmin = t.middleware(({ ctx, next }) => {
   const authedCtx = ctx as AuthedCtx;
   if (!isAdminRole(authedCtx.session.user.role)) {
@@ -48,8 +49,6 @@ const isAdmin = t.middleware(({ ctx, next }) => {
     ctx: authedCtx,
   });
 });
-
-// Note: must run after `isAuthenticated` so `ctx.session.user` is non-nullable.
 
 const auditLog = t.middleware(async ({ ctx, next, type, path }) => {
   const authedCtx = ctx as AuthedCtx;
