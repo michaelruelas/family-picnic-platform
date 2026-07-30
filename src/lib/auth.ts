@@ -117,7 +117,7 @@ export const authOptions: NextAuthOptions = {
       }
       if (account?.provider === 'google' && profile?.email) {
         const existing = await prisma.user.findUnique({
-          where: { email: profile.email },
+          where: { email: profile.email, deletedAt: null },
         });
         if (!existing) {
           await prisma.user.create({

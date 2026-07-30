@@ -149,9 +149,42 @@ describe('authOptions session callback', () => {
       });
       expect(result).toBe(true);
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'existing@example.com' },
+        where: { email: 'existing@example.com', deletedAt: null },
       });
       expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('treats a soft-deleted email as a new user for google sign in', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.user.findUnique).mockImplementation(((args: {
+        where?: { deletedAt?: unknown };
+      }) => {
+        if (args?.where?.deletedAt === null) return Promise.resolve(null);
+        return Promise.resolve({
+          id: 'deleted-1',
+          email: 'gone@example.com',
+          deletedAt: new Date('2024-01-01'),
+        } as never);
+      }) as never);
+      vi.mocked(prisma.user.create).mockResolvedValue({
+        id: 'new-user',
+        email: 'gone@example.com',
+      } as never);
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean>;
+      const result = await signInCallback({
+        account: { provider: 'google' },
+        profile: { email: 'gone@example.com', name: 'Gone' },
+      });
+      expect(result).toBe(true);
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'gone@example.com', deletedAt: null },
+      });
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: { email: 'gone@example.com', name: 'Gone', role: 'ADMIN_ADULT' },
+      });
     });
 
     it('creates user for google sign in with new email', async () => {
