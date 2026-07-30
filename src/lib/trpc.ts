@@ -49,6 +49,8 @@ const isAdmin = t.middleware(({ ctx, next }) => {
   });
 });
 
+// Note: must run after `isAuthenticated` so `ctx.session.user` is non-nullable.
+
 const auditLog = t.middleware(async ({ ctx, next, type, path }) => {
   const authedCtx = ctx as AuthedCtx;
   const result = await next({ ctx: authedCtx });

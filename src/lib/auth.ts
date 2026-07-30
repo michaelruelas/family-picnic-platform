@@ -87,8 +87,10 @@ export const authOptions: NextAuthOptions = {
         });
         if (dbUser) {
           token.sub = dbUser.id;
-          token.role = dbUser.role;
-          token.householdId = dbUser.householdId;
+        } else {
+          console.warn(
+            `[auth] jwt callback: google user ${profile.email} not found in db; signIn should have created them. treating as anonymous.`,
+          );
         }
       } else if (user) {
         if (user.id) token.sub = user.id;

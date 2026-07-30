@@ -7,14 +7,6 @@ import { importPhotoToPhotoPrism, isPhotoPrismConfigured } from '~/lib/photo-pri
 
 const VALID_REACTIONS = ['❤️', '👍', '👏', '🎉', '😂'];
 
-async function isAdmin(userId: string): Promise<boolean> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-  return isAdminRole(user?.role);
-}
-
 export const photoRouter = router({
   list: protectedProcedure.input(z.object({ eventId: z.string() })).query(async ({ input }) => {
     return prisma.photo.findMany({
@@ -317,10 +309,10 @@ export const photoRouter = router({
         throw new Error('Photo not found');
       }
 
-      const userIsAdmin = await isAdmin(ctx.session.user.id);
+      const isAdmin = isAdminRole(ctx.session.user.role);
       const isUploader = photo.uploadedByUserId === ctx.session.user.id;
 
-      if (!userIsAdmin && !isUploader) {
+      if (!isAdmin && !isUploader) {
         throw new Error('Only the uploader or an admin can delete this photo');
       }
 

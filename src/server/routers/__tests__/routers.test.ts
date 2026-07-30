@@ -1,4 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Role } from '~/lib/generated/enums';
+
+// 'GUEST' is a sentinel value used only in tests to represent "not an admin" —
+// it is not a real value in the Role enum. The isAdminRole mock returns false
+// for any role string that is not in ADMIN_ROLES.
+const NON_ADMIN_ROLE = 'GUEST' as unknown as Role;
 
 const mockPrisma = {
   event: {
@@ -314,7 +320,7 @@ describe('event.router', () => {
     const { eventRouter } = await import('~/server/routers/event.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const nonAdminSession = {
-      user: { ...userSession.user, role: 'GUEST' as unknown as 'ADMIN' },
+      user: { ...userSession.user, role: NON_ADMIN_ROLE },
       expires: userSession.expires,
     };
     const caller = createCallerFactory(eventRouter)({ session: nonAdminSession });
@@ -1625,7 +1631,7 @@ describe('potluck.router', () => {
     const { potluckRouter } = await import('~/server/routers/potluck.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const nonAdminSession = {
-      user: { ...userSession.user, role: 'GUEST' as unknown as 'ADMIN' },
+      user: { ...userSession.user, role: NON_ADMIN_ROLE },
       expires: userSession.expires,
     };
     const caller = createCallerFactory(potluckRouter)({ session: nonAdminSession });
@@ -2419,11 +2425,14 @@ describe('photo.router', () => {
       url: 'x',
       event: { id: 'evt-1' },
     });
-    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', role: 'GUEST' });
 
     const { photoRouter } = await import('~/server/routers/photo.router');
     const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(photoRouter)({ session: userSession });
+    const nonAdminSession = {
+      user: { ...userSession.user, role: NON_ADMIN_ROLE },
+      expires: userSession.expires,
+    };
+    const caller = createCallerFactory(photoRouter)({ session: nonAdminSession });
     await expect(caller.delete({ id: 'photo-1' })).rejects.toThrow(
       'Only the uploader or an admin can delete this photo',
     );

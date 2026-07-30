@@ -26,12 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    const isAdmin = isAdminRole(user?.role);
+    const isAdmin = isAdminRole(session.user.role);
     const isUploader = photo.uploadedByUserId === session.user.id;
 
     if (!isAdmin && !isUploader) {

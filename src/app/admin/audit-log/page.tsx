@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
-import { authOptions, isAdminRole } from '~/lib/auth';
+import { ADMIN_ROLES, authOptions, isAdminRole } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import AuditLogTable from '~/components/admin/AuditLogTable';
 
@@ -40,7 +40,7 @@ async function getEvents() {
 
 async function getUsers() {
   return prisma.user.findMany({
-    where: { role: 'ADMIN' },
+    where: { role: { in: [...ADMIN_ROLES] } },
     select: {
       id: true,
       name: true,

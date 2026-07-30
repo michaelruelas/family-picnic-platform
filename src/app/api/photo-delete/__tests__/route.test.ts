@@ -48,25 +48,23 @@ describe('POST /api/photo-delete', () => {
   });
 
   it('returns 403 when user is not uploader and not admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     prismaMock.photo.findUnique.mockResolvedValue({
       id: 'p1',
       uploadedByUserId: 'u-other',
       eventId: 'e1',
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ role: 'GUEST' } as never);
     const res = await POST(makeJsonRequest('http://x', { photoId: 'p1' }));
     expect(res.status).toBe(403);
   });
 
   it('soft-deletes a photo when user is uploader', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     prismaMock.photo.findUnique.mockResolvedValue({
       id: 'p1',
       uploadedByUserId: 'u-1',
       eventId: 'e1',
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ role: 'ADMIN_ADULT' } as never);
     prismaMock.photo.update.mockResolvedValue({} as never);
     prismaMock.adminAuditLog.create.mockResolvedValue({} as never);
     const res = await POST(makeJsonRequest('http://x', { photoId: 'p1' }));
@@ -76,13 +74,12 @@ describe('POST /api/photo-delete', () => {
   });
 
   it('soft-deletes a photo when user is admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
     prismaMock.photo.findUnique.mockResolvedValue({
       id: 'p1',
       uploadedByUserId: 'u-other',
       eventId: 'e1',
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ role: 'ADMIN' } as never);
     prismaMock.photo.update.mockResolvedValue({} as never);
     prismaMock.adminAuditLog.create.mockResolvedValue({} as never);
     const res = await POST(makeJsonRequest('http://x', { photoId: 'p1' }));
