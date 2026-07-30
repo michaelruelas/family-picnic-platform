@@ -1,16 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions, isAdminRole } from '~/lib/auth';
+import { requireAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || !isAdminRole(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+  const { session } = auth;
 
   try {
     const { id } = await params;
@@ -51,11 +48,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || !isAdminRole(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+  const { session } = auth;
 
   try {
     const { id } = await params;

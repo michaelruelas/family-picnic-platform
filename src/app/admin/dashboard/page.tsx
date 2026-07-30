@@ -1,7 +1,5 @@
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getServerSession } from 'next-auth';
-import { authOptions, isAdminRole } from '~/lib/auth';
+import { requireAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { RSVPStatus } from '~/lib/generated/enums';
 import DashboardCard from '~/components/admin/DashboardCard';
@@ -91,11 +89,7 @@ async function getEventsWithDashboard() {
 }
 
 export default async function AdminDashboardPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || !isAdminRole(session.user.role)) {
-    redirect('/');
-  }
+  const session = await requireAdminPage();
 
   const eventsWithDashboard = await getEventsWithDashboard();
 

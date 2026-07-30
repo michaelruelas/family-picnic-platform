@@ -90,8 +90,12 @@ describe('CSV Import Implementation', () => {
 
   it('csv-import route requires admin authentication', async () => {
     const content = await fs.readFile(csvImportRoutePath, 'utf-8');
-    expect(content).toContain('ADMIN');
-    expect(content).toContain('Unauthorized');
+    expect(content).toContain('requireAdminApi');
+    const helperContent = await fs.readFile(
+      path.resolve(__dirname, '../../src/lib/admin-auth.ts'),
+      'utf-8',
+    );
+    expect(helperContent).toContain('Unauthorized');
   });
 
   it('csv-import route validates input with Zod schema', async () => {

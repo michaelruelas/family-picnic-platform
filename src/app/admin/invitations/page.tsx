@@ -1,7 +1,5 @@
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getServerSession } from 'next-auth';
-import { authOptions, isAdminRole } from '~/lib/auth';
+import { requireAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import AdminInvitationsClient from './InvitationsClient';
 
@@ -49,11 +47,7 @@ export default async function AdminInvitationsPage({
 }: {
   searchParams: Promise<{ event?: string }>;
 }) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id || !isAdminRole(session.user.role)) {
-    redirect('/');
-  }
+  const session = await requireAdminPage();
 
   const params = await searchParams;
   const selectedEventId = params.event || null;
