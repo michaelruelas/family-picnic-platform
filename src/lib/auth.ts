@@ -7,7 +7,7 @@ import type { Role } from './generated/enums';
 export const ADMIN_ROLES: readonly Role[] = ['ADMIN', 'ADMIN_ADULT'] as const;
 
 export function isAdminRole(role: Role | null | undefined): boolean {
-  return role !== null && role !== undefined && (ADMIN_ROLES as readonly string[]).includes(role);
+  return (ADMIN_ROLES as readonly string[]).includes(role as string);
 }
 
 function devCredentialsProvider() {

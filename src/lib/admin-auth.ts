@@ -7,6 +7,8 @@ import { authOptions, isAdminRole } from './auth';
 export type AdminApiAuth = { ok: true; session: Session };
 export type AdminApiDenied = { ok: false; response: NextResponse };
 
+const UNAUTHORIZED_RESPONSE = NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
 /**
  * For API routes: returns either `{ ok: true, session }` if the caller is an
  * admin, or `{ ok: false, response }` (a 401 NextResponse) if not. Caller
@@ -22,7 +24,7 @@ export type AdminApiDenied = { ok: false; response: NextResponse };
 export async function requireAdminApi(): Promise<AdminApiAuth | AdminApiDenied> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || !isAdminRole(session.user.role)) {
-    return { ok: false, response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+    return { ok: false, response: UNAUTHORIZED_RESPONSE };
   }
   return { ok: true, session };
 }
