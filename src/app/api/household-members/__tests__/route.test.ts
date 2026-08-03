@@ -9,9 +9,11 @@ const prismaMock = vi.hoisted(() => ({
     findUnique: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
     count: vi.fn(),
   },
   user: { findUnique: vi.fn() },
+  $transaction: vi.fn(),
 }));
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
 
@@ -31,6 +33,9 @@ const mockedSession = vi.mocked(getServerSession);
 
 beforeEach(() => {
   resetPrismaMock(prismaMock);
+  prismaMock.$transaction.mockImplementation(
+    async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock),
+  );
 });
 
 describe('POST /api/household-members', () => {
@@ -62,21 +67,56 @@ describe('POST /api/household-members', () => {
 
   it('returns 403 when user is not in the target household', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-2' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-2',
+      deletedAt: null,
+    } as never);
     const res = await POST(makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex' }));
     expect(res.status).toBe(403);
   });
 
   it('returns 403 when user has no household', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: null } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: null,
+      deletedAt: null,
+    } as never);
     const res = await POST(makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex' }));
     expect(res.status).toBe(403);
   });
 
+  it('returns 401 when user is soft-deleted', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: new Date(),
+    } as never);
+    const res = await POST(makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex' }));
+    expect(res.status).toBe(401);
+    expect(prismaMock.householdMember.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 on malformed JSON', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    const req = new Request('http://x', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: 'not-json',
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
   it('creates a member with trimmed name and null notes', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
     prismaMock.householdMember.create.mockResolvedValue({
       id: 'm-1',
       householdId: 'h-1',
@@ -148,11 +188,34 @@ describe('PATCH /api/household-members/[id]', () => {
       householdId: 'h-1',
       deletedAt: null,
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-2' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-2',
+      deletedAt: null,
+    } as never);
     const res = await PATCH(makeJsonRequest('http://x/m-1', { name: 'Alex' }, 'PATCH'), {
       params: Promise.resolve({ id: 'm-1' }),
     });
     expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when caller is soft-deleted', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.householdMember.findUnique.mockResolvedValue({
+      id: 'm-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: new Date(),
+    } as never);
+    const res = await PATCH(makeJsonRequest('http://x/m-1', { name: 'Alex' }, 'PATCH'), {
+      params: Promise.resolve({ id: 'm-1' }),
+    });
+    expect(res.status).toBe(401);
+    expect(prismaMock.householdMember.update).not.toHaveBeenCalled();
   });
 
   it('returns 400 when no valid fields to update', async () => {
@@ -162,10 +225,25 @@ describe('PATCH /api/household-members/[id]', () => {
       householdId: 'h-1',
       deletedAt: null,
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
     const res = await PATCH(makeJsonRequest('http://x/m-1', {}, 'PATCH'), {
       params: Promise.resolve({ id: 'm-1' }),
     });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 on malformed JSON', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    const req = new Request('http://x/m-1', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: 'not-json',
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: 'm-1' }) });
     expect(res.status).toBe(400);
   });
 
@@ -176,7 +254,11 @@ describe('PATCH /api/household-members/[id]', () => {
       householdId: 'h-1',
       deletedAt: null,
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
     prismaMock.householdMember.update.mockResolvedValue({
       id: 'm-1',
       name: 'Alex Garcia',
@@ -202,7 +284,11 @@ describe('PATCH /api/household-members/[id]', () => {
       householdId: 'h-1',
       deletedAt: null,
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
     prismaMock.householdMember.update.mockResolvedValue({ id: 'm-1', notes: null } as never);
     const res = await PATCH(makeJsonRequest('http://x/m-1', { notes: '   ' }, 'PATCH'), {
       params: Promise.resolve({ id: 'm-1' }),
@@ -263,11 +349,34 @@ describe('DELETE /api/household-members/[id]', () => {
       householdId: 'h-1',
       deletedAt: null,
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-2' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-2',
+      deletedAt: null,
+    } as never);
     const res = await DELETE(makeJsonRequest('http://x', undefined, 'DELETE'), {
       params: Promise.resolve({ id: 'm-1' }),
     });
     expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when caller is soft-deleted', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.householdMember.findUnique.mockResolvedValue({
+      id: 'm-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: new Date(),
+    } as never);
+    const res = await DELETE(makeJsonRequest('http://x', undefined, 'DELETE'), {
+      params: Promise.resolve({ id: 'm-1' }),
+    });
+    expect(res.status).toBe(401);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
   it('returns 400 when only one member remains', async () => {
@@ -277,7 +386,11 @@ describe('DELETE /api/household-members/[id]', () => {
       householdId: 'h-1',
       deletedAt: null,
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
     prismaMock.householdMember.count.mockResolvedValue(1);
     const res = await DELETE(makeJsonRequest('http://x', undefined, 'DELETE'), {
       params: Promise.resolve({ id: 'm-1' }),
@@ -293,7 +406,11 @@ describe('DELETE /api/household-members/[id]', () => {
       householdId: 'h-1',
       deletedAt: null,
     } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
     prismaMock.householdMember.count.mockResolvedValue(2);
     prismaMock.householdMember.update.mockResolvedValue({} as never);
     const res = await DELETE(makeJsonRequest('http://x', undefined, 'DELETE'), {
@@ -302,12 +419,77 @@ describe('DELETE /api/household-members/[id]', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
+    expect(prismaMock.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: 'Serializable',
+    });
     expect(prismaMock.householdMember.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'm-1' },
         data: { deletedAt: expect.any(Date) },
       }),
     );
+  });
+
+  it('returns 400 when the transaction reports the last member', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.householdMember.findUnique.mockResolvedValue({
+      id: 'm-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
+    prismaMock.$transaction.mockImplementationOnce(async () => {
+      const error = new Error('last_member');
+      error.name = 'LastMemberError';
+      throw error;
+    });
+    const res = await DELETE(makeJsonRequest('http://x', undefined, 'DELETE'), {
+      params: Promise.resolve({ id: 'm-1' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 409 on a serialization conflict from the second concurrent delete', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.householdMember.findUnique.mockResolvedValue({
+      id: 'm-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      deletedAt: null,
+    } as never);
+    prismaMock.householdMember.count.mockResolvedValue(2);
+    prismaMock.householdMember.update.mockResolvedValue({} as never);
+
+    let call = 0;
+    prismaMock.$transaction.mockImplementation(async (fn: (tx: typeof prismaMock) => unknown) => {
+      call += 1;
+      if (call === 1) {
+        return fn(prismaMock);
+      }
+      const error = new Error('could not serialize access');
+      (error as { code?: string }).code = 'P2034';
+      throw error;
+    });
+
+    const [res1, res2] = await Promise.all([
+      DELETE(makeJsonRequest('http://x', undefined, 'DELETE'), {
+        params: Promise.resolve({ id: 'm-1' }),
+      }),
+      DELETE(makeJsonRequest('http://x', undefined, 'DELETE'), {
+        params: Promise.resolve({ id: 'm-2' }),
+      }),
+    ]);
+
+    const statuses = [res1.status, res2.status].sort();
+    expect(statuses).toEqual([200, 409]);
   });
 
   it('returns 500 on error', async () => {

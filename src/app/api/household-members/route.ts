@@ -12,7 +12,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body', code: 'BAD_REQUEST' }, { status: 400 });
+    }
     const result = householdMemberCreateSchema.safeParse(body);
 
     if (!result.success) {
@@ -25,10 +30,17 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { householdId: true },
+      select: { householdId: true, deletedAt: true },
     });
 
-    if (!user?.householdId || user.householdId !== result.data.householdId) {
+    if (!user || user.deletedAt !== null) {
+      return NextResponse.json(
+        { error: 'Account is inactive', code: 'UNAUTHORIZED' },
+        { status: 401 },
+      );
+    }
+
+    if (!user.householdId || user.householdId !== result.data.householdId) {
       return NextResponse.json(
         { error: 'You can only add members to your own household', code: 'FORBIDDEN' },
         { status: 403 },

@@ -220,8 +220,11 @@ export default function HouseholdMembersClient({
 
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-foreground/85 block text-sm font-medium">Name</label>
+              <label htmlFor="member-name" className="text-foreground/85 block text-sm font-medium">
+                Name
+              </label>
               <input
+                id="member-name"
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -232,8 +235,11 @@ export default function HouseholdMembersClient({
             </div>
 
             <div>
-              <label className="text-foreground/85 block text-sm font-medium">Age (optional)</label>
+              <label htmlFor="member-age" className="text-foreground/85 block text-sm font-medium">
+                Age (optional)
+              </label>
               <input
+                id="member-age"
                 type="number"
                 min="0"
                 max="120"
@@ -246,8 +252,11 @@ export default function HouseholdMembersClient({
           </div>
 
           <div className="mt-4">
-            <label className="text-foreground/85 block text-sm font-medium">Notes (optional)</label>
+            <label htmlFor="member-notes" className="text-foreground/85 block text-sm font-medium">
+              Notes (optional)
+            </label>
             <textarea
+              id="member-notes"
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
