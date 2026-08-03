@@ -10,6 +10,9 @@ import {
   VALID_REACTIONS,
   eventCreateSchema,
   eventUpdateSchema,
+  householdCreateSchema,
+  householdUpdateSchema,
+  householdNameSchema,
 } from '~/lib/schemas';
 
 describe('RSVP Schemas', () => {
@@ -429,6 +432,95 @@ describe('Event Schemas', () => {
         const issue = result.error.issues[0]!;
         expect(issue.message).toBe('RSVP deadline must be before the event date');
       }
+    });
+  });
+});
+
+describe('Household Schemas', () => {
+  describe('householdNameSchema', () => {
+    it('accepts a normal name', () => {
+      const result = householdNameSchema.safeParse('The Garcia Family');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe('The Garcia Family');
+      }
+    });
+
+    it('trims surrounding whitespace', () => {
+      const result = householdNameSchema.safeParse('  The Smiths  ');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe('The Smiths');
+      }
+    });
+
+    it('rejects empty string', () => {
+      const result = householdNameSchema.safeParse('');
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe('Household name is required');
+      }
+    });
+
+    it('rejects whitespace-only string', () => {
+      const result = householdNameSchema.safeParse('     ');
+      expect(result.success).toBe(false);
+    });
+
+    it('accepts exactly 80 characters', () => {
+      const result = householdNameSchema.safeParse('a'.repeat(80));
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects 81 characters', () => {
+      const result = householdNameSchema.safeParse('a'.repeat(81));
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toMatch(/80 characters or fewer/);
+      }
+    });
+  });
+
+  describe('householdCreateSchema', () => {
+    it('validates a name', () => {
+      const result = householdCreateSchema.safeParse({ name: 'The Garcias' });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts optional parentHouseholdId', () => {
+      const result = householdCreateSchema.safeParse({
+        name: 'Garcia Kids',
+        parentHouseholdId: 'hh-1',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects empty name', () => {
+      const result = householdCreateSchema.safeParse({ name: '' });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('householdUpdateSchema', () => {
+    it('requires an id and name', () => {
+      const result = householdUpdateSchema.safeParse({
+        id: 'hh-1',
+        name: 'New Name',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects missing id', () => {
+      const result = householdUpdateSchema.safeParse({ name: 'New Name' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects name longer than 80 chars', () => {
+      const result = householdUpdateSchema.safeParse({
+        id: 'hh-1',
+        name: 'a'.repeat(81),
+      });
+      expect(result.success).toBe(false);
     });
   });
 });
