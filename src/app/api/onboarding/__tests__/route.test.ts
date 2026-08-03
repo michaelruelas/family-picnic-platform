@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { nextResponseJson, resetPrismaMock, makeJsonRequest } from 'tests/helpers/route';
+import { Prisma } from '~/lib/generated/client';
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 
 const prismaMock = vi.hoisted(() => ({
   user: { update: vi.fn(), findUnique: vi.fn() },
-  household: { create: vi.fn() },
+  household: { create: vi.fn(), findFirst: vi.fn() },
   dependent: { create: vi.fn() },
 }));
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
@@ -53,12 +54,40 @@ describe('POST /api/onboarding/household', () => {
 
   it('creates a new household and links user', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.household.findFirst.mockResolvedValue(null);
     prismaMock.household.create.mockResolvedValue({ id: 'h-new' } as never);
     prismaMock.user.update.mockResolvedValue({} as never);
     const res = await POSTHousehold(makeJsonRequest('http://x', { name: 'The Smiths' }));
     expect(res.status).toBe(200);
     expect(prismaMock.household.create).toHaveBeenCalled();
     expect(prismaMock.user.update).toHaveBeenCalled();
+  });
+
+  it('rejects empty household name', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    const res = await POSTHousehold(makeJsonRequest('http://x', { name: '' }));
+    expect(res.status).toBe(400);
+    expect(prismaMock.household.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects household name longer than 80 chars', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    const res = await POSTHousehold(makeJsonRequest('http://x', { name: 'a'.repeat(81) }));
+    expect(res.status).toBe(400);
+    expect(prismaMock.household.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 on duplicate household name', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.household.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+    const res = await POSTHousehold(makeJsonRequest('http://x', { name: 'The Smiths' }));
+    expect(res.status).toBe(409);
+    expect(prismaMock.user.update).not.toHaveBeenCalled();
   });
 
   it('returns 500 on error', async () => {

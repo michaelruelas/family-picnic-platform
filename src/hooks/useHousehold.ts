@@ -131,3 +131,20 @@ export function useDependentMutations() {
     remove,
   };
 }
+
+export function useHouseholdNameMutation() {
+  const utils = trpc.useUtils();
+
+  const updateName = trpc.household.update.useMutation({
+    onSuccess: () => {
+      void utils.user.getProfile.invalidate();
+      void utils.household.getById.invalidate();
+      void utils.household.list.invalidate();
+      void utils.household.getTree.invalidate();
+    },
+  });
+
+  return {
+    updateName,
+  };
+}

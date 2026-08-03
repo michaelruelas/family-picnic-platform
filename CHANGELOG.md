@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Google OAuth signIn lookup** (`src/lib/auth.ts`) — filter `deletedAt: null` on the active-user lookup, then refuse sign-in entirely when the email matches a soft-deleted tombstone. The `User.email` unique index covers soft-deleted rows, so re-provisioning would throw on insert; refusing matches the dev-credentials `authorize` behavior and ADR-001 ("account recovery won't do"). The admin must explicitly re-invite a deleted user.
+
+### Tests
+
+- **OAuth soft-deleted user coverage** (`src/lib/__tests__/auth.test.ts`) — assert the Google signIn callback (1) filters the active-user lookup with `deletedAt: null`, (2) performs an unfiltered tombstone lookup, and (3) returns `false` with no create when the email matches a soft-deleted record. Updated the pre-existing string-pattern smoke test in `tests/auth/sign-in.test.ts` to match the new control flow.
+
 ## [0.1.12] — 2026-07-30
 
 ### Fixed

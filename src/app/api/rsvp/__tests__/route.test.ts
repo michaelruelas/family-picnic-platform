@@ -144,6 +144,9 @@ describe('POST /api/rsvp', () => {
       maxCapacity: null,
     } as never);
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.$transaction.mockImplementation(
+      async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock) as never,
+    );
     prismaMock.rSVP.upsert.mockResolvedValue({} as never);
     const res = await POST(
       makeJsonRequest('http://x', { eventId: 'e1', action: 'confirm', headcount: 2 }),
@@ -164,6 +167,9 @@ describe('POST /api/rsvp', () => {
       maxCapacity: 5,
     } as never);
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.$transaction.mockImplementation(
+      async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock) as never,
+    );
     prismaMock.rSVP.aggregate
       .mockResolvedValueOnce({ _sum: { headcount: 5 }, _max: { waitlistPosition: 0 } })
       .mockResolvedValueOnce({ _sum: { headcount: 5 }, _max: { waitlistPosition: 0 } });
@@ -173,6 +179,18 @@ describe('POST /api/rsvp', () => {
     const body = await res.json();
     expect(body.status).toBe('WAITLISTED');
     expect(body.waitlistPosition).toBe(1);
+    // The route computes the response body from the computed waitlist position,
+    // so a no-op transaction would still pass the assertions above. Assert the
+    // upsert ran with the WAITLISTED status to prove persistence.
+    expect(prismaMock.$transaction).toHaveBeenCalled();
+    expect(prismaMock.rSVP.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          status: 'WAITLISTED',
+          waitlistPosition: 1,
+        }),
+      }),
+    );
   });
 
   it('declines RSVP and runs decline flow with potluck release + waitlist promotion', async () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Role } from '~/lib/generated/enums';
+import { Prisma } from '~/lib/generated/client';
 
 // 'GUEST' is a sentinel value used only in tests to represent "not an admin" —
 // it is not a real value in the Role enum. The isAdminRole mock returns false
@@ -34,7 +35,15 @@ const mockPrisma = {
     findFirst: vi.fn(),
   },
   dependent: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
-  household: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn() },
+  household: {
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
+  },
   invitation: {
     findUnique: vi.fn(),
     findMany: vi.fn(),
@@ -182,6 +191,7 @@ const otherUserSession = {
   },
   expires: 'x',
 };
+void otherUserSession;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -948,6 +958,7 @@ describe('dependent.router', () => {
 
 describe('household.router', () => {
   it('create creates a household with name', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue(null);
     mockPrisma.household.create.mockResolvedValue({ id: 'hh-1', name: 'Test Family' });
 
     const { householdRouter } = await import('~/server/routers/household.router');
@@ -962,6 +973,7 @@ describe('household.router', () => {
   });
 
   it('create with parentHouseholdId passes it to prisma', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue(null);
     mockPrisma.household.create.mockResolvedValue({ id: 'hh-2' });
 
     const { householdRouter } = await import('~/server/routers/household.router');
@@ -972,6 +984,141 @@ describe('household.router', () => {
     expect(mockPrisma.household.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: { name: 'Child Family', parentHouseholdId: 'hh-1' } }),
     );
+  });
+
+  it('create rejects duplicate household name case-insensitively', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue({ id: 'hh-other' });
+
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    await expect(caller.create({ name: 'The Smiths' })).rejects.toThrow(/already exists/i);
+    expect(mockPrisma.household.create).not.toHaveBeenCalled();
+  });
+
+  it('update renames the user own household', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue(null);
+    mockPrisma.household.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.household.findUniqueOrThrow.mockResolvedValue({
+      id: 'hh-1',
+      name: 'New Name',
+    });
+
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    const result = await caller.update({ id: 'hh-1', name: 'New Name' });
+
+    expect(mockPrisma.household.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'hh-1',
+          users: { some: expect.objectContaining({ id: userSession.user.id }) },
+        }),
+        data: { name: 'New Name' },
+      }),
+    );
+    expect(result).toEqual({ id: 'hh-1', name: 'New Name' });
+  });
+
+  it('update rejects when caller is not in the household', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue(null);
+    mockPrisma.household.updateMany.mockResolvedValue({ count: 0 });
+    mockPrisma.household.findUnique.mockResolvedValue({ id: 'hh-1', deletedAt: null });
+
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    await expect(caller.update({ id: 'hh-1', name: 'New Name' })).rejects.toThrow(
+      /only rename your own household/i,
+    );
+  });
+
+  it('update returns NOT_FOUND when household is deleted', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue(null);
+    mockPrisma.household.updateMany.mockResolvedValue({ count: 0 });
+    mockPrisma.household.findUnique.mockResolvedValue({ id: 'hh-1', deletedAt: new Date() });
+
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    await expect(caller.update({ id: 'hh-1', name: 'New Name' })).rejects.toThrow(/not found/i);
+  });
+
+  it('update rejects duplicate household name case-insensitively', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue({ id: 'hh-other' });
+
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    await expect(caller.update({ id: 'hh-1', name: 'Conflict' })).rejects.toThrow(
+      /already exists/i,
+    );
+    expect(mockPrisma.household.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('update excludes the renamed household from the duplicate check', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue(null);
+    mockPrisma.household.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.household.findUniqueOrThrow.mockResolvedValue({
+      id: 'hh-1',
+      name: 'Same Name',
+    });
+
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    await caller.update({ id: 'hh-1', name: 'Same Name' });
+
+    expect(mockPrisma.household.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          NOT: { id: 'hh-1' },
+          name: { equals: 'Same Name', mode: 'insensitive' },
+        }),
+      }),
+    );
+  });
+
+  it('update rejects name longer than 80 chars', async () => {
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    await expect(caller.update({ id: 'hh-1', name: 'a'.repeat(81) })).rejects.toThrow();
+  });
+
+  it('update converts P2002 from DB to CONFLICT', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue(null);
+    // P2002 fires on the write, not the read. The pre-check passed but
+    // another writer committed first, so updateMany rejects.
+    mockPrisma.household.updateMany.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    await expect(caller.update({ id: 'hh-1', name: 'Concurrent Name' })).rejects.toThrow(
+      /already exists/i,
+    );
+  });
+
+  it('create converts P2002 from DB to CONFLICT', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue(null);
+    mockPrisma.household.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    await expect(caller.create({ name: 'Concurrent Name' })).rejects.toThrow(/already exists/i);
   });
 
   it('getById returns household with users, dependents, and children', async () => {
@@ -1232,6 +1379,98 @@ describe('rsvp.router', () => {
     expect(result.isWaitlisted).toBe(false);
   });
 
+  it('confirm writes RSVP_UPDATE audit log with diff when updating an existing RSVP', async () => {
+    const { diff } = await import('~/lib/audit');
+    const { writeAuditLog } = await import('~/lib/audit');
+    (diff as ReturnType<typeof vi.fn>).mockReturnValue({
+      headcount: { old: 2, new: 4 },
+      dietaryNotes: { old: 'No nuts', new: 'Vegetarian' },
+    });
+
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      maxCapacity: null,
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      eventId: 'evt-1',
+      userId: 'user-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      dietaryNotes: 'No nuts',
+      waitlistPosition: null,
+    });
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      eventId: 'evt-1',
+      userId: 'user-1',
+      status: 'CONFIRMED',
+      headcount: 4,
+      dietaryNotes: 'Vegetarian',
+      waitlistPosition: null,
+    });
+    mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.confirm({
+      eventId: 'evt-1',
+      headcount: 4,
+      dietaryNotes: 'Vegetarian',
+    });
+
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        eventId: 'evt-1',
+        action: 'RSVP_UPDATE',
+        oldValue: expect.objectContaining({
+          headcount: 2,
+          dietaryNotes: 'No nuts',
+        }),
+        newValue: expect.objectContaining({
+          headcount: 4,
+          dietaryNotes: 'Vegetarian',
+        }),
+      }),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
+    );
+  });
+
+  it('confirm skips audit log when no prior RSVP exists', async () => {
+    const { writeAuditLog } = await import('~/lib/audit');
+
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      maxCapacity: null,
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue(null);
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      dietaryNotes: null,
+      waitlistPosition: null,
+    });
+    mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.confirm({ eventId: 'evt-1', headcount: 2 });
+
+    expect(writeAuditLog).not.toHaveBeenCalled();
+  });
+
   it('confirm waitlists when capacity exceeded', async () => {
     const futureDate = new Date(Date.now() + 86400000 * 30);
     mockPrisma.event.findUnique.mockResolvedValue({
@@ -1261,6 +1500,67 @@ describe('rsvp.router', () => {
       expect.objectContaining({
         create: expect.objectContaining({ status: 'WAITLISTED' }),
       }),
+    );
+  });
+
+  it('confirm writes RSVP_UPDATE audit log when transitioning an existing RSVP to WAITLISTED', async () => {
+    const { diff } = await import('~/lib/audit');
+    const { writeAuditLog } = await import('~/lib/audit');
+    (diff as ReturnType<typeof vi.fn>).mockReturnValue({
+      status: { old: 'CONFIRMED', new: 'WAITLISTED' },
+      waitlistPosition: { old: null, new: 1 },
+    });
+
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      maxCapacity: 5,
+    });
+    mockPrisma.rSVP.aggregate.mockResolvedValue({ _sum: { headcount: 4 } });
+    mockPrisma.rSVP.count.mockResolvedValue(0);
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      eventId: 'evt-1',
+      userId: 'user-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      dietaryNotes: null,
+      waitlistPosition: null,
+    });
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      eventId: 'evt-1',
+      userId: 'user-1',
+      status: 'WAITLISTED',
+      headcount: 2,
+      dietaryNotes: null,
+      waitlistPosition: 1,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    const result = await caller.confirm({ eventId: 'evt-1', headcount: 2 });
+
+    expect(result.isWaitlisted).toBe(true);
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        eventId: 'evt-1',
+        action: 'RSVP_UPDATE',
+        oldValue: expect.objectContaining({
+          status: 'CONFIRMED',
+          waitlistPosition: null,
+        }),
+        newValue: expect.objectContaining({
+          status: 'WAITLISTED',
+          waitlistPosition: 1,
+        }),
+      }),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
     );
   });
 
@@ -1316,12 +1616,20 @@ describe('rsvp.router', () => {
   });
 
   it('update modifies headcount and dietaryNotes', async () => {
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      dietaryNotes: 'Original',
+      waitlistPosition: null,
+    });
     mockPrisma.rSVP.update.mockResolvedValue({
       id: 'rsvp-1',
       eventId: 'evt-1',
       userId: 'user-1',
       headcount: 5,
       dietaryNotes: 'Updated',
+      waitlistPosition: null,
     });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
@@ -1338,17 +1646,100 @@ describe('rsvp.router', () => {
     expect(result.headcount).toBe(5);
   });
 
+  it('update throws when no existing RSVP exists', async () => {
+    mockPrisma.rSVP.findUnique.mockResolvedValue(null);
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await expect(caller.update({ eventId: 'evt-1', headcount: 3 })).rejects.toThrow(
+      'No existing RSVP to update',
+    );
+  });
+
+  it('update writes RSVP_UPDATE audit log with diff when fields change', async () => {
+    const { diff } = await import('~/lib/audit');
+    const { writeAuditLog } = await import('~/lib/audit');
+    (diff as ReturnType<typeof vi.fn>).mockReturnValue({
+      headcount: { old: 2, new: 5 },
+      dietaryNotes: { old: 'Original', new: 'Updated' },
+    });
+
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      dietaryNotes: 'Original',
+      waitlistPosition: null,
+    });
+    mockPrisma.rSVP.update.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 5,
+      dietaryNotes: 'Updated',
+      waitlistPosition: null,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.update({ eventId: 'evt-1', headcount: 5, dietaryNotes: 'Updated' });
+
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        eventId: 'evt-1',
+        action: 'RSVP_UPDATE',
+        oldValue: expect.objectContaining({
+          headcount: 2,
+          dietaryNotes: 'Original',
+        }),
+        newValue: expect.objectContaining({
+          headcount: 5,
+          dietaryNotes: 'Updated',
+        }),
+      }),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
+    );
+  });
+
+  it('update skips audit log when no fields change', async () => {
+    const { diff } = await import('~/lib/audit');
+    const { writeAuditLog } = await import('~/lib/audit');
+    (diff as ReturnType<typeof vi.fn>).mockReturnValue(null);
+
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 3,
+      dietaryNotes: 'Same',
+      waitlistPosition: null,
+    });
+    mockPrisma.rSVP.update.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 3,
+      dietaryNotes: 'Same',
+      waitlistPosition: null,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.update({ eventId: 'evt-1', headcount: 3, dietaryNotes: 'Same' });
+
+    expect(writeAuditLog).not.toHaveBeenCalled();
+  });
+
   it('decline cancels RSVP and releases potluck slots', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
-    mockPrisma.rSVP.findUnique
-      .mockResolvedValueOnce({
-        id: 'rsvp-1',
-        status: 'CONFIRMED',
-        headcount: 3,
-        waitlistPosition: null,
-        potluckSignups: [{ id: 'ps-1', slotId: 'slot-1', servings: 2 }],
-      })
-      .mockResolvedValueOnce({ id: 'rsvp-1', status: 'DECLINED' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 3,
+      waitlistPosition: null,
+      potluckSignups: [{ id: 'ps-1', slotId: 'slot-1', servings: 2 }],
+    });
     mockPrisma.rSVP.findFirst.mockResolvedValue(null);
     mockPrisma.rSVP.upsert.mockResolvedValue({ id: 'rsvp-1', status: 'DECLINED' });
 
@@ -1369,17 +1760,272 @@ describe('rsvp.router', () => {
     expect(result?.status).toBe('DECLINED');
   });
 
+  it('decline writes RSVP_UPDATE audit log with diff when declining a prior RSVP', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 3,
+      dietaryNotes: 'Vegan',
+      waitlistPosition: null,
+      potluckSignups: [{ id: 'ps-1', slotId: 'slot-1', servings: 2 }],
+    });
+    mockPrisma.rSVP.findFirst.mockResolvedValue(null);
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'DECLINED',
+      headcount: 0,
+      dietaryNotes: null,
+      waitlistPosition: null,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.decline({ eventId: 'evt-1' });
+
+    expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: 'user-1',
+          eventId: 'evt-1',
+          action: 'RSVP_UPDATE',
+          oldValue: expect.objectContaining({ status: 'CONFIRMED', headcount: 3 }),
+          newValue: expect.objectContaining({ status: 'DECLINED', headcount: 0 }),
+        }),
+      }),
+    );
+  });
+
+  // The tests above mock `diff` to return a change so the "if change then write"
+  // branch is exercised in isolation. These paired tests call through to the real
+  // `diff` comparator with realistic input so a bug in the comparator itself would
+  // fail the suite. The real comparator is inlined because vi.importActual is not
+  // available in this Vitest version's test context; if you change `diff` in
+  // src/lib/audit.ts, mirror the change here.
+  const realDiff = (
+    oldVal: unknown,
+    newVal: unknown,
+  ): Record<string, { old: unknown; new: unknown }> | null => {
+    if (oldVal === newVal) return null;
+    if (typeof oldVal !== typeof newVal) return { _changed: { old: oldVal, new: newVal } };
+    if (typeof oldVal !== 'object' || oldVal === null || newVal === null) {
+      return { _changed: { old: oldVal, new: newVal } };
+    }
+    const result: Record<string, { old: unknown; new: unknown }> = {};
+    const oldKeys = new Set(Object.keys(oldVal as Record<string, unknown>));
+    const newKeys = new Set(Object.keys(newVal as Record<string, unknown>));
+    for (const key of oldKeys) {
+      if (!newKeys.has(key))
+        result[key] = { old: (oldVal as Record<string, unknown>)[key], new: undefined };
+    }
+    for (const key of newKeys) {
+      const oldItem = (oldVal as Record<string, unknown>)[key];
+      const newItem = (newVal as Record<string, unknown>)[key];
+      if (JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
+        result[key] = { old: oldItem, new: newItem };
+      }
+    }
+    return Object.keys(result).length > 0 ? result : null;
+  };
+
+  it('confirm writes audit log when the real diff detects a change', async () => {
+    const { diff, writeAuditLog } = await import('~/lib/audit');
+    (diff as ReturnType<typeof vi.fn>).mockImplementation(realDiff);
+
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      maxCapacity: null,
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      dietaryNotes: 'No nuts',
+      waitlistPosition: null,
+    });
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 4,
+      dietaryNotes: 'Vegetarian',
+      waitlistPosition: null,
+    });
+    mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.confirm({
+      eventId: 'evt-1',
+      headcount: 4,
+      dietaryNotes: 'Vegetarian',
+    });
+
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'RSVP_UPDATE',
+        oldValue: expect.objectContaining({ headcount: 2, dietaryNotes: 'No nuts' }),
+        newValue: expect.objectContaining({ headcount: 4, dietaryNotes: 'Vegetarian' }),
+      }),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
+    );
+  });
+
+  it('confirm skips audit log when the real diff finds no change', async () => {
+    const { diff, writeAuditLog } = await import('~/lib/audit');
+    (diff as ReturnType<typeof vi.fn>).mockImplementation(realDiff);
+
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      maxCapacity: null,
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      dietaryNotes: 'Same',
+      waitlistPosition: null,
+    });
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      dietaryNotes: 'Same',
+      waitlistPosition: null,
+    });
+    mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.confirm({ eventId: 'evt-1', headcount: 2, dietaryNotes: 'Same' });
+
+    expect(writeAuditLog).not.toHaveBeenCalled();
+  });
+
+  it('update writes audit log when the real diff detects a change', async () => {
+    const { diff, writeAuditLog } = await import('~/lib/audit');
+    (diff as ReturnType<typeof vi.fn>).mockImplementation(realDiff);
+
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      dietaryNotes: 'Original',
+      waitlistPosition: null,
+    });
+    mockPrisma.rSVP.update.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 5,
+      dietaryNotes: 'Updated',
+      waitlistPosition: null,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.update({ eventId: 'evt-1', headcount: 5, dietaryNotes: 'Updated' });
+
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'RSVP_UPDATE',
+        oldValue: expect.objectContaining({ headcount: 2, dietaryNotes: 'Original' }),
+        newValue: expect.objectContaining({ headcount: 5, dietaryNotes: 'Updated' }),
+      }),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
+    );
+  });
+
+  it('update skips audit log when the real diff finds no change', async () => {
+    const { diff, writeAuditLog } = await import('~/lib/audit');
+    (diff as ReturnType<typeof vi.fn>).mockImplementation(realDiff);
+
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 3,
+      dietaryNotes: 'Same',
+      waitlistPosition: null,
+    });
+    mockPrisma.rSVP.update.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 3,
+      dietaryNotes: 'Same',
+      waitlistPosition: null,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.update({ eventId: 'evt-1', headcount: 3, dietaryNotes: 'Same' });
+
+    expect(writeAuditLog).not.toHaveBeenCalled();
+  });
+
+  it('decline writes RSVP_UPDATE audit log when declining a prior RSVP', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 3,
+      dietaryNotes: 'Vegan',
+      waitlistPosition: null,
+      potluckSignups: [{ id: 'ps-1', slotId: 'slot-1', servings: 2 }],
+    });
+    mockPrisma.rSVP.findFirst.mockResolvedValue(null);
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'DECLINED',
+      headcount: 0,
+      dietaryNotes: null,
+      waitlistPosition: null,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.decline({ eventId: 'evt-1' });
+
+    // Decline writes via tx.adminAuditLog.create (transaction-bound), not writeAuditLog.
+    expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'RSVP_UPDATE',
+          oldValue: expect.objectContaining({
+            status: 'CONFIRMED',
+            headcount: 3,
+            dietaryNotes: 'Vegan',
+          }),
+          newValue: expect.objectContaining({
+            status: 'DECLINED',
+            headcount: 0,
+            slotsReleased: 1,
+          }),
+        }),
+      }),
+    );
+  });
+
   it('decline promotes next waitlisted user when confirming was previous status', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
-    mockPrisma.rSVP.findUnique
-      .mockResolvedValueOnce({
-        id: 'rsvp-1',
-        status: 'CONFIRMED',
-        headcount: 3,
-        waitlistPosition: null,
-        potluckSignups: [],
-      })
-      .mockResolvedValueOnce({ id: 'rsvp-2', status: 'CONFIRMED' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 3,
+      waitlistPosition: null,
+      potluckSignups: [],
+    });
     mockPrisma.rSVP.findFirst.mockResolvedValue({
       id: 'wl-1',
       userId: 'wl-user',
@@ -1404,15 +2050,13 @@ describe('rsvp.router', () => {
 
   it('decline handles waitlist position decrement when user was waitlisted', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
-    mockPrisma.rSVP.findUnique
-      .mockResolvedValueOnce({
-        id: 'rsvp-1',
-        status: 'WAITLISTED',
-        headcount: 0,
-        waitlistPosition: 2,
-        potluckSignups: [],
-      })
-      .mockResolvedValueOnce({ id: 'rsvp-1', status: 'DECLINED' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'WAITLISTED',
+      headcount: 0,
+      waitlistPosition: 2,
+      potluckSignups: [],
+    });
     mockPrisma.rSVP.findFirst.mockResolvedValue(null);
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
