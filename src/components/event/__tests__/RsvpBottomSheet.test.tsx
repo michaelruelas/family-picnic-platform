@@ -262,4 +262,54 @@ describe('RsvpBottomSheet pre-fill', () => {
 
     expect(screen.getByRole('button', { name: /confirm 1 guest/i })).not.toBeDisabled();
   });
+
+  it('does not transition to confirmed phase if sheet is closed before mutation resolves', async () => {
+    let resolveConfirm: (value: unknown) => void = () => {};
+    mockConfirm.mutateAsync.mockImplementationOnce(
+      () =>
+        new Promise<unknown>((resolve) => {
+          resolveConfirm = resolve;
+        }),
+    );
+
+    const { rerender } = render(<RsvpBottomSheet {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm 1 guest/i }));
+
+    rerender(<RsvpBottomSheet {...defaultProps} isOpen={false} />);
+
+    await act(async () => {
+      resolveConfirm({});
+    });
+
+    rerender(<RsvpBottomSheet {...defaultProps} isOpen={true} />);
+
+    expect(screen.getByRole('heading', { name: /who's coming/i })).toBeInTheDocument();
+    expect(screen.queryByText(/you're on the list/i)).not.toBeInTheDocument();
+  });
+
+  it('does not surface error if sheet is closed before mutation rejects', async () => {
+    let rejectConfirm: (error: Error) => void = () => {};
+    mockConfirm.mutateAsync.mockImplementationOnce(
+      () =>
+        new Promise<unknown>((_, reject) => {
+          rejectConfirm = reject;
+        }),
+    );
+
+    const { rerender } = render(<RsvpBottomSheet {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm 1 guest/i }));
+
+    rerender(<RsvpBottomSheet {...defaultProps} isOpen={false} />);
+
+    await act(async () => {
+      rejectConfirm(new Error('Network error'));
+    });
+
+    rerender(<RsvpBottomSheet {...defaultProps} isOpen={true} />);
+
+    expect(screen.getByRole('heading', { name: /who's coming/i })).toBeInTheDocument();
+    expect(screen.queryByText('Network error')).not.toBeInTheDocument();
+  });
 });

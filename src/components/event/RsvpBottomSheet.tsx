@@ -1,9 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRsvpMutation } from '~/hooks';
 import Modal from '~/components/ui/Modal';
-import type { RSVPStatus } from '~/lib/generated/enums';
+import type { ExistingRsvp } from './types';
+
+const CLOSE_ANIMATION_MS = 200;
+const SUCCESS_DWELL_MS = 1500;
+
+function getInitialState(existingRsvp: ExistingRsvp | null | undefined) {
+  return {
+    adults: existingRsvp && existingRsvp.headcount > 0 ? existingRsvp.headcount : 1,
+    kids: 0,
+    dietaryNotes: existingRsvp?.dietaryNotes ?? '',
+    showDietary: Boolean(existingRsvp?.dietaryNotes),
+  };
+}
 
 interface RsvpBottomSheetProps {
   isOpen: boolean;
@@ -12,11 +24,7 @@ interface RsvpBottomSheetProps {
   eventName?: string;
   maxCapacity: number | null;
   currentAttending: number;
-  existingRsvp?: {
-    status: RSVPStatus;
-    headcount: number;
-    dietaryNotes: string | null;
-  } | null;
+  existingRsvp?: ExistingRsvp | null;
 }
 
 export function RsvpBottomSheet({
@@ -29,26 +37,31 @@ export function RsvpBottomSheet({
   existingRsvp,
 }: RsvpBottomSheetProps) {
   const { confirm, decline } = useRsvpMutation();
-  const [adults, setAdults] = useState(
-    existingRsvp && existingRsvp.headcount > 0 ? existingRsvp.headcount : 1,
-  );
-  const [kids, setKids] = useState(0);
-  const [dietaryNotes, setDietaryNotes] = useState(existingRsvp?.dietaryNotes ?? '');
-  const [showDietary, setShowDietary] = useState(Boolean(existingRsvp?.dietaryNotes));
+  const initial = getInitialState(existingRsvp);
+  const [adults, setAdults] = useState(initial.adults);
+  const [kids, setKids] = useState(initial.kids);
+  const [dietaryNotes, setDietaryNotes] = useState(initial.dietaryNotes);
+  const [showDietary, setShowDietary] = useState(initial.showDietary);
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<'form' | 'confirmed'>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isOpenRef = useRef(isOpen);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
       const timeout = setTimeout(() => {
+        const next = getInitialState(existingRsvp);
         setPhase('form');
-        setAdults(existingRsvp && existingRsvp.headcount > 0 ? existingRsvp.headcount : 1);
-        setKids(0);
-        setDietaryNotes(existingRsvp?.dietaryNotes ?? '');
-        setShowDietary(Boolean(existingRsvp?.dietaryNotes));
+        setAdults(next.adults);
+        setKids(next.kids);
+        setDietaryNotes(next.dietaryNotes);
+        setShowDietary(next.showDietary);
         setError(null);
-      }, 200);
+      }, CLOSE_ANIMATION_MS);
       return () => clearTimeout(timeout);
     }
   }, [isOpen, existingRsvp]);
@@ -67,11 +80,13 @@ export function RsvpBottomSheet({
         headcount: total,
         dietaryNotes: dietaryNotes.trim() || undefined,
       });
+      if (!isOpenRef.current) return;
       setPhase('confirmed');
       setTimeout(() => {
-        onClose();
-      }, 1500);
+        if (isOpenRef.current) onClose();
+      }, SUCCESS_DWELL_MS);
     } catch (err) {
+      if (!isOpenRef.current) return;
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
