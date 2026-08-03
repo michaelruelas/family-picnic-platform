@@ -179,6 +179,18 @@ describe('POST /api/rsvp', () => {
     const body = await res.json();
     expect(body.status).toBe('WAITLISTED');
     expect(body.waitlistPosition).toBe(1);
+    // The route computes the response body from the computed waitlist position,
+    // so a no-op transaction would still pass the assertions above. Assert the
+    // upsert ran with the WAITLISTED status to prove persistence.
+    expect(prismaMock.$transaction).toHaveBeenCalled();
+    expect(prismaMock.rSVP.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          status: 'WAITLISTED',
+          waitlistPosition: 1,
+        }),
+      }),
+    );
   });
 
   it('declines RSVP and runs decline flow with potluck release + waitlist promotion', async () => {
