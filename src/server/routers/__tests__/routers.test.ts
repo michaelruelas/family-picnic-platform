@@ -599,13 +599,23 @@ describe('user.router', () => {
     const { userRouter } = await import('~/server/routers/user.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(userRouter)({ session: adminSession });
-    await caller.updatePreferences({ communicationPreference: 'SMS' });
+    await caller.updatePreferences({
+      communicationPreference: 'EMAIL',
+    });
 
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ communicationPreference: 'SMS' }),
+        data: expect.objectContaining({ communicationPreference: 'EMAIL' }),
       }),
     );
+  });
+
+  it('updatePreferences requires a phone when opting in to SMS', async () => {
+    const { userRouter } = await import('~/server/routers/user.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(userRouter)({ session: adminSession });
+    await expect(caller.updatePreferences({ communicationPreference: 'SMS' })).rejects.toThrow();
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
   it('getByHousehold calls prisma.user.findMany with householdId', async () => {
@@ -2669,11 +2679,39 @@ describe('communication.router', () => {
     });
 
     expect(mockPrisma.user.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { householdId: { not: null } } }),
+      expect.objectContaining({
+        where: expect.objectContaining({
+          householdId: { not: null },
+          communicationPreference: { in: ['EMAIL', 'BOTH'] },
+        }),
+      }),
     );
     expect(mockPrisma.communicationLog.create).toHaveBeenCalledTimes(2);
     expect(result.success).toBe(true);
     expect(result.count).toBe(2);
+  });
+
+  it('sendBroadcast sends to ALL users filtered to SMS+BOTH for SMS channel', async () => {
+    mockPrisma.user.findMany.mockResolvedValue([{ id: 'u1' }]);
+    mockPrisma.communicationLog.create.mockResolvedValue({ id: 'log-1' });
+
+    const { communicationRouter } = await import('~/server/routers/communication.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(communicationRouter)({ session: adminSession });
+    await caller.sendBroadcast({
+      eventId: 'evt-1',
+      message: 'Hi',
+      channel: 'SMS',
+      recipientType: 'ALL',
+    });
+
+    expect(mockPrisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          communicationPreference: { in: ['SMS', 'BOTH'] },
+        }),
+      }),
+    );
   });
 
   it('sendBroadcast sends to NOT_RESPONDED users', async () => {
@@ -2693,6 +2731,7 @@ describe('communication.router', () => {
     expect(mockPrisma.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
+          communicationPreference: { in: ['EMAIL', 'BOTH'] },
           rsvps: { none: { eventId: 'evt-1', status: { in: ['CONFIRMED', 'DECLINED'] } } },
         }),
       }),
@@ -2716,7 +2755,12 @@ describe('communication.router', () => {
     });
 
     expect(mockPrisma.user.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { householdId: { in: ['h-1', 'h-2'] } } }),
+      expect.objectContaining({
+        where: expect.objectContaining({
+          householdId: { in: ['h-1', 'h-2'] },
+          communicationPreference: { in: ['SMS', 'BOTH'] },
+        }),
+      }),
     );
     expect(result.count).toBe(2);
   });

@@ -81,6 +81,11 @@ spec:
                 secretKeyRef:
                   name: nextjs-secrets
                   key: twilio-auth-token
+            - name: TWILIO_PHONE_NUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: twilio-phone-number
           envFrom:
             - configMapRef:
                 name: nextjs-env

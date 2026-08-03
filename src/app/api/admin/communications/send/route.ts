@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
-import { CommunicationStatus, RSVPStatus, CommunicationChannel } from '~/lib/generated/enums';
+import {
+  CommunicationStatus,
+  RSVPStatus,
+  CommunicationChannel,
+  CommunicationPreference,
+} from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 
@@ -109,11 +114,20 @@ export async function POST(request: NextRequest) {
 
         let targetUserIds: string[] = [];
 
+        const preferenceFilter = {
+          communicationPreference: {
+            in:
+              channel === CommunicationChannel.SMS
+                ? [CommunicationPreference.SMS, CommunicationPreference.BOTH]
+                : [CommunicationPreference.EMAIL, CommunicationPreference.BOTH],
+          },
+        };
+
         switch (recipientType) {
           case 'ALL':
             targetUserIds = (
               await prisma.user.findMany({
-                where: { householdId: { not: null } },
+                where: { householdId: { not: null }, ...preferenceFilter },
                 select: { id: true },
               })
             ).map((u) => u.id);
@@ -123,6 +137,7 @@ export async function POST(request: NextRequest) {
               await prisma.user.findMany({
                 where: {
                   householdId: { not: null },
+                  ...preferenceFilter,
                   rsvps: {
                     none: {
                       eventId,
@@ -143,7 +158,7 @@ export async function POST(request: NextRequest) {
             }
             targetUserIds = (
               await prisma.user.findMany({
-                where: { householdId: { in: recipientIds } },
+                where: { householdId: { in: recipientIds }, ...preferenceFilter },
                 select: { id: true },
               })
             ).map((u) => u.id);

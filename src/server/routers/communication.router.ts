@@ -2,7 +2,12 @@ import { router, auditedAdminProcedure, protectedProcedure } from '~/lib/trpc';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { CommunicationStatus, CommunicationChannel, RSVPStatus } from '~/lib/generated/enums';
+import {
+  CommunicationStatus,
+  CommunicationChannel,
+  CommunicationPreference,
+  RSVPStatus,
+} from '~/lib/generated/enums';
 import {
   checkAdminBroadcastRateLimit,
   checkRecipientGroupRateLimit,
@@ -10,6 +15,13 @@ import {
   getRateLimitStatus,
   rateLimitError,
 } from '~/lib/rate-limit';
+import { adminSendSmsInputSchema } from '~/lib/schemas/sms';
+import {
+  sendSMS,
+  getFromPhoneNumber,
+  isValidE164,
+  isConfigured as twilioConfigured,
+} from '~/lib/twilio';
 
 export const communicationRouter = router({
   getRateLimitStatus: auditedAdminProcedure.query(async ({ ctx }) => {
@@ -44,11 +56,20 @@ export const communicationRouter = router({
 
       let recipientUserIds: string[] = [];
 
+      const preferenceFilter = {
+        communicationPreference: {
+          in:
+            input.channel === CommunicationChannel.SMS
+              ? [CommunicationPreference.SMS, CommunicationPreference.BOTH]
+              : [CommunicationPreference.EMAIL, CommunicationPreference.BOTH],
+        },
+      };
+
       switch (input.recipientType) {
         case 'ALL':
           recipientUserIds = (
             await prisma.user.findMany({
-              where: { householdId: { not: null } },
+              where: { householdId: { not: null }, ...preferenceFilter },
               select: { id: true },
             })
           ).map((u) => u.id);
@@ -58,6 +79,7 @@ export const communicationRouter = router({
             await prisma.user.findMany({
               where: {
                 householdId: { not: null },
+                ...preferenceFilter,
                 rsvps: {
                   none: {
                     eventId: input.eventId,
@@ -73,7 +95,7 @@ export const communicationRouter = router({
           if (!input.recipientIds) throw new Error('recipientIds required for HOUSEHOLD type');
           recipientUserIds = (
             await prisma.user.findMany({
-              where: { householdId: { in: input.recipientIds } },
+              where: { householdId: { in: input.recipientIds }, ...preferenceFilter },
               select: { id: true },
             })
           ).map((u) => u.id);
@@ -233,5 +255,120 @@ export const communicationRouter = router({
       },
     });
     return user;
+  }),
+
+  sendSms: auditedAdminProcedure.input(adminSendSmsInputSchema).mutation(async ({ ctx, input }) => {
+    if (!twilioConfigured()) {
+      throw new TRPCError({
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'SMS provider not configured',
+      });
+    }
+
+    const fromPhone = getFromPhoneNumber();
+    if (!fromPhone || !isValidE164(fromPhone)) {
+      throw new TRPCError({
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'SMS provider not configured',
+      });
+    }
+
+    const event = await prisma.event.findUnique({
+      where: { id: input.eventId },
+      select: { id: true },
+    });
+    if (!event) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' });
+    }
+
+    const recipient = await prisma.user.findUnique({
+      where: { id: input.recipientUserId },
+      select: {
+        id: true,
+        phoneNumber: true,
+        smsConsent: true,
+      },
+    });
+    if (!recipient) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Recipient not found' });
+    }
+
+    if (!recipient.smsConsent) {
+      await prisma.communicationLog.create({
+        data: {
+          eventId: input.eventId,
+          sentByUserId: ctx.session.user.id,
+          recipientUserId: recipient.id,
+          channel: CommunicationChannel.SMS,
+          status: CommunicationStatus.FAILED,
+          errorCode: 'NO_CONSENT',
+          errorMessage: 'Recipient has not granted SMS consent',
+          fromPhoneNumber: fromPhone,
+        },
+      });
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Recipient has not consented to SMS messages',
+      });
+    }
+
+    if (!recipient.phoneNumber || !isValidE164(recipient.phoneNumber)) {
+      await prisma.communicationLog.create({
+        data: {
+          eventId: input.eventId,
+          sentByUserId: ctx.session.user.id,
+          recipientUserId: recipient.id,
+          channel: CommunicationChannel.SMS,
+          status: CommunicationStatus.FAILED,
+          errorCode: 'NO_PHONE',
+          errorMessage: 'Recipient has no valid E.164 phone number on file',
+          fromPhoneNumber: fromPhone,
+        },
+      });
+      throw new TRPCError({
+        code: 'UNPROCESSABLE_CONTENT',
+        message: 'Recipient has no valid phone number on file',
+      });
+    }
+
+    const result = await sendSMS({
+      to: recipient.phoneNumber,
+      body: input.message,
+    });
+
+    const status = result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED;
+
+    const logRow = await prisma.communicationLog.create({
+      data: {
+        eventId: input.eventId,
+        sentByUserId: ctx.session.user.id,
+        recipientUserId: recipient.id,
+        channel: CommunicationChannel.SMS,
+        messageId: result.messageId,
+        toPhoneNumber: recipient.phoneNumber,
+        fromPhoneNumber: fromPhone,
+        status,
+        errorCode: result.errorCode?.toString(),
+        errorMessage: result.error,
+        deliveredAt: result.success ? new Date() : null,
+      },
+    });
+
+    if (!result.success) {
+      throw new TRPCError({
+        code: 'BAD_GATEWAY',
+        message: 'SMS provider rejected the message',
+        cause: {
+          errorCode: result.errorCode,
+          communicationLogId: logRow.id,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      communicationLogId: logRow.id,
+      messageId: result.messageId,
+    };
   }),
 });

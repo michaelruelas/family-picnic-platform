@@ -120,6 +120,35 @@ describe('POST /api/admin/communications/send', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.count).toBe(2);
+    expect(prismaMock.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          communicationPreference: { in: ['EMAIL', 'BOTH'] },
+        }),
+      }),
+    );
+  });
+
+  it('applies SMS+BOTH preference filter for SMS channel', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    prismaMock.user.findMany.mockResolvedValue([{ id: 'u-2' }] as never);
+    prismaMock.communicationLog.create.mockResolvedValue({} as never);
+    const res = await POSTSend(
+      makeNextReq('http://x', {
+        eventId: 'e-1',
+        message: 'Hi',
+        channel: 'SMS',
+        recipientType: 'ALL',
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(prismaMock.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          communicationPreference: { in: ['SMS', 'BOTH'] },
+        }),
+      }),
+    );
   });
 
   it('sends to NOT_RESPONDED recipients', async () => {

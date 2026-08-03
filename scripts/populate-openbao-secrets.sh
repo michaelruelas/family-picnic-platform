@@ -190,6 +190,12 @@ TWILIO_AUTH_TOKEN=$(resolve \
   "printf ''")
 [ -n "$TWILIO_AUTH_TOKEN" ] && PRESERVED+=("nextjs/twilio-auth-token") || true
 
+TWILIO_PHONE_NUMBER=$(resolve \
+  "$(extract "$NEXTJS_JSON" twilio-phone-number)" \
+  "$(env_dev_get TWILIO_PHONE_NUMBER)" \
+  "printf ''")
+[ -n "$TWILIO_PHONE_NUMBER" ] && PRESERVED+=("nextjs/twilio-phone-number") || true
+
 # DATABASE_URL: in-cluster form for OpenBao, localhost form for .env.dev.
 # Each form is preserved independently if the user has set it.
 IN_CLUSTER_DATABASE_URL="postgresql://postgres:${PG_PASS}@postgres:5432/familypicnic?schema=public"
@@ -219,6 +225,7 @@ bao_exec kv put "${SECRET_PREFIX}/nextjs" \
   sendgrid-api-key="$SENDGRID_API_KEY" \
   twilio-account-sid="$TWILIO_ACCOUNT_SID" \
   twilio-auth-token="$TWILIO_AUTH_TOKEN" \
+  twilio-phone-number="$TWILIO_PHONE_NUMBER" \
   >/dev/null
 
 echo "==> Writing ${SECRET_PREFIX}/photoprism"
@@ -270,7 +277,7 @@ AUTH_GOOGLE_SECRET="${AUTH_GOOGLE_SECRET}"
 # --- Twilio (leave empty) ---
 TWILIO_ACCOUNT_SID="${TWILIO_ACCOUNT_SID}"
 TWILIO_AUTH_TOKEN="${TWILIO_AUTH_TOKEN}"
-TWILIO_PHONE_NUMBER=""
+TWILIO_PHONE_NUMBER="${TWILIO_PHONE_NUMBER}"
 
 # --- SendGrid (leave empty) ---
 SENDGRID_API_KEY="${SENDGRID_API_KEY}"

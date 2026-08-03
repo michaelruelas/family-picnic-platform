@@ -185,6 +185,8 @@ For complete documentation on:
 | `/api/admin/invitations/resend`               | `src/app/api/admin/invitations/resend/route.ts`               | Resend invitations                             |
 | `/api/admin/invitations/track`                | `src/app/api/admin/invitations/track/route.ts`                | Track invitation delivery                      |
 | `/api/admin/communications/send`              | `src/app/api/admin/communications/send/route.ts`              | Send broadcast (immediate or scheduled)        |
+| `/api/admin/communications/send-sms`          | `src/app/api/admin/communications/send-sms/route.ts`          | Per-event admin SMS send (consent-gated)       |
+| `/api/admin/sms/send`                         | `src/app/api/admin/sms/send/route.ts`                         | Ad-hoc admin SMS send (consent-gated)          |
 | `/api/admin/communications/status`            | `src/app/api/admin/communications/status/route.ts`            | Broadcast status                               |
 | `/api/admin/communications/process-scheduled` | `src/app/api/admin/communications/process-scheduled/route.ts` | Process due scheduled broadcasts (cron target) |
 | `/api/admin/audit-log`                        | `src/app/api/admin/audit-log/route.ts`                        | Audit log queries                              |

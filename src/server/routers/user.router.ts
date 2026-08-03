@@ -2,6 +2,7 @@ import { router, protectedProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { CommunicationPreference } from '~/lib/generated/enums';
+import { profileUpdateSchema } from '~/lib/schemas/profile';
 
 export const userRouter = router({
   getProfile: protectedProcedure.query(async ({ ctx }) => {
@@ -13,6 +14,9 @@ export const userRouter = router({
         email: true,
         role: true,
         communicationPreference: true,
+        phoneNumber: true,
+        smsConsent: true,
+        smsConsentAt: true,
         household: {
           select: {
             id: true,
@@ -25,17 +29,31 @@ export const userRouter = router({
   }),
 
   updatePreferences: protectedProcedure
-    .input(
-      z.object({
-        name: z.string().min(1).optional(),
-        communicationPreference: z.enum(['EMAIL', 'SMS', 'BOTH', 'NONE']).optional(),
-      }),
-    )
+    .input(profileUpdateSchema)
     .mutation(async ({ ctx, input }) => {
-      const updateData: { name?: string; communicationPreference?: CommunicationPreference } = {};
+      const updateData: {
+        name?: string;
+        communicationPreference?: CommunicationPreference;
+        phoneNumber?: string | null;
+        smsConsent?: boolean;
+        smsConsentAt?: Date | null;
+        smsConsentIp?: string | null;
+      } = {};
       if (input.name !== undefined) updateData.name = input.name;
       if (input.communicationPreference !== undefined) {
         updateData.communicationPreference = input.communicationPreference;
+      }
+      if (input.phoneNumber !== undefined) {
+        updateData.phoneNumber = input.phoneNumber;
+      }
+      if (input.smsConsent !== undefined) {
+        updateData.smsConsent = input.smsConsent;
+        if (input.smsConsent) {
+          updateData.smsConsentAt = new Date();
+        } else {
+          updateData.smsConsentAt = null;
+          updateData.smsConsentIp = null;
+        }
       }
       return prisma.user.update({
         where: { id: ctx.session.user.id },
@@ -45,6 +63,8 @@ export const userRouter = router({
           name: true,
           email: true,
           communicationPreference: true,
+          phoneNumber: true,
+          smsConsent: true,
           household: {
             select: {
               id: true,

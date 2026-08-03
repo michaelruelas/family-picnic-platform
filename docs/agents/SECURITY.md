@@ -104,6 +104,25 @@ auditedAdminProcedure.mutation(async ({ ctx, input }) => {
 });
 ```
 
+## SMS Consent
+
+Outbound SMS is consent-gated end-to-end. Before any Twilio send:
+
+1. **Explicit consent** is captured on the `User` row (`smsConsent` + `smsConsentAt` + `smsConsentIp`).
+2. **Communication preference** must be `SMS` or `BOTH`. Users on `EMAIL` or `NONE` are excluded from any SMS broadcast.
+3. **Valid E.164 phone** must be on file. Recipients without one are skipped.
+4. **Broadcast recipient resolution** applies `communicationPreference: { in: ['SMS', 'BOTH'] }` for SMS channels and `['EMAIL', 'BOTH']` for email channels, in both the tRPC `sendBroadcast` and the REST `/api/admin/communications/send` endpoint.
+5. Every send — success, failure, or refusal — writes an `AdminAuditLog` entry with `action: 'sms.send'` (or `admin.sendSms` for the per-event endpoint) and the outcome / Twilio SID / error in `newValue`.
+
+### Endpoints
+
+| Endpoint                                  | Purpose                                                        |
+| ----------------------------------------- | -------------------------------------------------------------- |
+| `POST /api/admin/communications/send-sms` | Per-event admin SMS, scoped to one event, message ≤ 1600 chars |
+| `POST /api/admin/sms/send`                | Ad-hoc admin SMS, no event required, message ≤ 320 chars       |
+
+The Twilio account SID, auth token, and the E.164 sender number (`TWILIO_PHONE_NUMBER`) are sourced from the OpenBao-backed Kubernetes secret `nextjs-secrets`; see `kubernetes/overlays/pugquilt-dev/external-secrets.yaml` and `scripts/populate-openbao-secrets.sh`. Real values must be provisioned out-of-band and never committed.
+
 ## External Services Security
 
 | Service      | Credentials             | Access Level      |
