@@ -6,6 +6,7 @@ import { RSVPStatus, EventStatus } from '~/lib/generated/enums';
 import { z } from 'zod';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
+import { diff, writeAuditLog } from '~/lib/audit';
 
 async function triggerWorkflow(
   eventId: string,
@@ -170,7 +171,16 @@ export async function POST(request: Request) {
               });
               const waitlistPosition = (nextPosition._max.waitlistPosition || 0) + 1;
 
-              await prisma.rSVP.upsert({
+              const existingWaitlistRsvp = await prisma.rSVP.findUnique({
+                where: {
+                  eventId_userId: {
+                    eventId: eventId!,
+                    userId: session.user.id,
+                  },
+                },
+              });
+
+              const waitlisted = await prisma.rSVP.upsert({
                 where: {
                   eventId_userId: {
                     eventId: eventId!,
@@ -195,6 +205,43 @@ export async function POST(request: Request) {
                   waitlistPosition,
                 },
               });
+
+              if (existingWaitlistRsvp) {
+                const change = diff(
+                  {
+                    status: existingWaitlistRsvp.status,
+                    headcount: existingWaitlistRsvp.headcount,
+                    dietaryNotes: existingWaitlistRsvp.dietaryNotes,
+                    waitlistPosition: existingWaitlistRsvp.waitlistPosition,
+                  },
+                  {
+                    status: waitlisted.status,
+                    headcount: waitlisted.headcount,
+                    dietaryNotes: waitlisted.dietaryNotes,
+                    waitlistPosition: waitlisted.waitlistPosition,
+                  },
+                );
+
+                if (change) {
+                  await writeAuditLog({
+                    userId: session.user.id,
+                    eventId: eventId!,
+                    action: 'RSVP_UPDATE',
+                    oldValue: {
+                      status: existingWaitlistRsvp.status,
+                      headcount: existingWaitlistRsvp.headcount,
+                      dietaryNotes: existingWaitlistRsvp.dietaryNotes,
+                      waitlistPosition: existingWaitlistRsvp.waitlistPosition,
+                    },
+                    newValue: {
+                      status: waitlisted.status,
+                      headcount: waitlisted.headcount,
+                      dietaryNotes: waitlisted.dietaryNotes,
+                      waitlistPosition: waitlisted.waitlistPosition,
+                    },
+                  });
+                }
+              }
 
               return NextResponse.json({
                 success: true,
@@ -241,7 +288,7 @@ export async function POST(request: Request) {
                 where: { rsvpId: existingRsvp?.id },
               });
 
-              await tx.rSVP.upsert({
+              const declined = await tx.rSVP.upsert({
                 where: {
                   eventId_userId: {
                     eventId: eventId!,
@@ -257,19 +304,28 @@ export async function POST(request: Request) {
                 create: rsvpData,
               });
 
-              await tx.adminAuditLog.create({
-                data: {
-                  userId: session.user.id,
-                  eventId: eventId!,
-                  action: 'POTLUCK_SLOT_RELEASE',
-                  oldValue: { status: existingRsvp?.status, headcount: existingRsvp?.headcount },
-                  newValue: {
-                    status: RSVPStatus.DECLINED,
-                    headcount: 0,
-                    slotsReleased: existingRsvp?.potluckSignups.length || 0,
+              if (existingRsvp) {
+                await tx.adminAuditLog.create({
+                  data: {
+                    userId: session.user.id,
+                    eventId: eventId!,
+                    action: 'RSVP_UPDATE',
+                    oldValue: {
+                      status: existingRsvp.status,
+                      headcount: existingRsvp.headcount,
+                      dietaryNotes: existingRsvp.dietaryNotes,
+                      waitlistPosition: existingRsvp.waitlistPosition,
+                    },
+                    newValue: {
+                      status: declined.status,
+                      headcount: declined.headcount,
+                      dietaryNotes: declined.dietaryNotes,
+                      waitlistPosition: declined.waitlistPosition,
+                      slotsReleased: existingRsvp.potluckSignups.length,
+                    },
                   },
-                },
-              });
+                });
+              }
 
               const firstWaitlisted = await tx.rSVP.findFirst({
                 where: {
@@ -320,7 +376,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, status: RSVPStatus.DECLINED });
           }
 
-          await prisma.rSVP.upsert({
+          const existingConfirmRsvp = await prisma.rSVP.findUnique({
+            where: {
+              eventId_userId: {
+                eventId: eventId!,
+                userId: session.user.id,
+              },
+            },
+          });
+
+          const updatedRsvp = await prisma.rSVP.upsert({
             where: {
               eventId_userId: {
                 eventId: eventId!,
@@ -335,6 +400,43 @@ export async function POST(request: Request) {
             },
             create: rsvpData,
           });
+
+          if (existingConfirmRsvp) {
+            const change = diff(
+              {
+                status: existingConfirmRsvp.status,
+                headcount: existingConfirmRsvp.headcount,
+                dietaryNotes: existingConfirmRsvp.dietaryNotes,
+                waitlistPosition: existingConfirmRsvp.waitlistPosition,
+              },
+              {
+                status: updatedRsvp.status,
+                headcount: updatedRsvp.headcount,
+                dietaryNotes: updatedRsvp.dietaryNotes,
+                waitlistPosition: updatedRsvp.waitlistPosition,
+              },
+            );
+
+            if (change) {
+              await writeAuditLog({
+                userId: session.user.id,
+                eventId: eventId!,
+                action: 'RSVP_UPDATE',
+                oldValue: {
+                  status: existingConfirmRsvp.status,
+                  headcount: existingConfirmRsvp.headcount,
+                  dietaryNotes: existingConfirmRsvp.dietaryNotes,
+                  waitlistPosition: existingConfirmRsvp.waitlistPosition,
+                },
+                newValue: {
+                  status: updatedRsvp.status,
+                  headcount: updatedRsvp.headcount,
+                  dietaryNotes: updatedRsvp.dietaryNotes,
+                  waitlistPosition: updatedRsvp.waitlistPosition,
+                },
+              });
+            }
+          }
 
           triggerWorkflow(eventId!, session.user.id, 'confirm', headcount, dietaryNotes);
 
