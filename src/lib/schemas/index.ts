@@ -1,6 +1,7 @@
 export * from './rsvp';
 export * from './potluck';
 export * from './dependent';
+export * from './household-member';
 export * from './profile';
 export * from './photo';
 export * from './event';

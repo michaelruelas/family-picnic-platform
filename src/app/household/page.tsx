@@ -4,6 +4,7 @@ import { authOptions } from '~/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import HouseholdClient from '~/components/household/HouseholdClient';
+import HouseholdMembersClient from '~/components/household/HouseholdMembersClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,16 @@ export default async function HouseholdPage() {
               age: true,
               dietaryLabels: true,
               isChild: true,
+            },
+          },
+          members: {
+            where: { deletedAt: null },
+            orderBy: { createdAt: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              age: true,
+              notes: true,
             },
           },
         },
@@ -129,11 +140,11 @@ export default async function HouseholdPage() {
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
-          <h2 className="text-foreground text-lg font-semibold">Household Members</h2>
-          <p className="text-muted-foreground mt-1 text-sm">Adults in this household</p>
+          <h2 className="text-foreground text-lg font-semibold">Account Holders</h2>
+          <p className="text-muted-foreground mt-1 text-sm">Adults with login access</p>
 
           {household.users.length === 0 ? (
-            <p className="text-muted-foreground mt-4 text-sm">No members yet.</p>
+            <p className="text-muted-foreground mt-4 text-sm">No account holders yet.</p>
           ) : (
             <ul className="mt-4 space-y-3">
               {household.users.map((member) => (
@@ -182,6 +193,10 @@ export default async function HouseholdPage() {
             </p>
           )}
         </div>
+      </div>
+
+      <div className="mt-8 rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+        <HouseholdMembersClient householdId={household.id} initialMembers={household.members} />
       </div>
 
       <div className="mt-8 rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">

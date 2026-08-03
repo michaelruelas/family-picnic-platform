@@ -182,6 +182,7 @@ const otherUserSession = {
   },
   expires: 'x',
 };
+void otherUserSession;
 
 beforeEach(() => {
   vi.clearAllMocks();
