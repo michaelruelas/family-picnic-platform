@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
+import { Prisma } from '~/lib/generated/client';
 import { householdMemberUpdateSchema } from '~/lib/schemas/household-member';
+import { LastMemberError, parseJsonBody, requireActiveMemberOwner } from '../_helpers';
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -14,13 +16,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const { id } = await context.params;
 
   try {
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body', code: 'BAD_REQUEST' }, { status: 400 });
-    }
-    const result = householdMemberUpdateSchema.safeParse({ ...(body as object), id });
+    const parsed = await parseJsonBody(request);
+    if (!parsed.ok) return parsed.response;
+
+    const result = householdMemberUpdateSchema.safeParse({ ...parsed.body, id });
 
     if (!result.success) {
       const errors = result.error.issues.map((i) => i.message);
@@ -36,24 +35,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ error: 'Member not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { householdId: true, deletedAt: true },
-    });
-
-    if (!user || user.deletedAt !== null) {
-      return NextResponse.json(
-        { error: 'Account is inactive', code: 'UNAUTHORIZED' },
-        { status: 401 },
-      );
-    }
-
-    if (!user.householdId || user.householdId !== existing.householdId) {
-      return NextResponse.json(
-        { error: 'You can only edit members in your own household', code: 'FORBIDDEN' },
-        { status: 403 },
-      );
-    }
+    const owner = await requireActiveMemberOwner(session.user.id, existing.householdId);
+    if (!owner.ok) return owner.response;
 
     const updateData: { name?: string; age?: number | null; notes?: string | null } = {};
 
@@ -101,62 +84,39 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
       return NextResponse.json({ error: 'Member not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { householdId: true, deletedAt: true },
-    });
+    const owner = await requireActiveMemberOwner(session.user.id, existing.householdId);
+    if (!owner.ok) return owner.response;
 
-    if (!user || user.deletedAt !== null) {
-      return NextResponse.json(
-        { error: 'Account is inactive', code: 'UNAUTHORIZED' },
-        { status: 401 },
-      );
-    }
-
-    if (!user.householdId || user.householdId !== existing.householdId) {
-      return NextResponse.json(
-        { error: 'You can only remove members from your own household', code: 'FORBIDDEN' },
-        { status: 403 },
-      );
-    }
-
-    try {
-      await prisma.$transaction(
-        async (tx) => {
-          const remaining = await tx.householdMember.count({
-            where: { householdId: existing.householdId, deletedAt: null },
-          });
-          if (remaining <= 1) {
-            const error = new Error('last_member');
-            error.name = 'LastMemberError';
-            throw error;
-          }
-          await tx.householdMember.update({
-            where: { id },
-            data: { deletedAt: new Date() },
-          });
-        },
-        { isolationLevel: 'Serializable' },
-      );
-    } catch (error) {
-      if ((error as Error).name === 'LastMemberError') {
-        return NextResponse.json(
-          { error: 'At least one household member is required', code: 'BAD_REQUEST' },
-          { status: 400 },
-        );
-      }
-      const code = (error as { code?: string }).code;
-      if (code === 'P2034') {
-        return NextResponse.json(
-          { error: 'Concurrent delete detected, retry', code: 'CONFLICT' },
-          { status: 409 },
-        );
-      }
-      throw error;
-    }
+    await prisma.$transaction(
+      async (tx) => {
+        const remaining = await tx.householdMember.count({
+          where: { householdId: existing.householdId, deletedAt: null },
+        });
+        if (remaining <= 1) {
+          throw new LastMemberError();
+        }
+        await tx.householdMember.update({
+          where: { id },
+          data: { deletedAt: new Date() },
+        });
+      },
+      { isolationLevel: 'Serializable' },
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof LastMemberError) {
+      return NextResponse.json(
+        { error: 'At least one household member is required', code: 'BAD_REQUEST' },
+        { status: 400 },
+      );
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+      return NextResponse.json(
+        { error: 'Concurrent delete detected, retry', code: 'CONFLICT' },
+        { status: 409 },
+      );
+    }
     console.error('Delete household member error:', error);
     return NextResponse.json(
       { error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' },

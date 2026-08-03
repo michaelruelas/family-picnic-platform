@@ -26,15 +26,17 @@ vi.mock('next/server', async (importOriginal) => {
 });
 
 import { getServerSession } from 'next-auth';
+import { Prisma } from '~/lib/generated/client';
 import { POST } from '~/app/api/household-members/route';
 import { PATCH, DELETE } from '~/app/api/household-members/[id]/route';
+import { LastMemberError } from '~/app/api/household-members/_helpers';
 
 const mockedSession = vi.mocked(getServerSession);
 
 beforeEach(() => {
   resetPrismaMock(prismaMock);
-  prismaMock.$transaction.mockImplementation(
-    async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock),
+  prismaMock.$transaction.mockImplementation(async (fn: (tx: typeof prismaMock) => unknown) =>
+    fn(prismaMock),
   );
 });
 
@@ -443,9 +445,7 @@ describe('DELETE /api/household-members/[id]', () => {
       deletedAt: null,
     } as never);
     prismaMock.$transaction.mockImplementationOnce(async () => {
-      const error = new Error('last_member');
-      error.name = 'LastMemberError';
-      throw error;
+      throw new LastMemberError();
     });
     const res = await DELETE(makeJsonRequest('http://x', undefined, 'DELETE'), {
       params: Promise.resolve({ id: 'm-1' }),
@@ -474,9 +474,10 @@ describe('DELETE /api/household-members/[id]', () => {
       if (call === 1) {
         return fn(prismaMock);
       }
-      const error = new Error('could not serialize access');
-      (error as { code?: string }).code = 'P2034';
-      throw error;
+      throw new Prisma.PrismaClientKnownRequestError('could not serialize access', {
+        code: 'P2034',
+        clientVersion: 'test',
+      });
     });
 
     const [res1, res2] = await Promise.all([

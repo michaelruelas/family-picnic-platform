@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { householdMemberCreateSchema } from '~/lib/schemas/household-member';
+import { parseJsonBody, requireActiveMemberOwner } from './_helpers';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -12,13 +13,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body', code: 'BAD_REQUEST' }, { status: 400 });
-    }
-    const result = householdMemberCreateSchema.safeParse(body);
+    const parsed = await parseJsonBody(request);
+    if (!parsed.ok) return parsed.response;
+
+    const result = householdMemberCreateSchema.safeParse(parsed.body);
 
     if (!result.success) {
       const errors = result.error.issues.map((i) => i.message);
@@ -28,24 +26,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { householdId: true, deletedAt: true },
-    });
-
-    if (!user || user.deletedAt !== null) {
-      return NextResponse.json(
-        { error: 'Account is inactive', code: 'UNAUTHORIZED' },
-        { status: 401 },
-      );
-    }
-
-    if (!user.householdId || user.householdId !== result.data.householdId) {
-      return NextResponse.json(
-        { error: 'You can only add members to your own household', code: 'FORBIDDEN' },
-        { status: 403 },
-      );
-    }
+    const owner = await requireActiveMemberOwner(session.user.id, result.data.householdId);
+    if (!owner.ok) return owner.response;
 
     const member = await prisma.householdMember.create({
       data: {
