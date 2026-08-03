@@ -37,10 +37,7 @@ export interface AuditLogEntry {
   newValue?: unknown;
 }
 
-export async function writeAuditLog(
-  entry: AuditLogEntry,
-  tx?: AuditLogWriter,
-): Promise<void> {
+export async function writeAuditLog(entry: AuditLogEntry, tx?: AuditLogWriter): Promise<void> {
   const client = tx ?? prisma;
   await client.adminAuditLog.create({
     data: {
