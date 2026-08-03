@@ -46,7 +46,12 @@ describe('RsvpBottomSheet pre-fill', () => {
     render(
       <RsvpBottomSheet
         {...defaultProps}
-        existingRsvp={{ status: 'CONFIRMED', headcount: 3, dietaryNotes: null }}
+        existingRsvp={{
+          status: 'CONFIRMED',
+          headcount: 3,
+          dietaryNotes: null,
+          modifiedAt: '2024-01-01T00:00:00Z',
+        }}
       />,
     );
 
@@ -59,7 +64,12 @@ describe('RsvpBottomSheet pre-fill', () => {
     render(
       <RsvpBottomSheet
         {...defaultProps}
-        existingRsvp={{ status: 'CONFIRMED', headcount: 2, dietaryNotes: 'vegetarian' }}
+        existingRsvp={{
+          status: 'CONFIRMED',
+          headcount: 2,
+          dietaryNotes: 'vegetarian',
+          modifiedAt: '2024-01-01T00:00:00Z',
+        }}
       />,
     );
 
@@ -71,7 +81,12 @@ describe('RsvpBottomSheet pre-fill', () => {
     render(
       <RsvpBottomSheet
         {...defaultProps}
-        existingRsvp={{ status: 'DECLINED', headcount: 0, dietaryNotes: null }}
+        existingRsvp={{
+          status: 'DECLINED',
+          headcount: 0,
+          dietaryNotes: null,
+          modifiedAt: '2024-01-01T00:00:00Z',
+        }}
       />,
     );
 
@@ -83,7 +98,12 @@ describe('RsvpBottomSheet pre-fill', () => {
     render(
       <RsvpBottomSheet
         {...defaultProps}
-        existingRsvp={{ status: 'CONFIRMED', headcount: 0, dietaryNotes: null }}
+        existingRsvp={{
+          status: 'CONFIRMED',
+          headcount: 0,
+          dietaryNotes: null,
+          modifiedAt: '2024-01-01T00:00:00Z',
+        }}
       />,
     );
 
@@ -94,7 +114,12 @@ describe('RsvpBottomSheet pre-fill', () => {
     render(
       <RsvpBottomSheet
         {...defaultProps}
-        existingRsvp={{ status: 'CONFIRMED', headcount: 2, dietaryNotes: 'vegan' }}
+        existingRsvp={{
+          status: 'CONFIRMED',
+          headcount: 2,
+          dietaryNotes: 'vegan',
+          modifiedAt: '2024-01-01T00:00:00Z',
+        }}
       />,
     );
 
@@ -120,7 +145,12 @@ describe('RsvpBottomSheet pre-fill', () => {
         <RsvpBottomSheet
           {...defaultProps}
           isOpen={true}
-          existingRsvp={{ status: 'CONFIRMED', headcount: 2, dietaryNotes: 'vegan' }}
+          existingRsvp={{
+            status: 'CONFIRMED',
+            headcount: 2,
+            dietaryNotes: 'vegan',
+            modifiedAt: '2024-01-01T00:00:00Z',
+          }}
         />,
       );
 
@@ -134,7 +164,12 @@ describe('RsvpBottomSheet pre-fill', () => {
         <RsvpBottomSheet
           {...defaultProps}
           isOpen={false}
-          existingRsvp={{ status: 'CONFIRMED', headcount: 2, dietaryNotes: 'vegan' }}
+          existingRsvp={{
+            status: 'CONFIRMED',
+            headcount: 2,
+            dietaryNotes: 'vegan',
+            modifiedAt: '2024-01-01T00:00:00Z',
+          }}
         />,
       );
 
@@ -146,7 +181,12 @@ describe('RsvpBottomSheet pre-fill', () => {
         <RsvpBottomSheet
           {...defaultProps}
           isOpen={true}
-          existingRsvp={{ status: 'CONFIRMED', headcount: 2, dietaryNotes: 'vegan' }}
+          existingRsvp={{
+            status: 'CONFIRMED',
+            headcount: 2,
+            dietaryNotes: 'vegan',
+            modifiedAt: '2024-01-01T00:00:00Z',
+          }}
         />,
       );
 
@@ -161,7 +201,12 @@ describe('RsvpBottomSheet pre-fill', () => {
     render(
       <RsvpBottomSheet
         {...defaultProps}
-        existingRsvp={{ status: 'WAITLISTED', headcount: 2, dietaryNotes: null }}
+        existingRsvp={{
+          status: 'WAITLISTED',
+          headcount: 2,
+          dietaryNotes: null,
+          modifiedAt: '2024-01-01T00:00:00Z',
+        }}
       />,
     );
 
@@ -175,7 +220,12 @@ describe('RsvpBottomSheet pre-fill', () => {
         {...defaultProps}
         maxCapacity={10}
         currentAttending={10}
-        existingRsvp={{ status: 'WAITLISTED', headcount: 2, dietaryNotes: null }}
+        existingRsvp={{
+          status: 'WAITLISTED',
+          headcount: 2,
+          dietaryNotes: null,
+          modifiedAt: '2024-01-01T00:00:00Z',
+        }}
       />,
     );
 
@@ -194,7 +244,12 @@ describe('RsvpBottomSheet pre-fill', () => {
     rerender(
       <RsvpBottomSheet
         {...defaultProps}
-        existingRsvp={{ status: 'CONFIRMED', headcount: 5, dietaryNotes: 'vegan' }}
+        existingRsvp={{
+          status: 'CONFIRMED',
+          headcount: 5,
+          dietaryNotes: 'vegan',
+          modifiedAt: '2024-01-01T00:00:00Z',
+        }}
       />,
     );
 
@@ -210,7 +265,12 @@ describe('RsvpBottomSheet pre-fill', () => {
         <RsvpBottomSheet
           {...defaultProps}
           isOpen={true}
-          existingRsvp={{ status: 'CONFIRMED', headcount: 2, dietaryNotes: 'vegan' }}
+          existingRsvp={{
+            status: 'CONFIRMED',
+            headcount: 2,
+            dietaryNotes: 'vegan',
+            modifiedAt: '2024-01-01T00:00:00Z',
+          }}
         />,
       );
 
@@ -222,7 +282,12 @@ describe('RsvpBottomSheet pre-fill', () => {
         <RsvpBottomSheet
           {...defaultProps}
           isOpen={false}
-          existingRsvp={{ status: 'CONFIRMED', headcount: 2, dietaryNotes: 'vegan' }}
+          existingRsvp={{
+            status: 'CONFIRMED',
+            headcount: 2,
+            dietaryNotes: 'vegan',
+            modifiedAt: '2024-01-01T00:00:00Z',
+          }}
         />,
       );
 
@@ -234,7 +299,12 @@ describe('RsvpBottomSheet pre-fill', () => {
         <RsvpBottomSheet
           {...defaultProps}
           isOpen={true}
-          existingRsvp={{ status: 'CONFIRMED', headcount: 2, dietaryNotes: 'vegan' }}
+          existingRsvp={{
+            status: 'CONFIRMED',
+            headcount: 2,
+            dietaryNotes: 'vegan',
+            modifiedAt: '2024-01-01T00:00:00Z',
+          }}
         />,
       );
 

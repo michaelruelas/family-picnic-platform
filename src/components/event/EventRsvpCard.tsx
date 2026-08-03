@@ -145,6 +145,7 @@ export function EventRsvpCard({
                   <span className="text-foreground/80">{existingRsvp.dietaryNotes}</span>
                 </div>
               )}
+              <LastUpdated modifiedAt={existingRsvp.modifiedAt} />
               {isRsvpOpen && (
                 <div className="mt-5 flex flex-col gap-2">
                   <button
@@ -175,6 +176,7 @@ export function EventRsvpCard({
               <p className="text-muted-foreground mt-2 text-sm">
                 You can switch back to attending any time before the deadline.
               </p>
+              <LastUpdated modifiedAt={existingRsvp.modifiedAt} />
               {isRsvpOpen && (
                 <button
                   onClick={() => setIsSheetOpen(true)}
@@ -197,6 +199,7 @@ export function EventRsvpCard({
               <p className="text-muted-foreground mt-2 text-sm">
                 If a spot opens up, we&apos;ll be in touch.
               </p>
+              <LastUpdated modifiedAt={existingRsvp.modifiedAt} />
             </>
           )}
         </div>
@@ -322,5 +325,21 @@ export function EventRsvpCard({
         existingRsvp={existingRsvp}
       />
     </>
+  );
+}
+
+function LastUpdated({ modifiedAt }: { modifiedAt: string }) {
+  return (
+    <p className="text-muted-foreground mt-4 text-xs">
+      Last updated{' '}
+      <time dateTime={modifiedAt}>
+        {new Date(modifiedAt).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        })}
+      </time>
+    </p>
   );
 }

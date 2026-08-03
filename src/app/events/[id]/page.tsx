@@ -101,6 +101,7 @@ export default async function EventDetailPage({ params }: Props) {
               headcount: true,
               dietaryNotes: true,
               waitlistPosition: true,
+              modifiedAt: true,
             },
           })
         : Promise.resolve(null),
@@ -145,6 +146,7 @@ export default async function EventDetailPage({ params }: Props) {
         status: userRsvp.status as RSVPStatus,
         headcount: userRsvp.headcount,
         dietaryNotes: userRsvp.dietaryNotes,
+        modifiedAt: userRsvp.modifiedAt.toISOString(),
       }
     : null;
 
