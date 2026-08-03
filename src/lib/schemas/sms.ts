@@ -16,3 +16,23 @@ export const adminSendSmsInputSchema = z.object({
 });
 
 export type AdminSendSmsInput = z.infer<typeof adminSendSmsInputSchema>;
+
+type SmsOptIn = {
+  communicationPreference?: 'EMAIL' | 'SMS' | 'BOTH' | 'NONE';
+  phoneNumber?: string | null;
+  smsConsent?: boolean;
+};
+
+export function requirePhoneIfWantsSms(value: SmsOptIn, ctx: z.RefinementCtx): void {
+  const wantsSms =
+    value.communicationPreference === 'SMS' ||
+    value.communicationPreference === 'BOTH' ||
+    value.smsConsent === true;
+  if (wantsSms && !value.phoneNumber) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['phoneNumber'],
+      message: 'A phone number is required to enable SMS notifications',
+    });
+  }
+}

@@ -123,6 +123,10 @@ export async function POST(request: NextRequest) {
           },
         };
 
+        // Phone presence and SMS consent are NOT checked here — they are enforced
+        // at dispatch time (see dispatchAdminSms in src/lib/sms-dispatch.ts).
+        // A BOTH user with no phone will be skipped at delivery, not at resolution.
+
         switch (recipientType) {
           case 'ALL':
             targetUserIds = (

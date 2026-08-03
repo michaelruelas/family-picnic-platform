@@ -133,10 +133,10 @@ describe('sendSMS', () => {
     vi.stubEnv('TWILIO_ACCOUNT_SID', 'AC123');
     vi.stubEnv('TWILIO_AUTH_TOKEN', 'token123');
     vi.stubEnv('TWILIO_PHONE_NUMBER', '+15559876543');
-    const { sendSMS } = await import('../twilio');
+    const { sendSMS, TWILIO_ERR_INVALID_PHONE } = await import('../twilio');
     const result = await sendSMS({ to: 'not-a-number', body: 'Hi' });
     expect(result.success).toBe(false);
-    expect(result.errorCode).toBe(21211);
+    expect(result.errorCode).toBe(TWILIO_ERR_INVALID_PHONE);
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
@@ -144,10 +144,10 @@ describe('sendSMS', () => {
     vi.stubEnv('TWILIO_ACCOUNT_SID', 'AC123');
     vi.stubEnv('TWILIO_AUTH_TOKEN', 'token123');
     vi.stubEnv('TWILIO_PHONE_NUMBER', '15559876543');
-    const { sendSMS } = await import('../twilio');
+    const { sendSMS, TWILIO_ERR_INVALID_PHONE } = await import('../twilio');
     const result = await sendSMS({ to: '+15551234567', body: 'Hi' });
     expect(result.success).toBe(false);
-    expect(result.errorCode).toBe(21211);
+    expect(result.errorCode).toBe(TWILIO_ERR_INVALID_PHONE);
     expect(mockCreate).not.toHaveBeenCalled();
   });
 

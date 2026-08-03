@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { e164Schema } from './sms';
+import { e164Schema, requirePhoneIfWantsSms } from './sms';
 
 export const profileUpdateSchema = z
   .object({
@@ -8,18 +8,6 @@ export const profileUpdateSchema = z
     phoneNumber: e164Schema.optional().nullable(),
     smsConsent: z.boolean().optional(),
   })
-  .superRefine((value, ctx) => {
-    const wantsSms =
-      value.communicationPreference === 'SMS' ||
-      value.communicationPreference === 'BOTH' ||
-      value.smsConsent === true;
-    if (wantsSms && !value.phoneNumber) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['phoneNumber'],
-        message: 'A phone number is required to enable SMS notifications',
-      });
-    }
-  });
+  .superRefine(requirePhoneIfWantsSms);
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;

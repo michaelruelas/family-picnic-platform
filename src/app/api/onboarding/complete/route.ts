@@ -3,9 +3,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { CommunicationPreference } from '~/lib/generated/enums';
-import { e164Schema } from '~/lib/schemas/sms';
+import { e164Schema, requirePhoneIfWantsSms } from '~/lib/schemas/sms';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
+import { extractClientIp, parseTrustedProxyIps } from '~/lib/client-ip';
 import { z } from 'zod';
 
 const completeSchema = z
@@ -16,29 +17,11 @@ const completeSchema = z
     phoneNumber: e164Schema.optional().nullable(),
     smsConsent: z.boolean().optional(),
   })
-  .superRefine((value, ctx) => {
-    const wantsSms =
-      value.communicationPreference === 'SMS' ||
-      value.communicationPreference === 'BOTH' ||
-      value.smsConsent === true;
-    if (wantsSms && !value.phoneNumber) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['phoneNumber'],
-        message: 'A phone number is required to enable SMS notifications',
-      });
-    }
-  });
+  .superRefine(requirePhoneIfWantsSms);
 
-function extractClientIp(request: Request): string | null {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) {
-    const first = forwarded.split(',')[0]?.trim();
-    if (first) return first;
-  }
-  const real = request.headers.get('x-real-ip');
-  if (real) return real.trim();
-  return null;
+function getClientIp(request: Request): string | null {
+  const trusted = parseTrustedProxyIps(process.env.TRUSTED_PROXY_IPS);
+  return extractClientIp(request.headers, trusted).ip;
 }
 
 export async function POST(request: Request) {
@@ -75,7 +58,7 @@ export async function POST(request: Request) {
           phoneNumber: phoneNumber ?? null,
           smsConsent: smsConsent ?? false,
           smsConsentAt: smsConsent ? new Date() : null,
-          smsConsentIp: smsConsent ? extractClientIp(request) : null,
+          smsConsentIp: smsConsent ? getClientIp(request) : null,
         },
       });
 

@@ -120,8 +120,20 @@ Outbound SMS is consent-gated end-to-end. Before any Twilio send:
 | ----------------------------------------- | -------------------------------------------------------------- |
 | `POST /api/admin/communications/send-sms` | Per-event admin SMS, scoped to one event, message ≤ 1600 chars |
 | `POST /api/admin/sms/send`                | Ad-hoc admin SMS, no event required, message ≤ 320 chars       |
+| tRPC `communication.sendSms`              | Same per-event admin SMS, callable from server components      |
+
+All three paths share the `dispatchAdminSms` helper in `src/lib/sms-dispatch.ts`; only the response shape differs.
 
 The Twilio account SID, auth token, and the E.164 sender number (`TWILIO_PHONE_NUMBER`) are sourced from the OpenBao-backed Kubernetes secret `nextjs-secrets`; see `kubernetes/overlays/pugquilt-dev/external-secrets.yaml` and `scripts/populate-openbao-secrets.sh`. Real values must be provisioned out-of-band and never committed.
+
+### Consent IP capture
+
+`smsConsentIp` records the originating client IP at the moment of consent. Because Next.js does not expose the raw socket, we resolve the IP from proxy headers via `src/lib/client-ip.ts`:
+
+- If `TRUSTED_PROXY_IPS` is unset/empty, no proxy headers are trusted and `smsConsentIp` is stored as `null`. This is the safe default — a hostile client cannot claim any source IP.
+- If `TRUSTED_PROXY_IPS` is set to a comma-separated list of IPv4 addresses, the helper walks `x-forwarded-for` from right to left and returns the first IP not in the list (standard rightmost-untrusted parse). Falls back to `x-real-ip` only when the allowlist is non-empty.
+
+Set `TRUSTED_PROXY_IPS` to your edge proxy's egress IPs (e.g. the ALB's internal IPs) in every non-dev environment. CIDR support and IPv6 are tracked as follow-ups.
 
 ## External Services Security
 

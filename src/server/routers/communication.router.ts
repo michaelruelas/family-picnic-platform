@@ -16,12 +16,7 @@ import {
   rateLimitError,
 } from '~/lib/rate-limit';
 import { adminSendSmsInputSchema } from '~/lib/schemas/sms';
-import {
-  sendSMS,
-  getFromPhoneNumber,
-  isValidE164,
-  isConfigured as twilioConfigured,
-} from '~/lib/twilio';
+import { dispatchAdminSms } from '~/lib/sms-dispatch';
 
 export const communicationRouter = router({
   getRateLimitStatus: auditedAdminProcedure.query(async ({ ctx }) => {
@@ -64,6 +59,10 @@ export const communicationRouter = router({
               : [CommunicationPreference.EMAIL, CommunicationPreference.BOTH],
         },
       };
+
+      // Phone presence and SMS consent are NOT checked here — they are enforced
+      // at dispatch time (see dispatchAdminSms in src/lib/sms-dispatch.ts).
+      // A BOTH user with no phone will be skipped at delivery, not at resolution.
 
       switch (input.recipientType) {
         case 'ALL':
@@ -258,21 +257,6 @@ export const communicationRouter = router({
   }),
 
   sendSms: auditedAdminProcedure.input(adminSendSmsInputSchema).mutation(async ({ ctx, input }) => {
-    if (!twilioConfigured()) {
-      throw new TRPCError({
-        code: 'SERVICE_UNAVAILABLE',
-        message: 'SMS provider not configured',
-      });
-    }
-
-    const fromPhone = getFromPhoneNumber();
-    if (!fromPhone || !isValidE164(fromPhone)) {
-      throw new TRPCError({
-        code: 'SERVICE_UNAVAILABLE',
-        message: 'SMS provider not configured',
-      });
-    }
-
     const event = await prisma.event.findUnique({
       where: { id: input.eventId },
       select: { id: true },
@@ -281,94 +265,47 @@ export const communicationRouter = router({
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' });
     }
 
-    const recipient = await prisma.user.findUnique({
-      where: { id: input.recipientUserId },
-      select: {
-        id: true,
-        phoneNumber: true,
-        smsConsent: true,
-      },
-    });
-    if (!recipient) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Recipient not found' });
-    }
-
-    if (!recipient.smsConsent) {
-      await prisma.communicationLog.create({
-        data: {
-          eventId: input.eventId,
-          sentByUserId: ctx.session.user.id,
-          recipientUserId: recipient.id,
-          channel: CommunicationChannel.SMS,
-          status: CommunicationStatus.FAILED,
-          errorCode: 'NO_CONSENT',
-          errorMessage: 'Recipient has not granted SMS consent',
-          fromPhoneNumber: fromPhone,
-        },
-      });
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Recipient has not consented to SMS messages',
-      });
-    }
-
-    if (!recipient.phoneNumber || !isValidE164(recipient.phoneNumber)) {
-      await prisma.communicationLog.create({
-        data: {
-          eventId: input.eventId,
-          sentByUserId: ctx.session.user.id,
-          recipientUserId: recipient.id,
-          channel: CommunicationChannel.SMS,
-          status: CommunicationStatus.FAILED,
-          errorCode: 'NO_PHONE',
-          errorMessage: 'Recipient has no valid E.164 phone number on file',
-          fromPhoneNumber: fromPhone,
-        },
-      });
-      throw new TRPCError({
-        code: 'UNPROCESSABLE_CONTENT',
-        message: 'Recipient has no valid phone number on file',
-      });
-    }
-
-    const result = await sendSMS({
-      to: recipient.phoneNumber,
+    const outcome = await dispatchAdminSms({
+      adminUserId: ctx.session.user.id,
+      recipientUserId: input.recipientUserId,
       body: input.message,
+      eventId: input.eventId,
+      auditAction: 'admin.sendSms',
     });
 
-    const status = result.success ? CommunicationStatus.SENT : CommunicationStatus.FAILED;
-
-    const logRow = await prisma.communicationLog.create({
-      data: {
-        eventId: input.eventId,
-        sentByUserId: ctx.session.user.id,
-        recipientUserId: recipient.id,
-        channel: CommunicationChannel.SMS,
-        messageId: result.messageId,
-        toPhoneNumber: recipient.phoneNumber,
-        fromPhoneNumber: fromPhone,
-        status,
-        errorCode: result.errorCode?.toString(),
-        errorMessage: result.error,
-        deliveredAt: result.success ? new Date() : null,
-      },
-    });
-
-    if (!result.success) {
-      throw new TRPCError({
-        code: 'BAD_GATEWAY',
-        message: 'SMS provider rejected the message',
-        cause: {
-          errorCode: result.errorCode,
-          communicationLogId: logRow.id,
-        },
-      });
+    switch (outcome.kind) {
+      case 'SENT':
+        return {
+          success: true,
+          communicationLogId: outcome.communicationLogId,
+          messageId: outcome.messageId,
+        };
+      case 'PROVIDER_NOT_CONFIGURED':
+        throw new TRPCError({
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'SMS provider not configured',
+        });
+      case 'RECIPIENT_NOT_FOUND':
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Recipient not found' });
+      case 'NO_CONSENT':
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Recipient has not consented to SMS messages',
+        });
+      case 'NO_PHONE':
+        throw new TRPCError({
+          code: 'UNPROCESSABLE_CONTENT',
+          message: 'Recipient has no valid phone number on file',
+        });
+      case 'TWILIO_ERROR':
+        throw new TRPCError({
+          code: 'BAD_GATEWAY',
+          message: 'SMS provider rejected the message',
+          cause: {
+            errorCode: outcome.errorCode,
+            communicationLogId: outcome.communicationLogId,
+          },
+        });
     }
-
-    return {
-      success: true,
-      communicationLogId: logRow.id,
-      messageId: result.messageId,
-    };
   }),
 });

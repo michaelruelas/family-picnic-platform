@@ -145,6 +145,10 @@ vi.mock('~/lib/s3', () => ({
   generateS3Key: vi.fn(() => 'events/evt-1/uploads/user-1/123-photo.jpg'),
 }));
 
+vi.mock('~/lib/sms-dispatch', () => ({
+  dispatchAdminSms: vi.fn(),
+}));
+
 vi.mock('~/lib/photo-prism', () => ({
   importPhotoToPhotoPrism: vi.fn(() => Promise.resolve({ id: 'pp-1' })),
   isPhotoPrismConfigured: vi.fn(() => true),
@@ -2908,6 +2912,130 @@ describe('communication.router', () => {
       expect.objectContaining({ where: { id: 'user-1' } }),
     );
     expect(result).toEqual({ communicationPreference: 'EMAIL' });
+  });
+
+  it('sendSms returns the dispatch outcome on SENT', async () => {
+    const { dispatchAdminSms } = await import('~/lib/sms-dispatch');
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1' });
+    vi.mocked(dispatchAdminSms).mockResolvedValue({
+      kind: 'SENT',
+      recipientId: 'r-1',
+      messageId: 'SMxyz',
+      communicationLogId: 'log-1',
+    });
+
+    const { communicationRouter } = await import('~/server/routers/communication.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(communicationRouter)({ session: adminSession });
+    const result = await caller.sendSms({
+      eventId: 'evt-1',
+      recipientUserId: 'r-1',
+      message: 'Hi there',
+    });
+
+    expect(result).toEqual({ success: true, communicationLogId: 'log-1', messageId: 'SMxyz' });
+    expect(dispatchAdminSms).toHaveBeenCalledWith({
+      adminUserId: 'admin-1',
+      recipientUserId: 'r-1',
+      body: 'Hi there',
+      eventId: 'evt-1',
+      auditAction: 'admin.sendSms',
+    });
+  });
+
+  it('sendSms throws NOT_FOUND when the event does not exist', async () => {
+    const { dispatchAdminSms } = await import('~/lib/sms-dispatch');
+    mockPrisma.event.findUnique.mockResolvedValue(null);
+
+    const { communicationRouter } = await import('~/server/routers/communication.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(communicationRouter)({ session: adminSession });
+    await expect(
+      caller.sendSms({ eventId: 'evt-missing', recipientUserId: 'r-1', message: 'Hi' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(dispatchAdminSms).not.toHaveBeenCalled();
+  });
+
+  it('sendSms maps PROVIDER_NOT_CONFIGURED to SERVICE_UNAVAILABLE', async () => {
+    const { dispatchAdminSms } = await import('~/lib/sms-dispatch');
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1' });
+    vi.mocked(dispatchAdminSms).mockResolvedValue({ kind: 'PROVIDER_NOT_CONFIGURED' });
+
+    const { communicationRouter } = await import('~/server/routers/communication.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(communicationRouter)({ session: adminSession });
+    await expect(
+      caller.sendSms({ eventId: 'evt-1', recipientUserId: 'r-1', message: 'Hi' }),
+    ).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
+  });
+
+  it('sendSms maps RECIPIENT_NOT_FOUND to NOT_FOUND', async () => {
+    const { dispatchAdminSms } = await import('~/lib/sms-dispatch');
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1' });
+    vi.mocked(dispatchAdminSms).mockResolvedValue({ kind: 'RECIPIENT_NOT_FOUND' });
+
+    const { communicationRouter } = await import('~/server/routers/communication.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(communicationRouter)({ session: adminSession });
+    await expect(
+      caller.sendSms({ eventId: 'evt-1', recipientUserId: 'missing', message: 'Hi' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('sendSms maps NO_CONSENT to FORBIDDEN', async () => {
+    const { dispatchAdminSms } = await import('~/lib/sms-dispatch');
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1' });
+    vi.mocked(dispatchAdminSms).mockResolvedValue({
+      kind: 'NO_CONSENT',
+      recipientId: 'r-1',
+      communicationLogId: 'log-no-consent',
+    });
+
+    const { communicationRouter } = await import('~/server/routers/communication.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(communicationRouter)({ session: adminSession });
+    await expect(
+      caller.sendSms({ eventId: 'evt-1', recipientUserId: 'r-1', message: 'Hi' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('sendSms maps NO_PHONE to UNPROCESSABLE_CONTENT', async () => {
+    const { dispatchAdminSms } = await import('~/lib/sms-dispatch');
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1' });
+    vi.mocked(dispatchAdminSms).mockResolvedValue({
+      kind: 'NO_PHONE',
+      recipientId: 'r-1',
+      communicationLogId: 'log-no-phone',
+    });
+
+    const { communicationRouter } = await import('~/server/routers/communication.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(communicationRouter)({ session: adminSession });
+    await expect(
+      caller.sendSms({ eventId: 'evt-1', recipientUserId: 'r-1', message: 'Hi' }),
+    ).rejects.toMatchObject({ code: 'UNPROCESSABLE_CONTENT' });
+  });
+
+  it('sendSms maps TWILIO_ERROR to BAD_GATEWAY with cause', async () => {
+    const { dispatchAdminSms } = await import('~/lib/sms-dispatch');
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1' });
+    vi.mocked(dispatchAdminSms).mockResolvedValue({
+      kind: 'TWILIO_ERROR',
+      recipientId: 'r-1',
+      error: 'Twilio rejected the message',
+      errorCode: 21610,
+      communicationLogId: 'log-twilio-fail',
+    });
+
+    const { communicationRouter } = await import('~/server/routers/communication.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(communicationRouter)({ session: adminSession });
+    await expect(
+      caller.sendSms({ eventId: 'evt-1', recipientUserId: 'r-1', message: 'Hi' }),
+    ).rejects.toMatchObject({
+      code: 'BAD_GATEWAY',
+      cause: { errorCode: 21610, communicationLogId: 'log-twilio-fail' },
+    });
   });
 });
 

@@ -20,6 +20,8 @@ export type SMSResult = {
 
 const E164_REGEX = /^\+[1-9]\d{1,14}$/;
 
+export const TWILIO_ERR_INVALID_PHONE = 21211;
+
 export function isValidE164(value: string | null | undefined): value is string {
   return typeof value === 'string' && E164_REGEX.test(value);
 }
@@ -40,11 +42,19 @@ export async function sendSMS(message: SMSMessage): Promise<SMSResult> {
   }
 
   if (!isValidE164(message.to)) {
-    return { success: false, error: 'Recipient phone number is not valid E.164', errorCode: 21211 };
+    return {
+      success: false,
+      error: 'Recipient phone number is not valid E.164',
+      errorCode: TWILIO_ERR_INVALID_PHONE,
+    };
   }
 
   if (!isValidE164(phoneNumber)) {
-    return { success: false, error: 'TWILIO_PHONE_NUMBER is not valid E.164', errorCode: 21211 };
+    return {
+      success: false,
+      error: 'TWILIO_PHONE_NUMBER is not valid E.164',
+      errorCode: TWILIO_ERR_INVALID_PHONE,
+    };
   }
 
   try {
