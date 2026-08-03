@@ -1,4 +1,7 @@
 import { prisma } from '~/lib/prisma';
+import type { PrismaClient } from '~/lib/generated/client';
+
+type AuditLogWriter = Pick<PrismaClient, 'adminAuditLog'>;
 
 export function diff(
   oldVal: unknown,
@@ -34,8 +37,12 @@ export interface AuditLogEntry {
   newValue?: unknown;
 }
 
-export async function writeAuditLog(entry: AuditLogEntry): Promise<void> {
-  await prisma.adminAuditLog.create({
+export async function writeAuditLog(
+  entry: AuditLogEntry,
+  tx?: AuditLogWriter,
+): Promise<void> {
+  const client = tx ?? prisma;
+  await client.adminAuditLog.create({
     data: {
       userId: entry.userId,
       eventId: entry.eventId,

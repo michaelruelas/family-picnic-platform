@@ -108,7 +108,7 @@ export const rsvpRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { before, after } = await prisma.$transaction(async (tx) => {
+      return prisma.$transaction(async (tx) => {
         const before = await tx.rSVP.findUnique({
           where: {
             eventId_userId: {
@@ -135,37 +135,38 @@ export const rsvpRouter = router({
           },
         });
 
-        return { before, after };
-      });
-
-      const change = diff(
-        {
-          headcount: before.headcount,
-          dietaryNotes: before.dietaryNotes,
-        },
-        {
-          headcount: after.headcount,
-          dietaryNotes: after.dietaryNotes,
-        },
-      );
-
-      if (change) {
-        await writeAuditLog({
-          userId: ctx.session.user.id,
-          eventId: input.eventId,
-          action: 'RSVP_UPDATE',
-          oldValue: {
+        const change = diff(
+          {
             headcount: before.headcount,
             dietaryNotes: before.dietaryNotes,
           },
-          newValue: {
+          {
             headcount: after.headcount,
             dietaryNotes: after.dietaryNotes,
           },
-        });
-      }
+        );
 
-      return after;
+        if (change) {
+          await writeAuditLog(
+            {
+              userId: ctx.session.user.id,
+              eventId: input.eventId,
+              action: 'RSVP_UPDATE',
+              oldValue: {
+                headcount: before.headcount,
+                dietaryNotes: before.dietaryNotes,
+              },
+              newValue: {
+                headcount: after.headcount,
+                dietaryNotes: after.dietaryNotes,
+              },
+            },
+            tx,
+          );
+        }
+
+        return after;
+      });
     }),
 
   confirm: protectedProcedure
@@ -227,7 +228,7 @@ export const rsvpRouter = router({
         throw new Error('User not found');
       }
 
-      const { before, rsvp } = await prisma.$transaction(async (tx) => {
+      const rsvp = await prisma.$transaction(async (tx) => {
         const before = await tx.rSVP.findUnique({
           where: {
             eventId_userId: {
@@ -237,7 +238,7 @@ export const rsvpRouter = router({
           },
         });
 
-        const rsvp = await tx.rSVP.upsert({
+        const upserted = await tx.rSVP.upsert({
           where: {
             eventId_userId: {
               eventId: input.eventId,
@@ -263,7 +264,47 @@ export const rsvpRouter = router({
           },
         });
 
-        return { before, rsvp };
+        if (before) {
+          const change = diff(
+            {
+              status: before.status,
+              headcount: before.headcount,
+              dietaryNotes: before.dietaryNotes,
+              waitlistPosition: before.waitlistPosition,
+            },
+            {
+              status: upserted.status,
+              headcount: upserted.headcount,
+              dietaryNotes: upserted.dietaryNotes,
+              waitlistPosition: upserted.waitlistPosition,
+            },
+          );
+
+          if (change) {
+            await writeAuditLog(
+              {
+                userId: ctx.session.user.id,
+                eventId: input.eventId,
+                action: 'RSVP_UPDATE',
+                oldValue: {
+                  status: before.status,
+                  headcount: before.headcount,
+                  dietaryNotes: before.dietaryNotes,
+                  waitlistPosition: before.waitlistPosition,
+                },
+                newValue: {
+                  status: upserted.status,
+                  headcount: upserted.headcount,
+                  dietaryNotes: upserted.dietaryNotes,
+                  waitlistPosition: upserted.waitlistPosition,
+                },
+              },
+              tx,
+            );
+          }
+        }
+
+        return upserted;
       });
 
       if (!isWaitlisted) {
@@ -275,43 +316,6 @@ export const rsvpRouter = router({
           },
           data: { status: InvitationStatus.USED },
         });
-      }
-
-      if (before) {
-        const change = diff(
-          {
-            status: before.status,
-            headcount: before.headcount,
-            dietaryNotes: before.dietaryNotes,
-            waitlistPosition: before.waitlistPosition,
-          },
-          {
-            status: rsvp.status,
-            headcount: rsvp.headcount,
-            dietaryNotes: rsvp.dietaryNotes,
-            waitlistPosition: rsvp.waitlistPosition,
-          },
-        );
-
-        if (change) {
-          await writeAuditLog({
-            userId: ctx.session.user.id,
-            eventId: input.eventId,
-            action: 'RSVP_UPDATE',
-            oldValue: {
-              status: before.status,
-              headcount: before.headcount,
-              dietaryNotes: before.dietaryNotes,
-              waitlistPosition: before.waitlistPosition,
-            },
-            newValue: {
-              status: rsvp.status,
-              headcount: rsvp.headcount,
-              dietaryNotes: rsvp.dietaryNotes,
-              waitlistPosition: rsvp.waitlistPosition,
-            },
-          });
-        }
       }
 
       triggerWorkflow(
