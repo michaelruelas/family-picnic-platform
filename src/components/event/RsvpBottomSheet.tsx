@@ -46,13 +46,23 @@ export function RsvpBottomSheet({
   const [phase, setPhase] = useState<'form' | 'confirmed'>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isOpenRef = useRef(isOpen);
+  const pendingErrorRef = useRef<string | null>(null);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
 
   useEffect(() => {
+    if (isOpen && pendingErrorRef.current) {
+      setError(pendingErrorRef.current);
+      pendingErrorRef.current = null;
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- error is not in deps; this clears a stale error from a late rejection so the next reopen does not show it
+      setError(null);
       const timeout = setTimeout(() => {
         const next = getInitialState(existingRsvp);
         setPhase('form');
@@ -60,7 +70,6 @@ export function RsvpBottomSheet({
         setKids(next.kids);
         setDietaryNotes(next.dietaryNotes);
         setShowDietary(next.showDietary);
-        setError(null);
       }, CLOSE_ANIMATION_MS);
       return () => clearTimeout(timeout);
     }
@@ -74,6 +83,7 @@ export function RsvpBottomSheet({
   const handleConfirm = async () => {
     setIsSubmitting(true);
     setError(null);
+    pendingErrorRef.current = null;
     try {
       await confirm.mutateAsync({
         eventId,
@@ -86,8 +96,13 @@ export function RsvpBottomSheet({
         if (isOpenRef.current) onClose();
       }, SUCCESS_DWELL_MS);
     } catch (err) {
-      if (!isOpenRef.current) return;
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      const message =
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      if (!isOpenRef.current) {
+        pendingErrorRef.current = message;
+        return;
+      }
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
