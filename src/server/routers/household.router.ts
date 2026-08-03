@@ -1,24 +1,88 @@
 import { router, protectedProcedure } from '~/lib/trpc';
+import { TRPCError } from '@trpc/server';
+import { Prisma } from '~/lib/generated/client';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { RSVPStatus, EventStatus } from '~/lib/generated/enums';
+import { householdCreateSchema, householdUpdateSchema } from '~/lib/schemas';
+
+async function assertHouseholdNameAvailable(name: string, excludeId?: string): Promise<void> {
+  const trimmed = name.trim();
+  const existing = await prisma.household.findFirst({
+    where: {
+      deletedAt: null,
+      ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      name: { equals: trimmed, mode: 'insensitive' },
+    },
+    select: { id: true },
+  });
+  if (existing) {
+    throw new TRPCError({
+      code: 'CONFLICT',
+      message: 'A household with this name already exists',
+    });
+  }
+}
+
+function rethrowNameConflict(error: unknown): never | void {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    throw new TRPCError({
+      code: 'CONFLICT',
+      message: 'A household with this name already exists',
+    });
+  }
+}
 
 export const householdRouter = router({
-  create: protectedProcedure
-    .input(
-      z.object({
-        name: z.string().min(1),
-        parentHouseholdId: z.string().optional(),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      return prisma.household.create({
+  create: protectedProcedure.input(householdCreateSchema).mutation(async ({ input }) => {
+    await assertHouseholdNameAvailable(input.name);
+    try {
+      return await prisma.household.create({
         data: {
-          name: input.name,
+          name: input.name.trim(),
           parentHouseholdId: input.parentHouseholdId,
         },
       });
-    }),
+    } catch (error) {
+      rethrowNameConflict(error);
+      throw error;
+    }
+  }),
+
+  update: protectedProcedure.input(householdUpdateSchema).mutation(async ({ ctx, input }) => {
+    const user = await prisma.user.findUnique({
+      where: { id: ctx.session.user.id },
+      select: { householdId: true },
+    });
+
+    if (!user?.householdId || user.householdId !== input.id) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You can only rename your own household',
+      });
+    }
+
+    const existing = await prisma.household.findUnique({
+      where: { id: input.id },
+      select: { id: true, deletedAt: true },
+    });
+
+    if (!existing || existing.deletedAt !== null) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Household not found' });
+    }
+
+    await assertHouseholdNameAvailable(input.name, input.id);
+
+    try {
+      return await prisma.household.update({
+        where: { id: input.id },
+        data: { name: input.name.trim() },
+      });
+    } catch (error) {
+      rethrowNameConflict(error);
+      throw error;
+    }
+  }),
 
   getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
     return prisma.household.findUnique({

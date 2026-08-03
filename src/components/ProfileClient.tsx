@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useUserProfileMutation, useDependentMutations } from '~/hooks';
+import { useUserProfileMutation, useDependentMutations, useHouseholdNameMutation } from '~/hooks';
 import { Relationship, CommunicationPreference } from '~/lib/generated/enums';
 
 interface Dependent {
@@ -39,14 +39,19 @@ const RELATIONSHIP_LABELS: Record<Relationship, string> = {
 export default function ProfileClient({ user, initialDependents = [] }: ProfileFormProps) {
   const { updatePreferences } = useUserProfileMutation();
   const { create, update, remove } = useDependentMutations();
+  const { updateName } = useHouseholdNameMutation();
   const [name, setName] = useState(user.name);
   const [communicationPreference, setCommunicationPreference] = useState(
     user.communicationPreference,
   );
+  const [householdName, setHouseholdName] = useState(user.household?.name ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [householdSuccess, setHouseholdSuccess] = useState(false);
+  const [householdError, setHouseholdError] = useState<string | null>(null);
+  const [isSavingHousehold, setIsSavingHousehold] = useState(false);
   const [dependents, setDependents] = useState<Dependent[]>(initialDependents);
   const [showDependentForm, setShowDependentForm] = useState(false);
   const [editingDependentId, setEditingDependentId] = useState<string | null>(null);
@@ -83,9 +88,43 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
   const handleCancel = () => {
     setName(user.name);
     setCommunicationPreference(user.communicationPreference);
+    setHouseholdName(user.household?.name ?? '');
     setIsEditing(false);
     setError(null);
     setSuccess(false);
+    setHouseholdError(null);
+    setHouseholdSuccess(false);
+  };
+
+  const handleSaveHousehold = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user.household) return;
+    const trimmed = householdName.trim();
+    if (!trimmed) {
+      setHouseholdError('Household name is required');
+      return;
+    }
+    if (trimmed === user.household.name) {
+      setHouseholdError(null);
+      setHouseholdSuccess(false);
+      return;
+    }
+
+    setIsSavingHousehold(true);
+    setHouseholdError(null);
+    setHouseholdSuccess(false);
+
+    try {
+      await updateName.mutateAsync({ id: user.household.id, name: trimmed });
+      setHouseholdSuccess(true);
+      setHouseholdName(trimmed);
+    } catch (err) {
+      setHouseholdError(
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+      );
+    } finally {
+      setIsSavingHousehold(false);
+    }
   };
 
   const resetDependentForm = () => {
@@ -236,12 +275,41 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
           <div>
             <label className="text-foreground/85 block text-sm font-medium">Household</label>
             {user.household ? (
-              <p className="text-foreground mt-1">{user.household.name}</p>
+              <form onSubmit={handleSaveHousehold} className="mt-1 space-y-2">
+                <input
+                  type="text"
+                  value={householdName}
+                  onChange={(e) => {
+                    setHouseholdName(e.target.value);
+                    setHouseholdSuccess(false);
+                  }}
+                  maxLength={80}
+                  required
+                  aria-label="Household name"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+                />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={
+                      isSavingHousehold ||
+                      householdName.trim() === '' ||
+                      householdName.trim() === user.household.name
+                    }
+                    className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                  >
+                    {isSavingHousehold ? 'Saving...' : 'Save'}
+                  </button>
+                  <p className="text-muted-foreground/70 text-xs">{householdName.length}/80</p>
+                </div>
+                {householdError && <p className="text-destructive text-xs">{householdError}</p>}
+                {householdSuccess && <p className="text-sage text-xs">Household name updated</p>}
+              </form>
             ) : (
               <p className="text-muted-foreground mt-1">Not assigned to a household</p>
             )}
             <p className="text-muted-foreground/70 mt-1 text-xs">
-              Contact an admin to change household
+              Must be unique across the platform (case-insensitive)
             </p>
           </div>
 
