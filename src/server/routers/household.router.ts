@@ -24,13 +24,14 @@ async function assertHouseholdNameAvailable(name: string, excludeId?: string): P
   }
 }
 
-function rethrowNameConflict(error: unknown): never | void {
+function rethrowNameConflict(error: unknown): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
     throw new TRPCError({
       code: 'CONFLICT',
       message: 'A household with this name already exists',
     });
   }
+  throw error;
 }
 
 export const householdRouter = router({
@@ -45,42 +46,46 @@ export const householdRouter = router({
       });
     } catch (error) {
       rethrowNameConflict(error);
-      throw error;
     }
   }),
 
   update: protectedProcedure.input(householdUpdateSchema).mutation(async ({ ctx, input }) => {
-    const user = await prisma.user.findUnique({
-      where: { id: ctx.session.user.id },
-      select: { householdId: true },
+    await assertHouseholdNameAvailable(input.name, input.id);
+
+    // Combine ownership and update into one statement so a concurrent
+    // change to the caller's householdId cannot land the rename on a
+    // different row.
+    const updated = await prisma.household.updateMany({
+      where: {
+        id: input.id,
+        deletedAt: null,
+        users: { some: { id: ctx.session.user.id, deletedAt: null } },
+      },
+      data: { name: input.name.trim() },
     });
 
-    if (!user?.householdId || user.householdId !== input.id) {
+    if (updated.count === 0) {
+      // Disambiguate whether the household is missing or the caller is
+      // not a member. The race window between this read and the failed
+      // update does not change the outcome: a single statement already
+      // determined the rename will not land here.
+      const existing = await prisma.household.findUnique({
+        where: { id: input.id },
+        select: { id: true, deletedAt: true },
+      });
+      if (!existing || existing.deletedAt !== null) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Household not found' });
+      }
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: 'You can only rename your own household',
       });
     }
 
-    const existing = await prisma.household.findUnique({
-      where: { id: input.id },
-      select: { id: true, deletedAt: true },
-    });
-
-    if (!existing || existing.deletedAt !== null) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'Household not found' });
-    }
-
-    await assertHouseholdNameAvailable(input.name, input.id);
-
     try {
-      return await prisma.household.update({
-        where: { id: input.id },
-        data: { name: input.name.trim() },
-      });
+      return await prisma.household.findUniqueOrThrow({ where: { id: input.id } });
     } catch (error) {
       rethrowNameConflict(error);
-      throw error;
     }
   }),
 

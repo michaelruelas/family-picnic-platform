@@ -34,38 +34,28 @@ END $$;
 
 -- Before the unique index can be created, collapse any case-only
 -- duplicates that already exist by appending a discriminator to all but
--- the oldest row.
-DO $$
-DECLARE
-  grp RECORD;
-  ord INTEGER;
-  suffix TEXT;
-BEGIN
-  FOR grp IN
-    SELECT LOWER(btrim(name)) AS key
-      FROM "Household"
-     WHERE "deletedAt" IS NULL
-     GROUP BY LOWER(btrim(name))
-    HAVING COUNT(*) > 1
-  LOOP
-    ord := 0;
-    FOR grp IN
-      SELECT id, name
-        FROM "Household"
-       WHERE "deletedAt" IS NULL
-         AND LOWER(btrim(name)) = grp.key
-       ORDER BY "createdAt" ASC, id ASC
-      LOOP
-        ord := ord + 1;
-        IF ord > 1 THEN
-          suffix := ' (' || ord::TEXT || ')';
-          UPDATE "Household"
-             SET name = substring(btrim(name) || suffix from 1 for 80)
-           WHERE id = grp.id;
-        END IF;
-      END LOOP;
-  END LOOP;
-END $$;
+-- the oldest row. The oldest row in each duplicate group keeps its name;
+-- subsequent rows are suffixed with " (2)", " (3)", and so on. The name
+-- is truncated to 80 characters so the eventual CHECK constraint stays
+-- satisfied.
+WITH ranked AS (
+  SELECT id,
+         ROW_NUMBER() OVER (
+           PARTITION BY LOWER(btrim(name))
+           ORDER BY "createdAt" ASC, id ASC
+         ) AS rn,
+         COUNT(*) OVER (
+           PARTITION BY LOWER(btrim(name))
+         ) AS cnt
+    FROM "Household"
+   WHERE "deletedAt" IS NULL
+)
+UPDATE "Household" h
+   SET name = substring(btrim(h.name) || ' (' || r.rn::TEXT || ')' FROM 1 FOR 80)
+  FROM ranked r
+ WHERE h.id = r.id
+   AND r.cnt > 1
+   AND r.rn > 1;
 
 -- Enforce 1..80 character household names at the database layer so future
 -- writes cannot bypass application validation.

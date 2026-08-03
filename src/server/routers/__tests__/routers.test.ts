@@ -41,6 +41,8 @@ const mockPrisma = {
     findMany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
   },
   invitation: {
     findUnique: vi.fn(),
@@ -994,22 +996,24 @@ describe('household.router', () => {
   });
 
   it('update renames the user own household', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({ householdId: 'hh-1' });
-    mockPrisma.household.findUnique.mockResolvedValue({
-      id: 'hh-1',
-      deletedAt: null,
-    });
     mockPrisma.household.findFirst.mockResolvedValue(null);
-    mockPrisma.household.update.mockResolvedValue({ id: 'hh-1', name: 'New Name' });
+    mockPrisma.household.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.household.findUniqueOrThrow.mockResolvedValue({
+      id: 'hh-1',
+      name: 'New Name',
+    });
 
     const { householdRouter } = await import('~/server/routers/household.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(householdRouter)({ session: userSession });
     const result = await caller.update({ id: 'hh-1', name: 'New Name' });
 
-    expect(mockPrisma.household.update).toHaveBeenCalledWith(
+    expect(mockPrisma.household.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'hh-1' },
+        where: expect.objectContaining({
+          id: 'hh-1',
+          users: { some: expect.objectContaining({ id: userSession.user.id }) },
+        }),
         data: { name: 'New Name' },
       }),
     );
@@ -1017,7 +1021,9 @@ describe('household.router', () => {
   });
 
   it('update rejects when caller is not in the household', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({ householdId: 'hh-other' });
+    mockPrisma.household.findFirst.mockResolvedValue(null);
+    mockPrisma.household.updateMany.mockResolvedValue({ count: 0 });
+    mockPrisma.household.findUnique.mockResolvedValue({ id: 'hh-1', deletedAt: null });
 
     const { householdRouter } = await import('~/server/routers/household.router');
     const { createCallerFactory } = await import('~/lib/trpc');
@@ -1027,12 +1033,18 @@ describe('household.router', () => {
     );
   });
 
+  it('update returns NOT_FOUND when household is deleted', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue(null);
+    mockPrisma.household.updateMany.mockResolvedValue({ count: 0 });
+    mockPrisma.household.findUnique.mockResolvedValue({ id: 'hh-1', deletedAt: new Date() });
+
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    await expect(caller.update({ id: 'hh-1', name: 'New Name' })).rejects.toThrow(/not found/i);
+  });
+
   it('update rejects duplicate household name case-insensitively', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({ householdId: 'hh-1' });
-    mockPrisma.household.findUnique.mockResolvedValue({
-      id: 'hh-1',
-      deletedAt: null,
-    });
     mockPrisma.household.findFirst.mockResolvedValue({ id: 'hh-other' });
 
     const { householdRouter } = await import('~/server/routers/household.router');
@@ -1041,17 +1053,16 @@ describe('household.router', () => {
     await expect(caller.update({ id: 'hh-1', name: 'Conflict' })).rejects.toThrow(
       /already exists/i,
     );
-    expect(mockPrisma.household.update).not.toHaveBeenCalled();
+    expect(mockPrisma.household.updateMany).not.toHaveBeenCalled();
   });
 
   it('update excludes the renamed household from the duplicate check', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({ householdId: 'hh-1' });
-    mockPrisma.household.findUnique.mockResolvedValue({
-      id: 'hh-1',
-      deletedAt: null,
-    });
     mockPrisma.household.findFirst.mockResolvedValue(null);
-    mockPrisma.household.update.mockResolvedValue({ id: 'hh-1', name: 'Same Name' });
+    mockPrisma.household.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.household.findUniqueOrThrow.mockResolvedValue({
+      id: 'hh-1',
+      name: 'Same Name',
+    });
 
     const { householdRouter } = await import('~/server/routers/household.router');
     const { createCallerFactory } = await import('~/lib/trpc');
@@ -1069,12 +1080,28 @@ describe('household.router', () => {
   });
 
   it('update rejects name longer than 80 chars', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({ householdId: 'hh-1' });
-
     const { householdRouter } = await import('~/server/routers/household.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(householdRouter)({ session: userSession });
     await expect(caller.update({ id: 'hh-1', name: 'a'.repeat(81) })).rejects.toThrow();
+  });
+
+  it('update converts P2002 from DB to CONFLICT', async () => {
+    mockPrisma.household.findFirst.mockResolvedValue(null);
+    mockPrisma.household.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.household.findUniqueOrThrow.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+
+    const { householdRouter } = await import('~/server/routers/household.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(householdRouter)({ session: userSession });
+    await expect(caller.update({ id: 'hh-1', name: 'Concurrent Name' })).rejects.toThrow(
+      /already exists/i,
+    );
   });
 
   it('create converts P2002 from DB to CONFLICT', async () => {
