@@ -81,6 +81,11 @@ enum CommunicationStatus {
 
 model Household {
   id                String    @id @default(cuid())
+  // 1..80 chars and unique (case-insensitive, ignoring whitespace) among
+  // active rows. Enforced at the database level by a CHECK constraint and
+  // a partial unique index in migration
+  // 20260803083930_household_name_field; Prisma cannot express the
+  // case-insensitive functional index directly, so it is not declared here.
   name              String
   parentHouseholdId String?
   createdAt         DateTime  @default(now())
@@ -93,8 +98,25 @@ model Household {
   dependents       Dependent[]
   invitations      Invitation[]
   photos           Photo[]
+  members          HouseholdMember[]
 
   @@index([parentHouseholdId])
+  @@index([deletedAt])
+}
+
+model HouseholdMember {
+  id          String    @id @default(cuid())
+  householdId String
+  name        String
+  age         Int?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
   @@index([deletedAt])
 }
 

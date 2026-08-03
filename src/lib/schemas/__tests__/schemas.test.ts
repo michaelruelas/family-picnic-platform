@@ -5,6 +5,11 @@ import {
   dependentDeleteSchema,
 } from '~/lib/schemas/dependent';
 import { eventCreateSchema, eventUpdateSchema } from '~/lib/schemas/event';
+import {
+  householdMemberCreateSchema,
+  householdMemberUpdateSchema,
+  householdMemberDeleteSchema,
+} from '~/lib/schemas/household-member';
 import { photoReactionSchema } from '~/lib/schemas/photo';
 import { potluckSignupInputSchema } from '~/lib/schemas/potluck';
 import { profileUpdateSchema } from '~/lib/schemas/profile';
@@ -640,6 +645,145 @@ describe('rsvpAdminOverrideSchema', () => {
       eventId: 'evt-1',
       userId: 'user-1',
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('householdMemberCreateSchema', () => {
+  it('passes with required fields only', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: 'Alex',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes with all fields', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: 'Alex',
+      age: 7,
+      notes: 'Allergic to nuts',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('allows null age and notes', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: 'Alex',
+      age: null,
+      notes: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('fails when name is missing', () => {
+    const result = householdMemberCreateSchema.safeParse({ householdId: 'h-1' });
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when name is empty after trim', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: '   ',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when householdId is missing', () => {
+    const result = householdMemberCreateSchema.safeParse({ name: 'Alex' });
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when age is negative', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: 'Alex',
+      age: -1,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when age exceeds 120', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: 'Alex',
+      age: 121,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when age is not an integer', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: 'Alex',
+      age: 7.5,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when notes exceed 500 chars', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: 'Alex',
+      notes: 'x'.repeat(501),
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('householdMemberUpdateSchema', () => {
+  it('passes with id only', () => {
+    const result = householdMemberUpdateSchema.safeParse({ id: 'm-1' });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes with partial fields', () => {
+    const result = householdMemberUpdateSchema.safeParse({
+      id: 'm-1',
+      name: 'Alex Garcia',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes with all fields including null to clear', () => {
+    const result = householdMemberUpdateSchema.safeParse({
+      id: 'm-1',
+      name: 'Alex',
+      age: null,
+      notes: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('fails when id is missing', () => {
+    const result = householdMemberUpdateSchema.safeParse({ name: 'Alex' });
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when name is empty after trim', () => {
+    const result = householdMemberUpdateSchema.safeParse({
+      id: 'm-1',
+      name: '   ',
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('householdMemberDeleteSchema', () => {
+  it('passes with valid id', () => {
+    const result = householdMemberDeleteSchema.safeParse({ id: 'm-1' });
+    expect(result.success).toBe(true);
+  });
+
+  it('fails when id is empty', () => {
+    const result = householdMemberDeleteSchema.safeParse({ id: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when id is missing', () => {
+    const result = householdMemberDeleteSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 });
