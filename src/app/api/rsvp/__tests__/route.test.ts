@@ -144,6 +144,9 @@ describe('POST /api/rsvp', () => {
       maxCapacity: null,
     } as never);
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.$transaction.mockImplementation(
+      async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock) as never,
+    );
     prismaMock.rSVP.upsert.mockResolvedValue({} as never);
     const res = await POST(
       makeJsonRequest('http://x', { eventId: 'e1', action: 'confirm', headcount: 2 }),
@@ -164,6 +167,9 @@ describe('POST /api/rsvp', () => {
       maxCapacity: 5,
     } as never);
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.$transaction.mockImplementation(
+      async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock) as never,
+    );
     prismaMock.rSVP.aggregate
       .mockResolvedValueOnce({ _sum: { headcount: 5 }, _max: { waitlistPosition: 0 } })
       .mockResolvedValueOnce({ _sum: { headcount: 5 }, _max: { waitlistPosition: 0 } });

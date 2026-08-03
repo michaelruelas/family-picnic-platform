@@ -1826,7 +1826,7 @@ describe('rsvp.router', () => {
     expect(writeAuditLog).not.toHaveBeenCalled();
   });
 
-  it('decline writes audit log when the real diff detects a change', async () => {
+  it('decline writes RSVP_UPDATE audit log when declining a prior RSVP', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
     mockPrisma.rSVP.findUnique.mockResolvedValue({
       id: 'rsvp-1',
