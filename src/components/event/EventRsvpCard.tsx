@@ -211,6 +211,7 @@ export function EventRsvpCard({
           eventName={eventName}
           maxCapacity={maxCapacity}
           currentAttending={currentAttending}
+          existingRsvp={existingRsvp}
         />
       </>
     );
@@ -322,6 +323,7 @@ export function EventRsvpCard({
         eventName={eventName}
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
+        existingRsvp={existingRsvp}
       />
     </>
   );

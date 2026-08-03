@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRsvpMutation } from '~/hooks';
 import Modal from '~/components/ui/Modal';
+import type { RSVPStatus } from '~/lib/generated/enums';
 
 interface RsvpBottomSheetProps {
   isOpen: boolean;
@@ -11,6 +12,11 @@ interface RsvpBottomSheetProps {
   eventName?: string;
   maxCapacity: number | null;
   currentAttending: number;
+  existingRsvp?: {
+    status: RSVPStatus;
+    headcount: number;
+    dietaryNotes: string | null;
+  } | null;
 }
 
 export function RsvpBottomSheet({
@@ -20,32 +26,37 @@ export function RsvpBottomSheet({
   eventName,
   maxCapacity,
   currentAttending,
+  existingRsvp,
 }: RsvpBottomSheetProps) {
   const { confirm, decline } = useRsvpMutation();
-  const [adults, setAdults] = useState(1);
+  const [adults, setAdults] = useState(
+    existingRsvp && existingRsvp.headcount > 0 ? existingRsvp.headcount : 1,
+  );
   const [kids, setKids] = useState(0);
-  const [dietaryNotes, setDietaryNotes] = useState('');
-  const [showDietary, setShowDietary] = useState(false);
+  const [dietaryNotes, setDietaryNotes] = useState(existingRsvp?.dietaryNotes ?? '');
+  const [showDietary, setShowDietary] = useState(Boolean(existingRsvp?.dietaryNotes));
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<'form' | 'confirmed'>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         setPhase('form');
-        setAdults(1);
+        setAdults(existingRsvp && existingRsvp.headcount > 0 ? existingRsvp.headcount : 1);
         setKids(0);
-        setDietaryNotes('');
-        setShowDietary(false);
+        setDietaryNotes(existingRsvp?.dietaryNotes ?? '');
+        setShowDietary(Boolean(existingRsvp?.dietaryNotes));
         setError(null);
       }, 200);
+      return () => clearTimeout(timeout);
     }
-  }, [isOpen]);
+  }, [isOpen, existingRsvp]);
 
   const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
   const isFull = spotsRemaining !== null && spotsRemaining <= 0;
   const total = adults + kids;
+  const isUpdating = existingRsvp?.status === 'CONFIRMED' || existingRsvp?.status === 'WAITLISTED';
 
   const handleConfirm = async () => {
     setIsSubmitting(true);
@@ -86,15 +97,17 @@ export function RsvpBottomSheet({
         <>
           <div className="text-center md:text-left">
             <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-              {isFull ? 'Join the waitlist' : 'RSVP'}
+              {isUpdating ? 'Update your RSVP' : isFull ? 'Join the waitlist' : 'RSVP'}
             </p>
             <h3 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
-              Who&apos;s coming?
+              {isUpdating ? 'Update your party' : "Who's coming?"}
             </h3>
             <p className="text-muted-foreground mt-2 text-base">
-              {eventName
-                ? `Let us know how many plates to set for ${eventName}.`
-                : 'Let us know how many places to set at the table.'}
+              {isUpdating
+                ? 'Adjust your headcount or dietary note. We already have you on the list.'
+                : eventName
+                  ? `Let us know how many plates to set for ${eventName}.`
+                  : 'Let us know how many places to set at the table.'}
             </p>
           </div>
 
@@ -140,9 +153,11 @@ export function RsvpBottomSheet({
           >
             {isSubmitting
               ? 'Saving...'
-              : isFull
-                ? `Join waitlist for ${total}`
-                : `Confirm ${total} ${total === 1 ? 'guest' : 'guests'}`}
+              : isUpdating
+                ? `Save changes for ${total}`
+                : isFull
+                  ? `Join waitlist for ${total}`
+                  : `Confirm ${total} ${total === 1 ? 'guest' : 'guests'}`}
           </button>
 
           <button

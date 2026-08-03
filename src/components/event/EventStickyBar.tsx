@@ -95,6 +95,7 @@ export function EventStickyBar({
         eventId={eventId}
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
+        existingRsvp={existingRsvp}
       />
     </>
   );
