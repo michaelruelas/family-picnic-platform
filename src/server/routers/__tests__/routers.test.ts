@@ -1291,7 +1291,7 @@ describe('rsvp.router', () => {
           dietaryNotes: 'Vegetarian',
         }),
       }),
-      expect.anything(),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
     );
   });
 
@@ -1413,7 +1413,7 @@ describe('rsvp.router', () => {
           waitlistPosition: 1,
         }),
       }),
-      expect.anything(),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
     );
   });
 
@@ -1552,7 +1552,7 @@ describe('rsvp.router', () => {
           dietaryNotes: 'Updated',
         }),
       }),
-      expect.anything(),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
     );
   });
 
@@ -1652,8 +1652,10 @@ describe('rsvp.router', () => {
 
   // The tests above mock `diff` to return a change so the "if change then write"
   // branch is exercised in isolation. These paired tests call through to the real
-  // `diff` comparator (inlined here to bypass the module mock) with realistic
-  // input so a bug in the comparator itself would fail the suite.
+  // `diff` comparator with realistic input so a bug in the comparator itself would
+  // fail the suite. The real comparator is inlined because vi.importActual is not
+  // available in this Vitest version's test context; if you change `diff` in
+  // src/lib/audit.ts, mirror the change here.
   const realDiff = (
     oldVal: unknown,
     newVal: unknown,
@@ -1723,7 +1725,7 @@ describe('rsvp.router', () => {
         oldValue: expect.objectContaining({ headcount: 2, dietaryNotes: 'No nuts' }),
         newValue: expect.objectContaining({ headcount: 4, dietaryNotes: 'Vegetarian' }),
       }),
-      expect.anything(),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
     );
   });
 
@@ -1793,7 +1795,7 @@ describe('rsvp.router', () => {
         oldValue: expect.objectContaining({ headcount: 2, dietaryNotes: 'Original' }),
         newValue: expect.objectContaining({ headcount: 5, dietaryNotes: 'Updated' }),
       }),
-      expect.anything(),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
     );
   });
 
@@ -1825,9 +1827,6 @@ describe('rsvp.router', () => {
   });
 
   it('decline writes audit log when the real diff detects a change', async () => {
-    const { diff } = await import('~/lib/audit');
-    (diff as ReturnType<typeof vi.fn>).mockImplementation(realDiff);
-
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
     mockPrisma.rSVP.findUnique.mockResolvedValue({
       id: 'rsvp-1',
