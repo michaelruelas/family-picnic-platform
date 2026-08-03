@@ -239,6 +239,18 @@ describe('dispatchAdminSms', () => {
         data: expect.objectContaining({ status: 'FAILED', errorCode: '21610' }),
       }),
     );
+    expect(mockWriteAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'a-1',
+        eventId: 'e-1',
+        action: 'admin.sendSms',
+        newValue: expect.objectContaining({
+          status: 'FAILED',
+          error: 'Twilio rejected',
+          errorCode: '21610',
+        }),
+      }),
+    );
   });
 
   it('passes eventId through to the audit log', async () => {

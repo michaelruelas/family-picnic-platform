@@ -123,9 +123,14 @@ export async function POST(request: NextRequest) {
           },
         };
 
-        // Phone presence and SMS consent are NOT checked here — they are enforced
-        // at dispatch time (see dispatchAdminSms in src/lib/sms-dispatch.ts).
-        // A BOTH user with no phone will be skipped at delivery, not at resolution.
+        // Phone presence and SMS consent are NOT checked at any point in the
+        // broadcast path today. The worker (`deliverCommunications` /
+        // `deliverOne` in src/lib/ow-workflows.ts:381) just flips QUEUED logs
+        // to SENT without dispatching, so a BOTH user with no phone will
+        // still be queued. The per-event and ad-hoc admin endpoints use
+        // `dispatchAdminSms` (src/lib/sms-dispatch.ts) which DOES check
+        // consent and phone. Wiring the same dispatch into the worker is a
+        // tracked follow-up.
 
         switch (recipientType) {
           case 'ALL':
