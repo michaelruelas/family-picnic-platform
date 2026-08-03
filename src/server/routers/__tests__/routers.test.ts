@@ -1088,8 +1088,9 @@ describe('household.router', () => {
 
   it('update converts P2002 from DB to CONFLICT', async () => {
     mockPrisma.household.findFirst.mockResolvedValue(null);
-    mockPrisma.household.updateMany.mockResolvedValue({ count: 1 });
-    mockPrisma.household.findUniqueOrThrow.mockRejectedValue(
+    // P2002 fires on the write, not the read. The pre-check passed but
+    // another writer committed first, so updateMany rejects.
+    mockPrisma.household.updateMany.mockRejectedValue(
       new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
         code: 'P2002',
         clientVersion: 'test',

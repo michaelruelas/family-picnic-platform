@@ -52,37 +52,38 @@ export const householdRouter = router({
   update: protectedProcedure.input(householdUpdateSchema).mutation(async ({ ctx, input }) => {
     await assertHouseholdNameAvailable(input.name, input.id);
 
-    // Combine ownership and update into one statement so a concurrent
-    // change to the caller's householdId cannot land the rename on a
-    // different row.
-    const updated = await prisma.household.updateMany({
-      where: {
-        id: input.id,
-        deletedAt: null,
-        users: { some: { id: ctx.session.user.id, deletedAt: null } },
-      },
-      data: { name: input.name.trim() },
-    });
-
-    if (updated.count === 0) {
-      // Disambiguate whether the household is missing or the caller is
-      // not a member. The race window between this read and the failed
-      // update does not change the outcome: a single statement already
-      // determined the rename will not land here.
-      const existing = await prisma.household.findUnique({
-        where: { id: input.id },
-        select: { id: true, deletedAt: true },
-      });
-      if (!existing || existing.deletedAt !== null) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Household not found' });
-      }
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'You can only rename your own household',
-      });
-    }
-
     try {
+      // Combine ownership and update into one statement so a concurrent
+      // change to the caller's householdId cannot land the rename on a
+      // different row. A P2002 here means another writer beat the
+      // pre-check; rethrowNameConflict maps it to CONFLICT.
+      const updated = await prisma.household.updateMany({
+        where: {
+          id: input.id,
+          deletedAt: null,
+          users: { some: { id: ctx.session.user.id, deletedAt: null } },
+        },
+        data: { name: input.name.trim() },
+      });
+
+      if (updated.count === 0) {
+        // Disambiguate whether the household is missing or the caller is
+        // not a member. The race window between this read and the failed
+        // update does not change the outcome: a single statement already
+        // determined the rename will not land here.
+        const existing = await prisma.household.findUnique({
+          where: { id: input.id },
+          select: { id: true, deletedAt: true },
+        });
+        if (!existing || existing.deletedAt !== null) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Household not found' });
+        }
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You can only rename your own household',
+        });
+      }
+
       return await prisma.household.findUniqueOrThrow({ where: { id: input.id } });
     } catch (error) {
       rethrowNameConflict(error);

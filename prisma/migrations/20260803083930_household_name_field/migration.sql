@@ -35,9 +35,10 @@ END $$;
 -- Before the unique index can be created, collapse any case-only
 -- duplicates that already exist by appending a discriminator to all but
 -- the oldest row. The oldest row in each duplicate group keeps its name;
--- subsequent rows are suffixed with " (2)", " (3)", and so on. The name
--- is truncated to 80 characters so the eventual CHECK constraint stays
--- satisfied.
+-- subsequent rows are suffixed with " (2)", " (3)", and so on. The
+-- suffix reservation (3 + length(rn)) is computed up front so a long
+-- base name cannot truncate the discriminator itself. The final name
+-- always fits in 80 characters and is unique within its group.
 WITH ranked AS (
   SELECT id,
          ROW_NUMBER() OVER (
@@ -51,7 +52,8 @@ WITH ranked AS (
    WHERE "deletedAt" IS NULL
 )
 UPDATE "Household" h
-   SET name = substring(btrim(h.name) || ' (' || r.rn::TEXT || ')' FROM 1 FOR 80)
+   SET name = substring(btrim(h.name) FROM 1 FOR GREATEST(80 - 3 - length(r.rn::TEXT), 0))
+                || ' (' || r.rn::TEXT || ')'
   FROM ranked r
  WHERE h.id = r.id
    AND r.cnt > 1
