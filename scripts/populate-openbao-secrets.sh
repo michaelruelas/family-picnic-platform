@@ -40,11 +40,6 @@ case "$TARGET_ENV" in
     exit 1
     ;;
 esac
-  *)
-    echo "ERROR: TARGET_ENV must be one of: dev, prod (got '$TARGET_ENV')" >&2
-    exit 64
-    ;;
-esac
 
 OPENBAO_NAMESPACE="${OPENBAO_NAMESPACE:-security}"
 OPENBAO_POD="${OPENBAO_POD:-openbao-0}"
