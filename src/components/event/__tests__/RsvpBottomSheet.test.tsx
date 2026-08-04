@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const mockConfirm = { mutateAsync: vi.fn() };
 const mockDecline = { mutateAsync: vi.fn() };
+const mockUpdateName = { mutateAsync: vi.fn() };
 const mockRefresh = vi.fn();
 const mockRefetchFormState = vi.fn();
 
@@ -19,6 +20,9 @@ vi.mock('~/hooks', () => ({
     decline: mockDecline,
   }),
   useRsvpFormState: () => mockFormState,
+  useHouseholdNameMutation: () => ({
+    updateName: mockUpdateName,
+  }),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -35,8 +39,10 @@ const { RsvpBottomSheet } = await import('../RsvpBottomSheet');
 beforeEach(() => {
   mockConfirm.mutateAsync.mockReset();
   mockDecline.mutateAsync.mockReset();
+  mockUpdateName.mutateAsync.mockReset();
   mockConfirm.mutateAsync.mockResolvedValue({ id: 'rsvp-1' });
   mockDecline.mutateAsync.mockResolvedValue({});
+  mockUpdateName.mutateAsync.mockResolvedValue({});
   mockRefresh.mockReset();
   mockRefetchFormState.mockReset();
   mockFormState.data = null;
@@ -60,6 +66,7 @@ const members = [
 function setRosterReady() {
   mockFormState.data = {
     householdId: 'h-1',
+    householdName: 'The Garcia Family',
     members,
     rsvp: null,
   };
@@ -141,6 +148,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
   it('pre-fills dietary notes from the existing RSVP', async () => {
     mockFormState.data = {
       householdId: 'h-1',
+      householdName: 'The Garcia Family',
       members,
       rsvp: {
         id: 'rsvp-1',
@@ -272,6 +280,114 @@ describe('RsvpBottomSheet per-member attendance', () => {
         />,
       );
       expect(screen.getByText(/registration fee: €20\.00/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('household name editing (FPP-80)', () => {
+    it('renders a household-name input seeded from the snapshot, above the per-member list', () => {
+      setRosterReady();
+      const { container } = render(<RsvpBottomSheet {...baseProps} />);
+      const field = screen.getByTestId('rsvp-household-name-field');
+      const input = screen.getByLabelText(/household name/i) as HTMLInputElement;
+      expect(input.value).toBe('The Garcia Family');
+      expect(input).toHaveAttribute('maxLength', '80');
+      expect(input).toHaveAttribute('id', 'rsvp-household-name');
+
+      // The field must render before the per-member list so guests
+      // see the rename path first. jsdom reports every getBoundingClientRect
+      // as zeros, so we assert document order: the field precedes
+      // (i.e. is "before" in tree order) the first attendance row.
+      const aliceSelect = screen.getByLabelText('Attendance for Alice');
+      expect(
+        field.compareDocumentPosition(aliceSelect) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+
+      expect(container).toMatchSnapshot();
+    });
+
+    it('hides the household-name input when the caller has no household', () => {
+      mockFormState.data = {
+        householdId: 'user-1',
+        householdName: null,
+        members,
+        rsvp: null,
+      };
+      render(<RsvpBottomSheet {...baseProps} />);
+      expect(screen.queryByTestId('rsvp-household-name-field')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/household name/i)).not.toBeInTheDocument();
+    });
+
+    it('rejects an empty name with the same Zod message as the profile path', async () => {
+      setRosterReady();
+      const { container } = render(<RsvpBottomSheet {...baseProps} />);
+      const input = screen.getByLabelText(/household name/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: '   ' } });
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Household name is required')).toBeInTheDocument();
+      });
+      // The submit was aborted before the rename or confirm fired.
+      expect(mockUpdateName.mutateAsync).not.toHaveBeenCalled();
+      expect(mockConfirm.mutateAsync).not.toHaveBeenCalled();
+
+      expect(container).toMatchSnapshot('empty-name-rejection');
+    });
+
+    it('renames the household when the name changes before submitting the RSVP', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      const input = screen.getByLabelText(/household name/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'The Garcia-Martinez Family' } });
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+
+      await waitFor(() => {
+        expect(mockUpdateName.mutateAsync).toHaveBeenCalledWith({
+          id: 'h-1',
+          name: 'The Garcia-Martinez Family',
+        });
+      });
+      // Rename runs before the confirm, and confirm still fires.
+      await waitFor(() => {
+        expect(mockConfirm.mutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({ eventId: 'evt-1' }),
+        );
+      });
+      // Pin the rename-before-confirm ordering: a refactor that
+      // swaps them would break the spec, so the assertion checks
+      // the call order Vitest assigns to each invocation.
+      const renameOrder = mockUpdateName.mutateAsync.mock.invocationCallOrder[0]!;
+      const confirmOrder = mockConfirm.mutateAsync.mock.invocationCallOrder[0]!;
+      expect(renameOrder).toBeLessThan(confirmOrder);
+    });
+
+    it('skips the rename when the name is unchanged', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      // No edit; the user clicks confirm with the same name.
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      await waitFor(() => {
+        expect(mockUpdateName.mutateAsync).not.toHaveBeenCalled();
+        expect(mockConfirm.mutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({ eventId: 'evt-1' }),
+        );
+      });
+    });
+
+    it('surfaces server-side rename errors (e.g. duplicate name) without submitting the RSVP', async () => {
+      setRosterReady();
+      mockUpdateName.mutateAsync.mockRejectedValueOnce(
+        new Error('A household with this name already exists'),
+      );
+      render(<RsvpBottomSheet {...baseProps} />);
+      const input = screen.getByLabelText(/household name/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'The Smith Family' } });
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('A household with this name already exists')).toBeInTheDocument();
+      });
+      expect(mockConfirm.mutateAsync).not.toHaveBeenCalled();
     });
   });
 });

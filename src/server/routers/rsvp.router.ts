@@ -974,7 +974,7 @@ export const rsvpRouter = router({
 
       const householdId = caller.householdId ?? caller.id;
 
-      const [members, rsvp] = await Promise.all([
+      const [members, rsvp, household] = await Promise.all([
         prisma.householdMember.findMany({
           where: { householdId, deletedAt: null },
           orderBy: { createdAt: 'asc' },
@@ -988,8 +988,23 @@ export const rsvpRouter = router({
             memberAttendances: { orderBy: { createdAt: 'asc' } },
           },
         }),
+        // Only fetch the household row when the caller actually belongs
+        // to one. The `householdId ?? caller.id` fallback above uses the
+        // user id as a virtual roster key, but a real Household row by
+        // that id does not exist, so reading `household.name` would 404.
+        caller.householdId
+          ? prisma.household.findUnique({
+              where: { id: caller.householdId },
+              select: { name: true },
+            })
+          : Promise.resolve(null),
       ]);
 
-      return { members, rsvp, householdId };
+      return {
+        members,
+        rsvp,
+        householdId,
+        householdName: household?.name ?? null,
+      };
     }),
 });

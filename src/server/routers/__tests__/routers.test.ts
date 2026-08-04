@@ -2523,6 +2523,7 @@ describe('rsvp.router', () => {
         },
       ],
     });
+    mockPrisma.household.findUnique.mockResolvedValue({ name: 'The Test Family' });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
     const { createCallerFactory } = await import('~/lib/trpc');
@@ -2531,12 +2532,35 @@ describe('rsvp.router', () => {
 
     expect(result).toMatchObject({
       householdId: 'h-1',
+      householdName: 'The Test Family',
       members: [{ id: 'a', name: 'A', age: 30 }],
       rsvp: { id: 'r-1', status: 'CONFIRMED', headcount: 1 },
     });
     expect(mockPrisma.householdMember.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { householdId: 'h-1', deletedAt: null } }),
     );
+    expect(mockPrisma.household.findUnique).toHaveBeenCalledWith({
+      where: { id: 'h-1' },
+      select: { name: true },
+    });
+  });
+
+  it('getRsvpFormState returns a null householdName when the caller has no household', async () => {
+    // A user with no household must still load a roster (the
+    // router uses `householdId ?? user.id` as the query key), and
+    // must not try to read `household.name` because no Household
+    // row exists for the user-id fallback key.
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: null });
+    mockPrisma.householdMember.findMany.mockResolvedValue([]);
+    mockPrisma.rSVP.findUnique.mockResolvedValue(null);
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    const result = await caller.getRsvpFormState({ eventId: 'evt-1' });
+
+    expect(result).toMatchObject({ householdId: 'user-1', householdName: null });
+    expect(mockPrisma.household.findUnique).not.toHaveBeenCalled();
   });
 
   it('getRsvpFormState falls back to the user id when householdId is null', async () => {
