@@ -282,6 +282,50 @@ export const potluckRouter = router({
       return { success: true };
     }),
 
+  /**
+   * Returns the caller's potluck signups for an event, including the
+   * slot and rsvp ids needed by the client to render the "my slots"
+   * summary and to call cancel/update. Empty array when the caller has
+   * no RSVP or no signups. Ordered by claimedAt so the "yours" list
+   * reads in the order the user claimed dishes.
+   */
+  getMySignups: protectedProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const rsvp = await prisma.rSVP.findUnique({
+        where: {
+          eventId_userId: {
+            eventId: input.eventId,
+            userId: ctx.session.user.id,
+          },
+        },
+        select: { id: true },
+      });
+      if (!rsvp) {
+        return [];
+      }
+      return prisma.potluckSignup.findMany({
+        where: { rsvpId: rsvp.id },
+        orderBy: { claimedAt: 'asc' },
+        select: {
+          id: true,
+          slotId: true,
+          dishName: true,
+          servings: true,
+          dietaryLabels: true,
+          claimedAt: true,
+          slot: {
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              slotType: true,
+            },
+          },
+        },
+      });
+    }),
+
   getFoodSummary: protectedProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ input }) => {

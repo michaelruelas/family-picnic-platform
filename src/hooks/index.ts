@@ -1,6 +1,12 @@
 export { useOffline } from './useOffline';
 export { useEvent, useEventRsvp, useEventHeadcount } from './useEvent';
-export { usePotluckSlots, usePotluckFoodSummary, usePotluckSignupMutation } from './usePotluck';
+export {
+  usePotluckSlots,
+  usePotluckFoodSummary,
+  usePotluckSignupMutation,
+  useMyPotluckSignups,
+  type MyPotluckSignup,
+} from './usePotluck';
 export { useRsvpMutation, useRsvpFormState } from './useRsvp';
 export { useUserProfileMutation } from './useUser';
 export { usePhotoReactionMutation } from './usePhoto';

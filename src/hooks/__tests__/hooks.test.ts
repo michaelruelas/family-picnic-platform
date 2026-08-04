@@ -24,7 +24,10 @@ function mockMutationResult(overrides: Record<string, unknown> = {}) {
 
 const mockUseUtils = vi.fn(() => ({
   rsvp: { getMyRsvp: { invalidate: vi.fn() }, getHeadcount: { invalidate: vi.fn() } },
-  potluck: { listSlots: { invalidate: vi.fn() } },
+  potluck: {
+    listSlots: { invalidate: vi.fn() },
+    getMySignups: { invalidate: vi.fn() },
+  },
   dependent: { list: { invalidate: vi.fn() } },
   household: { getById: { invalidate: vi.fn() } },
   photo: { list: { invalidate: vi.fn() } },
@@ -43,6 +46,7 @@ const mockQueries = {
   },
   potluck: {
     listSlots: vi.fn(() => mockQueryResult()),
+    getMySignups: vi.fn(() => mockQueryResult()),
     getFoodSummary: vi.fn(() => mockQueryResult()),
     signup: { useMutation: vi.fn(() => mockMutationResult()) },
     updateSignup: { useMutation: vi.fn(() => mockMutationResult()) },
@@ -81,6 +85,7 @@ vi.mock('~/lib/trpc-client', () => ({
     },
     potluck: {
       listSlots: { useQuery: mockQueries.potluck.listSlots },
+      getMySignups: { useQuery: mockQueries.potluck.getMySignups },
       getFoodSummary: { useQuery: mockQueries.potluck.getFoodSummary },
       signup: { useMutation: mockQueries.potluck.signup.useMutation },
       updateSignup: { useMutation: mockQueries.potluck.updateSignup.useMutation },
@@ -178,6 +183,55 @@ describe('usePotluckSlots', () => {
   });
 });
 
+describe('useMyPotluckSignups', () => {
+  it('calls trpc.potluck.getMySignups.useQuery with correct params', async () => {
+    const { useMyPotluckSignups } = await import('~/hooks/usePotluck');
+    renderHook(() => useMyPotluckSignups({ eventId: 'evt-1' }));
+    expect(mockQueries.potluck.getMySignups).toHaveBeenCalledWith(
+      { eventId: 'evt-1' },
+      { enabled: true },
+    );
+  });
+
+  it('disables the query when enabled is false', async () => {
+    const { useMyPotluckSignups } = await import('~/hooks/usePotluck');
+    renderHook(() => useMyPotluckSignups({ eventId: 'evt-1', enabled: false }));
+    expect(mockQueries.potluck.getMySignups).toHaveBeenCalledWith(
+      { eventId: 'evt-1' },
+      { enabled: false },
+    );
+  });
+
+  it('returns an empty signup list when data is null', async () => {
+    mockQueries.potluck.getMySignups.mockReturnValue(
+      mockQueryResult({ data: null, isLoading: false, error: null }),
+    );
+    const { useMyPotluckSignups } = await import('~/hooks/usePotluck');
+    const { result } = renderHook(() => useMyPotluckSignups({ eventId: 'evt-1' }));
+    expect(result.current.signups).toEqual([]);
+  });
+
+  it('passes through the call data and loading state', async () => {
+    const data = [
+      {
+        id: 'ps-1',
+        slotId: 's-1',
+        dishName: 'Brownies',
+        servings: 1,
+        dietaryLabels: [],
+        claimedAt: new Date(),
+        slot: { id: 's-1', name: 'Dessert 1', category: 'DESSERT', slotType: 'UNLIMITED' },
+      },
+    ];
+    mockQueries.potluck.getMySignups.mockReturnValue(
+      mockQueryResult({ data, isLoading: false, error: null }),
+    );
+    const { useMyPotluckSignups } = await import('~/hooks/usePotluck');
+    const { result } = renderHook(() => useMyPotluckSignups({ eventId: 'evt-1' }));
+    expect(result.current.signups).toEqual(data);
+  });
+});
+
 describe('usePotluckFoodSummary', () => {
   it('calls trpc.potluck.getFoodSummary.useQuery with correct params', async () => {
     const { usePotluckFoodSummary } = await import('~/hooks/usePotluck');
@@ -212,6 +266,40 @@ describe('usePotluckSignupMutation', () => {
         onSuccess: expect.any(Function),
       }),
     );
+  });
+
+  it('sets up onSuccess with getMySignups invalidation for signup', async () => {
+    mockQueries.potluck.signup.useMutation.mockClear();
+    const { usePotluckSignupMutation } = await import('~/hooks/usePotluck');
+    renderHook(() => usePotluckSignupMutation());
+    const opts = (
+      mockQueries.potluck.signup.useMutation.mock.calls[0] as unknown as
+        Array<{ onSuccess: () => void }> | undefined
+    )?.[0];
+    expect(opts).toBeDefined();
+    // The hook captures the utils object returned by trpc.useUtils. The
+    // last result from mockUseUtils is what the onSuccess will call into.
+    const lastUtils = mockUseUtils.mock.results.at(-1)?.value as
+      { potluck: { getMySignups: { invalidate: ReturnType<typeof vi.fn> } } } | undefined;
+    expect(lastUtils).toBeDefined();
+    opts!.onSuccess();
+    expect(lastUtils!.potluck.getMySignups.invalidate).toHaveBeenCalled();
+  });
+
+  it('sets up onSuccess with getMySignups invalidation for cancelSignup', async () => {
+    mockQueries.potluck.cancelSignup.useMutation.mockClear();
+    const { usePotluckSignupMutation } = await import('~/hooks/usePotluck');
+    renderHook(() => usePotluckSignupMutation());
+    const opts = (
+      mockQueries.potluck.cancelSignup.useMutation.mock.calls[0] as unknown as
+        Array<{ onSuccess: () => void }> | undefined
+    )?.[0];
+    expect(opts).toBeDefined();
+    const lastUtils = mockUseUtils.mock.results.at(-1)?.value as
+      { potluck: { getMySignups: { invalidate: ReturnType<typeof vi.fn> } } } | undefined;
+    expect(lastUtils).toBeDefined();
+    opts!.onSuccess();
+    expect(lastUtils!.potluck.getMySignups.invalidate).toHaveBeenCalled();
   });
 });
 

@@ -190,6 +190,13 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
         >
           Household name is required
         </p>
+        <a
+          class="text-terracotta decoration-terracotta/30 hover:decoration-terracotta mt-3 block text-center text-sm font-semibold underline underline-offset-4"
+          data-testid="rsvp-form-potluck-link"
+          href="/events/evt-1/potluck"
+        >
+          See who is bringing what →
+        </a>
         <button
           class="rounded-pill bg-terracotta shadow-soft press mt-7 w-full px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
         >
@@ -391,6 +398,13 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
             + Add a dietary note (optional)
           </button>
         </div>
+        <a
+          class="text-terracotta decoration-terracotta/30 hover:decoration-terracotta mt-3 block text-center text-sm font-semibold underline underline-offset-4"
+          data-testid="rsvp-form-potluck-link"
+          href="/events/evt-1/potluck"
+        >
+          See who is bringing what →
+        </a>
         <button
           class="rounded-pill bg-terracotta shadow-soft press mt-7 w-full px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
         >

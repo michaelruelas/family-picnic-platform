@@ -53,27 +53,75 @@ export function usePotluckFoodSummary({
 export function usePotluckSignupMutation() {
   const utils = trpc.useUtils();
 
+  const invalidateAll = () => {
+    void utils.potluck.listSlots.invalidate();
+    void utils.potluck.getMySignups.invalidate();
+  };
+
   const signup = trpc.potluck.signup.useMutation({
-    onSuccess: () => {
-      void utils.potluck.listSlots.invalidate();
-    },
+    onSuccess: invalidateAll,
   });
 
   const updateSignup = trpc.potluck.updateSignup.useMutation({
-    onSuccess: () => {
-      void utils.potluck.listSlots.invalidate();
-    },
+    onSuccess: invalidateAll,
   });
 
   const cancelSignup = trpc.potluck.cancelSignup.useMutation({
-    onSuccess: () => {
-      void utils.potluck.listSlots.invalidate();
-    },
+    onSuccess: invalidateAll,
   });
 
   return {
     signup,
     updateSignup,
     cancelSignup,
+  };
+}
+
+export interface MyPotluckSignup {
+  id: string;
+  slotId: string;
+  dishName: string;
+  servings: number;
+  dietaryLabels: string[];
+  claimedAt: Date;
+  slot: {
+    id: string;
+    name: string;
+    category: string;
+    slotType: string;
+  };
+}
+
+interface UseMyPotluckSignupsReturn {
+  signups: MyPotluckSignup[];
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => void;
+}
+
+interface UseMyPotluckSignupsOptions {
+  eventId: string;
+  /**
+   * When false, the query is disabled. The hook returns an empty
+   * signup list so callers can mount unconditionally and the UI
+   * still renders the rest of the page.
+   */
+  enabled?: boolean;
+}
+
+export function useMyPotluckSignups({
+  eventId,
+  enabled = true,
+}: UseMyPotluckSignupsOptions): UseMyPotluckSignupsReturn {
+  const { data, isLoading, error, refetch } = trpc.potluck.getMySignups.useQuery(
+    { eventId },
+    { enabled: enabled && !!eventId },
+  );
+
+  return {
+    signups: (data ?? []) as MyPotluckSignup[],
+    isLoading,
+    error: error as Error | null,
+    refetch,
   };
 }
