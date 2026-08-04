@@ -324,8 +324,7 @@ describe('mergeDuplicateRsvps', () => {
     });
 
     const findUniqueOrders = vi.mocked(client.rSVP.findUnique).mock.invocationCallOrder;
-    const updateManyOrder = vi.mocked(client.potluckSignup.updateMany).mock
-      .invocationCallOrder[0]!;
+    const updateManyOrder = vi.mocked(client.potluckSignup.updateMany).mock.invocationCallOrder[0]!;
     const createOrder = vi.mocked(client.adminAuditLog.create).mock.invocationCallOrder[0]!;
     const deleteOrder = vi.mocked(client.rSVP.delete).mock.invocationCallOrder[0]!;
     expect(findUniqueOrders[1]).toBeLessThan(updateManyOrder);
@@ -440,6 +439,44 @@ describe('mergeDuplicateRsvps', () => {
     expect(result.errors[0]).toContain('db offline');
     expect(result.groupsFound).toBe(0);
     expect(result.rsvpsDeleted).toBe(0);
+  });
+
+  it('throws (and surfaces in errors) when a loser row vanished mid-merge', async () => {
+    const groups = [{ eventId: 'event-1', userId: 'user-1', count: 2 }];
+    const winner = makeRsvp({
+      id: 'winner',
+      modifiedAt: new Date('2026-02-01T00:00:00Z'),
+    });
+    const loser = makeRsvp({
+      id: 'loser',
+      modifiedAt: new Date('2026-01-01T00:00:00Z'),
+    });
+    const rsvpsByGroup = new Map<string, RsvpRow[]>([['event-1:user-1', [winner, loser]]]);
+    const { client, deletedRsvps, auditLogs } = makeClient({ groups, rsvpsByGroup });
+
+    // Simulate the plan being stale: the loser row was deleted between the
+    // scan and the merge. The implementation should throw so the audit
+    // count can never silently diverge from the plan.
+    const realFindUnique = client.rSVP.findUnique;
+    let loserLookups = 0;
+    client.rSVP.findUnique = vi.fn(async (args: { where: { id: string } }) => {
+      const result = await realFindUnique(args);
+      loserLookups += 1;
+      if (loserLookups === 2) {
+        return null;
+      }
+      return result;
+    }) as unknown as RsvpBackfillClient['rSVP']['findUnique'];
+
+    const { mergeDuplicateRsvps } = await import('../rsvp-backfill');
+    const result = await mergeDuplicateRsvps(client, { apply: true });
+
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toContain('Loser RSVP loser not found');
+    expect(result.rsvpsDeleted).toBe(0);
+    expect(result.auditLogsWritten).toBe(0);
+    expect(deletedRsvps).toEqual([]);
+    expect(auditLogs).toEqual([]);
   });
 });
 

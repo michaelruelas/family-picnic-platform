@@ -1,16 +1,18 @@
-import type { PrismaClient } from '~/lib/generated/client';
+import type { Prisma, PrismaClient } from '~/lib/generated/client';
 
-type RsvpRow = {
-  id: string;
-  eventId: string;
-  userId: string;
-  status: string;
-  headcount: number;
-  dietaryNotes: string | null;
-  respondedAt: Date | null;
-  modifiedAt: Date;
-  waitlistPosition: number | null;
-};
+const RSVP_PLAN_SELECT = {
+  id: true,
+  eventId: true,
+  userId: true,
+  status: true,
+  headcount: true,
+  dietaryNotes: true,
+  respondedAt: true,
+  modifiedAt: true,
+  waitlistPosition: true,
+} as const;
+
+type RsvpRow = Prisma.RSVPGetPayload<{ select: typeof RSVP_PLAN_SELECT }>;
 
 export type RsvpBackfillClient = Pick<
   PrismaClient,
@@ -35,6 +37,12 @@ export interface RsvpBackfillResult {
   auditLogsWritten: number;
   plans: RsvpMergePlan[];
   errors: string[];
+}
+
+export interface RsvpBackfillDelta {
+  rsvpsDeleted: number;
+  potluckSignupsReassigned: number;
+  auditLogsWritten: number;
 }
 
 const RSVP_MERGE_ACTION = 'RSVP_MERGE';
@@ -67,20 +75,10 @@ export async function findDuplicateRsvpPlans(client: RsvpBackfillClient): Promis
 
   const plans: RsvpMergePlan[] = [];
   for (const group of grouped) {
-    const rsvps = (await client.rSVP.findMany({
+    const rsvps = await client.rSVP.findMany({
       where: { eventId: group.eventId, userId: group.userId },
-      select: {
-        id: true,
-        eventId: true,
-        userId: true,
-        status: true,
-        headcount: true,
-        dietaryNotes: true,
-        respondedAt: true,
-        modifiedAt: true,
-        waitlistPosition: true,
-      },
-    })) as RsvpRow[];
+      select: RSVP_PLAN_SELECT,
+    });
 
     if (rsvps.length < 2) {
       continue;
@@ -135,11 +133,10 @@ export async function mergeDuplicateRsvps(
 
   for (const plan of plans) {
     try {
-      await mergeSingleGroup(client, plan, (delta) => {
-        result.rsvpsDeleted += delta.rsvpsDeleted;
-        result.potluckSignupsReassigned += delta.potluckSignupsReassigned;
-        result.auditLogsWritten += delta.auditLogsWritten;
-      });
+      const delta = await mergeSingleGroup(client, plan);
+      result.rsvpsDeleted += delta.rsvpsDeleted;
+      result.potluckSignupsReassigned += delta.potluckSignupsReassigned;
+      result.auditLogsWritten += delta.auditLogsWritten;
     } catch (error) {
       result.errors.push(
         `Failed to merge RSVPs for event=${plan.key.eventId} user=${plan.key.userId}: ${
@@ -152,21 +149,14 @@ export async function mergeDuplicateRsvps(
   return result;
 }
 
-interface MergeDelta {
-  rsvpsDeleted: number;
-  potluckSignupsReassigned: number;
-  auditLogsWritten: number;
-}
-
 async function mergeSingleGroup(
   client: RsvpBackfillClient,
   plan: RsvpMergePlan,
-  accumulate: (delta: MergeDelta) => void,
-): Promise<void> {
+): Promise<RsvpBackfillDelta> {
   // Per-group transaction: groups are independent, so we accept partial
   // progress over a global abort. mergeDuplicateRsvps surfaces the error
   // and exits non-zero so the operator can re-run for the remaining groups.
-  await client.$transaction(async (tx) => {
+  return client.$transaction(async (tx) => {
     const winner = await tx.rSVP.findUnique({ where: { id: plan.winnerId } });
     if (!winner) {
       throw new Error(`Winner RSVP ${plan.winnerId} not found`);
@@ -178,8 +168,11 @@ async function mergeSingleGroup(
 
     for (const loserId of plan.loserIds) {
       const loser = await tx.rSVP.findUnique({ where: { id: loserId } });
+      // A missing loser means the plan is stale (row was deleted between the
+      // scan and the merge). Throw rather than silently skipping so the audit
+      // count and deletion count can never diverge from the plan.
       if (!loser) {
-        continue;
+        throw new Error(`Loser RSVP ${loserId} not found`);
       }
 
       const reassignResult = await tx.potluckSignup.updateMany({
@@ -217,7 +210,7 @@ async function mergeSingleGroup(
       rsvpsDeleted += 1;
     }
 
-    accumulate({ rsvpsDeleted, potluckSignupsReassigned, auditLogsWritten });
+    return { rsvpsDeleted, potluckSignupsReassigned, auditLogsWritten };
   });
 }
 
