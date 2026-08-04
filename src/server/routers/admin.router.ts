@@ -6,6 +6,8 @@ import { ChargeStatus, RefundStatus, RegistrationStatus, RSVPStatus } from '~/li
 import { writeAuditLog, diff } from '~/lib/audit';
 import { createRefund, formatAmount, isConfigured as stripeConfigured } from '~/lib/stripe';
 import { sendRegistrationReceipt } from '~/lib/receipt';
+import { withSerializableRetry } from '~/lib/transaction-retry';
+import { randomUUID } from 'node:crypto';
 import {
   forfeitInputSchema,
   listChargesInputSchema,
@@ -313,66 +315,73 @@ export const adminRouter = router({
       });
     }
 
-    const refund = await prisma.refund.create({
-      data: {
-        chargeId: charge.id,
-        registrationId: charge.registrationId,
-        amountCents: refundAmount,
-        currency: charge.currency,
-        status: RefundStatus.PENDING,
-        reason: input.reason ?? null,
-        refundedByUserId: ctx.session.user.id,
-      },
-    });
+    // Pre-generate the Refund id so it can serve as the Stripe
+    // idempotency key on every retry attempt. Without this, a P2034
+    // serialization failure after a successful Stripe refund call would
+    // leave an orphan PENDING Refund row, because the retry would
+    // create a new Refund with a different id and a fresh Stripe refund.
+    // Stripe records the (idempotencyKey -> refundId) mapping for 24h,
+    // so the retry's createRefund call returns the original Stripe
+    // refund object instead of creating a duplicate.
+    const refundId = randomUUID();
 
-    let stripeRefund: Awaited<ReturnType<typeof createRefund>>;
-    try {
-      stripeRefund = await createRefund({
+    const result = await withSerializableRetry(async () => {
+      // Idempotent row creation: the upsert is a no-op on retry because
+      // the row was created in the first attempt and the id is fixed.
+      await prisma.refund.upsert({
+        where: { id: refundId },
+        create: {
+          id: refundId,
+          chargeId: charge.id,
+          registrationId: charge.registrationId,
+          amountCents: refundAmount,
+          currency: charge.currency,
+          status: RefundStatus.PENDING,
+          reason: input.reason ?? null,
+          refundedByUserId: ctx.session.user.id,
+        },
+        update: {},
+      });
+
+      const stripeRefund = await createRefund({
         paymentIntentId: charge.stripePaymentIntentId,
         amountCents: refundAmount,
         ...(input.reason ? { reason: input.reason } : {}),
-        idempotencyKey: refund.id,
+        idempotencyKey: refundId,
       });
-    } catch (err) {
-      await prisma.refund.update({
-        where: { id: refund.id },
-        data: { status: RefundStatus.FAILED },
-      });
-      throw new TRPCError({
-        code: 'INTERNAL_SERVER_ERROR',
-        message: err instanceof Error ? err.message : 'Stripe refund failed',
-      });
-    }
 
-    // Atomic increment + post-increment read, under Serializable so
-    // concurrent admins serialize cleanly. The full-refund check uses
-    // the post-increment value, which accounts for any concurrent
-    // refunds that committed first.
-    const [updatedRefund, postIncrement] = await prisma.$transaction(
-      async (tx) => {
-        const updated = await tx.refund.update({
-          where: { id: refund.id },
-          data: {
-            stripeRefundId: stripeRefund.refundId,
-            status: mapStripeRefundStatus(stripeRefund.status),
-          },
-        });
-        const reg = await tx.registration.update({
-          where: { id: charge.registrationId },
-          data: { refundedCents: { increment: refundAmount } },
-        });
-        return [updated, reg] as const;
-      },
-      { isolationLevel: 'Serializable' },
-    );
+      // Atomic increment + post-increment read, under Serializable so
+      // concurrent admins serialize cleanly. The full-refund check uses
+      // the post-increment value, which accounts for any concurrent
+      // refunds that committed first.
+      const [updatedRefund, postIncrement] = await prisma.$transaction(
+        async (tx) => {
+          const updated = await tx.refund.update({
+            where: { id: refundId },
+            data: {
+              stripeRefundId: stripeRefund.refundId,
+              status: mapStripeRefundStatus(stripeRefund.status),
+            },
+          });
+          const reg = await tx.registration.update({
+            where: { id: charge.registrationId },
+            data: { refundedCents: { increment: refundAmount } },
+          });
+          return [updated, reg] as const;
+        },
+        { isolationLevel: 'Serializable' },
+      );
 
-    const isFullRefund = postIncrement.refundedCents >= charge.amountCents;
-    const updatedRegistration = isFullRefund
-      ? await prisma.registration.update({
-          where: { id: charge.registrationId },
-          data: { status: RegistrationStatus.REFUNDED },
-        })
-      : postIncrement;
+      const isFullRefund = postIncrement.refundedCents >= charge.amountCents;
+      const updatedRegistration = isFullRefund
+        ? await prisma.registration.update({
+            where: { id: charge.registrationId },
+            data: { status: RegistrationStatus.REFUNDED },
+          })
+        : postIncrement;
+
+      return { updatedRefund, updatedRegistration, isFullRefund, stripeRefund };
+    });
 
     await writeAuditLog({
       userId: ctx.session.user.id,
@@ -383,16 +392,16 @@ export const adminRouter = router({
         registrationStatus: charge.registration.status,
       },
       newValue: {
-        refundedCents: updatedRegistration.refundedCents,
-        isFullRefund,
-        refundId: updatedRefund.id,
-        stripeRefundId: stripeRefund.refundId,
+        refundedCents: result.updatedRegistration.refundedCents,
+        isFullRefund: result.isFullRefund,
+        refundId: result.updatedRefund.id,
+        stripeRefundId: result.stripeRefund.refundId,
         amountCents: refundAmount,
         ...(input.reason ? { reason: input.reason } : {}),
       },
     });
 
-    return { refund: updatedRefund, registration: updatedRegistration };
+    return { refund: result.updatedRefund, registration: result.updatedRegistration };
   }),
 
   /**

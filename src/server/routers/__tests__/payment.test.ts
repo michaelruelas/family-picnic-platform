@@ -395,6 +395,49 @@ describe('payment.createPaymentIntent', () => {
       expect.objectContaining({ isolationLevel: 'Serializable' }),
     );
   });
+
+  it('retries the whole procedure when the transaction raises P2034', async () => {
+    // First call to $transaction throws Postgres serialization failure,
+    // second call succeeds. The outer wrapper retries the body; Stripe's
+    // idempotencyKey on the PaymentIntent call is still charge.id and
+    // would de-dupe any Stripe-side duplicate even if it ran twice.
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      name: 'Picnic',
+      status: 'PUBLISHED',
+      registrationFeeCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'maria@example.com',
+      name: 'Maria',
+      householdId: 'h-1',
+    });
+    mockPrisma.registration.findUnique.mockResolvedValue(null);
+    mockPrisma.registration.create.mockResolvedValue({ id: 'reg-retry', status: 'PENDING' });
+    mockPrisma.charge.create.mockResolvedValue({
+      id: 'ch-retry',
+      amountCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.charge.update.mockResolvedValue({ id: 'ch-retry', status: 'REQUIRES_PAYMENT_METHOD' });
+
+    mockPrisma.$transaction.mockImplementationOnce(() => {
+      throw { code: 'P2034', message: 'lost the race' };
+    });
+
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    const result = await caller.createPaymentIntent({ eventId: 'evt-1' });
+
+    expect(result.chargeId).toBe('ch-retry');
+    // One call rolled back, one call succeeded.
+    expect(mockPrisma.$transaction.mock.calls.length).toBe(2);
+    // Stripe got exactly one createPaymentIntent call (the second attempt).
+    expect(mockCreatePaymentIntent).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('payment.getMyRegistration', () => {

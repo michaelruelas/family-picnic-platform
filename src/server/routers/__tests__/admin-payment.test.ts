@@ -10,6 +10,7 @@ const mockPrisma = {
   refund: {
     findMany: vi.fn(),
     create: vi.fn(),
+    upsert: vi.fn(),
     update: vi.fn(),
   },
   registration: {
@@ -218,7 +219,7 @@ describe('admin.refund', () => {
         paymentIntentId: 'pi_1',
         amountCents: 1000,
         reason: 'oops',
-        idempotencyKey: 'r-1',
+        idempotencyKey: expect.any(String),
       }),
     );
     expect(result.registration.status).toBe('PAID');
@@ -369,6 +370,78 @@ describe('admin.refund', () => {
     expect(mockPrisma.registration.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ refundedCents: { increment: 500 } }),
+      }),
+    );
+  });
+
+  it('retries the transaction on P2034 and reuses the same Stripe refund via idempotencyKey', async () => {
+    // The fix for F3: when the Serializable transaction raises P2034
+    // AFTER the Stripe refund already succeeded, the retry must reuse
+    // the same refund.id (so the upsert is a no-op and Stripe returns
+    // the same refund under the same idempotencyKey). Otherwise we'd
+    // orphan a PENDING Refund row with a real Stripe refund behind it.
+    mockPrisma.charge.findUnique.mockResolvedValue({
+      id: 'ch-retry',
+      status: 'SUCCEEDED',
+      amountCents: 2500,
+      currency: 'usd',
+      stripePaymentIntentId: 'pi_retry',
+      registrationId: 'reg-retry',
+      registration: { id: 'reg-retry', eventId: 'evt-1', status: 'PAID', refunds: [] },
+    });
+    mockPrisma.refund.upsert.mockResolvedValue({ id: 'refund-retry' });
+    mockPrisma.refund.update.mockResolvedValue({ id: 'refund-retry', status: 'SUCCEEDED' });
+    mockPrisma.registration.update.mockResolvedValue({
+      id: 'reg-retry',
+      status: 'PAID',
+      refundedCents: 2500,
+    });
+    mockCreateRefund.mockResolvedValue({
+      refundId: 're_real',
+      amountCents: 2500,
+      currency: 'usd',
+      status: 'succeeded',
+    });
+    // First attempt: Stripe succeeds (so a real refund exists at
+    // Stripe), then the transaction raises P2034. Second attempt:
+    // transaction succeeds.
+    mockPrisma.$transaction
+      .mockImplementationOnce(() => {
+        throw { code: 'P2034', message: 'race' };
+      })
+      .mockImplementationOnce((fn: (tx: unknown) => unknown) => fn(mockPrisma));
+
+    const { adminRouter } = await import('~/server/routers/admin.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(adminRouter)({ session: adminSession });
+    const result = await caller.refund({ chargeId: 'ch-retry', amountCents: 2500 });
+
+    // Both attempts hit Stripe with the same idempotencyKey — attempt 1
+    // succeeds (creating the real Stripe refund), attempt 2 re-issues
+    // with the same key and Stripe returns the same refund object. Our
+    // mock just increments its call counter, so we expect two calls
+    // sharing the same idempotencyKey.
+    expect(mockCreateRefund).toHaveBeenCalledTimes(2);
+    const firstCall = mockCreateRefund.mock.calls[0]![0] as { idempotencyKey: string };
+    const secondCall = mockCreateRefund.mock.calls[1]![0] as { idempotencyKey: string };
+    expect(firstCall.idempotencyKey).toBe(secondCall.idempotencyKey);
+    // Upsert is called twice with the same id (no-op on the second
+    // call), proving the refund.id is stable across retries.
+    expect(mockPrisma.refund.upsert).toHaveBeenCalledTimes(2);
+    const firstCallArgs = mockPrisma.refund.upsert.mock.calls[0]![0] as {
+      where: { id: string };
+    };
+    const secondCallArgs = mockPrisma.refund.upsert.mock.calls[1]![0] as {
+      where: { id: string };
+    };
+    expect(firstCallArgs.where.id).toBe(secondCallArgs.where.id);
+    // The first attempt's transaction threw P2034, so refundedCents
+    // stays at 0 between attempts; the second attempt's increment is
+    // the only one that lands, leaving refundedCents == 2500.
+    expect(result.registration.refundedCents).toBe(2500);
+    expect(mockPrisma.registration.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ refundedCents: { increment: 2500 } }),
       }),
     );
   });

@@ -134,7 +134,10 @@ async function handlePaymentIntentSucceeded(
   // Retry dedup: if Stripe is replaying a `payment_intent.succeeded` we
   // already processed, skip the receipt send and the audit-log write so
   // we don't double-charge the user's inbox or the admin's audit feed.
-  if (charge.status === ChargeStatus.SUCCEEDED || charge.receiptSentAt) {
+  // The `charge.status === SUCCEEDED` check is sufficient: every code
+  // path that sets `receiptSentAt` also sets status to SUCCEEDED, so
+  // a separate receiptSentAt branch would be redundant.
+  if (charge.status === ChargeStatus.SUCCEEDED) {
     log.debug(
       { paymentIntentId: intent.id, chargeId: charge.id },
       'payment_intent.succeeded already handled; skipping',

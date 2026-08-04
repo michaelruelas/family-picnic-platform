@@ -10,6 +10,7 @@ import {
   isConfigured as stripeConfigured,
 } from '~/lib/stripe';
 import { createPaymentIntentInputSchema } from '~/lib/schemas/payment';
+import { withSerializableRetry } from '~/lib/transaction-retry';
 import type { PrismaClient } from '~/lib/generated/client';
 
 // Serializable isolation is required for createPaymentIntent: two near-
@@ -17,8 +18,14 @@ import type { PrismaClient } from '~/lib/generated/client';
 // "existing && activeCharge" check, each create a new Charge, and each
 // issue a fresh PaymentIntent on Stripe. Postgres' Serializable
 // aborts one of the conflicting transactions with a serialization
-// failure, which the caller retries.
-type Tx = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+// failure (P2034); the procedure body is wrapped in
+// withSerializableRetry so the loser retries cleanly. Stripe's
+// idempotencyKey on the PaymentIntent call ensures the retry does
+// not create a duplicate intent.
+type Tx = Omit<
+  PrismaClient,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>;
 
 const ACTIVE_CHARGE_STATUSES: ChargeStatus[] = [
   ChargeStatus.REQUIRES_PAYMENT_METHOD,
@@ -43,132 +50,20 @@ export const paymentRouter = router({
    * Idempotently creates (or reuses) a Registration and a Stripe
    * PaymentIntent for the caller against the given event. Returns the
    * client_secret that the browser-side Payment Element needs.
+   *
+   * Concurrency: the inner function runs inside `withSerializableRetry`
+   * because the find-or-create transaction uses Postgres Serializable
+   * isolation. Concurrent callers may abort each other with P2034; the
+   * retry then re-runs the procedure. Stripe's idempotencyKey on the
+   * PaymentIntent call (== charge.id) ensures a retry cannot create a
+   * duplicate intent — Stripe returns the existing one.
    */
   createPaymentIntent: protectedProcedure
     .input(createPaymentIntentInputSchema)
     .mutation(async ({ ctx, input }) => {
-      if (!stripeConfigured()) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'Payments are not configured for this environment',
-        });
-      }
-
-      const event = await prisma.event.findUnique({
-        where: { id: input.eventId },
-        select: {
-          id: true,
-          name: true,
-          status: true,
-          registrationFeeCents: true,
-          currency: true,
-        },
-      });
-
-      if (!event) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' });
-      }
-      if (event.status !== EventStatus.PUBLISHED) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'Event is not accepting registrations',
-        });
-      }
-      const fee = event.registrationFeeCents ?? 0;
-      if (fee <= 0) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'Event does not require payment',
-        });
-      }
-
-      const user = await prisma.user.findUnique({
-        where: { id: ctx.session.user.id },
-        select: { id: true, email: true, name: true, householdId: true },
-      });
-      if (!user) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
-      }
-
-      // Serializable isolation so concurrent calls from the same user
-      // cannot both pass the "existing && activeCharge" check and each
-      // create a fresh Charge + PaymentIntent. Postgres aborts the loser
-      // with a serialization failure; the caller retries.
-      const { registration, charge } = await prisma.$transaction(
-        async (tx) => findOrCreateActiveCharge(tx, event.id, user, fee, event.currency),
-        { isolationLevel: 'Serializable' },
+      return withSerializableRetry(() =>
+        createPaymentIntentInner(ctx, input, prisma, stripeConfigured),
       );
-
-      let intent: Awaited<ReturnType<typeof createPaymentIntent>>;
-      try {
-        intent = await createPaymentIntent({
-          amountCents: charge.amountCents,
-          currency: charge.currency,
-          idempotencyKey: charge.id,
-          metadata: {
-            registrationId: registration.id,
-            chargeId: charge.id,
-            eventId: event.id,
-            userId: user.id,
-          },
-          receiptEmail: user.email,
-          description: `Registration: ${event.name}`,
-        });
-      } catch (err) {
-        await prisma.charge.update({
-          where: { id: charge.id },
-          data: {
-            status: ChargeStatus.FAILED,
-            lastErrorCode: 'CREATE_INTENT_FAILED',
-            lastErrorMessage: err instanceof Error ? err.message : String(err),
-          },
-        });
-        await writeAuditLog({
-          userId: user.id,
-          eventId: event.id,
-          action: 'payment.intentFailed',
-          newValue: {
-            chargeId: charge.id,
-            error: err instanceof Error ? err.message : String(err),
-          },
-        });
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to create payment intent',
-        });
-      }
-
-      const updated = await prisma.charge.update({
-        where: { id: charge.id },
-        data: {
-          stripePaymentIntentId: intent.paymentIntentId,
-          status: mapStripeIntentStatusToChargeStatus(intent.status),
-        },
-      });
-
-      await writeAuditLog({
-        userId: user.id,
-        eventId: event.id,
-        action: 'payment.intentCreated',
-        newValue: {
-          registrationId: registration.id,
-          chargeId: updated.id,
-          paymentIntentId: intent.paymentIntentId,
-          amountCents: intent.amountCents,
-          currency: intent.currency,
-        },
-      });
-
-      return {
-        registrationId: registration.id,
-        chargeId: updated.id,
-        paymentIntentId: intent.paymentIntentId,
-        clientSecret: intent.clientSecret,
-        status: updated.status,
-        amountCents: intent.amountCents,
-        currency: intent.currency,
-        publishableKey: getPublishableKey(),
-      };
     }),
 
   /**
@@ -235,6 +130,142 @@ function mapStripeIntentStatusToChargeStatus(status: string): ChargeStatus {
     default:
       return ChargeStatus.FAILED;
   }
+}
+
+/**
+ * Extracted body of `payment.createPaymentIntent` so the retry wrapper
+ * can re-invoke it on a Postgres serialization failure without losing
+ * closure over the prisma client.
+ */
+async function createPaymentIntentInner(
+  ctx: { session: { user: { id: string } } },
+  input: { eventId: string },
+  prismaClient: typeof prisma,
+  isStripeConfigured: () => boolean,
+) {
+  if (!isStripeConfigured()) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'Payments are not configured for this environment',
+    });
+  }
+
+  const event = await prismaClient.event.findUnique({
+    where: { id: input.eventId },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      registrationFeeCents: true,
+      currency: true,
+    },
+  });
+
+  if (!event) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' });
+  }
+  if (event.status !== EventStatus.PUBLISHED) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'Event is not accepting registrations',
+    });
+  }
+  const fee = event.registrationFeeCents ?? 0;
+  if (fee <= 0) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'Event does not require payment',
+    });
+  }
+
+  const user = await prismaClient.user.findUnique({
+    where: { id: ctx.session.user.id },
+    select: { id: true, email: true, name: true, householdId: true },
+  });
+  if (!user) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+  }
+
+  // Serializable isolation so concurrent calls from the same user
+  // cannot both pass the "existing && activeCharge" check and each
+  // create a fresh Charge + PaymentIntent. Postgres aborts the loser
+  // with P2034; the outer withSerializableRetry then re-runs the
+  // whole body.
+  const { registration, charge } = await prismaClient.$transaction(
+    async (tx) => findOrCreateActiveCharge(tx, event.id, user, fee, event.currency),
+    { isolationLevel: 'Serializable' },
+  );
+
+  let intent: Awaited<ReturnType<typeof createPaymentIntent>>;
+  try {
+    intent = await createPaymentIntent({
+      amountCents: charge.amountCents,
+      currency: charge.currency,
+      idempotencyKey: charge.id,
+      metadata: {
+        registrationId: registration.id,
+        chargeId: charge.id,
+        eventId: event.id,
+        userId: user.id,
+      },
+      receiptEmail: user.email,
+      description: `Registration: ${event.name}`,
+    });
+  } catch (err) {
+    await prismaClient.charge.update({
+      where: { id: charge.id },
+      data: {
+        status: ChargeStatus.FAILED,
+        lastErrorCode: 'CREATE_INTENT_FAILED',
+        lastErrorMessage: err instanceof Error ? err.message : String(err),
+      },
+    });
+    await writeAuditLog({
+      userId: user.id,
+      eventId: event.id,
+      action: 'payment.intentFailed',
+      newValue: {
+        chargeId: charge.id,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
+    throw new TRPCError({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: 'Failed to create payment intent',
+    });
+  }
+
+  const updated = await prismaClient.charge.update({
+    where: { id: charge.id },
+    data: {
+      stripePaymentIntentId: intent.paymentIntentId,
+      status: mapStripeIntentStatusToChargeStatus(intent.status),
+    },
+  });
+
+  await writeAuditLog({
+    userId: user.id,
+    eventId: event.id,
+    action: 'payment.intentCreated',
+    newValue: {
+      registrationId: registration.id,
+      chargeId: updated.id,
+      paymentIntentId: intent.paymentIntentId,
+      amountCents: intent.amountCents,
+      currency: intent.currency,
+    },
+  });
+
+  return {
+    registrationId: registration.id,
+    chargeId: updated.id,
+    paymentIntentId: intent.paymentIntentId,
+    clientSecret: intent.clientSecret,
+    status: updated.status,
+    amountCents: intent.amountCents,
+    currency: intent.currency,
+    publishableKey: getPublishableKey(),
+  };
 }
 
 type FindOrCreateInput = {
