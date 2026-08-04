@@ -70,6 +70,8 @@ bun run db:studio    # Open Prisma Studio (GUI)
 bun run db:validate  # Validate Prisma schema
 bun run db:backfill-rsvp-duplicates        # One-time RSVP dedup, dry-run
 bun run db:backfill-rsvp-duplicates --apply  # Same script, writes changes
+bun run db:backfill-registration-fees        # One-time registration-fee pin, dry-run
+bun run db:backfill-registration-fees --apply  # Same script, writes changes
 ````
 
 ## One-Command Dev Setup
@@ -150,8 +152,16 @@ Seeding resets data - run `bun run db:seed` after `db:push` or `db:migrate`.
 
 ## RSVP Duplicate Backfill (FPP-28)
 
-A one-time script to merge duplicate `RSVP` rows that the pre-fix re-registration bug could have created for the same `(eventId, userId)`. The current schema enforces `@@unique([eventId, userId])`, so the script finds zero duplicates on a healthy database and exits clean. Run it only if you suspect legacy duplicates from before the in-place update fix shipped.
+A one-time script to merge duplicate `RSVP` rows that the pre-fix re-registration bug may have left behind. The current schema enforces `@@unique([eventId, userId])`, so the script finds zero duplicates on a healthy database and exits clean. Run it only if you suspect legacy duplicates from before the in-place update fix shipped.
 
 - Default (`bun run db:backfill-rsvp-duplicates`): dry-run. Prints the planned winner per group with no writes.
 - With `--apply`: merges the most recent RSVP per group into the winner, reassigns any `PotluckSignup` rows from losers to the winner, and writes one `RSVP_MERGE` audit entry per loser. Exits non-zero on any per-group failure.
 - Idempotent: re-running after a successful `--apply` finds no duplicates and exits clean.
+
+## Registration Fee Backfill (FPP-14)
+
+A one-time script to pin `Registration.amountCents` to 0 for every existing row. Per FPP-14 ("no charge applied retroactively") and FPP-48 ("backfill: existing households marked paid=0; no charge applied retroactively"). Settled rows (`PAID` / `REFUNDED` / `FORFEITED` / `CANCELLED`) are left alone — they reflect real money movement that already happened — but they still receive an audit entry so the run leaves a complete trail.
+
+- Default (`bun run db:backfill-registration-fees`): dry-run. Prints the count of registrations scanned with no writes.
+- With `--apply`: sets `amountCents = 0` on every non-settled row, writes one `REGISTRATION_FEE_BACKFILL` audit entry per registration (old + new value), exits non-zero on any per-row failure.
+- Idempotent: a second `--apply` run finds every row already at 0, writes zero updates, and still emits one audit entry per registration.
