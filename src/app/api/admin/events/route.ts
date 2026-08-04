@@ -59,7 +59,16 @@ export async function POST(request: Request) {
     async () => {
       try {
         const body = await request.json();
-        const { name, date, location, description, rsvpDeadline, maxCapacity, mapImageUrl } = body;
+        const {
+          name,
+          date,
+          location,
+          description,
+          rsvpDeadline,
+          maxCapacity,
+          mapImageUrl,
+          registrationFeeCents,
+        } = body;
 
         if (!name || !date || !location) {
           return NextResponse.json(
@@ -79,6 +88,13 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'maxCapacity must be at least 1' }, { status: 400 });
         }
 
+        if (registrationFeeCents !== undefined && registrationFeeCents < 0) {
+          return NextResponse.json(
+            { error: 'registrationFeeCents must be at least 0' },
+            { status: 400 },
+          );
+        }
+
         const event = await prisma.event.create({
           data: {
             name,
@@ -88,6 +104,7 @@ export async function POST(request: Request) {
             rsvpDeadline: rsvpDeadline ? new Date(rsvpDeadline) : null,
             maxCapacity: maxCapacity || null,
             mapImageUrl: mapImageUrl || null,
+            registrationFeeCents: registrationFeeCents ?? 0,
             status: EventStatus.DRAFT,
           },
         });

@@ -149,6 +149,8 @@ model User {
   photoReactions     PhotoReaction[]
   adminAuditLogs     AdminAuditLog[]
   eventAdmins        EventAdmin[]
+  registrations      Registration[]
+  refundsIssued      Refund[]          @relation("RefundIssuer")
 
   @@index([householdId])
   @@index([role])
@@ -186,6 +188,11 @@ model Event {
   description  String
   rsvpDeadline DateTime?
   maxCapacity  Int?
+  // Optional per-attendee fee. When null, registration is free and no
+  // Stripe flow is shown. Amounts are in the smallest currency unit
+  // (cents for USD) to avoid floating-point drift.
+  registrationFeeCents Int?       @default(0)
+  currency             String     @default("usd")
   status       EventStatus @default(DRAFT)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
@@ -198,6 +205,7 @@ model Event {
   photos             Photo[]
   adminAuditLogs     AdminAuditLog[]
   admins             EventAdmin[]
+  registrations      Registration[]
 
   @@index([status])
   @@index([date])
@@ -383,6 +391,32 @@ enum ScheduledBroadcastStatus {
   FAILED
 }
 
+enum RegistrationStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FORFEITED
+  CANCELLED
+}
+
+enum ChargeStatus {
+  REQUIRES_PAYMENT_METHOD
+  REQUIRES_CONFIRMATION
+  REQUIRES_ACTION
+  PROCESSING
+  REQUIRES_CAPTURE
+  SUCCEEDED
+  CANCELED
+  FAILED
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
 model ScheduledBroadcast {
   id             String                    @id @default(cuid())
   eventId        String
@@ -420,4 +454,93 @@ model EventAdmin {
   @@unique([eventId, userId])
   @@index([eventId])
   @@index([userId])
+}
+
+model Registration {
+  id            String             @id @default(cuid())
+  eventId       String
+  userId        String
+  // The household the charge applies to. May be null for users without a
+  // household record. Carried on the row for reporting, not used by Stripe.
+  householdId   String?
+  // Snapshot of the per-attendee fee at charge time. Immutable per
+  // registration so that retroactive fee changes do not corrupt history.
+  amountCents   Int
+  currency      String             @default("usd")
+  status        RegistrationStatus @default(PENDING)
+  // Sum of SUCCEEDED refund amounts in cents. Used to derive "fully refunded"
+  // and to render remaining-balance UI without re-querying the refunds table.
+  refundedCents Int                @default(0)
+  // Receipt email is sent once on PAID transition. Re-sends go through the
+  // admin UI and are tracked here for audit.
+  receiptSentAt DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  charges Charge[]
+  refunds Refund[]
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Charge {
+  id                    String       @id @default(cuid())
+  registrationId        String
+  // Stripe's PaymentIntent id (pi_...). Unique globally. Stored on every
+  // row even after the Stripe object is deleted so the audit trail survives.
+  stripePaymentIntentId String       @unique
+  // Snapshot of the charge amount. Equal to the registration amount for the
+  // first attempt; retries and partial captures can differ.
+  amountCents           Int
+  currency              String       @default("usd")
+  status                ChargeStatus @default(REQUIRES_PAYMENT_METHOD)
+  // Hosted receipt URL from Stripe. Null until payment_intent.succeeded.
+  receiptUrl            String?
+  // The last error code/message Stripe reported, if any. Helps the admin
+  // triage a row without re-querying Stripe.
+  lastErrorCode         String?
+  lastErrorMessage      String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  refunds      Refund[]
+
+  @@index([registrationId])
+  @@index([status])
+}
+
+model Refund {
+  id               String       @id @default(cuid())
+  chargeId         String
+  // Registration is denormalized onto the Refund for fast aggregation and to
+  // keep refund rows queryable without joining through Charge -> Registration.
+  registrationId   String
+  // Stripe's Refund id (re_...). Unique when present; null until the refund
+  // is created on Stripe's side.
+  stripeRefundId   String?      @unique
+  amountCents      Int
+  currency         String       @default("usd")
+  status           RefundStatus @default(PENDING)
+  // Free-form reason captured from the admin ("duplicate", "fraudulent",
+  // "requested_by_customer", or custom).
+  reason           String?
+  // The admin who issued the refund. Required: every refund is auditable.
+  refundedByUserId String
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  charge       Charge       @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  refundedBy   User         @relation("RefundIssuer", fields: [refundedByUserId], references: [id])
+
+  @@index([chargeId])
+  @@index([registrationId])
+  @@index([status])
+  @@index([refundedByUserId])
 }

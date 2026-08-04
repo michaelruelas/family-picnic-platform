@@ -12,10 +12,12 @@ interface EventFormData {
   rsvpDeadline?: string;
   maxCapacity?: number;
   mapImageUrl?: string;
+  // Optional per-attendee fee in dollars. Empty string means "no fee".
+  registrationFeeDollars?: string;
 }
 
 interface EventFormProps {
-  initialData?: EventFormData & { id: string };
+  initialData?: EventFormData & { id: string; registrationFeeCents?: number };
   mode: 'create' | 'edit';
 }
 
@@ -23,6 +25,11 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const initialFeeDollars =
+    initialData?.registrationFeeCents !== undefined
+      ? (initialData.registrationFeeCents / 100).toFixed(2)
+      : '';
 
   const [formData, setFormData] = useState<EventFormData>({
     name: initialData?.name ?? '',
@@ -32,7 +39,24 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     rsvpDeadline: initialData?.rsvpDeadline ?? '',
     maxCapacity: initialData?.maxCapacity ?? undefined,
     mapImageUrl: initialData?.mapImageUrl ?? '',
+    registrationFeeDollars: initialFeeDollars,
   });
+
+  function buildPayload(): Record<string, unknown> {
+    const feeDollars = formData.registrationFeeDollars?.trim();
+    const feeCents =
+      feeDollars && !Number.isNaN(Number(feeDollars)) ? Math.round(Number(feeDollars) * 100) : 0;
+    const { registrationFeeDollars, ...rest } = formData;
+    void registrationFeeDollars;
+    return {
+      ...rest,
+      maxCapacity:
+        rest.maxCapacity === undefined || rest.maxCapacity === null
+          ? undefined
+          : Number(rest.maxCapacity),
+      registrationFeeCents: feeCents,
+    };
+  }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -50,8 +74,9 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     setError(null);
 
     const schema = mode === 'create' ? eventCreateSchema : eventUpdateSchema;
+    const payload = buildPayload();
     const parseResult = schema.safeParse(
-      mode === 'create' ? formData : { ...formData, id: initialData?.id },
+      mode === 'create' ? payload : { ...payload, id: initialData?.id },
     );
 
     if (!parseResult.success) {
@@ -68,7 +93,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -184,6 +209,30 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="https://..."
           />
+        </div>
+
+        <div>
+          <label
+            htmlFor="registrationFeeDollars"
+            className="text-foreground/85 block text-sm font-medium"
+          >
+            Registration Fee (USD)
+          </label>
+          <input
+            type="number"
+            id="registrationFeeDollars"
+            name="registrationFeeDollars"
+            value={formData.registrationFeeDollars ?? ''}
+            onChange={handleChange}
+            min="0"
+            step="0.01"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            placeholder="Leave empty for free events"
+          />
+          <p className="text-muted-foreground mt-1 text-xs">
+            When set above $0, attendees complete payment through Stripe before registration is
+            confirmed. Requires STRIPE_SECRET_KEY to be configured.
+          </p>
         </div>
       </div>
 

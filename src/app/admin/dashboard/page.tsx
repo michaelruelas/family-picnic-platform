@@ -123,6 +123,12 @@ export default async function AdminDashboardPage() {
           Communications
         </Link>
         <Link
+          href="/admin/charges"
+          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
+        >
+          Charges
+        </Link>
+        <Link
           href="/admin/audit-log"
           className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
         >

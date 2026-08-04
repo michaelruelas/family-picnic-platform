@@ -196,6 +196,26 @@ TWILIO_PHONE_NUMBER=$(resolve \
   "printf ''")
 [ -n "$TWILIO_PHONE_NUMBER" ] && PRESERVED+=("nextjs/twilio-phone-number") || true
 
+# Stripe: sk_test_*/pk_test_*/whsec_*. Never auto-generated; the user must
+# paste real test keys from the Stripe dashboard before payments can flow.
+STRIPE_SECRET_KEY=$(resolve \
+  "$(extract "$NEXTJS_JSON" stripe-secret-key)" \
+  "$(env_dev_get STRIPE_SECRET_KEY)" \
+  "printf ''")
+[ -n "$STRIPE_SECRET_KEY" ] && PRESERVED+=("nextjs/stripe-secret-key") || true
+
+STRIPE_PUBLISHABLE_KEY=$(resolve \
+  "$(extract "$NEXTJS_JSON" stripe-publishable-key)" \
+  "$(env_dev_get STRIPE_PUBLISHABLE_KEY)" \
+  "printf ''")
+[ -n "$STRIPE_PUBLISHABLE_KEY" ] && PRESERVED+=("nextjs/stripe-publishable-key") || true
+
+STRIPE_WEBHOOK_SECRET=$(resolve \
+  "$(extract "$NEXTJS_JSON" stripe-webhook-secret)" \
+  "$(env_dev_get STRIPE_WEBHOOK_SECRET)" \
+  "printf ''")
+[ -n "$STRIPE_WEBHOOK_SECRET" ] && PRESERVED+=("nextjs/stripe-webhook-secret") || true
+
 # DATABASE_URL: in-cluster form for OpenBao, localhost form for .env.dev.
 # Each form is preserved independently if the user has set it.
 IN_CLUSTER_DATABASE_URL="postgresql://postgres:${PG_PASS}@postgres:5432/familypicnic?schema=public"
@@ -226,6 +246,9 @@ bao_exec kv put "${SECRET_PREFIX}/nextjs" \
   twilio-account-sid="$TWILIO_ACCOUNT_SID" \
   twilio-auth-token="$TWILIO_AUTH_TOKEN" \
   twilio-phone-number="$TWILIO_PHONE_NUMBER" \
+  stripe-secret-key="$STRIPE_SECRET_KEY" \
+  stripe-publishable-key="$STRIPE_PUBLISHABLE_KEY" \
+  stripe-webhook-secret="$STRIPE_WEBHOOK_SECRET" \
   >/dev/null
 
 echo "==> Writing ${SECRET_PREFIX}/photoprism"
@@ -282,6 +305,11 @@ TWILIO_PHONE_NUMBER="${TWILIO_PHONE_NUMBER}"
 # --- SendGrid (leave empty) ---
 SENDGRID_API_KEY="${SENDGRID_API_KEY}"
 SENDGRID_FROM_EMAIL="dev@${APP_DOMAIN}"
+
+# --- Stripe (leave empty until you paste real test keys) ---
+STRIPE_SECRET_KEY="${STRIPE_SECRET_KEY}"
+STRIPE_PUBLISHABLE_KEY="${STRIPE_PUBLISHABLE_KEY}"
+STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET}"
 
 # --- S3 (using photoprism via Next.js; no S3 in dev) ---
 S3_ENDPOINT=""

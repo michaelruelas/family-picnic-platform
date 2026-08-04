@@ -68,7 +68,16 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   try {
     const body = await request.json();
-    const { name, date, location, description, rsvpDeadline, maxCapacity, mapImageUrl } = body;
+    const {
+      name,
+      date,
+      location,
+      description,
+      rsvpDeadline,
+      maxCapacity,
+      mapImageUrl,
+      registrationFeeCents,
+    } = body;
 
     const existing = await prisma.event.findUnique({ where: { id } });
     if (!existing) {
@@ -86,6 +95,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'maxCapacity must be at least 1' }, { status: 400 });
     }
 
+    if (registrationFeeCents !== undefined && registrationFeeCents < 0) {
+      return NextResponse.json(
+        { error: 'registrationFeeCents must be at least 0' },
+        { status: 400 },
+      );
+    }
+
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (date !== undefined) updateData.date = new Date(date);
@@ -95,6 +111,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       updateData.rsvpDeadline = rsvpDeadline ? new Date(rsvpDeadline) : null;
     if (maxCapacity !== undefined) updateData.maxCapacity = maxCapacity || null;
     if (mapImageUrl !== undefined) updateData.mapImageUrl = mapImageUrl || null;
+    if (registrationFeeCents !== undefined) updateData.registrationFeeCents = registrationFeeCents;
 
     const event = await prisma.event.update({
       where: { id },

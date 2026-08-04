@@ -47,6 +47,7 @@ Tickets are ordered by suggested implementation priority. Lower numbers = higher
 | 39     | Observability (logging, metrics, Sentry) | Done   |
 | 41     | Invitation single-use tokens             | Done   |
 | 42     | Auto-release potluck on decline          | Done   |
+| 47     | Integrate credit card processing         | Done   |
 
 ### Post-MVP (Phase 2+)
 

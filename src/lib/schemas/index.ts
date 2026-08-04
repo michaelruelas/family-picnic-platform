@@ -7,3 +7,4 @@ export * from './photo';
 export * from './event';
 export * from './sms';
 export * from './household';
+export * from './payment';

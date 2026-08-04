@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- **Stripe credit card processing (FPP-47)** — `Registration`, `Charge`, and `Refund` models with Stripe PaymentIntent ids; per-event `registrationFeeCents` field; `payment.createPaymentIntent` / `payment.getMyRegistration` / `payment.getPublishableKey` procedures; `admin.listCharges` / `admin.refund` (full + partial, idempotent on the Refund row id) / `admin.forfeit` (no money returned) / `admin.resendReceipt` procedures; Stripe webhook route with `constructEventAsync` signature verification, idempotent on `charge.id`, handling `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.refunded`, and `charge.updated`; hosted Payment Element checkout page with `return_url` flow; admin `/admin/charges` page with filter, refund dialog, forfeit dialog, and resend-receipt action; branded receipt email template sent on `payment_intent.succeeded` and resendable from admin; every charge and refund writes an `AdminAuditLog` entry. Three new Stripe env vars (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`) wired through `kubernetes/base/nextjs.yaml`, the dev `ExternalSecret`, and `scripts/populate-openbao-secrets.sh`.
+
 ### Fixed
 
 - **Google OAuth signIn lookup** (`src/lib/auth.ts`) — filter `deletedAt: null` on the active-user lookup, then refuse sign-in entirely when the email matches a soft-deleted tombstone. The `User.email` unique index covers soft-deleted rows, so re-provisioning would throw on insert; refusing matches the dev-credentials `authorize` behavior and ADR-001 ("account recovery won't do"). The admin must explicitly re-invite a deleted user.
@@ -11,6 +15,7 @@ All notable changes to this project are documented here.
 ### Tests
 
 - **OAuth soft-deleted user coverage** (`src/lib/__tests__/auth.test.ts`) — assert the Google signIn callback (1) filters the active-user lookup with `deletedAt: null`, (2) performs an unfiltered tombstone lookup, and (3) returns `false` with no create when the email matches a soft-deleted record. Updated the pre-existing string-pattern smoke test in `tests/auth/sign-in.test.ts` to match the new control flow.
+- **Stripe lib + receipt + webhook + payment router coverage** — `src/lib/__tests__/stripe.test.ts` (19 tests) covers env detection, payment-intent creation with `idempotencyKey`, refund creation, signature verification with explicit-secret override, amount formatting, and the test-header helper. `src/lib/__tests__/receipt.test.ts` (5 tests) covers HTML escaping, receipt-link inclusion, and success/failure paths. `src/app/api/stripe/webhook/__tests__/route.test.ts` (10 tests) covers 503 on missing secret, 400 on bad signature, every supported event type, out-of-band `charge.refunded` reconciliation, and receipt-failure isolation. `src/server/routers/__tests__/payment.test.ts` (12 tests) and `__tests__/admin-payment.test.ts` (17 tests) cover the user-facing payment flow and the admin charge list / refund / forfeit / resend paths. `tests/integration/payments-fpp47-config.test.ts` (7 tests) verifies the K8s deployment + `ExternalSecret` + populate script + `.env.example` + `stripe.ts` + webhook route + `package.json` all carry the three new Stripe keys.
 
 ## [0.1.12] — 2026-07-30
 

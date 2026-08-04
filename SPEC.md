@@ -15,6 +15,7 @@ A private family engagement hub for an annual picnic, designed for users across 
 | Auth           | NextAuth.js with Google OAuth SSO                        |
 | File Storage   | PhotoPrism (Kubernetes, 50TB), S3-compatible for uploads |
 | Communications | Twilio (Email + SMS)                                     |
+| Payments       | Stripe (Payment Element + webhook)                       |
 | Infrastructure | Kubernetes, PWA with offline support                     |
 | Deployment     | Self-hosted family server                                |
 
@@ -252,6 +253,56 @@ RSVP (1) ──────< (N) PotluckSignup
 | details     | JSON     | Action-specific data |
 | createdAt   | DateTime | Action timestamp     |
 
+#### Registration
+
+| Field         | Type      | Description                                     |
+| ------------- | --------- | ----------------------------------------------- |
+| id            | UUID      | Primary key                                     |
+| eventId       | UUID      | FK to Event                                     |
+| userId        | UUID      | FK to User (attendee)                           |
+| householdId   | UUID?     | FK to Household (snapshot, not Stripe-relevant) |
+| amountCents   | Int       | Snapshot of fee at charge time                  |
+| currency      | String    | Lowercase ISO 4217 (e.g. "usd")                 |
+| status        | Enum      | PENDING, PAID, REFUNDED, FORFEITED, CANCELLED   |
+| refundedCents | Int       | Sum of SUCCEEDED refunds                        |
+| receiptSentAt | DateTime? | Set on first successful email send              |
+| createdAt     | DateTime  | Creation timestamp                              |
+| updatedAt     | DateTime  | Last update timestamp                           |
+
+#### Charge
+
+| Field                 | Type     | Description                                     |
+| --------------------- | -------- | ----------------------------------------------- |
+| id                    | UUID     | Primary key                                     |
+| registrationId        | UUID     | FK to Registration                              |
+| stripePaymentIntentId | String   | Stripe PaymentIntent id (pi_...), unique        |
+| amountCents           | Int      | Snapshot at charge time                         |
+| currency              | String   | Lowercase ISO 4217                              |
+| status                | Enum     | REQUIRES_PAYMENT_METHOD, REQUIRES_CONFIRMATION, |
+|                       |          | REQUIRES_ACTION, PROCESSING, REQUIRES_CAPTURE,  |
+|                       |          | SUCCEEDED, CANCELED, FAILED                     |
+| receiptUrl            | String?  | Stripe-hosted receipt URL                       |
+| lastErrorCode         | String?  | Stripe last_payment_error.code, if any          |
+| lastErrorMessage      | String?  | Stripe last_payment_error.message, if any       |
+| createdAt             | DateTime | Creation timestamp                              |
+| updatedAt             | DateTime | Last update timestamp                           |
+
+#### Refund
+
+| Field            | Type     | Description                                       |
+| ---------------- | -------- | ------------------------------------------------- |
+| id               | UUID     | Primary key                                       |
+| chargeId         | UUID     | FK to Charge                                      |
+| registrationId   | UUID     | FK to Registration (denormalized for aggregation) |
+| stripeRefundId   | String?  | Stripe Refund id (re_...), unique when present    |
+| amountCents      | Int      | Refund amount                                     |
+| currency         | String   | Lowercase ISO 4217                                |
+| status           | Enum     | PENDING, SUCCEEDED, FAILED, CANCELED              |
+| reason           | String?  | Free-form admin reason                            |
+| refundedByUserId | UUID     | FK to User (admin who issued the refund)          |
+| createdAt        | DateTime | Creation timestamp                                |
+| updatedAt        | DateTime | Last update timestamp                             |
+
 ### 3.3 Enums
 
 ```prisma
@@ -305,6 +356,32 @@ enum MessageStatus {
   DELIVERED
   FAILED
   UNSUBSCRIBED
+}
+
+enum RegistrationStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FORFEITED
+  CANCELLED
+}
+
+enum ChargeStatus {
+  REQUIRES_PAYMENT_METHOD
+  REQUIRES_CONFIRMATION
+  REQUIRES_ACTION
+  PROCESSING
+  REQUIRES_CAPTURE
+  SUCCEEDED
+  CANCELED
+  FAILED
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
 }
 ```
 
@@ -406,6 +483,53 @@ enum MessageStatus {
 6. Photos: view cached thumbnails, full images when online
 7. Cannot RSVP or upload while offline
 ```
+
+### 4.7 Payment Flow (Stripe)
+
+```
+1. Admin publishes an event with a non-zero registrationFeeCents.
+2. Authenticated user opens /events/[id]/checkout.
+3. Server component reads STRIPE_PUBLISHABLE_KEY from env and the
+   user's existing Registration (if any) for the event.
+4. Client component calls payment.createPaymentIntent, which:
+     - upserts the Registration row with status PENDING
+     - creates a Charge row with a placeholder stripePaymentIntentId
+     - calls Stripe paymentIntents.create with idempotencyKey=charge.id
+     - returns the PaymentIntent's client_secret
+5. User enters card details into Stripe's hosted Payment Element.
+   Card data goes directly to Stripe; our servers never see it.
+6. Stripe.js calls stripe.confirmPayment, which redirects to
+   /events/[id]/checkout/return?payment_intent=pi_xxx.
+7. Stripe fires payment_intent.succeeded to /api/stripe/webhook.
+8. Webhook handler:
+     - verifies the Stripe-Signature header with constructEventAsync
+     - marks the Charge SUCCEEDED, sets Registration.status = PAID
+     - sends a branded receipt email via SendGrid
+     - writes an AdminAuditLog entry (action: "payment.succeeded")
+9. The return page shows "registered" once the DB is updated; the
+   user can refresh if the webhook is still in flight.
+```
+
+**Idempotency**: The `idempotencyKey` on every Stripe call is the local
+Charge/Refund row id, so retries and double-clicks return the same
+Stripe object.
+
+**Admin refund path**: `admin.refund` accepts an optional
+`amountCents`. The router refuses any refund larger than the unrefunded
+balance. A Refund row is created in `PENDING`, the Stripe call is
+issued with the Refund's id as the idempotency key, then the row is
+moved to `SUCCEEDED`. The Registration moves to `REFUNDED` when the
+full balance is returned; partial refunds keep it `PAID` and bump
+`refundedCents`.
+
+**Forfeit**: `admin.forfeit` closes a paid registration without
+returning money (forfeit, no-show, last-minute cancel). No Stripe call
+is made. Writes an audit entry.
+
+**Out-of-band refunds**: Refunds issued from the Stripe dashboard fire
+`charge.refunded`, which the webhook reconciles into the local
+`refundedCents` and `Registration.status` (so the admin UI never drifts
+from reality).
 
 ---
 
@@ -579,6 +703,7 @@ src/
 | Google OAuth    | Authentication             |
 | Twilio SendGrid | Transactional email        |
 | Twilio SMS      | SMS notifications          |
+| Stripe          | Credit-card payments       |
 | PhotoPrism      | Photo storage & management |
 | S3-compatible   | Photo backup               |
 
@@ -724,6 +849,10 @@ src/
 
 1. **Account recovery**: [Resolved: see ADR-001](docs/decisions/ADR-001-account-recovery.md)
 2. **Dependent accounts**: [Resolved: see ADR-030](docs/decisions/) (magic link approach)
+
+### Payments
+
+20. **Provider choice**: [Resolved: see ADR-012](docs/decisions/ADR-012-stripe-payment-element.md) — Stripe hosted Payment Element; PAN never reaches our servers.
 
 ### Household Model
 

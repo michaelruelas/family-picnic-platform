@@ -1,7 +1,16 @@
+import { TRPCError } from '@trpc/server';
 import { router, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus } from '~/lib/generated/enums';
+import { ChargeStatus, RefundStatus, RegistrationStatus, RSVPStatus } from '~/lib/generated/enums';
+import { writeAuditLog, diff } from '~/lib/audit';
+import { createRefund, formatAmount, isConfigured as stripeConfigured } from '~/lib/stripe';
+import { sendRegistrationReceipt } from '~/lib/receipt';
+import {
+  forfeitInputSchema,
+  listChargesInputSchema,
+  refundInputSchema,
+} from '~/lib/schemas/payment';
 
 export const adminRouter = router({
   auditLog: auditedAdminProcedure
@@ -213,4 +222,278 @@ export const adminRouter = router({
 
       return results;
     }),
+
+  /**
+   * Lists all charges across events (or filtered to one event) with the
+   * related user, event, and refunds. The admin charges page reads from
+   * this directly. Returns at most 200 rows; pagination is post-MVP.
+   */
+  listCharges: auditedAdminProcedure.input(listChargesInputSchema).query(async ({ input }) => {
+    return prisma.charge.findMany({
+      where: {
+        ...(input?.eventId ? { registration: { eventId: input.eventId } } : {}),
+        ...(input?.status ? { status: input.status } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      include: {
+        registration: {
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+            event: { select: { id: true, name: true, date: true } },
+          },
+        },
+        refunds: {
+          orderBy: { createdAt: 'desc' },
+          include: { refundedBy: { select: { id: true, name: true } } },
+        },
+      },
+    });
+  }),
+
+  /**
+   * Issues a Stripe refund (full or partial) for a successful charge.
+   * Each refund writes an audit entry. The Refund row carries the
+   * Stripe id, so retries are safe and the UI can show real state.
+   */
+  refund: auditedAdminProcedure.input(refundInputSchema).mutation(async ({ ctx, input }) => {
+    if (!stripeConfigured()) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'Stripe is not configured',
+      });
+    }
+    const charge = await prisma.charge.findUnique({
+      where: { id: input.chargeId },
+      include: {
+        registration: {
+          include: {
+            refunds: { where: { status: RefundStatus.SUCCEEDED } },
+          },
+        },
+      },
+    });
+    if (!charge) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Charge not found' });
+    }
+    if (charge.status !== ChargeStatus.SUCCEEDED) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'Only succeeded charges can be refunded',
+      });
+    }
+
+    const alreadyRefunded = charge.registration.refunds.reduce((sum, r) => sum + r.amountCents, 0);
+    const balance = charge.amountCents - alreadyRefunded;
+    if (balance <= 0) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'Charge is already fully refunded',
+      });
+    }
+
+    const refundAmount = input.amountCents ?? balance;
+    if (refundAmount > balance) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Refund amount exceeds remaining balance of ${formatAmount(balance, charge.currency)}`,
+      });
+    }
+
+    const refund = await prisma.refund.create({
+      data: {
+        chargeId: charge.id,
+        registrationId: charge.registrationId,
+        amountCents: refundAmount,
+        currency: charge.currency,
+        status: RefundStatus.PENDING,
+        reason: input.reason ?? null,
+        refundedByUserId: ctx.session.user.id,
+      },
+    });
+
+    let stripeRefund: Awaited<ReturnType<typeof createRefund>>;
+    try {
+      stripeRefund = await createRefund({
+        paymentIntentId: charge.stripePaymentIntentId,
+        amountCents: refundAmount,
+        ...(input.reason ? { reason: input.reason } : {}),
+        idempotencyKey: refund.id,
+      });
+    } catch (err) {
+      await prisma.refund.update({
+        where: { id: refund.id },
+        data: { status: RefundStatus.FAILED },
+      });
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: err instanceof Error ? err.message : 'Stripe refund failed',
+      });
+    }
+
+    const newRefundedCents = alreadyRefunded + refundAmount;
+    const isFullRefund = newRefundedCents >= charge.amountCents;
+
+    const [updatedRefund, updatedRegistration] = await prisma.$transaction([
+      prisma.refund.update({
+        where: { id: refund.id },
+        data: {
+          stripeRefundId: stripeRefund.refundId,
+          status: mapStripeRefundStatus(stripeRefund.status),
+        },
+      }),
+      prisma.registration.update({
+        where: { id: charge.registrationId },
+        data: {
+          refundedCents: newRefundedCents,
+          ...(isFullRefund ? { status: RegistrationStatus.REFUNDED } : {}),
+        },
+      }),
+    ]);
+
+    await writeAuditLog({
+      userId: ctx.session.user.id,
+      eventId: charge.registration.eventId,
+      action: 'payment.refunded',
+      oldValue: {
+        refundedCents: alreadyRefunded,
+        registrationStatus: charge.registration.status,
+      },
+      newValue: {
+        refundedCents: newRefundedCents,
+        isFullRefund,
+        refundId: updatedRefund.id,
+        stripeRefundId: stripeRefund.refundId,
+        amountCents: refundAmount,
+        ...(input.reason ? { reason: input.reason } : {}),
+      },
+    });
+
+    return { refund: updatedRefund, registration: updatedRegistration };
+  }),
+
+  /**
+   * Forfeit a paid registration. Money is kept by the event; no Stripe
+   * refund call is made. Each forfeit writes an audit entry.
+   */
+  forfeit: auditedAdminProcedure.input(forfeitInputSchema).mutation(async ({ ctx, input }) => {
+    const before = await prisma.registration.findUnique({
+      where: { id: input.registrationId },
+    });
+    if (!before) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Registration not found' });
+    }
+    if (before.status === RegistrationStatus.FORFEITED) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'Registration is already forfeited',
+      });
+    }
+    if (before.status === RegistrationStatus.REFUNDED) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'Registration was refunded; use refund, not forfeit',
+      });
+    }
+
+    const after = await prisma.registration.update({
+      where: { id: before.id },
+      data: { status: RegistrationStatus.FORFEITED },
+    });
+
+    const change = diff(
+      { status: before.status, refundedCents: before.refundedCents },
+      { status: after.status, refundedCents: after.refundedCents },
+    );
+    if (change) {
+      await writeAuditLog({
+        userId: ctx.session.user.id,
+        eventId: before.eventId,
+        action: 'payment.forfeited',
+        oldValue: {
+          status: before.status,
+          refundedCents: before.refundedCents,
+        },
+        newValue: {
+          status: after.status,
+          ...(input.reason ? { reason: input.reason } : {}),
+        },
+      });
+    }
+    return after;
+  }),
+
+  /**
+   * Re-send the receipt email for a succeeded charge. Used when the user
+   * lost the original or when SendGrid was down at payment time. Writes
+   * receiptSentAt on success.
+   */
+  resendReceipt: auditedAdminProcedure
+    .input(z.object({ chargeId: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const charge = await prisma.charge.findUnique({
+        where: { id: input.chargeId },
+        include: {
+          registration: {
+            include: {
+              user: { select: { id: true, name: true, email: true } },
+              event: { select: { id: true, name: true, date: true } },
+            },
+          },
+        },
+      });
+      if (!charge) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Charge not found' });
+      }
+      if (charge.status !== ChargeStatus.SUCCEEDED) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Only succeeded charges have a receipt',
+        });
+      }
+
+      const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+      const result = await sendRegistrationReceipt({
+        to: charge.registration.user.email,
+        userName: charge.registration.user.name,
+        eventName: charge.registration.event.name,
+        eventDate: charge.registration.event.date,
+        amountCents: charge.amountCents,
+        currency: charge.currency,
+        chargeId: charge.id,
+        registrationId: charge.registration.id,
+        receiptUrl: charge.receiptUrl,
+        eventUrl: `${baseUrl}/events/${charge.registration.event.id}`,
+      });
+
+      if (result.success) {
+        await prisma.charge.update({
+          where: { id: charge.id },
+          data: { receiptSentAt: new Date() },
+        });
+        await writeAuditLog({
+          userId: charge.registration.user.id,
+          eventId: charge.registration.eventId,
+          action: 'payment.receiptResent',
+          newValue: { chargeId: charge.id },
+        });
+      }
+      return result;
+    }),
 });
+
+function mapStripeRefundStatus(status: string): RefundStatus {
+  switch (status) {
+    case 'succeeded':
+      return RefundStatus.SUCCEEDED;
+    case 'pending':
+    case 'requires_action':
+      return RefundStatus.PENDING;
+    case 'failed':
+      return RefundStatus.FAILED;
+    case 'canceled':
+      return RefundStatus.CANCELED;
+    default:
+      return RefundStatus.PENDING;
+  }
+}
