@@ -165,3 +165,22 @@ A one-time script to pin `Registration.amountCents` to 0 for every existing row.
 - Default (`bun run db:backfill-registration-fees`): dry-run. Prints the count of registrations scanned with no writes.
 - With `--apply`: sets `amountCents = 0` on every non-settled row, writes one `REGISTRATION_FEE_BACKFILL` audit entry per registration (old + new value), exits non-zero on any per-row failure.
 - Idempotent: a second `--apply` run finds every row already at 0, writes zero updates, and still emits one audit entry per registration.
+
+## Audit Log Action Strings (FPP-78)
+
+The `AdminAuditLog` table is the source of truth for paid-feature forensics. The tRPC `auditedAdminProcedure` middleware writes a path-keyed entry for every mutation (e.g. `admin.refund`), and the procedures below add a richer, payment-specific entry on top. The stable action strings are listed here so admin queries and the FPP-74 smoke checklist can reference them by name. Any rename must update this table, the corresponding test in `tests/integration/fpp-78-payment-audit-coverage.test.ts`, and the call site in the same PR.
+
+| Action                     | Fires when                                                                                       | Call site                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `payment.intentCreated`    | `payment.createPaymentIntent` succeeds and Stripe returns a new PaymentIntent.                   | `src/server/routers/payment.router.ts` — `createPaymentIntentInner`                   |
+| `payment.intentFailed`     | Stripe rejects `paymentIntents.create` in `payment.createPaymentIntent`.                         | `src/server/routers/payment.router.ts` — `catch` of `createPaymentIntentInner`        |
+| `payment.succeeded`        | Stripe webhook fires `payment_intent.succeeded` and the charge flips to `SUCCEEDED`.             | `src/app/api/stripe/webhook/route.ts` — `handlePaymentIntentSucceeded`                |
+| `payment.failed`           | Stripe webhook fires `payment_intent.payment_failed` or `payment_intent.canceled`.               | `src/app/api/stripe/webhook/route.ts` — `handlePaymentIntentFailed`                   |
+| `payment.refunded`         | Admin issues an in-app refund via `admin.refund`.                                                | `src/server/routers/admin.router.ts` — `refund`                                       |
+| `payment.refundReconciled` | Stripe webhook fires `charge.refunded` (full) or `charge.updated` (partial) — reconciles in-app. | `src/app/api/stripe/webhook/route.ts` — `handleChargeRefunded`, `handleChargeUpdated` |
+| `payment.forfeited`        | Admin forfeits a paid registration (no-show) via `admin.forfeit`.                                | `src/server/routers/admin.router.ts` — `forfeit`                                      |
+| `payment.receiptResent`    | Admin re-sends the receipt email via `admin.resendReceipt` on a succeeded charge.                | `src/server/routers/admin.router.ts` — `resendReceipt`                                |
+
+The smoke check for FPP-74 ("Audit log writes on signup, RSVP change, registration, payment") confirms each of these rows lands under the matching `(userId, eventId, action)` tuple. The dedicated test `tests/integration/fpp-78-payment-audit-coverage.test.ts` replays a webhook stream end-to-end and asserts exactly one audit row per state transition.
+
+Retry dedup: Stripe replays `payment_intent.succeeded` and `charge.updated` after transient failures. The webhook handler skips the audit write when the target state already matches (see `webhook/route.ts:140` for `payment.succeeded` and `:449` for `payment.refundReconciled` on `charge.updated`), so a replay does not produce a second row.
