@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useRsvpMutation } from '~/hooks';
-import { RSVPStatus } from '~/lib/generated/enums';
 import { RsvpBottomSheet } from './RsvpBottomSheet';
+import type { ExistingRsvp } from './types';
 
 interface EventRsvpCardProps {
   eventId: string;
@@ -15,12 +16,7 @@ interface EventRsvpCardProps {
   rsvpDeadline: string | null;
   maxCapacity: number | null;
   currentAttending: number;
-  existingRsvp: {
-    status: RSVPStatus;
-    headcount: number;
-    dietaryNotes: string | null;
-    modifiedAt: string;
-  } | null;
+  existingRsvp: ExistingRsvp | null;
 }
 
 export function EventRsvpCard({
@@ -35,13 +31,10 @@ export function EventRsvpCard({
   currentAttending,
   existingRsvp,
 }: EventRsvpCardProps) {
-  const { confirm, decline } = useRsvpMutation();
+  const { decline } = useRsvpMutation();
+  const router = useRouter();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [headcount, setHeadcount] = useState(existingRsvp?.headcount || 1);
-  const [dietaryNotes, setDietaryNotes] = useState(existingRsvp?.dietaryNotes || '');
 
   const isRsvpOpen = !isPast && (!rsvpDeadline || new Date(rsvpDeadline) > new Date());
   const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
@@ -52,30 +45,11 @@ export function EventRsvpCard({
     day: 'numeric',
   });
 
-  const handleSaveEdit = async () => {
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      await confirm.mutateAsync({
-        eventId,
-        headcount,
-        dietaryNotes: dietaryNotes || undefined,
-      });
-      setIsEditing(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleDecline = async () => {
     setIsSubmitting(true);
-    setError(null);
     try {
       await decline.mutateAsync({ eventId });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      router.refresh();
     } finally {
       setIsSubmitting(false);
     }
@@ -121,7 +95,7 @@ export function EventRsvpCard({
     );
   }
 
-  if (existingRsvp && !isEditing) {
+  if (existingRsvp) {
     const isConfirmed = existingRsvp.status === 'CONFIRMED';
     const isDeclined = existingRsvp.status === 'DECLINED';
     const isWaitlisted = existingRsvp.status === 'WAITLISTED';
@@ -154,7 +128,7 @@ export function EventRsvpCard({
               {isRsvpOpen && (
                 <div className="mt-5 flex flex-col gap-2">
                   <button
-                    onClick={() => setIsEditing(true)}
+                    onClick={() => setIsSheetOpen(true)}
                     className="rounded-pill border-border bg-card text-foreground press hover:border-foreground border px-4 py-2.5 text-sm font-semibold transition-all"
                   >
                     Edit RSVP
@@ -205,6 +179,14 @@ export function EventRsvpCard({
                 If a spot opens up, we&apos;ll be in touch.
               </p>
               <LastUpdated modifiedAt={existingRsvp.modifiedAt} />
+              {isRsvpOpen && (
+                <button
+                  onClick={() => setIsSheetOpen(true)}
+                  className="rounded-pill border-border bg-card text-foreground press hover:border-foreground mt-5 w-full border px-4 py-2.5 text-sm font-semibold transition-all"
+                >
+                  Update your RSVP
+                </button>
+              )}
             </>
           )}
         </div>
@@ -215,6 +197,7 @@ export function EventRsvpCard({
           eventName={eventName}
           maxCapacity={maxCapacity}
           currentAttending={currentAttending}
+          existingRsvp={existingRsvp}
         />
       </>
     );
@@ -258,66 +241,7 @@ export function EventRsvpCard({
             </button>
           </>
         )}
-        {error && <p className="text-destructive mt-3 text-sm">{error}</p>}
       </div>
-
-      {isEditing && (
-        <div className="bg-card shadow-card ring-border/60 mt-4 rounded-3xl p-7 ring-1">
-          <h3 className="font-display text-foreground text-xl font-semibold">Edit your RSVP</h3>
-          {error && <p className="text-destructive mt-2 text-sm">{error}</p>}
-          <div className="mt-4 space-y-4">
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
-                Number of people
-              </label>
-              <select
-                value={headcount}
-                onChange={(e) => setHeadcount(Number(e.target.value))}
-                className="border-border bg-card text-foreground focus:border-foreground block min-h-12 w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
-              >
-                {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? 'person' : 'people'}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-foreground mb-2 block text-sm font-medium">
-                Dietary notes (optional)
-              </label>
-              <textarea
-                value={dietaryNotes}
-                onChange={(e) => setDietaryNotes(e.target.value)}
-                placeholder="Allergies, preferences, etc."
-                rows={3}
-                className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleSaveEdit}
-                disabled={isSubmitting}
-                className="rounded-pill bg-sage shadow-soft press flex-1 px-4 py-2.5 font-semibold text-white transition-all hover:bg-[#6fa18a] disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : 'Save Changes'}
-              </button>
-              <button
-                onClick={() => {
-                  setIsEditing(false);
-                  setHeadcount(existingRsvp?.headcount || 1);
-                  setDietaryNotes(existingRsvp?.dietaryNotes || '');
-                  setError(null);
-                }}
-                disabled={isSubmitting}
-                className="rounded-pill text-muted-foreground hover:text-foreground px-4 py-2.5 font-medium"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <RsvpBottomSheet
         isOpen={isSheetOpen}
@@ -326,6 +250,7 @@ export function EventRsvpCard({
         eventName={eventName}
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
+        existingRsvp={existingRsvp}
       />
     </>
   );

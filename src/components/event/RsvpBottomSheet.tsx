@@ -1,8 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useRsvpMutation } from '~/hooks';
 import Modal from '~/components/ui/Modal';
+import type { ExistingRsvp } from './types';
+
+const CLOSE_ANIMATION_MS = 200;
+const SUCCESS_DWELL_MS = 1500;
+
+function getInitialState(existingRsvp: ExistingRsvp | null | undefined) {
+  return {
+    adults: existingRsvp && existingRsvp.headcount > 0 ? existingRsvp.headcount : 1,
+    kids: 0,
+    dietaryNotes: existingRsvp?.dietaryNotes ?? '',
+    showDietary: Boolean(existingRsvp?.dietaryNotes),
+  };
+}
 
 interface RsvpBottomSheetProps {
   isOpen: boolean;
@@ -11,6 +25,7 @@ interface RsvpBottomSheetProps {
   eventName?: string;
   maxCapacity: number | null;
   currentAttending: number;
+  existingRsvp?: ExistingRsvp | null;
 }
 
 export function RsvpBottomSheet({
@@ -20,48 +35,77 @@ export function RsvpBottomSheet({
   eventName,
   maxCapacity,
   currentAttending,
+  existingRsvp,
 }: RsvpBottomSheetProps) {
   const { confirm, decline } = useRsvpMutation();
-  const [adults, setAdults] = useState(1);
-  const [kids, setKids] = useState(0);
-  const [dietaryNotes, setDietaryNotes] = useState('');
-  const [showDietary, setShowDietary] = useState(false);
+  const router = useRouter();
+  const initial = getInitialState(existingRsvp);
+  const [adults, setAdults] = useState(initial.adults);
+  const [kids, setKids] = useState(initial.kids);
+  const [dietaryNotes, setDietaryNotes] = useState(initial.dietaryNotes);
+  const [showDietary, setShowDietary] = useState(initial.showDietary);
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<'form' | 'confirmed'>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isOpenRef = useRef(isOpen);
+  const pendingErrorRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && pendingErrorRef.current) {
+      setError(pendingErrorRef.current);
+      pendingErrorRef.current = null;
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
-      setTimeout(() => {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- error is not in deps; this clears a stale error from a late rejection so the next reopen does not show it
+      setError(null);
+      const timeout = setTimeout(() => {
+        const next = getInitialState(existingRsvp);
         setPhase('form');
-        setAdults(1);
-        setKids(0);
-        setDietaryNotes('');
-        setShowDietary(false);
-        setError(null);
-      }, 200);
+        setAdults(next.adults);
+        setKids(next.kids);
+        setDietaryNotes(next.dietaryNotes);
+        setShowDietary(next.showDietary);
+      }, CLOSE_ANIMATION_MS);
+      return () => clearTimeout(timeout);
     }
-  }, [isOpen]);
+  }, [isOpen, existingRsvp]);
 
   const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
   const isFull = spotsRemaining !== null && spotsRemaining <= 0;
   const total = adults + kids;
+  const isUpdating = existingRsvp?.status === 'CONFIRMED' || existingRsvp?.status === 'WAITLISTED';
 
   const handleConfirm = async () => {
     setIsSubmitting(true);
     setError(null);
+    pendingErrorRef.current = null;
     try {
       await confirm.mutateAsync({
         eventId,
         headcount: total,
         dietaryNotes: dietaryNotes.trim() || undefined,
       });
+      router.refresh();
+      if (!isOpenRef.current) return;
       setPhase('confirmed');
       setTimeout(() => {
-        onClose();
-      }, 1500);
+        if (isOpenRef.current) onClose();
+      }, SUCCESS_DWELL_MS);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      const message =
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      if (!isOpenRef.current) {
+        pendingErrorRef.current = message;
+        return;
+      }
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -70,11 +114,20 @@ export function RsvpBottomSheet({
   const handleDecline = async () => {
     setIsSubmitting(true);
     setError(null);
+    pendingErrorRef.current = null;
     try {
       await decline.mutateAsync({ eventId });
+      router.refresh();
+      if (!isOpenRef.current) return;
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      const message =
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      if (!isOpenRef.current) {
+        pendingErrorRef.current = message;
+        return;
+      }
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -86,15 +139,17 @@ export function RsvpBottomSheet({
         <>
           <div className="text-center md:text-left">
             <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-              {isFull ? 'Join the waitlist' : 'RSVP'}
+              {isUpdating ? 'Update your RSVP' : isFull ? 'Join the waitlist' : 'RSVP'}
             </p>
             <h3 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
-              Who&apos;s coming?
+              {isUpdating ? 'Update your party' : "Who's coming?"}
             </h3>
             <p className="text-muted-foreground mt-2 text-base">
-              {eventName
-                ? `Let us know how many plates to set for ${eventName}.`
-                : 'Let us know how many places to set at the table.'}
+              {isUpdating
+                ? 'Adjust your headcount or dietary note. We already have you on the list.'
+                : eventName
+                  ? `Let us know how many plates to set for ${eventName}.`
+                  : 'Let us know how many places to set at the table.'}
             </p>
           </div>
 
@@ -140,9 +195,11 @@ export function RsvpBottomSheet({
           >
             {isSubmitting
               ? 'Saving...'
-              : isFull
-                ? `Join waitlist for ${total}`
-                : `Confirm ${total} ${total === 1 ? 'guest' : 'guests'}`}
+              : isUpdating
+                ? `Save changes for ${total}`
+                : isFull
+                  ? `Join waitlist for ${total}`
+                  : `Confirm ${total} ${total === 1 ? 'guest' : 'guests'}`}
           </button>
 
           <button

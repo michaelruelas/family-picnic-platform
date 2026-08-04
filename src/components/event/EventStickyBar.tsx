@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { RSVPStatus } from '~/lib/generated/enums';
 import { RsvpBottomSheet } from './RsvpBottomSheet';
+import type { ExistingRsvp } from './types';
 
 interface EventStickyBarProps {
   eventId: string;
@@ -14,11 +14,7 @@ interface EventStickyBarProps {
   rsvpDeadline: string | null;
   maxCapacity: number | null;
   currentAttending: number;
-  existingRsvp: {
-    status: RSVPStatus;
-    headcount: number;
-    dietaryNotes: string | null;
-  } | null;
+  existingRsvp: ExistingRsvp | null;
 }
 
 export function EventStickyBar({
@@ -95,6 +91,7 @@ export function EventStickyBar({
         eventId={eventId}
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
+        existingRsvp={existingRsvp}
       />
     </>
   );
