@@ -40,9 +40,6 @@ case "$TARGET_ENV" in
     exit 1
     ;;
 esac
-
-case "$TARGET_ENV" in
-  dev|prod) ;;
   *)
     echo "ERROR: TARGET_ENV must be one of: dev, prod (got '$TARGET_ENV')" >&2
     exit 64

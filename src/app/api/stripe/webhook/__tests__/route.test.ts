@@ -498,7 +498,10 @@ describe('POST /api/stripe/webhook', () => {
   it('does not resurrect a FORFEITED registration when payment_intent.succeeded fires late', async () => {
     // Closes F2: the registration status guard on updateMany must
     // skip the PAID transition when the admin already closed the
-    // registration as FORFEITED (or REFUNDED).
+    // registration as FORFEITED (or REFUNDED). Charge status must NOT
+    // be SUCCEEDED here -- that would trip the retry-dedup early return
+    // before the guard runs. Use REQUIRES_PAYMENT_METHOD so the handler
+    // reaches the status-update path.
     mockIsWebhookConfigured.mockReturnValue(true);
     mockVerifyWebhookSignature.mockResolvedValue({
       id: 'evt_forfeit_guard',
@@ -515,7 +518,7 @@ describe('POST /api/stripe/webhook', () => {
     });
     prismaMock.charge.findUnique.mockResolvedValue({
       id: 'charge-forfeit-guard',
-      status: 'SUCCEEDED',
+      status: 'REQUIRES_PAYMENT_METHOD',
       amountCents: 2500,
       currency: 'usd',
       receiptUrl: null,
