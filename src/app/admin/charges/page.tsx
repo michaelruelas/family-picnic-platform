@@ -51,11 +51,11 @@ export default async function AdminChargesPage() {
           amountCents: c.amountCents,
           createdAt: c.createdAt.toISOString(),
           updatedAt: c.updatedAt.toISOString(),
+          receiptSentAt: c.receiptSentAt?.toISOString() ?? null,
           registration: {
             ...c.registration,
             createdAt: c.registration.createdAt.toISOString(),
             updatedAt: c.registration.updatedAt.toISOString(),
-            receiptSentAt: c.registration.receiptSentAt?.toISOString() ?? null,
             event: {
               ...c.registration.event,
               date: c.registration.event.date.toISOString(),

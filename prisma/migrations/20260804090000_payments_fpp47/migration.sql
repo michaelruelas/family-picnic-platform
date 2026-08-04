@@ -72,6 +72,15 @@ CREATE TABLE "Refund" (
   CONSTRAINT "Refund_pkey" PRIMARY KEY ("id")
 );
 
+-- AlterTable: Registration — drop the receiptSentAt column that we
+-- decided belongs on Charge, not Registration.
+ALTER TABLE "Registration" DROP COLUMN "receiptSentAt";
+
+-- AlterTable: Charge — add the receiptSentAt column. Set when the
+-- receipt email goes out; the webhook and the admin "resend receipt"
+-- action both check this to avoid re-mailing on retries.
+ALTER TABLE "Charge" ADD COLUMN "receiptSentAt" TIMESTAMP(3);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "Registration_eventId_userId_key" ON "Registration"("eventId", "userId");
 

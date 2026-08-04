@@ -252,19 +252,10 @@ describe('payment.createPaymentIntent', () => {
     });
     mockPrisma.registration.findUnique.mockResolvedValue(null);
     mockPrisma.registration.create.mockResolvedValue({ id: 'reg-new', status: 'PENDING' });
-    mockPrisma.charge.create.mockResolvedValue({ id: 'ch-new' });
-    mockPrisma.registration.findUniqueOrThrow.mockResolvedValue({
-      id: 'reg-new',
-      status: 'PENDING',
-      charges: [
-        {
-          id: 'ch-new',
-          amountCents: 2500,
-          currency: 'usd',
-          status: 'REQUIRES_PAYMENT_METHOD',
-          stripePaymentIntentId: 'pending_x',
-        },
-      ],
+    mockPrisma.charge.create.mockResolvedValue({
+      id: 'ch-new',
+      amountCents: 2500,
+      currency: 'usd',
     });
     mockPrisma.charge.update.mockResolvedValue({ id: 'ch-new', status: 'REQUIRES_PAYMENT_METHOD' });
 
@@ -314,13 +305,6 @@ describe('payment.createPaymentIntent', () => {
         { id: 'ch-1', amountCents: 2500, currency: 'usd', status: 'REQUIRES_PAYMENT_METHOD' },
       ],
     });
-    mockPrisma.registration.findUniqueOrThrow.mockResolvedValue({
-      id: 'reg-1',
-      status: 'PENDING',
-      charges: [
-        { id: 'ch-1', amountCents: 2500, currency: 'usd', status: 'REQUIRES_PAYMENT_METHOD' },
-      ],
-    });
     mockPrisma.charge.update.mockResolvedValue({ id: 'ch-1', status: 'REQUIRES_PAYMENT_METHOD' });
 
     const { paymentRouter } = await import('~/server/routers/payment.router');
@@ -349,13 +333,10 @@ describe('payment.createPaymentIntent', () => {
     });
     mockPrisma.registration.findUnique.mockResolvedValue(null);
     mockPrisma.registration.create.mockResolvedValue({ id: 'reg-2' });
-    mockPrisma.charge.create.mockResolvedValue({ id: 'ch-2' });
-    mockPrisma.registration.findUniqueOrThrow.mockResolvedValue({
-      id: 'reg-2',
-      status: 'PENDING',
-      charges: [
-        { id: 'ch-2', amountCents: 2500, currency: 'usd', status: 'REQUIRES_PAYMENT_METHOD' },
-      ],
+    mockPrisma.charge.create.mockResolvedValue({
+      id: 'ch-2',
+      amountCents: 2500,
+      currency: 'usd',
     });
     mockCreatePaymentIntent.mockRejectedValueOnce(new Error('stripe down'));
     mockPrisma.charge.update.mockResolvedValue({});
@@ -374,6 +355,44 @@ describe('payment.createPaymentIntent', () => {
           lastErrorMessage: 'stripe down',
         }),
       }),
+    );
+  });
+
+  it('wraps the find-or-create transaction in Serializable isolation', async () => {
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      name: 'Picnic',
+      status: 'PUBLISHED',
+      registrationFeeCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'maria@example.com',
+      name: 'Maria',
+      householdId: 'h-1',
+    });
+    mockPrisma.registration.findUnique.mockResolvedValue(null);
+    mockPrisma.registration.create.mockResolvedValue({ id: 'reg-iso', status: 'PENDING' });
+    mockPrisma.charge.create.mockResolvedValue({
+      id: 'ch-iso',
+      amountCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.charge.update.mockResolvedValue({ id: 'ch-iso', status: 'REQUIRES_PAYMENT_METHOD' });
+
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    await caller.createPaymentIntent({ eventId: 'evt-1' });
+
+    // The first arg is the transaction function, the second must be the
+    // Serializable isolation option — guards against accidental
+    // regression to default Read Committed, which would re-open the
+    // double-charge race Boop flagged.
+    expect(mockPrisma.$transaction).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ isolationLevel: 'Serializable' }),
     );
   });
 });

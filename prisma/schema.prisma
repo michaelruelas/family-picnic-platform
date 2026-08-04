@@ -471,9 +471,6 @@ model Registration {
   // Sum of SUCCEEDED refund amounts in cents. Used to derive "fully refunded"
   // and to render remaining-balance UI without re-querying the refunds table.
   refundedCents Int                @default(0)
-  // Receipt email is sent once on PAID transition. Re-sends go through the
-  // admin UI and are tracked here for audit.
-  receiptSentAt DateTime?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
@@ -501,6 +498,10 @@ model Charge {
   status                ChargeStatus @default(REQUIRES_PAYMENT_METHOD)
   // Hosted receipt URL from Stripe. Null until payment_intent.succeeded.
   receiptUrl            String?
+  // Set the first time the receipt email goes out for this charge. The
+  // webhook and the admin "resend receipt" action check this to avoid
+  // re-mailing on retries.
+  receiptSentAt         DateTime?
   // The last error code/message Stripe reported, if any. Helps the admin
   // triage a row without re-querying Stripe.
   lastErrorCode         String?

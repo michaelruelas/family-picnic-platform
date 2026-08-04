@@ -10,6 +10,15 @@ import {
   isConfigured as stripeConfigured,
 } from '~/lib/stripe';
 import { createPaymentIntentInputSchema } from '~/lib/schemas/payment';
+import type { PrismaClient } from '~/lib/generated/client';
+
+// Serializable isolation is required for createPaymentIntent: two near-
+// simultaneous calls from the same user must not both pass the
+// "existing && activeCharge" check, each create a new Charge, and each
+// issue a fresh PaymentIntent on Stripe. Postgres' Serializable
+// aborts one of the conflicting transactions with a serialization
+// failure, which the caller retries.
+type Tx = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 const ACTIVE_CHARGE_STATUSES: ChargeStatus[] = [
   ChargeStatus.REQUIRES_PAYMENT_METHOD,
@@ -81,87 +90,24 @@ export const paymentRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
       }
 
-      const registration = await prisma.$transaction(async (tx) => {
-        const existing = await tx.registration.findUnique({
-          where: { eventId_userId: { eventId: event.id, userId: user.id } },
-          include: {
-            charges: { orderBy: { createdAt: 'desc' } },
-          },
-        });
-
-        if (existing?.status === RegistrationStatus.PAID) {
-          throw new TRPCError({
-            code: 'PRECONDITION_FAILED',
-            message: 'You are already registered for this event',
-          });
-        }
-        if (
-          existing &&
-          (existing.status === RegistrationStatus.REFUNDED ||
-            existing.status === RegistrationStatus.FORFEITED ||
-            existing.status === RegistrationStatus.CANCELLED)
-        ) {
-          throw new TRPCError({
-            code: 'PRECONDITION_FAILED',
-            message: 'Your previous registration was closed; contact an admin to re-register',
-          });
-        }
-
-        const activeCharge = existing?.charges.find((c) =>
-          ACTIVE_CHARGE_STATUSES.includes(c.status),
-        );
-        if (existing && activeCharge) {
-          return existing;
-        }
-
-        const registrationRow =
-          existing ??
-          (await tx.registration.create({
-            data: {
-              eventId: event.id,
-              userId: user.id,
-              householdId: user.householdId,
-              amountCents: fee,
-              currency: event.currency,
-              status: RegistrationStatus.PENDING,
-            },
-          }));
-
-        if (!activeCharge) {
-          await tx.charge.create({
-            data: {
-              registrationId: registrationRow.id,
-              stripePaymentIntentId: `pending_${registrationRow.id}_${Date.now()}`,
-              amountCents: fee,
-              currency: event.currency,
-              status: ChargeStatus.REQUIRES_PAYMENT_METHOD,
-            },
-          });
-        }
-        return registrationRow;
-      });
-
-      // Re-read with the latest charge attached.
-      const fresh = await prisma.registration.findUniqueOrThrow({
-        where: { id: registration.id },
-        include: { charges: { orderBy: { createdAt: 'desc' } } },
-      });
-
-      const activeCharge =
-        fresh.charges.find((c) => ACTIVE_CHARGE_STATUSES.includes(c.status)) ?? fresh.charges[0];
-      if (!activeCharge) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Charge not found' });
-      }
+      // Serializable isolation so concurrent calls from the same user
+      // cannot both pass the "existing && activeCharge" check and each
+      // create a fresh Charge + PaymentIntent. Postgres aborts the loser
+      // with a serialization failure; the caller retries.
+      const { registration, charge } = await prisma.$transaction(
+        async (tx) => findOrCreateActiveCharge(tx, event.id, user, fee, event.currency),
+        { isolationLevel: 'Serializable' },
+      );
 
       let intent: Awaited<ReturnType<typeof createPaymentIntent>>;
       try {
         intent = await createPaymentIntent({
-          amountCents: activeCharge.amountCents,
-          currency: activeCharge.currency,
-          idempotencyKey: activeCharge.id,
+          amountCents: charge.amountCents,
+          currency: charge.currency,
+          idempotencyKey: charge.id,
           metadata: {
             registrationId: registration.id,
-            chargeId: activeCharge.id,
+            chargeId: charge.id,
             eventId: event.id,
             userId: user.id,
           },
@@ -170,7 +116,7 @@ export const paymentRouter = router({
         });
       } catch (err) {
         await prisma.charge.update({
-          where: { id: activeCharge.id },
+          where: { id: charge.id },
           data: {
             status: ChargeStatus.FAILED,
             lastErrorCode: 'CREATE_INTENT_FAILED',
@@ -182,7 +128,7 @@ export const paymentRouter = router({
           eventId: event.id,
           action: 'payment.intentFailed',
           newValue: {
-            chargeId: activeCharge.id,
+            chargeId: charge.id,
             error: err instanceof Error ? err.message : String(err),
           },
         });
@@ -193,7 +139,7 @@ export const paymentRouter = router({
       }
 
       const updated = await prisma.charge.update({
-        where: { id: activeCharge.id },
+        where: { id: charge.id },
         data: {
           stripePaymentIntentId: intent.paymentIntentId,
           status: mapStripeIntentStatusToChargeStatus(intent.status),
@@ -248,7 +194,8 @@ export const paymentRouter = router({
         amountCents: registration.amountCents,
         refundedCents: registration.refundedCents,
         currency: registration.currency,
-        receiptSentAt: registration.receiptSentAt,
+        // True when the most recent charge has had its receipt emailed.
+        receiptSent: registration.charges.some((c) => c.receiptSentAt !== null),
         createdAt: registration.createdAt,
         updatedAt: registration.updatedAt,
         charges: registration.charges.map((c) => ({
@@ -288,4 +235,101 @@ function mapStripeIntentStatusToChargeStatus(status: string): ChargeStatus {
     default:
       return ChargeStatus.FAILED;
   }
+}
+
+type FindOrCreateInput = {
+  id: string;
+  email: string;
+  householdId: string | null;
+};
+
+async function findOrCreateActiveCharge(
+  tx: Tx,
+  eventId: string,
+  user: FindOrCreateInput,
+  fee: number,
+  currency: string,
+): Promise<{
+  registration: { id: string };
+  charge: { id: string; amountCents: number; currency: string };
+}> {
+  const existing = await tx.registration.findUnique({
+    where: { eventId_userId: { eventId, userId: user.id } },
+    include: {
+      charges: { orderBy: { createdAt: 'desc' } },
+    },
+  });
+
+  if (existing?.status === RegistrationStatus.PAID) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'You are already registered for this event',
+    });
+  }
+  if (
+    existing &&
+    (existing.status === RegistrationStatus.REFUNDED ||
+      existing.status === RegistrationStatus.FORFEITED ||
+      existing.status === RegistrationStatus.CANCELLED)
+  ) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'Your previous registration was closed; contact an admin to re-register',
+    });
+  }
+
+  const activeCharge = existing?.charges.find((c) =>
+    ACTIVE_CHARGE_STATUSES.includes(c.status),
+  );
+  if (existing && activeCharge) {
+    return {
+      registration: { id: existing.id },
+      charge: {
+        id: activeCharge.id,
+        amountCents: activeCharge.amountCents,
+        currency: activeCharge.currency,
+      },
+    };
+  }
+
+  const registrationRow =
+    existing ??
+    (await tx.registration.create({
+      data: {
+        eventId,
+        userId: user.id,
+        householdId: user.householdId,
+        amountCents: fee,
+        currency,
+        status: RegistrationStatus.PENDING,
+      },
+    }));
+
+  const newCharge = activeCharge
+    ? null
+    : await tx.charge.create({
+        data: {
+          registrationId: registrationRow.id,
+          stripePaymentIntentId: `pending_${registrationRow.id}_${Date.now()}`,
+          amountCents: fee,
+          currency,
+          status: ChargeStatus.REQUIRES_PAYMENT_METHOD,
+        },
+      });
+
+  // One of the two paths above always produces a charge; the type guard
+  // makes TypeScript happy.
+  const chargeRow = activeCharge ?? newCharge;
+  if (!chargeRow) {
+    throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Charge not found' });
+  }
+
+  return {
+    registration: { id: registrationRow.id },
+    charge: {
+      id: chargeRow.id,
+      amountCents: chargeRow.amountCents,
+      currency: chargeRow.currency,
+    },
+  };
 }

@@ -12,6 +12,7 @@ type StripeChargeLike = {
   id: string;
   amount?: number;
   amount_captured?: number;
+  amount_refunded?: number;
   currency?: string;
   payment_intent?: string;
   receipt_url?: string | null;
@@ -88,10 +89,14 @@ export async function POST(request: NextRequest) {
       default:
         log.debug({ type: event.type, eventId: event.id }, 'Unhandled Stripe event type');
     }
-  } catch (err) {
-    // 500 makes Stripe retry. We have already accepted the event but
-    // failed to process it. Idempotency on event.id would be better;
-    // for now we log and acknowledge to avoid tight retry loops on bugs.
+} catch (err) {
+    // The Stripe event was already accepted (signature verified). Any
+    // exception here is a downstream bug or transient DB error. Returning
+    // 500 makes Stripe retry, which can re-fire the receipt email and
+    // write a duplicate `payment.succeeded` audit entry. Return 200 and
+    // rely on the per-handler idempotency checks (Charge.status,
+    // refundedCents comparison) to keep state correct. We log loudly so
+    // operators can investigate.
     log.error(
       {
         err: err instanceof Error ? err.message : String(err),
@@ -100,7 +105,7 @@ export async function POST(request: NextRequest) {
       },
       'Stripe webhook handler error',
     );
-    return NextResponse.json({ error: 'Handler error' }, { status: 500 });
+    return NextResponse.json({ received: true, eventId: event.id, error: 'handler' });
   }
 
   return NextResponse.json({ received: true, eventId: event.id });
@@ -123,6 +128,17 @@ async function handlePaymentIntentSucceeded(
   });
   if (!charge) {
     log.warn({ paymentIntentId: intent.id }, 'No charge row for succeeded PaymentIntent');
+    return;
+  }
+
+  // Retry dedup: if Stripe is replaying a `payment_intent.succeeded` we
+  // already processed, skip the receipt send and the audit-log write so
+  // we don't double-charge the user's inbox or the admin's audit feed.
+  if (charge.status === ChargeStatus.SUCCEEDED || charge.receiptSentAt) {
+    log.debug(
+      { paymentIntentId: intent.id, chargeId: charge.id },
+      'payment_intent.succeeded already handled; skipping',
+    );
     return;
   }
 
@@ -161,7 +177,8 @@ async function handlePaymentIntentSucceeded(
   });
 
   // Best-effort receipt. Failure does not fail the webhook; the admin
-  // can resend via the admin charges page.
+  // can resend via the admin charges page. The early return above
+  // (when charge.status === SUCCEEDED) prevents re-mailing on retries.
   const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
   const receipt = await sendRegistrationReceipt({
     to: charge.registration.user.email,
@@ -201,7 +218,12 @@ async function handlePaymentIntentFailed(
     log.warn({ paymentIntentId: intent.id }, 'No charge row for failed PaymentIntent');
     return;
   }
-  const newStatus = intent.status === 'canceled' ? ChargeStatus.CANCELED : ChargeStatus.FAILED;
+  // Retry dedup: already terminal, skip the redundant audit write.
+  if (charge.status === ChargeStatus.FAILED || charge.status === ChargeStatus.CANCELED) {
+    return;
+  }
+  const newStatus =
+    intent.status === 'canceled' ? ChargeStatus.CANCELED : ChargeStatus.FAILED;
 
   await prisma.charge.update({
     where: { id: charge.id },
@@ -224,7 +246,6 @@ async function handlePaymentIntentFailed(
     },
   });
 }
-
 async function handleChargeRefunded(
   charge: StripeChargeLike,
   log: ReturnType<typeof createRequestLogger>,
@@ -245,17 +266,22 @@ async function handleChargeRefunded(
     );
     return;
   }
-  // The admin refund path already updates Refund + Registration. This
-  // handler exists for refunds that happen out-of-band in the Stripe
-  // dashboard; we sync the amounts here.
-  const succeededRefunds = await prisma.refund.findMany({
-    where: {
-      chargeId: localCharge.id,
-      status: RefundStatus.SUCCEEDED,
-    },
-  });
-  const totalRefunded = succeededRefunds.reduce((sum, r) => sum + r.amountCents, 0);
+
+  // Stripe is the authoritative source of the cumulative refunded
+  // amount. Local Refund rows only capture in-app refunds issued via
+  // `admin.refund`; refunds issued from the Stripe dashboard do not
+  // produce a local row. If we trusted the local sum alone, an
+  // out-of-band refund would wipe `refundedCents` back to the in-app
+  // total, hiding the dashboard refund from the admin UI.
+  const localRefundedCents = (
+    await prisma.refund.findMany({
+      where: { chargeId: localCharge.id, status: RefundStatus.SUCCEEDED },
+    })
+  ).reduce((sum, r) => sum + r.amountCents, 0);
+  const stripeRefundedCents = charge.amount_refunded ?? 0;
+  const totalRefunded = Math.max(stripeRefundedCents, localRefundedCents);
   const isFullRefund = totalRefunded >= localCharge.amountCents;
+
   await prisma.registration.update({
     where: { id: localCharge.registrationId },
     data: {
@@ -263,6 +289,18 @@ async function handleChargeRefunded(
       ...(isFullRefund ? { status: RegistrationStatus.REFUNDED } : {}),
     },
   });
+
+  if (stripeRefundedCents > localRefundedCents) {
+    log.info(
+      {
+        chargeId: localCharge.id,
+        localRefundedCents,
+        stripeRefundedCents,
+        delta: stripeRefundedCents - localRefundedCents,
+      },
+      'Out-of-band refund detected via Stripe dashboard',
+    );
+  }
 }
 
 async function handleChargeUpdated(charge: StripeChargeLike): Promise<void> {

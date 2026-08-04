@@ -18,6 +18,7 @@ export interface AdminChargeRow {
   currency: string;
   status: ChargeStatus;
   receiptUrl: string | null;
+  receiptSentAt: SerializedDate | null;
   lastErrorCode: string | null;
   lastErrorMessage: string | null;
   createdAt: SerializedDate;
@@ -26,7 +27,6 @@ export interface AdminChargeRow {
     id: string;
     status: RegistrationStatus;
     refundedCents: number;
-    receiptSentAt: SerializedDate | null;
     createdAt: SerializedDate;
     updatedAt: SerializedDate;
     user: { id: string; name: string; email: string };
@@ -92,11 +92,11 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
           ...c,
           createdAt: c.createdAt.toISOString(),
           updatedAt: c.updatedAt.toISOString(),
+          receiptSentAt: c.receiptSentAt?.toISOString() ?? null,
           registration: {
             ...c.registration,
             createdAt: c.registration.createdAt.toISOString(),
             updatedAt: c.registration.updatedAt.toISOString(),
-            receiptSentAt: c.registration.receiptSentAt?.toISOString() ?? null,
             event: {
               ...c.registration.event,
               date: c.registration.event.date.toISOString(),
@@ -280,7 +280,7 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
                           Forfeit
                         </button>
                       ) : null}
-                      {c.status === 'SUCCEEDED' && !c.registration.receiptSentAt ? (
+                      {c.status === 'SUCCEEDED' && !c.receiptSentAt ? (
                         <button
                           type="button"
                           onClick={() => resendReceipt.mutate({ chargeId: c.id })}

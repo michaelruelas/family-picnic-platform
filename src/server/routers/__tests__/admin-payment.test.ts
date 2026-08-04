@@ -290,6 +290,88 @@ describe('admin.refund', () => {
     const caller = createCallerFactory(adminRouter)({ session: nonAdminSession });
     await expect(caller.refund({ chargeId: 'ch-1' })).rejects.toThrow();
   });
+
+  it('uses an atomic increment for refundedCents and Serializable isolation', async () => {
+    // Two concurrent admins must not race the read-modify-write of
+    // refundedCents; the fix is to bump with `increment` inside a
+    // Serializable transaction. After the increment, the post-read
+    // value decides the full-refund status flip.
+    mockPrisma.charge.findUnique.mockResolvedValue({
+      id: 'ch-1',
+      status: 'SUCCEEDED',
+      amountCents: 2500,
+      currency: 'usd',
+      stripePaymentIntentId: 'pi_1',
+      registrationId: 'reg-1',
+      registration: { id: 'reg-1', eventId: 'evt-1', status: 'PAID', refunds: [] },
+    });
+    mockPrisma.refund.create.mockResolvedValue({ id: 'r-iso' });
+    mockPrisma.refund.update.mockResolvedValue({ id: 'r-iso', status: 'SUCCEEDED' });
+    // Post-increment read returns the new running total, which here
+    // exactly equals the charge amount — so the status update fires.
+    mockPrisma.registration.update.mockResolvedValue({
+      id: 'reg-1',
+      status: 'PAID',
+      refundedCents: 2500,
+    });
+
+    const { adminRouter } = await import('~/server/routers/admin.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(adminRouter)({ session: adminSession });
+    await caller.refund({ chargeId: 'ch-1', amountCents: 2500 });
+
+    // The increment runs inside a Serializable transaction so concurrent
+    // admins serialize cleanly.
+    expect(mockPrisma.$transaction).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ isolationLevel: 'Serializable' }),
+    );
+    expect(mockPrisma.registration.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ refundedCents: { increment: 2500 } }),
+      }),
+    );
+    // The post-increment read says refundedCents == 2500, so the
+    // status flip runs as a separate update.
+    expect(mockPrisma.registration.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'reg-1' },
+        data: { status: 'REFUNDED' },
+      }),
+    );
+  });
+
+  it('skips the status flip when refundedCents is still below the charge amount', async () => {
+    mockPrisma.charge.findUnique.mockResolvedValue({
+      id: 'ch-1',
+      status: 'SUCCEEDED',
+      amountCents: 2500,
+      currency: 'usd',
+      stripePaymentIntentId: 'pi_1',
+      registrationId: 'reg-1',
+      registration: { id: 'reg-1', eventId: 'evt-1', status: 'PAID', refunds: [] },
+    });
+    mockPrisma.refund.create.mockResolvedValue({ id: 'r-partial' });
+    mockPrisma.refund.update.mockResolvedValue({ id: 'r-partial', status: 'SUCCEEDED' });
+    mockPrisma.registration.update.mockResolvedValue({
+      id: 'reg-1',
+      status: 'PAID',
+      refundedCents: 500, // post-increment read; partial refund, not full
+    });
+
+    const { adminRouter } = await import('~/server/routers/admin.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(adminRouter)({ session: adminSession });
+    await caller.refund({ chargeId: 'ch-1', amountCents: 500 });
+
+    // Only the increment; no follow-up status update.
+    expect(mockPrisma.registration.update).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.registration.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ refundedCents: { increment: 500 } }),
+      }),
+    );
+  });
 });
 
 describe('admin.forfeit', () => {

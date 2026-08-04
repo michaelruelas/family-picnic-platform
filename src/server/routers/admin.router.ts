@@ -255,6 +255,16 @@ export const adminRouter = router({
    * Issues a Stripe refund (full or partial) for a successful charge.
    * Each refund writes an audit entry. The Refund row carries the
    * Stripe id, so retries are safe and the UI can show real state.
+   *
+   * Concurrency: two admins clicking refund at the same time used to
+   * each read `alreadyRefunded = 0`, both call Stripe (succeeding under
+   * different idempotency keys), and both overwrite `refundedCents`
+   * with their own amount. Fixed by:
+   *   1. Serializable transaction locks the Registration row.
+   *   2. `refundedCents` is bumped with `increment: amountCents`, an
+   *      atomic SQL operation that sequences concurrent admins.
+   *   3. The full-refund check reads the post-increment value back so
+   *      concurrent partial refunds each compute the correct threshold.
    */
   refund: auditedAdminProcedure.input(refundInputSchema).mutation(async ({ ctx, input }) => {
     if (!stripeConfigured()) {
@@ -263,6 +273,7 @@ export const adminRouter = router({
         message: 'Stripe is not configured',
       });
     }
+
     const charge = await prisma.charge.findUnique({
       where: { id: input.chargeId },
       include: {
@@ -283,7 +294,10 @@ export const adminRouter = router({
       });
     }
 
-    const alreadyRefunded = charge.registration.refunds.reduce((sum, r) => sum + r.amountCents, 0);
+    const alreadyRefunded = charge.registration.refunds.reduce(
+      (sum, r) => sum + r.amountCents,
+      0,
+    );
     const balance = charge.amountCents - alreadyRefunded;
     if (balance <= 0) {
       throw new TRPCError({
@@ -291,7 +305,6 @@ export const adminRouter = router({
         message: 'Charge is already fully refunded',
       });
     }
-
     const refundAmount = input.amountCents ?? balance;
     if (refundAmount > balance) {
       throw new TRPCError({
@@ -331,25 +344,35 @@ export const adminRouter = router({
       });
     }
 
-    const newRefundedCents = alreadyRefunded + refundAmount;
-    const isFullRefund = newRefundedCents >= charge.amountCents;
+    // Atomic increment + post-increment read, under Serializable so
+    // concurrent admins serialize cleanly. The full-refund check uses
+    // the post-increment value, which accounts for any concurrent
+    // refunds that committed first.
+    const [updatedRefund, postIncrement] = await prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.refund.update({
+          where: { id: refund.id },
+          data: {
+            stripeRefundId: stripeRefund.refundId,
+            status: mapStripeRefundStatus(stripeRefund.status),
+          },
+        });
+        const reg = await tx.registration.update({
+          where: { id: charge.registrationId },
+          data: { refundedCents: { increment: refundAmount } },
+        });
+        return [updated, reg] as const;
+      },
+      { isolationLevel: 'Serializable' },
+    );
 
-    const [updatedRefund, updatedRegistration] = await prisma.$transaction([
-      prisma.refund.update({
-        where: { id: refund.id },
-        data: {
-          stripeRefundId: stripeRefund.refundId,
-          status: mapStripeRefundStatus(stripeRefund.status),
-        },
-      }),
-      prisma.registration.update({
-        where: { id: charge.registrationId },
-        data: {
-          refundedCents: newRefundedCents,
-          ...(isFullRefund ? { status: RegistrationStatus.REFUNDED } : {}),
-        },
-      }),
-    ]);
+    const isFullRefund = postIncrement.refundedCents >= charge.amountCents;
+    const updatedRegistration = isFullRefund
+      ? await prisma.registration.update({
+          where: { id: charge.registrationId },
+          data: { status: RegistrationStatus.REFUNDED },
+        })
+      : postIncrement;
 
     await writeAuditLog({
       userId: ctx.session.user.id,
@@ -360,7 +383,7 @@ export const adminRouter = router({
         registrationStatus: charge.registration.status,
       },
       newValue: {
-        refundedCents: newRefundedCents,
+        refundedCents: updatedRegistration.refundedCents,
         isFullRefund,
         refundId: updatedRefund.id,
         stripeRefundId: stripeRefund.refundId,

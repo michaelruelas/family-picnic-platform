@@ -326,4 +326,84 @@ describe('POST /api/stripe/webhook', () => {
       expect.objectContaining({ action: 'payment.succeeded' }),
     );
   });
+
+  it('skips receipt + audit on payment_intent.succeeded retry when charge is already SUCCEEDED', async () => {
+    mockIsWebhookConfigured.mockReturnValue(true);
+    mockVerifyWebhookSignature.mockResolvedValue({
+      id: 'evt_retry',
+      type: 'payment_intent.succeeded',
+      data: { object: { id: 'pi_retry' } },
+    });
+    // Charge is already SUCCEEDED — Stripe is replaying the event.
+    prismaMock.charge.findUnique.mockResolvedValue({
+      id: 'charge-retry',
+      status: 'SUCCEEDED',
+      amountCents: 2500,
+      currency: 'usd',
+      receiptUrl: 'https://stripe.com/r/already',
+      registrationId: 'reg-retry',
+      registration: {
+        id: 'reg-retry',
+        userId: 'u-retry',
+        eventId: 'e-retry',
+        status: 'PAID',
+        user: { id: 'u-retry', name: 'A', email: 'a@x.com' },
+        event: { id: 'e-retry', name: 'E', date: new Date('2026-08-15T11:00:00Z') },
+      },
+    });
+
+    const res = await POST(makeWebhookRequest('{"id":"evt_retry"}'));
+    expect(res.status).toBe(200);
+    // Critical: no duplicate audit entry, no duplicate receipt email.
+    expect(mockWriteAuditLog).not.toHaveBeenCalled();
+    expect(mockSendRegistrationReceipt).not.toHaveBeenCalled();
+  });
+
+  it('uses charge.amount_refunded from Stripe for charge.refunded (out-of-band dashboard refund)', async () => {
+    mockIsWebhookConfigured.mockReturnValue(true);
+    mockVerifyWebhookSignature.mockResolvedValue({
+      id: 'evt_oob',
+      type: 'charge.refunded',
+      data: {
+        object: {
+          id: 'ch_oob',
+          payment_intent: 'pi_oob',
+          amount_refunded: 5000, // out-of-band refund via Stripe dashboard
+        },
+      },
+    });
+    prismaMock.charge.findUnique.mockResolvedValue({
+      id: 'charge-oob',
+      amountCents: 5000,
+      registrationId: 'reg-oob',
+    });
+    // No local Refund rows — the refund happened in the Stripe dashboard,
+    // not via admin.refund. Old code would have computed totalRefunded=0
+    // and clobbered refundedCents.
+    prismaMock.refund.findMany.mockResolvedValue([]);
+    prismaMock.registration.update.mockResolvedValue({});
+
+    const res = await POST(makeWebhookRequest('{"id":"evt_oob"}'));
+    expect(res.status).toBe(200);
+    expect(prismaMock.registration.update).toHaveBeenCalledWith({
+      where: { id: 'reg-oob' },
+      data: { refundedCents: 5000, status: 'REFUNDED' },
+    });
+  });
+
+  it('returns 200 (not 500) when a handler throws, so Stripe does not retry the failed path', async () => {
+    mockIsWebhookConfigured.mockReturnValue(true);
+    mockVerifyWebhookSignature.mockResolvedValue({
+      id: 'evt_explode',
+      type: 'payment_intent.succeeded',
+      data: { object: { id: 'pi_explode' } },
+    });
+    prismaMock.charge.findUnique.mockRejectedValue(new Error('db exploded'));
+
+    const res = await POST(makeWebhookRequest('{"id":"evt_explode"}'));
+    expect(res.status).toBe(200);
+    // Body still acknowledges receipt so Stripe does not retry.
+    const body = await res.json();
+    expect(body.received).toBe(true);
+  });
 });
