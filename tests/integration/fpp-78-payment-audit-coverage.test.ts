@@ -100,6 +100,50 @@ const ACTION = {
   RECEIPT_RESENT: 'payment.receiptResent',
 } as const;
 
+// Enum mock factory. The router tests each reset modules and register
+// the same set of enum stubs via vi.doMock. Keeping the shape in one
+// place stops the copies from drifting apart — a new enum value the
+// real module exports will start MockInvalidEnum on the spot.
+const enumMock = () => ({
+  EventStatus: {
+    DRAFT: 'DRAFT',
+    PUBLISHED: 'PUBLISHED',
+    CLOSED: 'CLOSED',
+    CANCELLED: 'CANCELLED',
+  },
+  RSVPStatus: { CONFIRMED: 'CONFIRMED', DECLINED: 'DECLINED', PENDING: 'PENDING' },
+  InvitationStatus: { PENDING: 'PENDING', USED: 'USED' },
+  RegistrationStatus: {
+    PENDING: 'PENDING',
+    PAID: 'PAID',
+    REFUNDED: 'REFUNDED',
+    FORFEITED: 'FORFEITED',
+    CANCELLED: 'CANCELLED',
+  },
+  ChargeStatus: {
+    REQUIRES_PAYMENT_METHOD: 'REQUIRES_PAYMENT_METHOD',
+    REQUIRES_CONFIRMATION: 'REQUIRES_CONFIRMATION',
+    REQUIRES_ACTION: 'REQUIRES_ACTION',
+    PROCESSING: 'PROCESSING',
+    REQUIRES_CAPTURE: 'REQUIRES_CAPTURE',
+    SUCCEEDED: 'SUCCEEDED',
+    CANCELED: 'CANCELED',
+    FAILED: 'FAILED',
+  },
+  RefundStatus: {
+    PENDING: 'PENDING',
+    SUCCEEDED: 'SUCCEEDED',
+    FAILED: 'FAILED',
+    CANCELED: 'CANCELED',
+  },
+  CommunicationChannel: { EMAIL: 'EMAIL', SMS: 'SMS' },
+  CommunicationStatus: { SENT: 'SENT', FAILED: 'FAILED' },
+  CommunicationPreference: { EMAIL: 'EMAIL' },
+  AdminPermission: { OWNER: 'OWNER', COADMIN: 'COADMIN' },
+  PotluckCategory: { MAIN: 'MAIN' },
+  SlotType: { LIMITED: 'LIMITED', UNLIMITED: 'UNLIMITED' },
+});
+
 describe('FPP-78 payment audit coverage', () => {
   // Source-of-truth file paths. The smoke test asserts both the call
   // site (writeAuditLog with the right action) and the stable action
@@ -111,7 +155,7 @@ describe('FPP-78 payment audit coverage', () => {
   const commandsPath = path.join(process.cwd(), 'docs/agents/COMMANDS.md');
 
   describe('source-of-truth action strings', () => {
-    it('payment.router.ts uses the six payment.* action strings', async () => {
+    it('payment.router.ts uses the intent create and create-failure action strings', async () => {
       const content = await fs.readFile(paymentRouterPath, 'utf-8');
       expect(content).toContain(`action: '${ACTION.INTENT_CREATED}'`);
       expect(content).toContain(`action: '${ACTION.INTENT_FAILED}'`);
@@ -347,11 +391,20 @@ describe('FPP-78 payment audit coverage', () => {
       );
       expect(res.status).toBe(200);
       expect(mockWriteAuditLog).toHaveBeenCalledTimes(1);
+      // Assert the errorCode and errorMessage from Stripe's
+      // last_payment_error land in newValue. The audit log's value is
+      // in the data it carries, and a typo in the source that drops
+      // either field would not surface without these assertions.
       expect(mockWriteAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
           action: ACTION.FAILED,
           userId: 'u-failed',
           eventId: 'e-failed',
+          newValue: expect.objectContaining({
+            chargeStatus: 'FAILED',
+            errorCode: 'card_declined',
+            errorMessage: 'Card was declined',
+          }),
         }),
       );
     });
@@ -464,45 +517,7 @@ describe('FPP-78 payment audit coverage', () => {
         getServerSession: vi.fn(),
         isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
       }));
-      vi.doMock('~/lib/generated/enums', () => ({
-        EventStatus: {
-          DRAFT: 'DRAFT',
-          PUBLISHED: 'PUBLISHED',
-          CLOSED: 'CLOSED',
-          CANCELLED: 'CANCELLED',
-        },
-        RSVPStatus: { CONFIRMED: 'CONFIRMED', DECLINED: 'DECLINED', PENDING: 'PENDING' },
-        InvitationStatus: { PENDING: 'PENDING', USED: 'USED' },
-        RegistrationStatus: {
-          PENDING: 'PENDING',
-          PAID: 'PAID',
-          REFUNDED: 'REFUNDED',
-          FORFEITED: 'FORFEITED',
-          CANCELLED: 'CANCELLED',
-        },
-        ChargeStatus: {
-          REQUIRES_PAYMENT_METHOD: 'REQUIRES_PAYMENT_METHOD',
-          REQUIRES_CONFIRMATION: 'REQUIRES_CONFIRMATION',
-          REQUIRES_ACTION: 'REQUIRES_ACTION',
-          PROCESSING: 'PROCESSING',
-          REQUIRES_CAPTURE: 'REQUIRES_CAPTURE',
-          SUCCEEDED: 'SUCCEEDED',
-          CANCELED: 'CANCELED',
-          FAILED: 'FAILED',
-        },
-        RefundStatus: {
-          PENDING: 'PENDING',
-          SUCCEEDED: 'SUCCEEDED',
-          FAILED: 'FAILED',
-          CANCELED: 'CANCELED',
-        },
-        CommunicationChannel: { EMAIL: 'EMAIL', SMS: 'SMS' },
-        CommunicationStatus: { SENT: 'SENT', FAILED: 'FAILED' },
-        CommunicationPreference: { EMAIL: 'EMAIL' },
-        AdminPermission: { OWNER: 'OWNER', COADMIN: 'COADMIN' },
-        PotluckCategory: { MAIN: 'MAIN' },
-        SlotType: { LIMITED: 'LIMITED', UNLIMITED: 'UNLIMITED' },
-      }));
+      vi.doMock('~/lib/generated/enums', enumMock);
 
       const { paymentRouter } = await import('~/server/routers/payment.router');
       const { createCallerFactory } = await import('~/lib/trpc');
@@ -523,11 +538,20 @@ describe('FPP-78 payment audit coverage', () => {
 
       // Exactly one audit row, on the success path.
       expect(freshWriteAuditLog).toHaveBeenCalledTimes(1);
+      // Assert paymentIntentId, chargeId, and amountCents in newValue.
+      // Without these the test would pass even if the source dropped a
+      // field, which is the whole point of an audit trail.
       expect(freshWriteAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
           action: ACTION.INTENT_CREATED,
           userId: 'user-1',
           eventId: 'evt-1',
+          newValue: expect.objectContaining({
+            paymentIntentId: 'pi_1',
+            chargeId: 'ch-1',
+            amountCents: 2500,
+            currency: 'usd',
+          }),
         }),
       );
     });
@@ -590,45 +614,7 @@ describe('FPP-78 payment audit coverage', () => {
         getServerSession: vi.fn(),
         isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
       }));
-      vi.doMock('~/lib/generated/enums', () => ({
-        EventStatus: {
-          DRAFT: 'DRAFT',
-          PUBLISHED: 'PUBLISHED',
-          CLOSED: 'CLOSED',
-          CANCELLED: 'CANCELLED',
-        },
-        RSVPStatus: { CONFIRMED: 'CONFIRMED', DECLINED: 'DECLINED', PENDING: 'PENDING' },
-        InvitationStatus: { PENDING: 'PENDING', USED: 'USED' },
-        RegistrationStatus: {
-          PENDING: 'PENDING',
-          PAID: 'PAID',
-          REFUNDED: 'REFUNDED',
-          FORFEITED: 'FORFEITED',
-          CANCELLED: 'CANCELLED',
-        },
-        ChargeStatus: {
-          REQUIRES_PAYMENT_METHOD: 'REQUIRES_PAYMENT_METHOD',
-          REQUIRES_CONFIRMATION: 'REQUIRES_CONFIRMATION',
-          REQUIRES_ACTION: 'REQUIRES_ACTION',
-          PROCESSING: 'PROCESSING',
-          REQUIRES_CAPTURE: 'REQUIRES_CAPTURE',
-          SUCCEEDED: 'SUCCEEDED',
-          CANCELED: 'CANCELED',
-          FAILED: 'FAILED',
-        },
-        RefundStatus: {
-          PENDING: 'PENDING',
-          SUCCEEDED: 'SUCCEEDED',
-          FAILED: 'FAILED',
-          CANCELED: 'CANCELED',
-        },
-        CommunicationChannel: { EMAIL: 'EMAIL', SMS: 'SMS' },
-        CommunicationStatus: { SENT: 'SENT', FAILED: 'FAILED' },
-        CommunicationPreference: { EMAIL: 'EMAIL' },
-        AdminPermission: { OWNER: 'OWNER', COADMIN: 'COADMIN' },
-        PotluckCategory: { MAIN: 'MAIN' },
-        SlotType: { LIMITED: 'LIMITED', UNLIMITED: 'UNLIMITED' },
-      }));
+      vi.doMock('~/lib/generated/enums', enumMock);
 
       const { paymentRouter } = await import('~/server/routers/payment.router');
       const { createCallerFactory } = await import('~/lib/trpc');
@@ -738,36 +724,7 @@ describe('FPP-78 payment audit coverage', () => {
         getServerSession: vi.fn(),
         isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
       }));
-      vi.doMock('~/lib/generated/enums', () => ({
-        EventStatus: { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED' },
-        RSVPStatus: { CONFIRMED: 'CONFIRMED', DECLINED: 'DECLINED' },
-        InvitationStatus: { PENDING: 'PENDING', USED: 'USED' },
-        RegistrationStatus: {
-          PENDING: 'PENDING',
-          PAID: 'PAID',
-          REFUNDED: 'REFUNDED',
-          FORFEITED: 'FORFEITED',
-          CANCELLED: 'CANCELLED',
-        },
-        ChargeStatus: {
-          REQUIRES_PAYMENT_METHOD: 'REQUIRES_PAYMENT_METHOD',
-          SUCCEEDED: 'SUCCEEDED',
-          CANCELED: 'CANCELED',
-          FAILED: 'FAILED',
-        },
-        RefundStatus: {
-          PENDING: 'PENDING',
-          SUCCEEDED: 'SUCCEEDED',
-          FAILED: 'FAILED',
-          CANCELED: 'CANCELED',
-        },
-        CommunicationChannel: { EMAIL: 'EMAIL', SMS: 'SMS' },
-        CommunicationStatus: { SENT: 'SENT', FAILED: 'FAILED' },
-        CommunicationPreference: { EMAIL: 'EMAIL' },
-        AdminPermission: { OWNER: 'OWNER', COADMIN: 'COADMIN' },
-        PotluckCategory: { MAIN: 'MAIN' },
-        SlotType: { LIMITED: 'LIMITED', UNLIMITED: 'UNLIMITED' },
-      }));
+      vi.doMock('~/lib/generated/enums', enumMock);
 
       const { adminRouter } = await import('~/server/routers/admin.router');
       const { createCallerFactory } = await import('~/lib/trpc');
@@ -832,36 +789,7 @@ describe('FPP-78 payment audit coverage', () => {
         getServerSession: vi.fn(),
         isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
       }));
-      vi.doMock('~/lib/generated/enums', () => ({
-        EventStatus: { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED' },
-        RSVPStatus: { CONFIRMED: 'CONFIRMED', DECLINED: 'DECLINED' },
-        InvitationStatus: { PENDING: 'PENDING', USED: 'USED' },
-        RegistrationStatus: {
-          PENDING: 'PENDING',
-          PAID: 'PAID',
-          REFUNDED: 'REFUNDED',
-          FORFEITED: 'FORFEITED',
-          CANCELLED: 'CANCELLED',
-        },
-        ChargeStatus: {
-          REQUIRES_PAYMENT_METHOD: 'REQUIRES_PAYMENT_METHOD',
-          SUCCEEDED: 'SUCCEEDED',
-          CANCELED: 'CANCELED',
-          FAILED: 'FAILED',
-        },
-        RefundStatus: {
-          PENDING: 'PENDING',
-          SUCCEEDED: 'SUCCEEDED',
-          FAILED: 'FAILED',
-          CANCELED: 'CANCELED',
-        },
-        CommunicationChannel: { EMAIL: 'EMAIL', SMS: 'SMS' },
-        CommunicationStatus: { SENT: 'SENT', FAILED: 'FAILED' },
-        CommunicationPreference: { EMAIL: 'EMAIL' },
-        AdminPermission: { OWNER: 'OWNER', COADMIN: 'COADMIN' },
-        PotluckCategory: { MAIN: 'MAIN' },
-        SlotType: { LIMITED: 'LIMITED', UNLIMITED: 'UNLIMITED' },
-      }));
+      vi.doMock('~/lib/generated/enums', enumMock);
       vi.doMock('~/lib/receipt', () => ({
         sendRegistrationReceipt: vi.fn(),
       }));
@@ -937,36 +865,7 @@ describe('FPP-78 payment audit coverage', () => {
         getServerSession: vi.fn(),
         isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
       }));
-      vi.doMock('~/lib/generated/enums', () => ({
-        EventStatus: { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED' },
-        RSVPStatus: { CONFIRMED: 'CONFIRMED', DECLINED: 'DECLINED' },
-        InvitationStatus: { PENDING: 'PENDING', USED: 'USED' },
-        RegistrationStatus: {
-          PENDING: 'PENDING',
-          PAID: 'PAID',
-          REFUNDED: 'REFUNDED',
-          FORFEITED: 'FORFEITED',
-          CANCELLED: 'CANCELLED',
-        },
-        ChargeStatus: {
-          REQUIRES_PAYMENT_METHOD: 'REQUIRES_PAYMENT_METHOD',
-          SUCCEEDED: 'SUCCEEDED',
-          CANCELED: 'CANCELED',
-          FAILED: 'FAILED',
-        },
-        RefundStatus: {
-          PENDING: 'PENDING',
-          SUCCEEDED: 'SUCCEEDED',
-          FAILED: 'FAILED',
-          CANCELED: 'CANCELED',
-        },
-        CommunicationChannel: { EMAIL: 'EMAIL', SMS: 'SMS' },
-        CommunicationStatus: { SENT: 'SENT', FAILED: 'FAILED' },
-        CommunicationPreference: { EMAIL: 'EMAIL' },
-        AdminPermission: { OWNER: 'OWNER', COADMIN: 'COADMIN' },
-        PotluckCategory: { MAIN: 'MAIN' },
-        SlotType: { LIMITED: 'LIMITED', UNLIMITED: 'UNLIMITED' },
-      }));
+      vi.doMock('~/lib/generated/enums', enumMock);
 
       const { adminRouter } = await import('~/server/routers/admin.router');
       const { createCallerFactory } = await import('~/lib/trpc');
