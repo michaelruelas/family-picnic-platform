@@ -17,6 +17,7 @@ const mockPrisma = {
     findUnique: vi.fn(),
     findUniqueOrThrow: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
   },
   $transaction: vi.fn(),
 };
@@ -199,8 +200,9 @@ describe('admin.refund', () => {
       registrationId: 'reg-1',
       registration: { id: 'reg-1', eventId: 'evt-1', status: 'PAID', refunds: [] },
     });
-    mockPrisma.refund.create.mockResolvedValue({ id: 'r-1' });
+    mockPrisma.refund.upsert.mockResolvedValue({ id: 'r-1' });
     mockPrisma.refund.update.mockResolvedValue({ id: 'r-1', status: 'SUCCEEDED' });
+    mockPrisma.refund.findMany.mockResolvedValue([]);
     mockPrisma.registration.update.mockResolvedValue({ id: 'reg-1', status: 'PAID' });
     mockCreateRefund.mockResolvedValue({
       refundId: 're_1',
@@ -238,8 +240,9 @@ describe('admin.refund', () => {
       registrationId: 'reg-1',
       registration: { id: 'reg-1', eventId: 'evt-1', status: 'PAID', refunds: [] },
     });
-    mockPrisma.refund.create.mockResolvedValue({ id: 'r-1' });
+    mockPrisma.refund.upsert.mockResolvedValue({ id: 'r-1' });
     mockPrisma.refund.update.mockResolvedValue({ id: 'r-1', status: 'SUCCEEDED' });
+    mockPrisma.refund.findMany.mockResolvedValue([]);
     mockPrisma.registration.update.mockResolvedValue({ id: 'reg-1', status: 'REFUNDED' });
     mockCreateRefund.mockResolvedValue({
       refundId: 're_1',
@@ -295,8 +298,7 @@ describe('admin.refund', () => {
   it('uses an atomic increment for refundedCents and Serializable isolation', async () => {
     // Two concurrent admins must not race the read-modify-write of
     // refundedCents; the fix is to bump with `increment` inside a
-    // Serializable transaction. After the increment, the post-read
-    // value decides the full-refund status flip.
+    // Serializable transaction.
     mockPrisma.charge.findUnique.mockResolvedValue({
       id: 'ch-1',
       status: 'SUCCEEDED',
@@ -306,7 +308,7 @@ describe('admin.refund', () => {
       registrationId: 'reg-1',
       registration: { id: 'reg-1', eventId: 'evt-1', status: 'PAID', refunds: [] },
     });
-    mockPrisma.refund.create.mockResolvedValue({ id: 'r-iso' });
+    mockPrisma.refund.upsert.mockResolvedValue({ id: 'r-iso' });
     mockPrisma.refund.update.mockResolvedValue({ id: 'r-iso', status: 'SUCCEEDED' });
     // Post-increment read returns the new running total, which here
     // exactly equals the charge amount — so the status update fires.
@@ -321,8 +323,6 @@ describe('admin.refund', () => {
     const caller = createCallerFactory(adminRouter)({ session: adminSession });
     await caller.refund({ chargeId: 'ch-1', amountCents: 2500 });
 
-    // The increment runs inside a Serializable transaction so concurrent
-    // admins serialize cleanly.
     expect(mockPrisma.$transaction).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ isolationLevel: 'Serializable' }),
@@ -352,12 +352,13 @@ describe('admin.refund', () => {
       registrationId: 'reg-1',
       registration: { id: 'reg-1', eventId: 'evt-1', status: 'PAID', refunds: [] },
     });
-    mockPrisma.refund.create.mockResolvedValue({ id: 'r-partial' });
+    mockPrisma.refund.upsert.mockResolvedValue({ id: 'r-partial' });
     mockPrisma.refund.update.mockResolvedValue({ id: 'r-partial', status: 'SUCCEEDED' });
+    mockPrisma.refund.findMany.mockResolvedValue([]);
     mockPrisma.registration.update.mockResolvedValue({
       id: 'reg-1',
       status: 'PAID',
-      refundedCents: 500, // post-increment read; partial refund, not full
+      refundedCents: 500, // partial: 500 < 2500, not a full refund
     });
 
     const { adminRouter } = await import('~/server/routers/admin.router');
@@ -365,11 +366,11 @@ describe('admin.refund', () => {
     const caller = createCallerFactory(adminRouter)({ session: adminSession });
     await caller.refund({ chargeId: 'ch-1', amountCents: 500 });
 
-    // Only the increment; no follow-up status update.
+    // Only the atomic increment; no follow-up status update.
     expect(mockPrisma.registration.update).toHaveBeenCalledTimes(1);
     expect(mockPrisma.registration.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ refundedCents: { increment: 500 } }),
+        data: { refundedCents: { increment: 500 } },
       }),
     );
   });
@@ -391,6 +392,7 @@ describe('admin.refund', () => {
     });
     mockPrisma.refund.upsert.mockResolvedValue({ id: 'refund-retry' });
     mockPrisma.refund.update.mockResolvedValue({ id: 'refund-retry', status: 'SUCCEEDED' });
+    mockPrisma.refund.findMany.mockResolvedValue([]);
     mockPrisma.registration.update.mockResolvedValue({
       id: 'reg-retry',
       status: 'PAID',
@@ -463,6 +465,7 @@ describe('admin.forfeit', () => {
       eventId: 'evt-1',
       refundedCents: 0,
     });
+    mockPrisma.registration.updateMany.mockResolvedValue({ count: 0 });
     const { adminRouter } = await import('~/server/routers/admin.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(adminRouter)({ session: adminSession });
@@ -476,6 +479,7 @@ describe('admin.forfeit', () => {
       eventId: 'evt-1',
       refundedCents: 2500,
     });
+    mockPrisma.registration.updateMany.mockResolvedValue({ count: 0 });
     const { adminRouter } = await import('~/server/routers/admin.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(adminRouter)({ session: adminSession });
@@ -489,7 +493,8 @@ describe('admin.forfeit', () => {
       eventId: 'evt-1',
       refundedCents: 0,
     });
-    mockPrisma.registration.update.mockResolvedValue({
+    mockPrisma.registration.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.registration.findUniqueOrThrow.mockResolvedValue({
       id: 'reg-1',
       status: 'FORFEITED',
       eventId: 'evt-1',
@@ -501,10 +506,17 @@ describe('admin.forfeit', () => {
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(adminRouter)({ session: adminSession });
     await caller.forfeit({ registrationId: 'reg-1', reason: 'no-show' });
-    expect(mockPrisma.registration.update).toHaveBeenCalledWith({
-      where: { id: 'reg-1' },
-      data: { status: 'FORFEITED' },
-    });
+    // The status guard: updateMany with `status: { notIn: [...] }`
+    // closes F4's double-write race.
+    expect(mockPrisma.registration.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'reg-1',
+          status: expect.objectContaining({ notIn: expect.any(Array) }),
+        }),
+        data: { status: 'FORFEITED' },
+      }),
+    );
     expect(mockWriteAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'payment.forfeited' }),
     );

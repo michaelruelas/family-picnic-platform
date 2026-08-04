@@ -309,9 +309,7 @@ async function findOrCreateActiveCharge(
     });
   }
 
-  const activeCharge = existing?.charges.find((c) =>
-    ACTIVE_CHARGE_STATUSES.includes(c.status),
-  );
+  const activeCharge = existing?.charges.find((c) => ACTIVE_CHARGE_STATUSES.includes(c.status));
   if (existing && activeCharge) {
     return {
       registration: { id: existing.id },

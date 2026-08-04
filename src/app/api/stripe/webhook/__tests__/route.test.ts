@@ -8,6 +8,8 @@ const prismaMock = vi.hoisted(() => ({
   },
   registration: {
     update: vi.fn(),
+    updateMany: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
   },
   refund: {
     findMany: vi.fn(),
@@ -134,7 +136,8 @@ describe('POST /api/stripe/webhook', () => {
         receiptUrl: 'https://stripe.com/r/1',
       })
       .mockResolvedValueOnce({ id: 'charge-1', receiptSentAt: new Date() });
-    prismaMock.registration.update.mockResolvedValue({
+    prismaMock.registration.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.registration.findUniqueOrThrow.mockResolvedValue({
       id: 'reg-1',
       status: 'PAID',
     });
@@ -238,9 +241,27 @@ describe('POST /api/stripe/webhook', () => {
       id: 'charge-4',
       amountCents: 2500,
       registrationId: 'reg-4',
+      registration: {
+        id: 'reg-4',
+        eventId: 'e-4',
+        userId: 'u-4',
+      },
     });
     prismaMock.refund.findMany.mockResolvedValue([{ id: 'r-1', amountCents: 2500 }]);
-    prismaMock.registration.update.mockResolvedValue({});
+    prismaMock.registration.findUniqueOrThrow.mockResolvedValue({
+      id: 'reg-4',
+      eventId: 'e-4',
+      userId: 'u-4',
+      refundedCents: 0,
+      status: 'PAID',
+    });
+    prismaMock.registration.update.mockResolvedValue({
+      id: 'reg-4',
+      eventId: 'e-4',
+      userId: 'u-4',
+      refundedCents: 2500,
+      status: 'REFUNDED',
+    });
 
     const res = await POST(makeWebhookRequest('{"id":"evt_4"}'));
     expect(res.status).toBe(200);
@@ -317,7 +338,11 @@ describe('POST /api/stripe/webhook', () => {
       },
     });
     prismaMock.charge.update.mockResolvedValue({});
-    prismaMock.registration.update.mockResolvedValue({});
+    prismaMock.registration.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.registration.findUniqueOrThrow.mockResolvedValue({
+      id: 'reg-7',
+      status: 'PAID',
+    });
     mockSendRegistrationReceipt.mockResolvedValue({ success: false, error: 'sendgrid down' });
 
     const res = await POST(makeWebhookRequest('{"id":"evt_7"}'));
@@ -376,12 +401,30 @@ describe('POST /api/stripe/webhook', () => {
       id: 'charge-oob',
       amountCents: 5000,
       registrationId: 'reg-oob',
+      registration: {
+        id: 'reg-oob',
+        eventId: 'e-oob',
+        userId: 'u-oob',
+      },
     });
     // No local Refund rows — the refund happened in the Stripe dashboard,
     // not via admin.refund. Old code would have computed totalRefunded=0
     // and clobbered refundedCents.
     prismaMock.refund.findMany.mockResolvedValue([]);
-    prismaMock.registration.update.mockResolvedValue({});
+    prismaMock.registration.findUniqueOrThrow.mockResolvedValue({
+      id: 'reg-oob',
+      eventId: 'e-oob',
+      userId: 'u-oob',
+      refundedCents: 0,
+      status: 'PAID',
+    });
+    prismaMock.registration.update.mockResolvedValue({
+      id: 'reg-oob',
+      eventId: 'e-oob',
+      userId: 'u-oob',
+      refundedCents: 5000,
+      status: 'REFUNDED',
+    });
 
     const res = await POST(makeWebhookRequest('{"id":"evt_oob"}'));
     expect(res.status).toBe(200);

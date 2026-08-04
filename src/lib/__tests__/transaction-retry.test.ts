@@ -69,10 +69,7 @@ describe('withSerializableRetry', () => {
   });
 
   it('does not retry non-P2034 errors', async () => {
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('boom'))
-      .mockResolvedValueOnce('ok');
+    const fn = vi.fn().mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce('ok');
     await expect(withSerializableRetry(fn)).rejects.toThrow('boom');
     expect(fn).toHaveBeenCalledTimes(1);
   });

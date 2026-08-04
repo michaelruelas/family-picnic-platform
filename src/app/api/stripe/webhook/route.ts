@@ -23,7 +23,7 @@ type StripePaymentIntentLike = {
   amount?: number;
   amount_received?: number;
   currency?: string;
-  latest_charge?: string | string | StripeChargeLike;
+  latest_charge?: string | StripeChargeLike;
   receipt_email?: string | null;
   status?: string;
   last_payment_error?: { code?: string; message?: string } | null;
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       default:
         log.debug({ type: event.type, eventId: event.id }, 'Unhandled Stripe event type');
     }
-} catch (err) {
+  } catch (err) {
     // The Stripe event was already accepted (signature verified). Any
     // exception here is a downstream bug or transient DB error. Returning
     // 500 makes Stripe retry, which can re-fire the receipt email and
@@ -159,12 +159,41 @@ async function handlePaymentIntentSucceeded(
         lastErrorMessage: null,
       },
     });
-    const updatedRegistration = await tx.registration.update({
-      where: { id: charge.registrationId },
+    // Status guard: a Stripe retry of payment_intent.succeeded must not
+    // resurrect a FORFEITED or REFUNDED registration to PAID. The user
+    // paid once, then the admin marked it forfeited (no-show) or refunded
+    // it — the payment side stays succeeded but the registration
+    // reflects the admin's decision. If `update` matches no rows we
+    // bail out cleanly.
+    const updateResult = await tx.registration.updateMany({
+      where: {
+        id: charge.registrationId,
+        status: {
+          notIn: [RegistrationStatus.FORFEITED, RegistrationStatus.REFUNDED],
+        },
+      },
       data: { status: RegistrationStatus.PAID },
     });
-    return { updatedCharge, updatedRegistration };
+    const updatedRegistration =
+      updateResult.count === 0
+        ? null
+        : await tx.registration.findUniqueOrThrow({
+            where: { id: charge.registrationId },
+          });
+    return { updatedCharge, updatedRegistration, resurrected: updateResult.count === 0 };
   });
+
+  if (updated.resurrected) {
+    log.info(
+      {
+        paymentIntentId: intent.id,
+        registrationId: charge.registrationId,
+        existingStatus: charge.registration.status,
+      },
+      'payment_intent.succeeded ignored: registration already in terminal state',
+    );
+    return;
+  }
 
   await writeAuditLog({
     userId: charge.registration.userId,
@@ -173,7 +202,7 @@ async function handlePaymentIntentSucceeded(
     oldValue: { chargeStatus: charge.status, registrationStatus: charge.registration.status },
     newValue: {
       chargeStatus: updated.updatedCharge.status,
-      registrationStatus: updated.updatedRegistration.status,
+      registrationStatus: updated.updatedRegistration!.status,
       paymentIntentId: intent.id,
       amountCents: updated.updatedCharge.amountCents,
     },
@@ -225,8 +254,7 @@ async function handlePaymentIntentFailed(
   if (charge.status === ChargeStatus.FAILED || charge.status === ChargeStatus.CANCELED) {
     return;
   }
-  const newStatus =
-    intent.status === 'canceled' ? ChargeStatus.CANCELED : ChargeStatus.FAILED;
+  const newStatus = intent.status === 'canceled' ? ChargeStatus.CANCELED : ChargeStatus.FAILED;
 
   await prisma.charge.update({
     where: { id: charge.id },
@@ -261,8 +289,13 @@ async function handleChargeRefunded(
   }
   const localCharge = await prisma.charge.findUnique({
     where: { stripePaymentIntentId: charge.payment_intent },
+    include: {
+      registration: {
+        select: { id: true, eventId: true, userId: true },
+      },
+    },
   });
-  if (!localCharge) {
+  if (!localCharge || !localCharge.registration) {
     log.warn(
       { chargeId: charge.id, paymentIntent: charge.payment_intent },
       'No local charge for charge.refunded',
@@ -271,25 +304,62 @@ async function handleChargeRefunded(
   }
 
   // Stripe is the authoritative source of the cumulative refunded
-  // amount. Local Refund rows only capture in-app refunds issued via
+  // amount. Local Refund rows capture in-app refunds issued via
   // `admin.refund`; refunds issued from the Stripe dashboard do not
   // produce a local row. If we trusted the local sum alone, an
   // out-of-band refund would wipe `refundedCents` back to the in-app
   // total, hiding the dashboard refund from the admin UI.
+  //
+  // We count both SUCCEEDED and PENDING rows in the local sum. The
+  // PENDING branch closes F1's race: between admin.refund's upsert
+  // and its Serializable transaction, the local Refund row exists in
+  // PENDING. If the webhook fires in that window and uses SUCCEEDED
+  // only, it sets refundedCents = max(stripe, prior). When admin.refund's
+  // transaction lands and increments by the new refund's amount, the
+  // local view overshoots Stripe's. Counting PENDING rows in the
+  // local sum means the webhook and admin.refund both compute the same
+  // value before admin.refund increments.
   const localRefundedCents = (
     await prisma.refund.findMany({
-      where: { chargeId: localCharge.id, status: RefundStatus.SUCCEEDED },
+      where: {
+        chargeId: localCharge.id,
+        status: { in: [RefundStatus.SUCCEEDED, RefundStatus.PENDING] },
+      },
     })
   ).reduce((sum, r) => sum + r.amountCents, 0);
   const stripeRefundedCents = charge.amount_refunded ?? 0;
   const totalRefunded = Math.max(stripeRefundedCents, localRefundedCents);
   const isFullRefund = totalRefunded >= localCharge.amountCents;
 
-  await prisma.registration.update({
+  // Read old values for the audit entry before writing.
+  const beforeRegistration = await prisma.registration.findUniqueOrThrow({
+    where: { id: localCharge.registrationId },
+    select: { refundedCents: true, status: true },
+  });
+
+  const updatedRegistration = await prisma.registration.update({
     where: { id: localCharge.registrationId },
     data: {
       refundedCents: totalRefunded,
       ...(isFullRefund ? { status: RegistrationStatus.REFUNDED } : {}),
+    },
+  });
+
+  await writeAuditLog({
+    userId: localCharge.registration.userId,
+    eventId: localCharge.registration.eventId,
+    action: 'payment.refundReconciled',
+    oldValue: {
+      refundedCents: beforeRegistration.refundedCents,
+      registrationStatus: beforeRegistration.status,
+    },
+    newValue: {
+      refundedCents: totalRefunded,
+      registrationStatus: updatedRegistration.status,
+      isFullRefund,
+      stripeRefundedCents,
+      localRefundedCents,
+      source: stripeRefundedCents > localRefundedCents ? 'out_of_band' : 'in_app',
     },
   });
 
@@ -307,17 +377,46 @@ async function handleChargeRefunded(
 }
 
 async function handleChargeUpdated(charge: StripeChargeLike): Promise<void> {
+  // Stripe fires `charge.updated` for partial refunds (only full refunds
+  // produce `charge.refunded`). Without this branch, a partial
+  // out-of-band refund would leave `refundedCents` stale while the
+  // admin UI expects it to match Stripe. Reconciliation uses the same
+  // `max(stripe, local-with-pending)` formula as `charge.refunded` so
+  // the two paths agree.
   if (!charge.payment_intent) return;
   const localCharge = await prisma.charge.findUnique({
     where: { stripePaymentIntentId: charge.payment_intent },
-    select: { id: true, receiptUrl: true },
+    select: { id: true, amountCents: true, registrationId: true, receiptUrl: true },
   });
   if (!localCharge) return;
-  if (localCharge.receiptUrl) return;
-  if (!charge.receipt_url) return;
-  await prisma.charge.update({
-    where: { id: localCharge.id },
-    data: { receiptUrl: charge.receipt_url },
+
+  if (!localCharge.receiptUrl && charge.receipt_url) {
+    await prisma.charge.update({
+      where: { id: localCharge.id },
+      data: { receiptUrl: charge.receipt_url },
+    });
+  }
+
+  const stripeRefundedCents = charge.amount_refunded ?? 0;
+  if (stripeRefundedCents <= 0) return;
+
+  const localRefundedCents = (
+    await prisma.refund.findMany({
+      where: {
+        chargeId: localCharge.id,
+        status: { in: [RefundStatus.SUCCEEDED, RefundStatus.PENDING] },
+      },
+    })
+  ).reduce((sum, r) => sum + r.amountCents, 0);
+
+  const target = Math.max(stripeRefundedCents, localRefundedCents);
+  const isFullRefund = target >= localCharge.amountCents;
+  await prisma.registration.updateMany({
+    where: { id: localCharge.registrationId },
+    data: {
+      refundedCents: target,
+      ...(isFullRefund ? { status: RegistrationStatus.REFUNDED } : {}),
+    },
   });
 }
 

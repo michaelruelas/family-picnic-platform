@@ -421,7 +421,10 @@ describe('payment.createPaymentIntent', () => {
       amountCents: 2500,
       currency: 'usd',
     });
-    mockPrisma.charge.update.mockResolvedValue({ id: 'ch-retry', status: 'REQUIRES_PAYMENT_METHOD' });
+    mockPrisma.charge.update.mockResolvedValue({
+      id: 'ch-retry',
+      status: 'REQUIRES_PAYMENT_METHOD',
+    });
 
     mockPrisma.$transaction.mockImplementationOnce(() => {
       throw { code: 'P2034', message: 'lost the race' };

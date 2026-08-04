@@ -3,7 +3,7 @@ import { router, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { ChargeStatus, RefundStatus, RegistrationStatus, RSVPStatus } from '~/lib/generated/enums';
-import { writeAuditLog, diff } from '~/lib/audit';
+import { writeAuditLog } from '~/lib/audit';
 import { createRefund, formatAmount, isConfigured as stripeConfigured } from '~/lib/stripe';
 import { sendRegistrationReceipt } from '~/lib/receipt';
 import { withSerializableRetry } from '~/lib/transaction-retry';
@@ -281,7 +281,15 @@ export const adminRouter = router({
       include: {
         registration: {
           include: {
-            refunds: { where: { status: RefundStatus.SUCCEEDED } },
+            // Include PENDING so an in-flight refund.upsert from a
+            // concurrent admin counts against the balance; otherwise
+            // two admins could each see the full balance and each
+            // issue a refund.
+            refunds: {
+              where: {
+                status: { in: [RefundStatus.SUCCEEDED, RefundStatus.PENDING] },
+              },
+            },
           },
         },
       },
@@ -296,10 +304,7 @@ export const adminRouter = router({
       });
     }
 
-    const alreadyRefunded = charge.registration.refunds.reduce(
-      (sum, r) => sum + r.amountCents,
-      0,
-    );
+    const alreadyRefunded = charge.registration.refunds.reduce((sum, r) => sum + r.amountCents, 0);
     const balance = charge.amountCents - alreadyRefunded;
     if (balance <= 0) {
       throw new TRPCError({
@@ -350,10 +355,10 @@ export const adminRouter = router({
         idempotencyKey: refundId,
       });
 
-      // Atomic increment + post-increment read, under Serializable so
-      // concurrent admins serialize cleanly. The full-refund check uses
-      // the post-increment value, which accounts for any concurrent
-      // refunds that committed first.
+      // Atomic increment inside a Serializable transaction so concurrent
+      // admins serialize cleanly. The full-refund status flip reads
+      // the post-increment value to handle the case where multiple
+      // concurrent partial refunds each compute the correct threshold.
       const [updatedRefund, postIncrement] = await prisma.$transaction(
         async (tx) => {
           const updated = await tx.refund.update({
@@ -388,7 +393,7 @@ export const adminRouter = router({
       eventId: charge.registration.eventId,
       action: 'payment.refunded',
       oldValue: {
-        refundedCents: alreadyRefunded,
+        refundedCents: alreadyRefunded - refundAmount, // pre-this-refund state
         registrationStatus: charge.registration.status,
       },
       newValue: {
@@ -407,6 +412,12 @@ export const adminRouter = router({
   /**
    * Forfeit a paid registration. Money is kept by the event; no Stripe
    * refund call is made. Each forfeit writes an audit entry.
+   *
+   * Concurrency: two admins clicking forfeit simultaneously used to
+   * both pass the read-then-write guards and both write audit entries.
+   * Fixed by collapsing the read+update into a single conditional
+   * update with `status: { notIn: [...] }` and checking the affected
+   * row count — zero means another admin got there first.
    */
   forfeit: auditedAdminProcedure.input(forfeitInputSchema).mutation(async ({ ctx, input }) => {
     const before = await prisma.registration.findUnique({
@@ -415,43 +426,51 @@ export const adminRouter = router({
     if (!before) {
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Registration not found' });
     }
-    if (before.status === RegistrationStatus.FORFEITED) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'Registration is already forfeited',
-      });
-    }
-    if (before.status === RegistrationStatus.REFUNDED) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'Registration was refunded; use refund, not forfeit',
-      });
-    }
 
-    const after = await prisma.registration.update({
-      where: { id: before.id },
+    const updateResult = await prisma.registration.updateMany({
+      where: {
+        id: input.registrationId,
+        status: {
+          notIn: [
+            RegistrationStatus.FORFEITED,
+            RegistrationStatus.REFUNDED,
+            RegistrationStatus.CANCELLED,
+          ],
+        },
+      },
       data: { status: RegistrationStatus.FORFEITED },
     });
 
-    const change = diff(
-      { status: before.status, refundedCents: before.refundedCents },
-      { status: after.status, refundedCents: after.refundedCents },
-    );
-    if (change) {
-      await writeAuditLog({
-        userId: ctx.session.user.id,
-        eventId: before.eventId,
-        action: 'payment.forfeited',
-        oldValue: {
-          status: before.status,
-          refundedCents: before.refundedCents,
-        },
-        newValue: {
-          status: after.status,
-          ...(input.reason ? { reason: input.reason } : {}),
-        },
+    if (updateResult.count === 0) {
+      const message =
+        before.status === RegistrationStatus.FORFEITED
+          ? 'Registration is already forfeited'
+          : before.status === RegistrationStatus.REFUNDED
+            ? 'Registration was refunded; use refund, not forfeit'
+            : 'Registration is no longer in a forfeitable state';
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message,
       });
     }
+
+    const after = await prisma.registration.findUniqueOrThrow({
+      where: { id: before.id },
+    });
+
+    await writeAuditLog({
+      userId: ctx.session.user.id,
+      eventId: before.eventId,
+      action: 'payment.forfeited',
+      oldValue: {
+        status: before.status,
+        refundedCents: before.refundedCents,
+      },
+      newValue: {
+        status: after.status,
+        ...(input.reason ? { reason: input.reason } : {}),
+      },
+    });
     return after;
   }),
 
