@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { createElement } from 'react';
+import { RsvpLastUpdated } from '~/components/event/RsvpLastUpdated';
 
 describe('FPP-53 registration-cannot-be-edited close-out', () => {
   const confirmationPagePath = path.join(
@@ -37,6 +40,39 @@ describe('FPP-53 registration-cannot-be-edited close-out', () => {
       expect(card).toContain("import { RsvpLastUpdated } from './RsvpLastUpdated'");
       // No leftover local definition now that the shared component exists.
       expect(card).not.toMatch(/function LastUpdated\(/);
+    });
+
+    it('renders a stable, machine-readable timestamp with the default spacing', () => {
+      const fixedIso = '2026-08-04T15:30:00.000Z';
+      const expectedFormatted = new Date(fixedIso).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'UTC',
+        timeZoneName: 'short',
+      });
+      const html = renderToStaticMarkup(createElement(RsvpLastUpdated, { modifiedAt: fixedIso }));
+      expect(html).toContain('Last updated');
+      expect(html).toContain('text-muted-foreground');
+      expect(html).toContain('mt-4');
+      expect(html).toMatch(/<time\s+datetime="2026-08-04T15:30:00\.000Z">/i);
+      expect(html).toContain(expectedFormatted);
+      // Pins an explicit timeZone so the rendered string is identical on
+      // the SSR confirmation page and the client-rendered card.
+      expect(html).not.toContain('undefined');
+      expect(html).not.toMatch(/class="[^"]*  +/);
+    });
+
+    it('accepts a Date instance and adds an extra className without trailing whitespace', () => {
+      const fixedDate = new Date('2026-08-04T15:30:00.000Z');
+      const html = renderToStaticMarkup(
+        createElement(RsvpLastUpdated, {
+          modifiedAt: fixedDate,
+          className: 'border-t pt-4',
+        }),
+      );
+      expect(html).toContain('class="text-muted-foreground mt-4 text-xs border-t pt-4"');
     });
   });
 

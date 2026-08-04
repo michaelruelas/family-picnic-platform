@@ -128,7 +128,7 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
               {rsvp.headcount} {rsvp.headcount === 1 ? 'person' : 'people'} on the way
             </span>
           </div>
-          <RsvpLastUpdated modifiedAt={rsvp.modifiedAt} className="mt-4" />
+          <RsvpLastUpdated modifiedAt={rsvp.modifiedAt} />
         </div>
       </BreatheSection>
 

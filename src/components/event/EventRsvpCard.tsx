@@ -143,7 +143,7 @@ export function EventRsvpCard({
                   <span className="text-foreground/80">{existingRsvp.dietaryNotes}</span>
                 </div>
               )}
-              <RsvpLastUpdated modifiedAt={existingRsvp.modifiedAt} className="mt-4" />
+              <RsvpLastUpdated modifiedAt={existingRsvp.modifiedAt} />
               {isRsvpOpen && existingRsvp.memberAttendances.length > 0 && (
                 <ul className="mt-4 space-y-1.5">
                   {existingRsvp.memberAttendances.map((att) => (
@@ -200,7 +200,7 @@ export function EventRsvpCard({
               <p className="text-muted-foreground mt-2 text-sm">
                 You can switch back to attending any time before the deadline.
               </p>
-              <RsvpLastUpdated modifiedAt={existingRsvp.modifiedAt} className="mt-4" />
+              <RsvpLastUpdated modifiedAt={existingRsvp.modifiedAt} />
               {isRsvpOpen && (
                 <button
                   onClick={() => setIsSheetOpen(true)}
@@ -223,7 +223,7 @@ export function EventRsvpCard({
               <p className="text-muted-foreground mt-2 text-sm">
                 If a spot opens up, we&apos;ll be in touch.
               </p>
-              <RsvpLastUpdated modifiedAt={existingRsvp.modifiedAt} className="mt-4" />
+              <RsvpLastUpdated modifiedAt={existingRsvp.modifiedAt} />
             </>
           )}
         </div>
