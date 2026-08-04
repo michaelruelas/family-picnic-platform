@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useRsvpMutation } from '~/hooks';
 import { RsvpBottomSheet } from './RsvpBottomSheet';
 import type { ExistingRsvp } from './types';
@@ -31,6 +32,7 @@ export function EventRsvpCard({
   existingRsvp,
 }: EventRsvpCardProps) {
   const { decline } = useRsvpMutation();
+  const router = useRouter();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,6 +49,7 @@ export function EventRsvpCard({
     setIsSubmitting(true);
     try {
       await decline.mutateAsync({ eventId });
+      router.refresh();
     } finally {
       setIsSubmitting(false);
     }

@@ -418,4 +418,65 @@ describe('RsvpBottomSheet pre-fill', () => {
 
     expect(screen.queryByText('Network error')).not.toBeInTheDocument();
   });
+
+  describe('handleDecline', () => {
+    it('calls decline mutation, refreshes, and closes the sheet on success', async () => {
+      render(<RsvpBottomSheet {...defaultProps} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /can't make it/i }));
+
+      await waitFor(() => {
+        expect(mockDecline.mutateAsync).toHaveBeenCalledWith({ eventId: 'evt-1' });
+      });
+      expect(mockRefresh).toHaveBeenCalledTimes(1);
+      expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('surfaces error on next open if decline rejects after close', async () => {
+      let rejectDecline: (error: Error) => void = () => {};
+      mockDecline.mutateAsync.mockImplementationOnce(
+        () =>
+          new Promise<unknown>((_, reject) => {
+            rejectDecline = reject;
+          }),
+      );
+
+      const { rerender } = render(<RsvpBottomSheet {...defaultProps} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /can't make it/i }));
+
+      rerender(<RsvpBottomSheet {...defaultProps} isOpen={false} />);
+
+      await act(async () => {
+        rejectDecline(new Error('Network error'));
+      });
+
+      rerender(<RsvpBottomSheet {...defaultProps} isOpen={true} />);
+
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    });
+
+    it('still calls router.refresh() when decline resolves after the sheet is closed', async () => {
+      let resolveDecline: (value: unknown) => void = () => {};
+      mockDecline.mutateAsync.mockImplementationOnce(
+        () =>
+          new Promise<unknown>((resolve) => {
+            resolveDecline = resolve;
+          }),
+      );
+
+      const { rerender } = render(<RsvpBottomSheet {...defaultProps} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /can't make it/i }));
+
+      rerender(<RsvpBottomSheet {...defaultProps} isOpen={false} />);
+
+      await act(async () => {
+        resolveDecline({});
+      });
+
+      expect(mockRefresh).toHaveBeenCalledTimes(1);
+      expect(defaultProps.onClose).not.toHaveBeenCalled();
+    });
+  });
 });
