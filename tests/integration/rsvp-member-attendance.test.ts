@@ -185,11 +185,18 @@ describe('Per-member RSVP attendance (FPP-30, FPP-29)', () => {
       expect(content).toContain('noAttendances');
     });
 
-    it('shows potluck claims, fee placeholder, and edit link', async () => {
+    it('shows potluck claims, fee total block, and edit link', async () => {
       const content = await fs.readFile(confirmationPagePath, 'utf-8');
       expect(content).toContain('Potluck');
       expect(content).toContain('Payment total');
-      expect(content).toContain('Stripe checkout ships (QUB-28.2)');
+      // FPP-77: the fee block now reads Registration.amountCents and
+      // Event.currency. The placeholder copy was replaced by the
+      // FeeTotalBlock component, which renders nothing when the
+      // registration is free.
+      expect(content).toContain('FeeTotalBlock');
+      expect(content).toMatch(/registration\.amountCents|registration\?\.amountCents/);
+      expect(content).toMatch(/registration\.currency|registration\?\.currency|event\.currency/);
+      expect(content).not.toContain('Stripe checkout ships (QUB-28.2)');
       expect(content).toContain('Edit RSVP');
       expect(content).toContain('Back to My Events');
     });
