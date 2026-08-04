@@ -194,6 +194,13 @@ export function EventRsvpCard({
               {isRsvpOpen && (
                 <div className="mt-5 flex flex-col gap-2">
                   <Link
+                    href={`/events/${eventId}/potluck`}
+                    className="rounded-pill bg-terracotta press px-4 py-2.5 text-center text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
+                    data-testid="rsvp-card-potluck-link"
+                  >
+                    Manage potluck dishes
+                  </Link>
+                  <Link
                     href={`/my-events/${existingRsvp.id}/confirmation`}
                     className="rounded-pill border-border bg-card text-foreground press hover:border-foreground border px-4 py-2.5 text-center text-sm font-semibold transition-all"
                   >

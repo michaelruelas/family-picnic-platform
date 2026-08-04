@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useHouseholdNameMutation, useRsvpFormState, useRsvpMutation } from '~/hooks';
 import { RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
@@ -618,6 +619,15 @@ export function RsvpBottomSheet({
             </p>
           )}
 
+          <Link
+            href={`/events/${eventId}/potluck`}
+            onClick={onClose}
+            className="text-terracotta decoration-terracotta/30 hover:decoration-terracotta mt-3 block text-center text-sm font-semibold underline underline-offset-4"
+            data-testid="rsvp-form-potluck-link"
+          >
+            See who is bringing what →
+          </Link>
+
           <button
             onClick={handleConfirm}
             disabled={isSubmitting || yesCount === 0}
@@ -658,7 +668,18 @@ export function RsvpBottomSheet({
             We can&apos;t wait to see you and the family.
           </p>
           {confirmedRsvpId && (
-            <p className="text-muted-foreground mt-1 text-xs">Redirecting to your confirmation…</p>
+            <>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Redirecting to your confirmation…
+              </p>
+              <Link
+                href={`/events/${eventId}/potluck`}
+                onClick={onClose}
+                className="text-terracotta decoration-terracotta/30 hover:decoration-terracotta mt-4 inline-block text-sm font-semibold underline underline-offset-4"
+              >
+                Skip to potluck signup →
+              </Link>
+            </>
           )}
         </div>
       )}

@@ -1,5 +1,6 @@
 import { prisma } from '~/lib/prisma';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import PhotoCard from '~/components/PhotoCard';
@@ -365,35 +366,46 @@ export default async function EventDetailPage({ params }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="no-scrollbar -mx-5 mt-6 overflow-x-auto px-5 pb-2">
-                  <div className="flex gap-4">
-                    {isLoggedIn &&
-                      userRsvp?.status === 'CONFIRMED' &&
-                      (() => {
-                        const openSlots = event.potluckSlots.filter(
-                          (s) => s.signups.length === 0 || s.slotType === 'UNLIMITED',
-                        );
-                        if (openSlots.length === 0) return null;
+                <div className="mt-6 flex flex-col gap-4">
+                  <div className="no-scrollbar -mx-5 overflow-x-auto px-5 pb-2">
+                    <div className="flex gap-4">
+                      {isLoggedIn &&
+                        userRsvp?.status === 'CONFIRMED' &&
+                        (() => {
+                          const openSlots = event.potluckSlots.filter(
+                            (s) => s.signups.length === 0 || s.slotType === 'UNLIMITED',
+                          );
+                          if (openSlots.length === 0) return null;
+                          return (
+                            <AddDishCard
+                              eventId={event.id}
+                              existingCategories={Object.keys(slotsByCategory)}
+                            />
+                          );
+                        })()}
+                      {Object.entries(slotsByCategory).map(([category, slots]) => {
+                        const dishes = slots.flatMap((slot) => slot.signups).slice(0, 4);
                         return (
-                          <AddDishCard
-                            eventId={event.id}
-                            existingCategories={Object.keys(slotsByCategory)}
+                          <PotluckCategoryCard
+                            key={category}
+                            category={category}
+                            dishes={dishes}
+                            totalSlots={slots.length}
+                            isLoggedIn={isLoggedIn}
                           />
                         );
-                      })()}
-                    {Object.entries(slotsByCategory).map(([category, slots]) => {
-                      const dishes = slots.flatMap((slot) => slot.signups).slice(0, 4);
-                      return (
-                        <PotluckCategoryCard
-                          key={category}
-                          category={category}
-                          dishes={dishes}
-                          totalSlots={slots.length}
-                          isLoggedIn={isLoggedIn}
-                        />
-                      );
-                    })}
+                      })}
+                    </div>
                   </div>
+                  <Link
+                    href={`/events/${event.id}/potluck`}
+                    className="rounded-pill bg-foreground text-background press hover:bg-foreground/90 inline-flex w-fit items-center gap-2 px-5 py-2.5 text-sm font-semibold transition-all"
+                    data-testid="event-detail-potluck-cta"
+                  >
+                    {isLoggedIn && userRsvp?.status === 'CONFIRMED'
+                      ? 'Manage your dishes'
+                      : 'Browse the potluck menu'}
+                  </Link>
                 </div>
               )}
             </BreatheSection>
@@ -614,21 +626,24 @@ function PotluckCategoryCard({
 }
 
 function AddDishCard({
-  eventId: _eventId,
+  eventId,
   existingCategories: _existingCategories,
 }: {
   eventId: string;
   existingCategories: string[];
 }) {
   return (
-    <div className="border-sage/40 hover:bg-sage/5 flex w-[260px] shrink-0 flex-col items-center justify-center rounded-3xl border-2 border-dashed bg-transparent p-6 text-center transition-colors md:w-[280px]">
+    <Link
+      href={`/events/${eventId}/potluck`}
+      className="border-sage/40 hover:bg-sage/5 flex w-[260px] shrink-0 flex-col items-center justify-center rounded-3xl border-2 border-dashed bg-transparent p-6 text-center transition-colors md:w-[280px]"
+    >
       <div className="bg-sage/15 flex h-12 w-12 items-center justify-center rounded-full text-2xl">
         🍴
       </div>
       <h4 className="font-display text-foreground mt-3 text-lg font-semibold">Bring a dish</h4>
       <p className="text-muted-foreground mt-1 text-sm">
-        Look for an open slot on the menu above and sign up.
+        Pick an open slot and tell us what you are bringing.
       </p>
-    </div>
+    </Link>
   );
 }

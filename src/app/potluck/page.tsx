@@ -115,10 +115,10 @@ export default async function PotluckPage() {
                   </div>
 
                   <Link
-                    href={`/events/${event.id}`}
+                    href={`/events/${event.id}/potluck`}
                     className="rounded-pill bg-foreground text-background press hover:bg-foreground/90 mt-6 block w-full px-5 py-3 text-center text-sm font-semibold transition-all"
                   >
-                    {isPast ? 'View Details' : 'Sign Up for Dishes'}
+                    {isPast ? 'View Menu' : 'Sign Up for Dishes'}
                   </Link>
                 </div>
               </BreatheSection>
