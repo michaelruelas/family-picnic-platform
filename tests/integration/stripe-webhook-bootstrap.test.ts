@@ -80,11 +80,14 @@ describe('Stripe webhook bootstrap (FPP-47)', () => {
     expect(content).not.toMatch(/^extract\(\) \{/m);
   });
 
-  it('populate-openbao-secrets.sh accepts a TARGET_ENV arg (defaults to dev)', async () => {
+  it('populate-openbao-secrets.sh accepts a TARGET_ENV arg (defaults to dev) and allows stage|prod', async () => {
     const content = await fs.readFile(populateScriptPath, 'utf-8');
     expect(content).toMatch(/TARGET_ENV="\$\{1:-\$\{TARGET_ENV:-dev\}\}"/);
     expect(content).toContain('secret/family-picnic-$TARGET_ENV');
-    expect(content).toMatch(/TARGET_ENV must be one of: dev, prod/);
+    // Widened from dev|prod to dev|stage|prod so stage deploys share the
+    // same populate script. The setup-stripe-webhook.sh script also
+    // accepts the same three values.
+    expect(content).toMatch(/TARGET_ENV must be one of dev\|stage\|prod/);
   });
 
   it('populate-openbao-secrets.sh writes STRIPE_API_KEY only to .env.dev, not OpenBao', async () => {

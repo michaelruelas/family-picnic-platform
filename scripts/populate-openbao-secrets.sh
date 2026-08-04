@@ -21,7 +21,7 @@
 #   ./scripts/populate-openbao-secrets.sh prod           # explicit env
 #
 # Env overrides:
-#   TARGET_ENV        default: dev
+#   TARGET_ENV        default: dev (accepts: dev|stage|prod)
 #   OPENBAO_NAMESPACE  default: security
 #   OPENBAO_POD        default: openbao-0
 #   SECRET_PREFIX      default: secret/family-picnic-${TARGET_ENV}
@@ -33,6 +33,13 @@
 set -euo pipefail
 
 TARGET_ENV="${1:-${TARGET_ENV:-dev}}"
+case "$TARGET_ENV" in
+  dev|stage|prod) ;;
+  *)
+    echo "ERROR: TARGET_ENV must be one of dev|stage|prod (got '$TARGET_ENV')" >&2
+    exit 1
+    ;;
+esac
 
 case "$TARGET_ENV" in
   dev|prod) ;;

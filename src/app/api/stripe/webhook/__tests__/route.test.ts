@@ -9,6 +9,7 @@ const prismaMock = vi.hoisted(() => ({
   registration: {
     update: vi.fn(),
     updateMany: vi.fn(),
+    findUnique: vi.fn(),
     findUniqueOrThrow: vi.fn(),
   },
   refund: {
@@ -294,6 +295,116 @@ describe('POST /api/stripe/webhook', () => {
     });
   });
 
+  it('handles charge.updated: reconciles partial OOB refund via amount_refunded', async () => {
+    mockIsWebhookConfigured.mockReturnValue(true);
+    mockVerifyWebhookSignature.mockResolvedValue({
+      id: 'evt_partial',
+      type: 'charge.updated',
+      data: {
+        object: {
+          id: 'ch_partial',
+          payment_intent: 'pi_partial',
+          amount_refunded: 1000, // partial refund via Stripe dashboard
+        },
+      },
+    });
+    prismaMock.charge.findUnique.mockResolvedValue({
+      id: 'charge-partial',
+      amountCents: 2500,
+      registrationId: 'reg-partial',
+      receiptUrl: 'https://stripe.com/r/already',
+    });
+    prismaMock.refund.findMany.mockResolvedValue([]); // no in-app refunds
+    prismaMock.registration.findUnique.mockResolvedValue({
+      id: 'reg-partial',
+      eventId: 'e-partial',
+      userId: 'u-partial',
+      refundedCents: 0,
+      status: 'PAID',
+    });
+    prismaMock.registration.updateMany.mockResolvedValue({ count: 1 });
+
+    const res = await POST(makeWebhookRequest('{"id":"evt_partial"}'));
+    expect(res.status).toBe(200);
+    // Partial refund: refundedCents = 1000, registration stays PAID
+    // (1000 < 2500). Writes a refundReconciled audit entry.
+    expect(prismaMock.registration.updateMany).toHaveBeenCalledWith({
+      where: { id: 'reg-partial' },
+      data: { refundedCents: 1000 },
+    });
+    expect(mockWriteAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'payment.refundReconciled',
+        newValue: expect.objectContaining({
+          refundedCents: 1000,
+          registrationStatus: 'PAID',
+          isFullRefund: false,
+          stripeRefundedCents: 1000,
+          localRefundedCents: 0,
+          source: 'out_of_band',
+        }),
+      }),
+    );
+  });
+
+  it('handles charge.refunded: writes payment.refundReconciled audit log', async () => {
+    // Closes F6: the existing charge.refunded test only checked the
+    // registration update; the audit log entry was untested.
+    mockIsWebhookConfigured.mockReturnValue(true);
+    mockVerifyWebhookSignature.mockResolvedValue({
+      id: 'evt_refunded_audit',
+      type: 'charge.refunded',
+      data: { object: { id: 'ch_ref', payment_intent: 'pi_ref' } },
+    });
+    prismaMock.charge.findUnique.mockResolvedValue({
+      id: 'charge-ref',
+      amountCents: 2500,
+      registrationId: 'reg-ref',
+      registration: {
+        id: 'reg-ref',
+        eventId: 'e-ref',
+        userId: 'u-ref',
+      },
+    });
+    prismaMock.refund.findMany.mockResolvedValue([{ id: 'r-1', amountCents: 2500 }]);
+    prismaMock.registration.findUniqueOrThrow.mockResolvedValue({
+      id: 'reg-ref',
+      eventId: 'e-ref',
+      userId: 'u-ref',
+      refundedCents: 0,
+      status: 'PAID',
+    });
+    prismaMock.registration.update.mockResolvedValue({
+      id: 'reg-ref',
+      eventId: 'e-ref',
+      userId: 'u-ref',
+      refundedCents: 2500,
+      status: 'REFUNDED',
+    });
+
+    const res = await POST(makeWebhookRequest('{"id":"evt_refunded_audit"}'));
+    expect(res.status).toBe(200);
+    expect(mockWriteAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'payment.refundReconciled',
+        userId: 'u-ref',
+        eventId: 'e-ref',
+        oldValue: expect.objectContaining({
+          refundedCents: 0,
+          registrationStatus: 'PAID',
+        }),
+        newValue: expect.objectContaining({
+          refundedCents: 2500,
+          registrationStatus: 'REFUNDED',
+          isFullRefund: true,
+          stripeRefundedCents: 0,
+          localRefundedCents: 2500,
+          source: 'in_app',
+        }),
+      }),
+    );
+  });
+
   it('returns 200 with received: true for unhandled event types', async () => {
     mockIsWebhookConfigured.mockReturnValue(true);
     mockVerifyWebhookSignature.mockResolvedValue({
@@ -381,6 +492,51 @@ describe('POST /api/stripe/webhook', () => {
     expect(res.status).toBe(200);
     // Critical: no duplicate audit entry, no duplicate receipt email.
     expect(mockWriteAuditLog).not.toHaveBeenCalled();
+    expect(mockSendRegistrationReceipt).not.toHaveBeenCalled();
+  });
+
+  it('does not resurrect a FORFEITED registration when payment_intent.succeeded fires late', async () => {
+    // Closes F2: the registration status guard on updateMany must
+    // skip the PAID transition when the admin already closed the
+    // registration as FORFEITED (or REFUNDED).
+    mockIsWebhookConfigured.mockReturnValue(true);
+    mockVerifyWebhookSignature.mockResolvedValue({
+      id: 'evt_forfeit_guard',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_forfeit_guard',
+          amount: 2500,
+          amount_received: 2500,
+          currency: 'usd',
+          latest_charge: { id: 'ch_forfeit_guard' },
+        },
+      },
+    });
+    prismaMock.charge.findUnique.mockResolvedValue({
+      id: 'charge-forfeit-guard',
+      status: 'SUCCEEDED',
+      amountCents: 2500,
+      currency: 'usd',
+      receiptUrl: null,
+      registrationId: 'reg-forfeit-guard',
+      registration: {
+        id: 'reg-forfeit-guard',
+        userId: 'u-fg',
+        eventId: 'e-fg',
+        status: 'FORFEITED',
+        user: { id: 'u-fg', name: 'A', email: 'a@x.com' },
+        event: { id: 'e-fg', name: 'E', date: new Date('2026-08-15T11:00:00Z') },
+      },
+    });
+    // updateMany with status guard returns count: 0 — no rows match.
+    prismaMock.registration.updateMany.mockResolvedValue({ count: 0 });
+
+    const res = await POST(makeWebhookRequest('{"id":"evt_forfeit_guard"}'));
+    expect(res.status).toBe(200);
+    // No audit log entry (we don't claim the FORFEITED was ours).
+    expect(mockWriteAuditLog).not.toHaveBeenCalled();
+    // No receipt email — the user forfeited, we don't spam them.
     expect(mockSendRegistrationReceipt).not.toHaveBeenCalled();
   });
 

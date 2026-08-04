@@ -411,11 +411,53 @@ async function handleChargeUpdated(charge: StripeChargeLike): Promise<void> {
 
   const target = Math.max(stripeRefundedCents, localRefundedCents);
   const isFullRefund = target >= localCharge.amountCents;
-  await prisma.registration.updateMany({
+
+  // Mirror handleChargeRefunded: read pre-state for the audit entry,
+  // then conditionally update if Stripe's view diverges from local.
+  const beforeRegistration = await prisma.registration.findUnique({
+    where: { id: localCharge.registrationId },
+    select: { id: true, refundedCents: true, status: true, eventId: true, userId: true },
+  });
+  if (!beforeRegistration) return;
+
+  const updateResult = await prisma.registration.updateMany({
     where: { id: localCharge.registrationId },
     data: {
       refundedCents: target,
       ...(isFullRefund ? { status: RegistrationStatus.REFUNDED } : {}),
+    },
+  });
+
+  // Only audit when the local view actually changed -- avoids noise
+  // from idempotent retries and from events that confirm what we
+  // already know.
+  if (updateResult.count === 0) return;
+  const afterRegistration = {
+    refundedCents: target,
+    status: isFullRefund ? RegistrationStatus.REFUNDED : beforeRegistration.status,
+  };
+  if (
+    afterRegistration.refundedCents === beforeRegistration.refundedCents &&
+    afterRegistration.status === beforeRegistration.status
+  ) {
+    return;
+  }
+
+  await writeAuditLog({
+    userId: beforeRegistration.userId,
+    eventId: beforeRegistration.eventId,
+    action: 'payment.refundReconciled',
+    oldValue: {
+      refundedCents: beforeRegistration.refundedCents,
+      registrationStatus: beforeRegistration.status,
+    },
+    newValue: {
+      refundedCents: afterRegistration.refundedCents,
+      registrationStatus: afterRegistration.status,
+      isFullRefund,
+      stripeRefundedCents,
+      localRefundedCents,
+      source: stripeRefundedCents > localRefundedCents ? 'out_of_band' : 'in_app',
     },
   });
 }
