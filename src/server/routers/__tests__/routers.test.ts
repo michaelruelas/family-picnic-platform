@@ -157,6 +157,29 @@ vi.mock('~/lib/generated/enums', () => ({
     OTHER: 'OTHER',
   },
   SlotType: { LIMITED: 'LIMITED', UNLIMITED: 'UNLIMITED' },
+  RegistrationStatus: {
+    PENDING: 'PENDING',
+    PAID: 'PAID',
+    REFUNDED: 'REFUNDED',
+    FORFEITED: 'FORFEITED',
+    CANCELLED: 'CANCELLED',
+  },
+  ChargeStatus: {
+    REQUIRES_PAYMENT_METHOD: 'REQUIRES_PAYMENT_METHOD',
+    REQUIRES_CONFIRMATION: 'REQUIRES_CONFIRMATION',
+    REQUIRES_ACTION: 'REQUIRES_ACTION',
+    PROCESSING: 'PROCESSING',
+    REQUIRES_CAPTURE: 'REQUIRES_CAPTURE',
+    SUCCEEDED: 'SUCCEEDED',
+    CANCELED: 'CANCELED',
+    FAILED: 'FAILED',
+  },
+  RefundStatus: {
+    PENDING: 'PENDING',
+    SUCCEEDED: 'SUCCEEDED',
+    FAILED: 'FAILED',
+    CANCELED: 'CANCELED',
+  },
 }));
 
 vi.mock('~/lib/s3', () => ({

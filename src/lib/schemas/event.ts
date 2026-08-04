@@ -8,6 +8,9 @@ const eventFields = {
   rsvpDeadline: z.string().optional(),
   maxCapacity: z.number().int().positive().optional(),
   mapImageUrl: z.string().url().optional().or(z.literal('')),
+  // Optional per-attendee fee in cents. Null/0 means registration is free
+  // and the Stripe checkout flow is hidden.
+  registrationFeeCents: z.number().int().nonnegative().optional(),
 };
 
 const eventBaseSchema = z.object(eventFields);
@@ -36,6 +39,7 @@ export const eventUpdateSchema = z
     rsvpDeadline: z.string().optional(),
     maxCapacity: z.number().int().positive().optional(),
     mapImageUrl: z.string().url().optional().or(z.literal('')),
+    registrationFeeCents: z.number().int().nonnegative().optional(),
   })
   .refine(rsvpDeadlineRefine, {
     message: 'RSVP deadline must be before the event date',

@@ -10,6 +10,7 @@ import { photoRouter } from './photo.router';
 import { communicationRouter } from './communication.router';
 import { adminRouter } from './admin.router';
 import { dependentRouter } from './dependent.router';
+import { paymentRouter } from './payment.router';
 
 export const appRouter = router({
   auth: authRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   communication: communicationRouter,
   admin: adminRouter,
   dependent: dependentRouter,
+  payment: paymentRouter,
 });
 
 export type AppRouter = typeof appRouter;

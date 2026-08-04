@@ -156,9 +156,17 @@ For complete documentation on:
 | `/admin/events/new`              | `src/app/admin/events/new/page.tsx`              | Create event                       |
 | `/admin/events/[id]/edit`        | `src/app/admin/events/[id]/edit/page.tsx`        | Edit event & potluck slots         |
 | `/admin/events/[id]/edit/admins` | `src/app/admin/events/[id]/edit/admins/page.tsx` | Event admin management             |
+| `/admin/charges`                 | `src/app/admin/charges/page.tsx`                 | Stripe charges, refunds, forfeits  |
 | `/admin/invitations`             | `src/app/admin/invitations/page.tsx`             | Invitation management + CSV import |
 | `/admin/communications`          | `src/app/admin/communications/page.tsx`          | Broadcast composer                 |
 | `/admin/audit-log`               | `src/app/admin/audit-log/page.tsx`               | Audit log viewer                   |
+
+### Authenticated Routes (Payment)
+
+| Route                          | File                                           | Description                      |
+| ------------------------------ | ---------------------------------------------- | -------------------------------- |
+| `/events/[id]/checkout`        | `src/app/events/[id]/checkout/page.tsx`        | Hosted Payment Element checkout  |
+| `/events/[id]/checkout/return` | `src/app/events/[id]/checkout/return/page.tsx` | Return URL after Stripe redirect |
 
 ### API Routes
 
@@ -172,6 +180,7 @@ For complete documentation on:
 | `/api/photo-reaction`                         | `src/app/api/photo-reaction/route.ts`                         | Photo reactions                                |
 | `/api/photo-upload-url`                       | `src/app/api/photo-upload-url/route.ts`                       | S3 presigned URL generation                    |
 | `/api/photos`                                 | `src/app/api/photos/route.ts`                                 | Photo record CRUD                              |
+| `/api/stripe/webhook`                         | `src/app/api/stripe/webhook/route.ts`                         | Stripe webhook (signature-verified)            |
 | `/api/trpc/[trpc]`                            | `src/app/api/trpc/[trpc]/route.ts`                            | tRPC API handler                               |
 | `/api/admin/events`                           | `src/app/api/admin/events/route.ts`                           | Admin event CRUD                               |
 | `/api/admin/events/[id]`                      | `src/app/api/admin/events/[id]/route.ts`                      | Admin single event operations                  |
@@ -200,19 +209,20 @@ For complete documentation on:
 
 Routers are located in `src/server/routers/`:
 
-| Router          | File                      | Procedures                                                                                    |
-| --------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
-| `auth`          | `auth.router.ts`          | session, signIn, signOut, callback                                                            |
-| `user`          | `user.router.ts`          | me, update, updatePreferences, completeOnboarding, linkHousehold                              |
-| `household`     | `household.router.ts`     | create, get, getById, update, addMember, removeMember, getCumulativeHeadcount                 |
-| `dependent`     | `dependent.router.ts`     | create, update, remove, list                                                                  |
-| `event`         | `event.router.ts`         | create, list, getById, update, listAdmins, addAdmin, removeAdmin                              |
-| `invitation`    | `invitation.router.ts`    | create, send, resend, track, consume                                                          |
-| `rsvp`          | `rsvp.router.ts`          | confirm, decline, update, getByEvent, getMyRsvp, getHeadcount                                 |
-| `potluck`       | `potluck.router.ts`       | listSlots, signup, updateSignup, cancelSignup, getFoodSummary                                 |
-| `photo`         | `photo.router.ts`         | getUploadUrl, confirmUpload, search, delete, addReaction, removeReaction                      |
-| `communication` | `communication.router.ts` | sendInvite, sendRsvpReminder, sendBroadcast, scheduleMessage, unsubscribe, getRateLimitStatus |
-| `admin`         | `admin.router.ts`         | getUsers, getAuditLog, dashboard, csvImport, getDietarySummary                                |
+| Router          | File                      | Procedures                                                                                                  |
+| --------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `auth`          | `auth.router.ts`          | session, signIn, signOut, callback                                                                          |
+| `user`          | `user.router.ts`          | me, update, updatePreferences, completeOnboarding, linkHousehold                                            |
+| `household`     | `household.router.ts`     | create, get, getById, update, addMember, removeMember, getCumulativeHeadcount                               |
+| `dependent`     | `dependent.router.ts`     | create, update, remove, list                                                                                |
+| `event`         | `event.router.ts`         | create, list, getById, update, listAdmins, addAdmin, removeAdmin                                            |
+| `invitation`    | `invitation.router.ts`    | create, send, resend, track, consume                                                                        |
+| `rsvp`          | `rsvp.router.ts`          | confirm, decline, update, getByEvent, getMyRsvp, getHeadcount                                               |
+| `potluck`       | `potluck.router.ts`       | listSlots, signup, updateSignup, cancelSignup, getFoodSummary                                               |
+| `photo`         | `photo.router.ts`         | getUploadUrl, confirmUpload, search, delete, addReaction, removeReaction                                    |
+| `communication` | `communication.router.ts` | sendInvite, sendRsvpReminder, sendBroadcast, scheduleMessage, unsubscribe, getRateLimitStatus               |
+| `admin`         | `admin.router.ts`         | getUsers, getAuditLog, dashboard, csvImport, getDietarySummary, listCharges, refund, forfeit, resendReceipt |
+| `payment`       | `payment.router.ts`       | getPublishableKey, createPaymentIntent, getMyRegistration                                                   |
 
 ### tRPC Procedures
 
@@ -321,6 +331,7 @@ All tickets in `tickets/` directory. See `tickets/README.md` for priority order.
 | 33     | Loading and error states          | 36        |
 | 34     | Type safety hardening             | 37        |
 | 25     | Rate limiting for broadcasts      | 38        |
+| 47     | Integrate credit card processing  | 39        |
 
 ### Remaining Tickets (Post-MVP / Infrastructure)
 
@@ -343,18 +354,19 @@ Copy `.env.example` to `.env` and fill in:
 cp .env.example .env
 ```
 
-| Variable             | Description                                 | Required            |
-| -------------------- | ------------------------------------------- | ------------------- |
-| `DATABASE_URL`       | PostgreSQL connection string                | Yes                 |
-| `NEXTAUTH_URL`       | App URL (http://localhost:3000 for dev)     | Yes                 |
-| `NEXTAUTH_SECRET`    | Random string for session encryption        | Yes                 |
-| `AUTH_GOOGLE_ID`     | Google OAuth client ID                      | Yes                 |
-| `AUTH_GOOGLE_SECRET` | Google OAuth client secret                  | Yes                 |
-| `TWILIO_*`           | Twilio SMS credentials                      | For SMS             |
-| `SENDGRID_*`         | SendGrid email credentials                  | For email           |
-| `S3_*`               | S3-compatible storage                       | For photo uploads   |
-| `CRON_SECRET`        | Secret for authenticating cron job requests | For scheduled tasks |
-| `RENOVATE_TOKEN`     | GitHub PAT used by the Renovate workflow    | For dep updates     |
+| Variable             | Description                                  | Required            |
+| -------------------- | -------------------------------------------- | ------------------- |
+| `DATABASE_URL`       | PostgreSQL connection string                 | Yes                 |
+| `NEXTAUTH_URL`       | App URL (http://localhost:3000 for dev)      | Yes                 |
+| `NEXTAUTH_SECRET`    | Random string for session encryption         | Yes                 |
+| `AUTH_GOOGLE_ID`     | Google OAuth client ID                       | Yes                 |
+| `AUTH_GOOGLE_SECRET` | Google OAuth client secret                   | Yes                 |
+| `TWILIO_*`           | Twilio SMS credentials                       | For SMS             |
+| `SENDGRID_*`         | SendGrid email credentials                   | For email           |
+| `S3_*`               | S3-compatible storage                        | For photo uploads   |
+| `STRIPE_*`           | Stripe Payment Element + webhook credentials | For paid events     |
+| `CRON_SECRET`        | Secret for authenticating cron job requests  | For scheduled tasks |
+| `RENOVATE_TOKEN`     | GitHub PAT used by the Renovate workflow     | For dep updates     |
 
 ## Prisma
 

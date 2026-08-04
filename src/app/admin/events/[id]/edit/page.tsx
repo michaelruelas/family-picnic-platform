@@ -55,6 +55,7 @@ export default async function EditEventPage({ params }: PageProps) {
     rsvpDeadline: event.rsvpDeadline?.toISOString().slice(0, 16) ?? '',
     maxCapacity: event.maxCapacity ?? undefined,
     mapImageUrl: event.mapImageUrl ?? '',
+    registrationFeeCents: event.registrationFeeCents ?? 0,
   };
 
   return (
