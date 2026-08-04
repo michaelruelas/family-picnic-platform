@@ -4,12 +4,17 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- **RSVP duplicate backfill script (FPP-28)** — `prisma/backfill-rsvp-duplicates.ts` and `src/lib/rsvp-backfill.ts` ship a one-time merge utility for any duplicate `RSVP` rows the pre-fix re-registration bug may have left behind. Per `(eventId, userId)` group, picks the most recent row as the winner (tiebreak: `respondedAt`, then `id`), reassigns any `PotluckSignup` rows to the winner, writes one `RSVP_MERGE` entry to `AdminAuditLog` per loser, and deletes the losers. Wraps each group in a `$transaction`. Default mode is dry-run; pass `--apply` (or run `bun run db:backfill-rsvp-duplicates --apply`) to write. Idempotent and exits non-zero on any per-group failure.
+
 ### Fixed
 
 - **Google OAuth signIn lookup** (`src/lib/auth.ts`) — filter `deletedAt: null` on the active-user lookup, then refuse sign-in entirely when the email matches a soft-deleted tombstone. The `User.email` unique index covers soft-deleted rows, so re-provisioning would throw on insert; refusing matches the dev-credentials `authorize` behavior and ADR-001 ("account recovery won't do"). The admin must explicitly re-invite a deleted user.
 
 ### Tests
 
+- **RSVP backfill coverage** — 12 unit tests in `src/lib/__tests__/rsvp-backfill.test.ts` (dry-run no-op, apply merges + reassigns + audits, idempotent second run, tiebreak order, partial-failure isolation, top-level error handling, formatter output) and 9 integration smoke tests in `tests/integration/rsvp-backfill-script.test.ts` (script wires the lib, defaults to dry-run, exits non-zero on errors, package script registered).
 - **OAuth soft-deleted user coverage** (`src/lib/__tests__/auth.test.ts`) — assert the Google signIn callback (1) filters the active-user lookup with `deletedAt: null`, (2) performs an unfiltered tombstone lookup, and (3) returns `false` with no create when the email matches a soft-deleted record. Updated the pre-existing string-pattern smoke test in `tests/auth/sign-in.test.ts` to match the new control flow.
 
 ## [0.1.12] — 2026-07-30
