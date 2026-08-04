@@ -14,10 +14,23 @@ interface EventFormData {
   mapImageUrl?: string;
   // Optional per-attendee fee in dollars. Empty string means "no fee".
   registrationFeeDollars?: string;
+  // Minimum age (inclusive) for an attendee to owe the per-attendee fee.
+  // 0 means "everyone pays", which is the default. Empty string on the
+  // form means 0 (everyone pays).
+  registrationFeeMinAge?: string;
+}
+
+interface EventFormInitialData extends Omit<
+  EventFormData,
+  'registrationFeeDollars' | 'registrationFeeMinAge'
+> {
+  id: string;
+  registrationFeeCents?: number;
+  registrationFeeMinAge?: number;
 }
 
 interface EventFormProps {
-  initialData?: EventFormData & { id: string; registrationFeeCents?: number };
+  initialData?: EventFormInitialData;
   mode: 'create' | 'edit';
 }
 
@@ -31,6 +44,11 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
       ? (initialData.registrationFeeCents / 100).toFixed(2)
       : '';
 
+  const initialMinAge =
+    initialData?.registrationFeeMinAge !== undefined
+      ? String(initialData.registrationFeeMinAge)
+      : '';
+
   const [formData, setFormData] = useState<EventFormData>({
     name: initialData?.name ?? '',
     date: initialData?.date ?? '',
@@ -40,14 +58,20 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     maxCapacity: initialData?.maxCapacity ?? undefined,
     mapImageUrl: initialData?.mapImageUrl ?? '',
     registrationFeeDollars: initialFeeDollars,
+    registrationFeeMinAge: initialMinAge,
   });
 
   function buildPayload(): Record<string, unknown> {
     const feeDollars = formData.registrationFeeDollars?.trim();
     const feeCents =
       feeDollars && !Number.isNaN(Number(feeDollars)) ? Math.round(Number(feeDollars) * 100) : 0;
-    const { registrationFeeDollars, ...rest } = formData;
+    const minAgeRaw = formData.registrationFeeMinAge?.trim();
+    const minAgeParsed = minAgeRaw ? Number(minAgeRaw) : 0;
+    const registrationFeeMinAge =
+      Number.isFinite(minAgeParsed) && minAgeParsed >= 0 ? Math.floor(minAgeParsed) : 0;
+    const { registrationFeeDollars, registrationFeeMinAge: _omit, ...rest } = formData;
     void registrationFeeDollars;
+    void _omit;
     return {
       ...rest,
       maxCapacity:
@@ -55,6 +79,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
           ? undefined
           : Number(rest.maxCapacity),
       registrationFeeCents: feeCents,
+      registrationFeeMinAge,
     };
   }
 
@@ -232,6 +257,31 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
           <p className="text-muted-foreground mt-1 text-xs">
             When set above $0, attendees complete payment through Stripe before registration is
             confirmed. Requires STRIPE_SECRET_KEY to be configured.
+          </p>
+        </div>
+
+        <div>
+          <label
+            htmlFor="registrationFeeMinAge"
+            className="text-foreground/85 block text-sm font-medium"
+          >
+            Minimum Age for Fee
+          </label>
+          <input
+            type="number"
+            id="registrationFeeMinAge"
+            name="registrationFeeMinAge"
+            value={formData.registrationFeeMinAge ?? ''}
+            onChange={handleChange}
+            min="0"
+            max="120"
+            step="1"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            placeholder="0"
+          />
+          <p className="text-muted-foreground mt-1 text-xs">
+            Attendees aged at or above this threshold owe the fee (per attendee). Default 0 charges
+            every attendee. Attendees with no age on file are skipped, never silently billed.
           </p>
         </div>
       </div>

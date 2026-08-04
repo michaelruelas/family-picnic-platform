@@ -141,4 +141,94 @@ describe('EventForm', () => {
       expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
     });
   });
+
+  describe('registration fee fields (FPP-16)', () => {
+    it('renders the fee dollar input and the min-age input', () => {
+      render(<EventForm mode="create" />);
+      expect(screen.getByLabelText(/registration fee/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/minimum age for fee/i)).toBeInTheDocument();
+    });
+
+    it('pre-fills both fee fields from initialData in edit mode', () => {
+      const initialData = {
+        id: 'e-1',
+        name: 'Annual Picnic',
+        date: '2026-08-15T10:00',
+        location: 'Park',
+        description: '',
+        registrationFeeCents: 2500,
+        registrationFeeMinAge: 13,
+      };
+      render(<EventForm mode="edit" initialData={initialData} />);
+      // `type="number"` inputs normalize the rendered value; we only
+      // care that the form seeded the cents correctly. Submit will
+      // re-emit the payload so the integration test below is the
+      // source of truth for cents/min-age.
+      expect(screen.getByLabelText(/registration fee/i)).toHaveValue(25);
+      expect(screen.getByLabelText(/minimum age for fee/i)).toHaveValue(13);
+    });
+
+    it('sends registrationFeeCents and registrationFeeMinAge on submit', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'e-new' }),
+      } as never);
+      render(<EventForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/event name/i), { target: { value: 'New' } });
+      fireEvent.change(screen.getByLabelText(/event date/i), {
+        target: { value: '2026-08-15T10:00' },
+      });
+      fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
+      fireEvent.change(screen.getByLabelText(/registration fee/i), {
+        target: { value: '12.50' },
+      });
+      fireEvent.change(screen.getByLabelText(/minimum age for fee/i), {
+        target: { value: '13' },
+      });
+      const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
+      fireEvent.submit(form);
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/admin/events',
+          expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('"registrationFeeCents":1250'),
+          }),
+        );
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/admin/events',
+          expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('"registrationFeeMinAge":13'),
+          }),
+        );
+      });
+    });
+
+    it('defaults min-age to 0 when the input is empty', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'e-new' }),
+      } as never);
+      render(<EventForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/event name/i), { target: { value: 'New' } });
+      fireEvent.change(screen.getByLabelText(/event date/i), {
+        target: { value: '2026-08-15T10:00' },
+      });
+      fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
+      fireEvent.change(screen.getByLabelText(/registration fee/i), {
+        target: { value: '10' },
+      });
+      const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
+      fireEvent.submit(form);
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/admin/events',
+          expect.objectContaining({
+            body: expect.stringContaining('"registrationFeeMinAge":0'),
+          }),
+        );
+      });
+    });
+  });
 });

@@ -95,6 +95,15 @@ const mockPrisma = {
   scheduledBroadcast: { create: vi.fn(), update: vi.fn() },
   adminAuditLog: { create: vi.fn(), findMany: vi.fn() },
   eventAdmin: { findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
+  // FPP-48: the RSVP router now reads + upserts Registration rows to
+  // snapshot the per-attendee fee. The mock surface must match.
+  registration: {
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    upsert: vi.fn(),
+    update: vi.fn(),
+    create: vi.fn(),
+  },
   $transaction: vi.fn(),
 };
 

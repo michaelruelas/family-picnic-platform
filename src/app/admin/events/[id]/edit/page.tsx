@@ -56,6 +56,7 @@ export default async function EditEventPage({ params }: PageProps) {
     maxCapacity: event.maxCapacity ?? undefined,
     mapImageUrl: event.mapImageUrl ?? '',
     registrationFeeCents: event.registrationFeeCents ?? 0,
+    registrationFeeMinAge: event.registrationFeeMinAge ?? 0,
   };
 
   return (

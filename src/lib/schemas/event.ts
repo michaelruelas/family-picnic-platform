@@ -11,6 +11,11 @@ const eventFields = {
   // Optional per-attendee fee in cents. Null/0 means registration is free
   // and the Stripe checkout flow is hidden.
   registrationFeeCents: z.number().int().nonnegative().optional(),
+  // Minimum age (inclusive) for an attendee to owe the per-attendee fee.
+  // 0 means "everyone pays", which is the default. Attendees with a
+  // missing age (`null`) are skipped by the calculator, never silently
+  // billed. Upper bound matches the HouseholdMember.age column cap.
+  registrationFeeMinAge: z.number().int().min(0).max(120).optional(),
 };
 
 const eventBaseSchema = z.object(eventFields);
@@ -40,6 +45,7 @@ export const eventUpdateSchema = z
     maxCapacity: z.number().int().positive().optional(),
     mapImageUrl: z.string().url().optional().or(z.literal('')),
     registrationFeeCents: z.number().int().nonnegative().optional(),
+    registrationFeeMinAge: z.number().int().min(0).max(120).optional(),
   })
   .refine(rsvpDeadlineRefine, {
     message: 'RSVP deadline must be before the event date',

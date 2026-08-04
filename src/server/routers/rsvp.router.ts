@@ -2,7 +2,13 @@ import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus, InvitationStatus, EventStatus, RsvpAttending } from '~/lib/generated/enums';
+import {
+  RSVPStatus,
+  InvitationStatus,
+  EventStatus,
+  RsvpAttending,
+  RegistrationStatus,
+} from '~/lib/generated/enums';
 import { writeAuditLog, diff } from '~/lib/audit';
 import {
   rsvpConfirmSchema,
@@ -10,6 +16,7 @@ import {
   rsvpUpdateSchema,
   rsvpAdminOverrideSchema,
 } from '~/lib/schemas';
+import { calculateFeeFromEvent, type FeeAttendee } from '~/lib/fee';
 import {
   attendanceFingerprint,
   buildRosterAsNo,
@@ -17,6 +24,7 @@ import {
   markAllAttendanceNo,
   resolveAndPersistAttendances,
   type MemberAttendanceInput,
+  type ResolvedAttendanceRow,
 } from '~/server/rsvp-attendance';
 
 async function triggerWorkflow(
@@ -83,6 +91,102 @@ async function loadCallerHousehold(
 function hasAnyYes(attendances: MemberAttendanceInput[] | undefined): boolean {
   if (!attendances) return false;
   return attendances.some((a) => a.attending === RsvpAttending.YES);
+}
+
+/**
+ * Shape accepted by the fee calculator. Accepts both the raw input
+ * shape and the resolved (server-trusted) shape; both expose the
+ * fields the calculator reads.
+ */
+type FeeInputRow = {
+  attending: RsvpAttending;
+  memberAge: number | null | undefined;
+};
+
+function toFeeInput(rows: Array<FeeInputRow | ResolvedAttendanceRow>): FeeAttendee[] {
+  return rows.map((r) => ({
+    attending: r.attending,
+    memberAge: r.memberAge ?? null,
+  }));
+}
+
+/**
+ * Recomputes the registration fee from the persisted attendance
+ * snapshot and writes it onto the Registration row in the same
+ * transaction as the RSVP write. Skips the write when the event
+ * has no fee configured (registrationFeeCents === 0 or null) so
+ * free events never get an empty Registration row.
+ *
+ * Returns the amount written (in cents) so the caller can include
+ * it in the audit diff.
+ */
+async function syncRegistrationFee(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  args: {
+    eventId: string;
+    userId: string;
+    householdId: string;
+    event: {
+      registrationFeeCents: number | null;
+      registrationFeeMinAge: number;
+      currency: string;
+    };
+    attendanceRows: Array<FeeInputRow | ResolvedAttendanceRow>;
+  },
+): Promise<{ amountCents: number; currency: string; skipped: boolean }> {
+  const { event } = args;
+  const breakdown = calculateFeeFromEvent(toFeeInput(args.attendanceRows), event);
+  if (breakdown.amountCents <= 0) {
+    // No fee configured for this event. Leave any pre-existing
+    // Registration row alone — backfill or a future paid event will
+    // have created it; we never lower a snapshot that was already
+    // taken at a higher amount.
+    return { amountCents: 0, currency: event.currency, skipped: true };
+  }
+
+  const existing = await tx.registration.findUnique({
+    where: { eventId_userId: { eventId: args.eventId, userId: args.userId } },
+    select: { id: true, status: true, refundedCents: true },
+  });
+
+  // Never overwrite a Registration that is already PAID / REFUNDED /
+  // FORFEITED / CANCELLED. The amount was locked in at charge time
+  // and re-computing it now would silently change history.
+  if (
+    existing &&
+    (existing.status === RegistrationStatus.PAID ||
+      existing.status === RegistrationStatus.REFUNDED ||
+      existing.status === RegistrationStatus.FORFEITED ||
+      existing.status === RegistrationStatus.CANCELLED)
+  ) {
+    return {
+      amountCents: breakdown.amountCents,
+      currency: event.currency,
+      skipped: true,
+    };
+  }
+
+  await tx.registration.upsert({
+    where: { eventId_userId: { eventId: args.eventId, userId: args.userId } },
+    update: {
+      amountCents: breakdown.amountCents,
+      householdId: args.householdId,
+    },
+    create: {
+      eventId: args.eventId,
+      userId: args.userId,
+      householdId: args.householdId,
+      amountCents: breakdown.amountCents,
+      currency: event.currency,
+      status: RegistrationStatus.PENDING,
+    },
+  });
+
+  return {
+    amountCents: breakdown.amountCents,
+    currency: event.currency,
+    skipped: false,
+  };
 }
 
 export const rsvpRouter = router({
@@ -152,6 +256,19 @@ export const rsvpRouter = router({
     }),
 
   update: protectedProcedure.input(rsvpUpdateSchema).mutation(async ({ ctx, input }) => {
+    const event = await prisma.event.findUnique({
+      where: { id: input.eventId },
+      select: {
+        id: true,
+        registrationFeeCents: true,
+        registrationFeeMinAge: true,
+        currency: true,
+      },
+    });
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
     return prisma.$transaction(async (tx) => {
       const before = await tx.rSVP.findUnique({
         where: {
@@ -187,6 +304,7 @@ export const rsvpRouter = router({
         },
       });
 
+      let resolvedAttendanceForFee: ResolvedAttendanceRow[] | null = null;
       if (attendances !== undefined) {
         if (attendances.length === 0) {
           throw new TRPCError({
@@ -194,10 +312,36 @@ export const rsvpRouter = router({
             message: 'Mark attendance for at least one member',
           });
         }
-        await resolveAndPersistAttendances(tx, {
+        const persisted = await resolveAndPersistAttendances(tx, {
           rsvpId: after.id,
           householdId,
           attendances,
+        });
+        resolvedAttendanceForFee = persisted.rows as ResolvedAttendanceRow[];
+      } else if (before.memberAttendances) {
+        // No new attendance list sent — re-use the prior snapshot so
+        // an edit that only changes dietary notes still recomputes the
+        // fee against the same roster the user agreed to.
+        resolvedAttendanceForFee = before.memberAttendances.map((a) => ({
+          householdMemberId: a.householdMemberId,
+          memberName: a.memberNameSnapshot,
+          memberAge: a.memberAgeSnapshot,
+          attending: a.attending,
+          isHistorical: false,
+        }));
+      }
+
+      if (resolvedAttendanceForFee) {
+        await syncRegistrationFee(tx, {
+          eventId: input.eventId,
+          userId: ctx.session.user.id,
+          householdId,
+          event: {
+            registrationFeeCents: event.registrationFeeCents,
+            registrationFeeMinAge: event.registrationFeeMinAge,
+            currency: event.currency,
+          },
+          attendanceRows: resolvedAttendanceForFee,
         });
       }
 
@@ -373,6 +517,7 @@ export const rsvpRouter = router({
         },
       });
 
+      let resolvedAttendanceForFee: ResolvedAttendanceRow[] | null = null;
       if (attendances !== undefined) {
         if (attendances.length === 0) {
           throw new TRPCError({
@@ -380,10 +525,36 @@ export const rsvpRouter = router({
             message: 'Mark attendance for at least one member',
           });
         }
-        await resolveAndPersistAttendances(tx, {
+        const persisted = await resolveAndPersistAttendances(tx, {
           rsvpId: upserted.id,
           householdId,
           attendances,
+        });
+        resolvedAttendanceForFee = persisted.rows as ResolvedAttendanceRow[];
+      } else if (before?.memberAttendances) {
+        // No new attendance list sent — re-use the prior snapshot so
+        // an edit that only changes dietary notes still recomputes the
+        // fee against the same roster the user agreed to.
+        resolvedAttendanceForFee = before.memberAttendances.map((a) => ({
+          householdMemberId: a.householdMemberId,
+          memberName: a.memberNameSnapshot,
+          memberAge: a.memberAgeSnapshot,
+          attending: a.attending,
+          isHistorical: false,
+        }));
+      }
+
+      if (resolvedAttendanceForFee) {
+        await syncRegistrationFee(tx, {
+          eventId: input.eventId,
+          userId: ctx.session.user.id,
+          householdId,
+          event: {
+            registrationFeeCents: event.registrationFeeCents,
+            registrationFeeMinAge: event.registrationFeeMinAge,
+            currency: event.currency,
+          },
+          attendanceRows: resolvedAttendanceForFee,
         });
       }
 
@@ -680,6 +851,19 @@ export const rsvpRouter = router({
         throw new Error('User not found');
       }
 
+      const event = await prisma.event.findUnique({
+        where: { id: input.eventId },
+        select: {
+          id: true,
+          registrationFeeCents: true,
+          registrationFeeMinAge: true,
+          currency: true,
+        },
+      });
+      if (!event) {
+        throw new Error('Event not found');
+      }
+
       const householdId = targetUser.householdId ?? targetUser.id;
       const attendances = input.memberAttendances;
       const headcount =
@@ -695,6 +879,16 @@ export const rsvpRouter = router({
       }
 
       return prisma.$transaction(async (tx) => {
+        const before = await tx.rSVP.findUnique({
+          where: {
+            eventId_userId: {
+              eventId: input.eventId,
+              userId: input.userId,
+            },
+          },
+          include: { memberAttendances: { orderBy: { createdAt: 'asc' } } },
+        });
+
         const upserted = await tx.rSVP.upsert({
           where: {
             eventId_userId: {
@@ -719,6 +913,7 @@ export const rsvpRouter = router({
           },
         });
 
+        let resolvedAttendanceForFee: ResolvedAttendanceRow[] | null = null;
         if (attendances !== undefined) {
           if (attendances.length === 0) {
             throw new TRPCError({
@@ -726,10 +921,33 @@ export const rsvpRouter = router({
               message: 'Mark attendance for at least one member',
             });
           }
-          await resolveAndPersistAttendances(tx, {
+          const persisted = await resolveAndPersistAttendances(tx, {
             rsvpId: upserted.id,
             householdId,
             attendances,
+          });
+          resolvedAttendanceForFee = persisted.rows as ResolvedAttendanceRow[];
+        } else if (before?.memberAttendances) {
+          resolvedAttendanceForFee = before.memberAttendances.map((a) => ({
+            householdMemberId: a.householdMemberId,
+            memberName: a.memberNameSnapshot,
+            memberAge: a.memberAgeSnapshot,
+            attending: a.attending,
+            isHistorical: false,
+          }));
+        }
+
+        if (resolvedAttendanceForFee) {
+          await syncRegistrationFee(tx, {
+            eventId: input.eventId,
+            userId: input.userId,
+            householdId,
+            event: {
+              registrationFeeCents: event.registrationFeeCents,
+              registrationFeeMinAge: event.registrationFeeMinAge,
+              currency: event.currency,
+            },
+            attendanceRows: resolvedAttendanceForFee,
           });
         }
 

@@ -14,6 +14,7 @@ export const eventRouter = router({
         rsvpDeadline: z.string().datetime().optional(),
         maxCapacity: z.number().int().positive().optional(),
         registrationFeeCents: z.number().int().nonnegative().optional(),
+        registrationFeeMinAge: z.number().int().min(0).max(120).optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -26,6 +27,7 @@ export const eventRouter = router({
           rsvpDeadline: input.rsvpDeadline ? new Date(input.rsvpDeadline) : null,
           maxCapacity: input.maxCapacity,
           registrationFeeCents: input.registrationFeeCents ?? 0,
+          registrationFeeMinAge: input.registrationFeeMinAge ?? 0,
           status: EventStatus.DRAFT,
         },
       });
@@ -43,6 +45,7 @@ export const eventRouter = router({
         maxCapacity: z.number().int().positive().optional(),
         mapImageUrl: z.string().optional(),
         registrationFeeCents: z.number().int().nonnegative().optional(),
+        registrationFeeMinAge: z.number().int().min(0).max(120).optional(),
       }),
     )
     .mutation(async ({ input }) => {
