@@ -2,7 +2,12 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure, procedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { ChargeStatus, EventStatus, RegistrationStatus } from '~/lib/generated/enums';
+import {
+  ChargeStatus,
+  EventStatus,
+  RegistrationStatus,
+  RsvpAttending,
+} from '~/lib/generated/enums';
 import { writeAuditLog } from '~/lib/audit';
 import {
   createPaymentIntent,
@@ -11,6 +16,7 @@ import {
 } from '~/lib/stripe';
 import { createPaymentIntentInputSchema } from '~/lib/schemas/payment';
 import { withSerializableRetry } from '~/lib/transaction-retry';
+import { calculateFeeFromEvent, type FeeAttendee } from '~/lib/fee';
 import type { PrismaClient } from '~/lib/generated/client';
 
 // Serializable isolation is required for createPaymentIntent: two near-

@@ -531,6 +531,15 @@ export default async function EventDetailPage({ params }: Props) {
           maxCapacity={event.maxCapacity ?? null}
           currentAttending={totalAttending}
           isPast={isPast}
+          registrationFeeConfig={
+            event.registrationFeeCents && event.registrationFeeCents > 0
+              ? {
+                  amountCents: event.registrationFeeCents,
+                  minAge: event.registrationFeeMinAge,
+                  currency: event.currency,
+                }
+              : null
+          }
         />
       )}
     </main>

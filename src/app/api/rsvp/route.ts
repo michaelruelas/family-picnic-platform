@@ -9,6 +9,7 @@ import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 import { diff, writeAuditLog } from '~/lib/audit';
 import { rsvpMemberAttendanceInputSchema } from '~/lib/schemas';
+import { syncRegistrationFee, toFeeAttendees } from '~/lib/registration-fee';
 import {
   attendanceFingerprint,
   buildRosterAsNo,
@@ -182,6 +183,15 @@ export async function POST(request: Request) {
 
         const event = await prisma.event.findUnique({
           where: { id: eventId },
+          select: {
+            id: true,
+            status: true,
+            rsvpDeadline: true,
+            maxCapacity: true,
+            registrationFeeCents: true,
+            registrationFeeMinAge: true,
+            currency: true,
+          },
         });
 
         if (!event) {
@@ -294,6 +304,31 @@ export async function POST(request: Request) {
                     attendances,
                   });
                 }
+
+                // Sync the registration fee so this entry point matches
+                // the tRPC `confirm` / `update` / `adminOverride`
+                // procedures. Reload the full snapshot so omitted
+                // members still count toward the fee.
+                const snapshotForFee = await tx.rSVP.findUnique({
+                  where: { id: waitlisted.id },
+                  select: { memberAttendances: true },
+                });
+                await syncRegistrationFee(tx, {
+                  eventId: eventId!,
+                  userId: session.user.id,
+                  householdId,
+                  event: {
+                    registrationFeeCents: event.registrationFeeCents,
+                    registrationFeeMinAge: event.registrationFeeMinAge,
+                    currency: event.currency,
+                  },
+                  attendanceRows: toFeeAttendees(
+                    (snapshotForFee?.memberAttendances ?? []).map((a) => ({
+                      attending: a.attending,
+                      memberAge: a.memberAgeSnapshot,
+                    })),
+                  ),
+                });
 
                 if (existingWaitlistRsvp) {
                   const change = diff(
@@ -536,6 +571,31 @@ export async function POST(request: Request) {
                 attendances,
               });
             }
+
+            // Sync the registration fee so this REST entry point
+            // matches the tRPC `confirm` / `update` / `adminOverride`
+            // procedures. Reload the full snapshot so omitted
+            // members still count toward the fee.
+            const snapshotForFee = await tx.rSVP.findUnique({
+              where: { id: updatedRsvp.id },
+              select: { memberAttendances: true },
+            });
+            await syncRegistrationFee(tx, {
+              eventId: eventId!,
+              userId: session.user.id,
+              householdId,
+              event: {
+                registrationFeeCents: event.registrationFeeCents,
+                registrationFeeMinAge: event.registrationFeeMinAge,
+                currency: event.currency,
+              },
+              attendanceRows: toFeeAttendees(
+                (snapshotForFee?.memberAttendances ?? []).map((a) => ({
+                  attending: a.attending,
+                  memberAge: a.memberAgeSnapshot,
+                })),
+              ),
+            });
 
             if (existingConfirmRsvp) {
               const refreshedAfter = await tx.rSVP.findUnique({

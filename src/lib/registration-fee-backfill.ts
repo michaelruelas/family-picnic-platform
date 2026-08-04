@@ -10,6 +10,7 @@ type RegistrationRow = Prisma.RegistrationGetPayload<{
     amountCents: true;
     currency: true;
     status: true;
+    createdAt: true;
   };
 }>;
 
@@ -25,6 +26,13 @@ export type RegistrationFeeBackfillClient = Pick<
 
 export interface RegistrationFeeBackfillOptions {
   apply: boolean;
+  /**
+   * Optional override for the migration cutoff. Defaults to the
+   * timestamp of the FPP-48 migration that introduced the per-
+   * attendee fee. Pass an ISO date string to scope the run to a
+   * different boundary (e.g. when re-running after a partial apply).
+   */
+  cutoff?: Date;
 }
 
 export interface RegistrationFeeBackfillPlan {
@@ -32,10 +40,12 @@ export interface RegistrationFeeBackfillPlan {
   eventId: string;
   userId: string;
   currentAmountCents: number;
+  createdAt: Date;
 }
 
 export interface RegistrationFeeBackfillResult {
   mode: 'dry-run' | 'apply';
+  cutoff: string;
   scanned: number;
   plans: RegistrationFeeBackfillPlan[];
   registrationsUpdated: number;
@@ -44,11 +54,20 @@ export interface RegistrationFeeBackfillResult {
 }
 
 /**
- * Finds every existing Registration row and produces a plan that
- * pins `amountCents` to 0. The plan is idempotent: a row whose
- * `amountCents` is already 0 is included in the plan (so the audit
- * trail still records the backfill run for that registration) but
- * the apply step writes no change for it.
+ * Default cutoff: the timestamp of the FPP-48 migration that
+ * introduces per-attendee pricing (`registrationFeeMinAge`).
+ * Registrations created at or after this timestamp were already
+ * processed by the new fee logic and must NOT be zeroed. The cutoff
+ * is recorded in UTC for cross-region repeatability.
+ */
+export const DEFAULT_BACKFILL_CUTOFF = new Date('2026-08-06T09:00:00Z');
+
+/**
+ * Finds every existing Registration row created before the cutoff
+ * and produces a plan that pins `amountCents` to 0. The plan is
+ * idempotent: a row whose `amountCents` is already 0 is included in
+ * the plan (so the audit trail still records the backfill run for
+ * that registration) but the apply step writes no change for it.
  *
  * Per ticket FPP-14 / AC: "One-time script sets `paid=0` and
  * `fee_total=0` for all existing households. Idempotent. Audit
@@ -58,11 +77,19 @@ export interface RegistrationFeeBackfillResult {
  * "paid=0" maps to leaving `status` alone (it defaults to PENDING
  * anyway, and any PAID registrations must NOT be zeroed — those
  * reflect real charges that already settled).
+ *
+ * The cutoff scoping (B6) prevents a delayed or repeated run from
+ * zeroing legitimate fees that post-deployment RSVPs created with
+ * the new per-attendee calculator.
  */
 export async function findRegistrationFeeBackfillPlans(
   client: RegistrationFeeBackfillClient,
+  cutoff: Date = DEFAULT_BACKFILL_CUTOFF,
 ): Promise<RegistrationFeeBackfillPlan[]> {
   const rows: RegistrationRow[] = await client.registration.findMany({
+    where: {
+      createdAt: { lt: cutoff },
+    },
     select: {
       id: true,
       eventId: true,
@@ -70,6 +97,7 @@ export async function findRegistrationFeeBackfillPlans(
       amountCents: true,
       currency: true,
       status: true,
+      createdAt: true,
     },
     orderBy: { createdAt: 'asc' },
   });
@@ -79,12 +107,13 @@ export async function findRegistrationFeeBackfillPlans(
     eventId: r.eventId,
     userId: r.userId,
     currentAmountCents: r.amountCents,
+    createdAt: r.createdAt,
   }));
 }
 
 /**
  * Runs the backfill in dry-run or apply mode. In apply mode every
- * existing Registration gets `amountCents = 0` (no charge applied
+ * pre-cutoff Registration gets `amountCents = 0` (no charge applied
  * retroactively, per ticket AC) and a per-row audit entry. Already-
  * zero rows are still audited so the run leaves a complete trail.
  *
@@ -96,8 +125,10 @@ export async function backfillRegistrationFees(
   client: RegistrationFeeBackfillClient,
   options: RegistrationFeeBackfillOptions,
 ): Promise<RegistrationFeeBackfillResult> {
+  const cutoff = options.cutoff ?? DEFAULT_BACKFILL_CUTOFF;
   const result: RegistrationFeeBackfillResult = {
     mode: options.apply ? 'apply' : 'dry-run',
+    cutoff: cutoff.toISOString(),
     scanned: 0,
     plans: [],
     registrationsUpdated: 0,
@@ -107,7 +138,7 @@ export async function backfillRegistrationFees(
 
   let plans: RegistrationFeeBackfillPlan[];
   try {
-    plans = await findRegistrationFeeBackfillPlans(client);
+    plans = await findRegistrationFeeBackfillPlans(client, cutoff);
   } catch (error) {
     result.errors.push(
       `Failed to scan registrations: ${error instanceof Error ? error.message : String(error)}`,
@@ -151,7 +182,7 @@ async function backfillSingleRegistration(
   return client.$transaction(async (tx) => {
     const row = await tx.registration.findUnique({
       where: { id: plan.registrationId },
-      select: { id: true, amountCents: true, status: true },
+      select: { id: true, amountCents: true, status: true, createdAt: true },
     });
     if (!row) {
       throw new Error(`Registration ${plan.registrationId} not found`);
@@ -185,7 +216,9 @@ async function backfillSingleRegistration(
           status: row.status,
         },
         newValue: {
-          amountCents: 0,
+          // B7 fix: settled rows keep their actual amount. Never
+          // lie about the post-run state in the audit trail.
+          amountCents: isSettled ? row.amountCents : 0,
           status: row.status,
           source: 'backfill-registration-fees',
           changed: !isSettled && row.amountCents !== 0,
@@ -201,6 +234,7 @@ async function backfillSingleRegistration(
 export function formatRegistrationFeeBackfillResult(result: RegistrationFeeBackfillResult): string {
   const lines: string[] = [];
   lines.push(`Mode: ${result.mode}`);
+  lines.push(`Cutoff (registrations created before this are eligible): ${result.cutoff}`);
   lines.push(`Registrations scanned: ${result.scanned}`);
   lines.push(`Plans produced: ${result.plans.length}`);
   if (result.mode === 'apply') {

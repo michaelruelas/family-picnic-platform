@@ -12,6 +12,7 @@ describe('Registration fee backfill script (FPP-14)', () => {
     expect(content).toContain("from '../src/lib/registration-fee-backfill.js'");
     expect(content).toContain('process.argv');
     expect(content).toContain("'--apply'");
+    expect(content).toContain("'--cutoff='");
   });
 
   it('script uses backfillRegistrationFees and formatRegistrationFeeBackfillResult from the lib', async () => {
@@ -35,6 +36,7 @@ describe('Registration fee backfill script (FPP-14)', () => {
     expect(content).toContain('export async function findRegistrationFeeBackfillPlans');
     expect(content).toContain('export async function backfillRegistrationFees');
     expect(content).toContain('export function formatRegistrationFeeBackfillResult');
+    expect(content).toContain('export const DEFAULT_BACKFILL_CUTOFF');
   });
 
   it('lib uses REGISTRATION_FEE_BACKFILL as the audit log action for traceability', async () => {
@@ -55,6 +57,20 @@ describe('Registration fee backfill script (FPP-14)', () => {
     expect(content).toContain("'REFUNDED'");
     expect(content).toContain("'FORFEITED'");
     expect(content).toContain("'CANCELLED'");
+  });
+
+  it('lib scopes the scan to pre-cutoff rows (B6)', async () => {
+    const content = await fs.readFile(libPath, 'utf-8');
+    expect(content).toContain('createdAt');
+    expect(content).toContain('lt:');
+    expect(content).toContain('cutoff');
+  });
+
+  it('lib writes the actual amount in newValue for settled rows (B7)', async () => {
+    const content = await fs.readFile(libPath, 'utf-8');
+    // The audit write for settled rows uses row.amountCents (the
+    // current amount), not a hard-coded zero.
+    expect(content).toMatch(/isSettled\s*\?\s*row\.amountCents\s*:\s*0/);
   });
 
   it('package.json exposes a db:backfill-registration-fees script', async () => {
