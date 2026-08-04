@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const mockConfirm = { mutateAsync: vi.fn() };
 const mockDecline = { mutateAsync: vi.fn() };
@@ -123,13 +123,17 @@ describe('EventRsvpCard', () => {
   });
 
   describe('decline', () => {
-    it('calls the decline mutation when a CONFIRMED user clicks Can&apos;t make it', () => {
+    it('calls the decline mutation and refreshes the page when a CONFIRMED user clicks Can&apos;t make it', async () => {
       render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
 
       const buttons = screen.getAllByRole('button', { name: /Can(&apos;|')t make it/i });
       fireEvent.click(buttons[0]!);
 
       expect(mockDecline.mutateAsync).toHaveBeenCalledWith({ eventId: baseProps.eventId });
+
+      await waitFor(() => {
+        expect(mockRefresh).toHaveBeenCalledTimes(1);
+      });
     });
   });
 
