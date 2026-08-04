@@ -332,6 +332,7 @@ All tickets in `tickets/` directory. See `tickets/README.md` for priority order.
 | 34     | Type safety hardening             | 37        |
 | 25     | Rate limiting for broadcasts      | 38        |
 | 47     | Integrate credit card processing  | 39        |
+| 48     | Household payment model + admin   | 40        |
 
 ### Remaining Tickets (Post-MVP / Infrastructure)
 

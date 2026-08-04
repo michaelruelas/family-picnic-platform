@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRsvpMutation } from '~/hooks';
 import { RSVPStatus, RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
+import { formatAmount } from '~/lib/currency';
 import { RsvpBottomSheet } from './RsvpBottomSheet';
 import { RsvpLastUpdated } from './RsvpLastUpdated';
 
@@ -26,6 +27,13 @@ interface EventRsvpCardProps {
   rsvpDeadline: string | null;
   maxCapacity: number | null;
   currentAttending: number;
+  /**
+   * Per-event fee configuration. The card passes this down to the
+   * bottom sheet so it can render the live fee line, and also uses
+   * it to decide whether to surface a fee badge on the "You're in!"
+   * card.
+   */
+  registrationFeeConfig?: { amountCents: number; minAge: number; currency: string } | null;
   existingRsvp: {
     id: string;
     status: RSVPStatus;
@@ -33,6 +41,9 @@ interface EventRsvpCardProps {
     dietaryNotes: string | null;
     modifiedAt: string;
     memberAttendances: MemberAttendance[];
+    /** Fee snapshotted onto the Registration row at confirm / update time. */
+    registrationFeeCents?: number;
+    registrationFeeCurrency?: string;
   } | null;
 }
 
@@ -46,6 +57,7 @@ export function EventRsvpCard({
   rsvpDeadline,
   maxCapacity,
   currentAttending,
+  registrationFeeConfig,
   existingRsvp,
 }: EventRsvpCardProps) {
   const { confirm, decline } = useRsvpMutation();
@@ -137,6 +149,21 @@ export function EventRsvpCard({
                 {existingRsvp.headcount} {existingRsvp.headcount === 1 ? 'person' : 'people'} on the
                 way
               </p>
+              {(existingRsvp.registrationFeeCents ?? 0) > 0 && (
+                <div className="bg-sunlight/20 ring-sunlight/40 mt-3 rounded-2xl px-4 py-3 text-sm ring-1">
+                  <span className="text-foreground font-semibold">
+                    Registration fee:{' '}
+                    {formatAmount(
+                      existingRsvp.registrationFeeCents ?? 0,
+                      existingRsvp.registrationFeeCurrency ?? 'usd',
+                    )}
+                  </span>
+                  <span className="text-muted-foreground ml-2 text-xs">
+                    Snapshot at RSVP time — changes to the event fee do not retroactively update
+                    this amount.
+                  </span>
+                </div>
+              )}
               {existingRsvp.dietaryNotes && (
                 <div className="bg-sunlight/20 ring-sunlight/40 mt-4 rounded-2xl px-4 py-3 text-sm ring-1">
                   <span className="text-foreground font-semibold">Dietary note:</span>{' '}
@@ -234,6 +261,7 @@ export function EventRsvpCard({
           eventName={eventName}
           maxCapacity={maxCapacity}
           currentAttending={currentAttending}
+          registrationFeeConfig={registrationFeeConfig}
         />
       </>
     );
@@ -287,6 +315,7 @@ export function EventRsvpCard({
         eventName={eventName}
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
+        registrationFeeConfig={registrationFeeConfig}
       />
     </>
   );

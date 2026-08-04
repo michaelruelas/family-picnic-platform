@@ -77,6 +77,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       maxCapacity,
       mapImageUrl,
       registrationFeeCents,
+      registrationFeeMinAge,
     } = body;
 
     const existing = await prisma.event.findUnique({ where: { id } });
@@ -102,6 +103,16 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       );
     }
 
+    if (
+      registrationFeeMinAge !== undefined &&
+      (registrationFeeMinAge < 0 || registrationFeeMinAge > 120)
+    ) {
+      return NextResponse.json(
+        { error: 'registrationFeeMinAge must be between 0 and 120' },
+        { status: 400 },
+      );
+    }
+
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (date !== undefined) updateData.date = new Date(date);
@@ -112,6 +123,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (maxCapacity !== undefined) updateData.maxCapacity = maxCapacity || null;
     if (mapImageUrl !== undefined) updateData.mapImageUrl = mapImageUrl || null;
     if (registrationFeeCents !== undefined) updateData.registrationFeeCents = registrationFeeCents;
+    if (registrationFeeMinAge !== undefined)
+      updateData.registrationFeeMinAge = registrationFeeMinAge;
 
     const event = await prisma.event.update({
       where: { id },

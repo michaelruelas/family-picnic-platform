@@ -191,4 +191,87 @@ describe('RsvpBottomSheet per-member attendance', () => {
       expect(mockDecline.mutateAsync).toHaveBeenCalledWith({ eventId: 'evt-1' });
     });
   });
+
+  describe('live registration fee (FPP-16)', () => {
+    it('hides the fee line when no fee config is provided', () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      expect(screen.queryByText(/registration fee:/i)).not.toBeInTheDocument();
+    });
+
+    it('hides the fee line when amountCents is 0 (free event)', () => {
+      setRosterReady();
+      render(
+        <RsvpBottomSheet
+          {...baseProps}
+          registrationFeeConfig={{ amountCents: 0, minAge: 0, currency: 'usd' }}
+        />,
+      );
+      expect(screen.queryByText(/registration fee:/i)).not.toBeInTheDocument();
+    });
+
+    it('renders the live fee total based on YES attendees', () => {
+      setRosterReady();
+      render(
+        <RsvpBottomSheet
+          {...baseProps}
+          registrationFeeConfig={{ amountCents: 1000, minAge: 0, currency: 'usd' }}
+        />,
+      );
+      // Both Alice (35) and Ben (8) are YES, minAge 0 → 2 × $10 = $20
+      expect(screen.getByText(/registration fee: \$20\.00/i)).toBeInTheDocument();
+      expect(screen.getByText(/2 attendees at \$10\.00/i)).toBeInTheDocument();
+    });
+
+    it('skips attendees below the minAge threshold', () => {
+      setRosterReady();
+      render(
+        <RsvpBottomSheet
+          {...baseProps}
+          registrationFeeConfig={{ amountCents: 1000, minAge: 13, currency: 'usd' }}
+        />,
+      );
+      // Only Alice (35) qualifies; Ben (8) is free
+      expect(screen.getByText(/registration fee: \$10\.00/i)).toBeInTheDocument();
+      expect(screen.getByText(/1 attendee at \$10\.00/i)).toBeInTheDocument();
+    });
+
+    it('recomputes the total when a member is flipped to NO', () => {
+      setRosterReady();
+      render(
+        <RsvpBottomSheet
+          {...baseProps}
+          registrationFeeConfig={{ amountCents: 1000, minAge: 0, currency: 'usd' }}
+        />,
+      );
+      expect(screen.getByText(/registration fee: \$20\.00/i)).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText('Attendance for Ben'), {
+        target: { value: 'NO' },
+      });
+      expect(screen.getByText(/registration fee: \$10\.00/i)).toBeInTheDocument();
+      expect(screen.getByText(/1 attendee at \$10\.00/i)).toBeInTheDocument();
+    });
+
+    it('renders $0 when every YES attendee is below minAge', () => {
+      setRosterReady();
+      render(
+        <RsvpBottomSheet
+          {...baseProps}
+          registrationFeeConfig={{ amountCents: 1000, minAge: 99, currency: 'usd' }}
+        />,
+      );
+      expect(screen.queryByText(/registration fee: \$/i)).not.toBeInTheDocument();
+    });
+
+    it('uses the supplied currency code', () => {
+      setRosterReady();
+      render(
+        <RsvpBottomSheet
+          {...baseProps}
+          registrationFeeConfig={{ amountCents: 1000, minAge: 0, currency: 'eur' }}
+        />,
+      );
+      expect(screen.getByText(/registration fee: €20\.00/i)).toBeInTheDocument();
+    });
+  });
 });

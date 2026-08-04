@@ -33,6 +33,14 @@ const prismaMock = vi.hoisted(() => ({
     findUnique: vi.fn(),
   },
   adminAuditLog: { create: vi.fn() },
+  // FPP-48: syncRegistrationFee reads + upserts Registration rows
+  // from inside the same transaction as the RSVP write.
+  registration: {
+    findUnique: vi.fn(),
+    upsert: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
   $transaction: vi.fn(),
 }));
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
@@ -59,8 +67,44 @@ import { POST } from '~/app/api/rsvp/route';
 
 const mockedSession = vi.mocked(getServerSession);
 
+/**
+ * Default event mock that includes every field the route reads.
+ * FPP-48 added the per-attendee fee config; tests that exercise the
+ * fee sync path use these defaults so the mock always carries the
+ * fee fields the route expects.
+ */
+function mockEvent(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'e1',
+    status: 'PUBLISHED',
+    rsvpDeadline: null,
+    maxCapacity: null,
+    registrationFeeCents: 0,
+    registrationFeeMinAge: 0,
+    currency: 'usd',
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   resetPrismaMock(prismaMock);
+  // FPP-48: syncRegistrationFee runs inside the same transaction as
+  // the RSVP write. Default the registration mocks so the fee sync
+  // treats every test as a fresh registration (creates one row, no
+  // active charges to cancel).
+  prismaMock.registration.findUnique.mockResolvedValue(null);
+  prismaMock.registration.create.mockResolvedValue({
+    id: 'reg-1',
+    amountCents: 0,
+    status: 'PENDING',
+    currency: 'usd',
+  } as never);
+  prismaMock.registration.upsert.mockResolvedValue({
+    id: 'reg-1',
+    amountCents: 0,
+    status: 'PENDING',
+    currency: 'usd',
+  } as never);
 });
 
 describe('POST /api/rsvp', () => {
@@ -113,36 +157,23 @@ describe('POST /api/rsvp', () => {
 
   it('returns 400 when event is not published', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.event.findUnique.mockResolvedValue({
-      id: 'e1',
-      status: 'DRAFT',
-      rsvpDeadline: null,
-      maxCapacity: null,
-    } as never);
+    prismaMock.event.findUnique.mockResolvedValue(mockEvent({ status: 'DRAFT' }) as never);
     const res = await POST(makeJsonRequest('http://x', { eventId: 'e1', action: 'confirm' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 400 when RSVP deadline has passed', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.event.findUnique.mockResolvedValue({
-      id: 'e1',
-      status: 'PUBLISHED',
-      rsvpDeadline: new Date('2000-01-01'),
-      maxCapacity: null,
-    } as never);
+    prismaMock.event.findUnique.mockResolvedValue(
+      mockEvent({ rsvpDeadline: new Date('2000-01-01') }) as never,
+    );
     const res = await POST(makeJsonRequest('http://x', { eventId: 'e1', action: 'confirm' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when user not found in DB', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.event.findUnique.mockResolvedValue({
-      id: 'e1',
-      status: 'PUBLISHED',
-      rsvpDeadline: null,
-      maxCapacity: null,
-    } as never);
+    prismaMock.event.findUnique.mockResolvedValue(mockEvent() as never);
     prismaMock.user.findUnique.mockResolvedValue(null);
     const res = await POST(makeJsonRequest('http://x', { eventId: 'e1', action: 'confirm' }));
     expect(res.status).toBe(404);
@@ -150,17 +181,13 @@ describe('POST /api/rsvp', () => {
 
   it('confirms RSVP for valid input without max capacity', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.event.findUnique.mockResolvedValue({
-      id: 'e1',
-      status: 'PUBLISHED',
-      rsvpDeadline: null,
-      maxCapacity: null,
-    } as never);
+    prismaMock.event.findUnique.mockResolvedValue(mockEvent() as never);
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
     prismaMock.$transaction.mockImplementation(
       async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock) as never,
     );
     prismaMock.rSVP.upsert.mockResolvedValue({} as never);
+    prismaMock.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', memberAttendances: [] } as never);
     const res = await POST(
       makeJsonRequest('http://x', { eventId: 'e1', action: 'confirm', headcount: 2 }),
     );
@@ -173,12 +200,7 @@ describe('POST /api/rsvp', () => {
 
   it('waitlists when max capacity is reached', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.event.findUnique.mockResolvedValue({
-      id: 'e1',
-      status: 'PUBLISHED',
-      rsvpDeadline: null,
-      maxCapacity: 5,
-    } as never);
+    prismaMock.event.findUnique.mockResolvedValue(mockEvent({ maxCapacity: 5 }) as never);
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
     prismaMock.$transaction.mockImplementation(
       async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock) as never,
@@ -187,6 +209,7 @@ describe('POST /api/rsvp', () => {
       .mockResolvedValueOnce({ _sum: { headcount: 5 }, _max: { waitlistPosition: 0 } })
       .mockResolvedValueOnce({ _sum: { headcount: 5 }, _max: { waitlistPosition: 0 } });
     prismaMock.rSVP.upsert.mockResolvedValue({} as never);
+    prismaMock.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', memberAttendances: [] } as never);
     const res = await POST(makeJsonRequest('http://x', { eventId: 'e1', action: 'confirm' }));
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -208,12 +231,7 @@ describe('POST /api/rsvp', () => {
 
   it('declines RSVP and runs decline flow with potluck release + waitlist promotion', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.event.findUnique.mockResolvedValue({
-      id: 'e1',
-      status: 'PUBLISHED',
-      rsvpDeadline: null,
-      maxCapacity: null,
-    } as never);
+    prismaMock.event.findUnique.mockResolvedValue(mockEvent() as never);
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
     prismaMock.$transaction.mockImplementation(
       async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock) as never,
@@ -244,12 +262,7 @@ describe('POST /api/rsvp', () => {
 
   it('promotes first waitlisted user when declining frees a confirmed slot', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.event.findUnique.mockResolvedValue({
-      id: 'e1',
-      status: 'PUBLISHED',
-      rsvpDeadline: null,
-      maxCapacity: null,
-    } as never);
+    prismaMock.event.findUnique.mockResolvedValue(mockEvent() as never);
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
     prismaMock.$transaction.mockImplementation(
       async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock) as never,

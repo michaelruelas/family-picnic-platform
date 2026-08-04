@@ -10,6 +10,7 @@ import {
   rsvpUpdateSchema,
   rsvpAdminOverrideSchema,
 } from '~/lib/schemas';
+import { syncRegistrationFee, toFeeAttendees } from '~/lib/registration-fee';
 import {
   attendanceFingerprint,
   buildRosterAsNo,
@@ -98,6 +99,14 @@ export const rsvpRouter = router({
     .mutation(async ({ ctx, input }) => {
       const event = await prisma.event.findUnique({
         where: { id: input.eventId },
+        select: {
+          id: true,
+          status: true,
+          rsvpDeadline: true,
+          registrationFeeCents: true,
+          registrationFeeMinAge: true,
+          currency: true,
+        },
       });
 
       if (!event) {
@@ -136,6 +145,30 @@ export const rsvpRouter = router({
             attendances,
           });
         }
+        // Sync the registration fee so this entry point matches
+        // `confirm` / `update` / `adminOverride`. The full snapshot
+        // is reloaded to avoid undercounting when the user submits a
+        // partial list.
+        const snapshotForFee = await tx.rSVP.findUnique({
+          where: { id: upserted.id },
+          select: { memberAttendances: true },
+        });
+        await syncRegistrationFee(tx, {
+          eventId: input.eventId,
+          userId: ctx.session.user.id,
+          householdId: caller.householdId,
+          event: {
+            registrationFeeCents: event.registrationFeeCents,
+            registrationFeeMinAge: event.registrationFeeMinAge,
+            currency: event.currency,
+          },
+          attendanceRows: toFeeAttendees(
+            (snapshotForFee?.memberAttendances ?? []).map((a) => ({
+              attending: a.attending,
+              memberAge: a.memberAgeSnapshot,
+            })),
+          ),
+        });
         return { ...upserted, headcount };
       });
 
@@ -152,6 +185,19 @@ export const rsvpRouter = router({
     }),
 
   update: protectedProcedure.input(rsvpUpdateSchema).mutation(async ({ ctx, input }) => {
+    const event = await prisma.event.findUnique({
+      where: { id: input.eventId },
+      select: {
+        id: true,
+        registrationFeeCents: true,
+        registrationFeeMinAge: true,
+        currency: true,
+      },
+    });
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
     return prisma.$transaction(async (tx) => {
       const before = await tx.rSVP.findUnique({
         where: {
@@ -200,6 +246,34 @@ export const rsvpRouter = router({
           attendances,
         });
       }
+
+      // Reload the FULL attendance snapshot for the fee calculation.
+      // `resolveAndPersistAttendances` with the default `replace: false`
+      // keeps historical rows in the DB, but only returns the rows
+      // from the input. We need the persisted set so omitted members
+      // still count toward the fee (B2 fix).
+      const snapshotForFee = await tx.rSVP.findUnique({
+        where: { id: after.id },
+        select: { memberAttendances: true },
+      });
+      const finalAttendanceRows = snapshotForFee?.memberAttendances ?? [];
+
+      await syncRegistrationFee(tx, {
+        eventId: input.eventId,
+        userId: ctx.session.user.id,
+        householdId,
+        event: {
+          registrationFeeCents: event.registrationFeeCents,
+          registrationFeeMinAge: event.registrationFeeMinAge,
+          currency: event.currency,
+        },
+        attendanceRows: toFeeAttendees(
+          finalAttendanceRows.map((a) => ({
+            attending: a.attending,
+            memberAge: a.memberAgeSnapshot,
+          })),
+        ),
+      });
 
       const refreshedAfter = await tx.rSVP.findUnique({
         where: { id: after.id },
@@ -386,6 +460,34 @@ export const rsvpRouter = router({
           attendances,
         });
       }
+
+      // Reload the FULL attendance snapshot for the fee calculation.
+      // `resolveAndPersistAttendances` with the default `replace: false`
+      // keeps historical rows in the DB, but only returns the rows
+      // from the input. We need the persisted set so omitted members
+      // still count toward the fee (B2 fix).
+      const snapshotForFee = await tx.rSVP.findUnique({
+        where: { id: upserted.id },
+        select: { memberAttendances: true },
+      });
+      const finalAttendanceRows = snapshotForFee?.memberAttendances ?? [];
+
+      await syncRegistrationFee(tx, {
+        eventId: input.eventId,
+        userId: ctx.session.user.id,
+        householdId,
+        event: {
+          registrationFeeCents: event.registrationFeeCents,
+          registrationFeeMinAge: event.registrationFeeMinAge,
+          currency: event.currency,
+        },
+        attendanceRows: toFeeAttendees(
+          finalAttendanceRows.map((a) => ({
+            attending: a.attending,
+            memberAge: a.memberAgeSnapshot,
+          })),
+        ),
+      });
 
       if (before) {
         const refreshedAfter = await tx.rSVP.findUnique({
@@ -680,6 +782,19 @@ export const rsvpRouter = router({
         throw new Error('User not found');
       }
 
+      const event = await prisma.event.findUnique({
+        where: { id: input.eventId },
+        select: {
+          id: true,
+          registrationFeeCents: true,
+          registrationFeeMinAge: true,
+          currency: true,
+        },
+      });
+      if (!event) {
+        throw new Error('Event not found');
+      }
+
       const householdId = targetUser.householdId ?? targetUser.id;
       const attendances = input.memberAttendances;
       const headcount =
@@ -695,6 +810,16 @@ export const rsvpRouter = router({
       }
 
       return prisma.$transaction(async (tx) => {
+        const before = await tx.rSVP.findUnique({
+          where: {
+            eventId_userId: {
+              eventId: input.eventId,
+              userId: input.userId,
+            },
+          },
+          include: { memberAttendances: { orderBy: { createdAt: 'asc' } } },
+        });
+
         const upserted = await tx.rSVP.upsert({
           where: {
             eventId_userId: {
@@ -732,6 +857,34 @@ export const rsvpRouter = router({
             attendances,
           });
         }
+
+        // Reload the FULL attendance snapshot for the fee calculation.
+        // `resolveAndPersistAttendances` with the default `replace: false`
+        // keeps historical rows in the DB, but only returns the rows
+        // from the input. We need the persisted set so omitted members
+        // still count toward the fee (B2 fix).
+        const snapshotForFee = await tx.rSVP.findUnique({
+          where: { id: upserted.id },
+          select: { memberAttendances: true },
+        });
+        const finalAttendanceRows = snapshotForFee?.memberAttendances ?? [];
+
+        await syncRegistrationFee(tx, {
+          eventId: input.eventId,
+          userId: input.userId,
+          householdId,
+          event: {
+            registrationFeeCents: event.registrationFeeCents,
+            registrationFeeMinAge: event.registrationFeeMinAge,
+            currency: event.currency,
+          },
+          attendanceRows: toFeeAttendees(
+            finalAttendanceRows.map((a) => ({
+              attending: a.attending,
+              memberAge: a.memberAgeSnapshot,
+            })),
+          ),
+        });
 
         return upserted;
       });

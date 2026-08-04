@@ -68,6 +68,7 @@ export async function POST(request: Request) {
           maxCapacity,
           mapImageUrl,
           registrationFeeCents,
+          registrationFeeMinAge,
         } = body;
 
         if (!name || !date || !location) {
@@ -95,6 +96,16 @@ export async function POST(request: Request) {
           );
         }
 
+        if (
+          registrationFeeMinAge !== undefined &&
+          (registrationFeeMinAge < 0 || registrationFeeMinAge > 120)
+        ) {
+          return NextResponse.json(
+            { error: 'registrationFeeMinAge must be between 0 and 120' },
+            { status: 400 },
+          );
+        }
+
         const event = await prisma.event.create({
           data: {
             name,
@@ -105,6 +116,7 @@ export async function POST(request: Request) {
             maxCapacity: maxCapacity || null,
             mapImageUrl: mapImageUrl || null,
             registrationFeeCents: registrationFeeCents ?? 0,
+            registrationFeeMinAge: registrationFeeMinAge ?? 0,
             status: EventStatus.DRAFT,
           },
         });

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useRsvpFormState, useRsvpMutation } from '~/hooks';
 import { RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
+import { calculateFee, type FeeAttendee } from '~/lib/fee';
+import { formatAmount } from '~/lib/currency';
 import Modal from '~/components/ui/Modal';
 import type { ExistingRsvp } from './types';
 
@@ -16,6 +18,13 @@ interface RsvpBottomSheetProps {
   maxCapacity: number | null;
   currentAttending: number;
   onConfirmed?: (rsvpId: string) => void;
+  /**
+   * Per-event fee configuration. When null, the event is free and
+   * the live fee line is omitted. The sheet re-computes the total
+   * on every attendance change so the user sees the dollar figure
+   * before they hit Confirm.
+   */
+  registrationFeeConfig?: { amountCents: number; minAge: number; currency: string } | null;
   // Accepted for backwards compat with the pre-per-member RSVP flow.
   // The sheet fetches its own roster + attendance via useRsvpFormState;
   // this prop is no longer used for hydration but is kept so existing
@@ -103,6 +112,7 @@ export function RsvpBottomSheet({
   maxCapacity,
   currentAttending,
   onConfirmed,
+  registrationFeeConfig,
   existingRsvp: _existingRsvp,
 }: RsvpBottomSheetProps) {
   const router = useRouter();
@@ -175,6 +185,25 @@ export function RsvpBottomSheet({
     () => drafts.filter((d) => d.attending === RsvpAttending.YES).length,
     [drafts],
   );
+
+  // Live fee total. Recomputed on every draft change so the user
+  // sees the price move as they flip members to YES / NO. Hidden
+  // when the event has no fee configured.
+  const feeBreakdown = useMemo(() => {
+    if (!registrationFeeConfig || registrationFeeConfig.amountCents <= 0) {
+      return { amountCents: 0, qualifyingAttendees: 0 };
+    }
+    const feeInput: FeeAttendee[] = drafts.map((d) => ({
+      attending: d.attending,
+      memberAge: d.memberAge,
+    }));
+    return calculateFee(feeInput, {
+      amountCents: registrationFeeConfig.amountCents,
+      minAge: registrationFeeConfig.minAge,
+    });
+  }, [drafts, registrationFeeConfig]);
+  const showFeeLine = registrationFeeConfig !== null && feeBreakdown.amountCents > 0;
+  const feeCurrency = registrationFeeConfig?.currency ?? 'usd';
 
   const updateAttendance = (index: number, value: RsvpAttending) => {
     setDrafts((current) => current.map((d, i) => (i === index ? { ...d, attending: value } : d)));
@@ -470,6 +499,23 @@ export function RsvpBottomSheet({
           <p className="text-muted-foreground mt-5 text-xs">
             {yesCount === 1 ? '1 person' : `${yesCount} people`} going
           </p>
+
+          {showFeeLine && (
+            <div className="bg-sunlight/15 ring-sunlight/30 mt-3 rounded-2xl px-4 py-3 text-sm ring-1">
+              <span className="text-foreground font-semibold">
+                Registration fee: {formatAmount(feeBreakdown.amountCents, feeCurrency)}
+              </span>
+              <span className="text-muted-foreground ml-2 text-xs">
+                ({feeBreakdown.qualifyingAttendees}{' '}
+                {feeBreakdown.qualifyingAttendees === 1 ? 'attendee' : 'attendees'} at{' '}
+                {formatAmount(
+                  registrationFeeConfig?.amountCents ?? 0,
+                  registrationFeeConfig?.currency ?? 'usd',
+                )}
+                )
+              </span>
+            </div>
+          )}
 
           <div className="mt-3">
             {!showDietary ? (

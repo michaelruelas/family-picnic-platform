@@ -137,6 +137,18 @@ export default async function EventDetailPage({ params }: Props) {
         : Promise.resolve(undefined),
     ]);
 
+  // Load the caller's Registration row in parallel so the card can
+  // show the fee total alongside the RSVP summary. Free events have
+  // no row; we pass 0 so the card stays uncluttered.
+  const userRegistration = userId
+    ? await prisma.registration.findUnique({
+        where: { eventId_userId: { eventId: id, userId } },
+        select: { amountCents: true, currency: true, status: true },
+      })
+    : null;
+  const registrationFeeCents = userRegistration?.amountCents ?? 0;
+  const registrationFeeCurrency = userRegistration?.currency ?? event.currency;
+
   const totalAttending = confirmedHeadcount;
 
   const slotsByCategory = event.potluckSlots.reduce(
@@ -166,6 +178,8 @@ export default async function EventDetailPage({ params }: Props) {
           memberAge: att.memberAgeSnapshot,
           attending: att.attending,
         })),
+        registrationFeeCents,
+        registrationFeeCurrency,
       }
     : null;
 
@@ -490,6 +504,15 @@ export default async function EventDetailPage({ params }: Props) {
                 rsvpDeadline={event.rsvpDeadline?.toISOString() ?? null}
                 maxCapacity={event.maxCapacity ?? null}
                 currentAttending={totalAttending}
+                registrationFeeConfig={
+                  event.registrationFeeCents && event.registrationFeeCents > 0
+                    ? {
+                        amountCents: event.registrationFeeCents,
+                        minAge: event.registrationFeeMinAge,
+                        currency: event.currency,
+                      }
+                    : null
+                }
                 existingRsvp={existingRsvpForCard}
               />
             </div>
@@ -508,6 +531,15 @@ export default async function EventDetailPage({ params }: Props) {
           maxCapacity={event.maxCapacity ?? null}
           currentAttending={totalAttending}
           isPast={isPast}
+          registrationFeeConfig={
+            event.registrationFeeCents && event.registrationFeeCents > 0
+              ? {
+                  amountCents: event.registrationFeeCents,
+                  minAge: event.registrationFeeMinAge,
+                  currency: event.currency,
+                }
+              : null
+          }
         />
       )}
     </main>

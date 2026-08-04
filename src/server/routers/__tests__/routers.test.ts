@@ -95,6 +95,15 @@ const mockPrisma = {
   scheduledBroadcast: { create: vi.fn(), update: vi.fn() },
   adminAuditLog: { create: vi.fn(), findMany: vi.fn() },
   eventAdmin: { findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
+  // FPP-48: the RSVP router now reads + upserts Registration rows to
+  // snapshot the per-attendee fee. The mock surface must match.
+  registration: {
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    upsert: vi.fn(),
+    update: vi.fn(),
+    create: vi.fn(),
+  },
   $transaction: vi.fn(),
 };
 
@@ -244,6 +253,23 @@ beforeEach(() => {
   );
   mockPrisma.communicationLog.count.mockResolvedValue(0);
   mockPrisma.communicationLog.groupBy.mockResolvedValue([]);
+  // FPP-48: syncRegistrationFee runs inside the RSVP transaction.
+  // Default the registration mocks so every test treats the user
+  // as a fresh registration (no existing row, creates one, no
+  // active charges to cancel).
+  mockPrisma.registration.findUnique.mockResolvedValue(null);
+  mockPrisma.registration.create.mockResolvedValue({
+    id: 'reg-1',
+    amountCents: 0,
+    status: 'PENDING',
+    currency: 'usd',
+  } as never);
+  mockPrisma.registration.upsert.mockResolvedValue({
+    id: 'reg-1',
+    amountCents: 0,
+    status: 'PENDING',
+    currency: 'usd',
+  } as never);
 });
 
 describe('_app.ts - appRouter', () => {

@@ -16,6 +16,12 @@ interface EventStickyBarProps {
   // through whatever shape it already has. The sticky bar only reads
   // `status` to decide whether to show the "RSVP'd" badge.
   existingRsvp: { status: string } | null;
+  /**
+   * Per-event fee configuration. Forwarded to the bottom sheet so
+   * mobile users see the live fee line before confirming. Null when
+   * the event is free or has no fee config.
+   */
+  registrationFeeConfig?: { amountCents: number; minAge: number; currency: string } | null;
 }
 
 export function EventStickyBar({
@@ -28,6 +34,7 @@ export function EventStickyBar({
   maxCapacity,
   currentAttending,
   existingRsvp,
+  registrationFeeConfig,
 }: EventStickyBarProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
@@ -92,6 +99,7 @@ export function EventStickyBar({
         eventId={eventId}
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
+        registrationFeeConfig={registrationFeeConfig}
       />
     </>
   );

@@ -162,6 +162,76 @@ describe('EventRsvpCard', () => {
     });
   });
 
+  describe('registration fee display (FPP-16)', () => {
+    it('hides the fee line when the snapshot is zero', () => {
+      render(
+        <EventRsvpCard
+          {...baseProps}
+          existingRsvp={{ ...confirmedRsvp, registrationFeeCents: 0 }}
+        />,
+      );
+      expect(screen.queryByText(/registration fee/i)).not.toBeInTheDocument();
+    });
+
+    it('omits the fee line when the snapshot is undefined (free event)', () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
+      expect(screen.queryByText(/registration fee/i)).not.toBeInTheDocument();
+    });
+
+    it('renders the snapshotted fee on the confirmed card', () => {
+      render(
+        <EventRsvpCard
+          {...baseProps}
+          existingRsvp={{
+            ...confirmedRsvp,
+            registrationFeeCents: 5000,
+            registrationFeeCurrency: 'usd',
+          }}
+        />,
+      );
+      expect(screen.getByText(/registration fee: \$50\.00/i)).toBeInTheDocument();
+    });
+
+    it('uses the snapshotted currency for the formatted fee', () => {
+      render(
+        <EventRsvpCard
+          {...baseProps}
+          existingRsvp={{
+            ...confirmedRsvp,
+            registrationFeeCents: 2500,
+            registrationFeeCurrency: 'eur',
+          }}
+        />,
+      );
+      expect(screen.getByText(/€25\.00/)).toBeInTheDocument();
+    });
+
+    it('falls back to USD when no currency is set on the snapshot', () => {
+      render(
+        <EventRsvpCard
+          {...baseProps}
+          existingRsvp={{ ...confirmedRsvp, registrationFeeCents: 1000 }}
+        />,
+      );
+      expect(screen.getByText(/registration fee: \$10\.00/i)).toBeInTheDocument();
+    });
+
+    it('does not show the fee line on the DECLINED card even with a snapshot', () => {
+      render(
+        <EventRsvpCard
+          {...baseProps}
+          existingRsvp={{
+            ...confirmedRsvp,
+            status: 'DECLINED',
+            headcount: 0,
+            registrationFeeCents: 5000,
+          }}
+        />,
+      );
+      expect(screen.queryByText(/registration fee/i)).not.toBeInTheDocument();
+    });
+  });
+
   describe('actions', () => {
     it("calls the decline mutation when the user clicks Can't make it", async () => {
       render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
