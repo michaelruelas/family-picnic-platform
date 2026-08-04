@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useHouseholdNameMutation, useRsvpFormState, useRsvpMutation } from '~/hooks';
 import { RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
-import { householdNameSchema } from '~/lib/schemas/household';
+import { householdNameSchema, HOUSEHOLD_NAME_MAX } from '~/lib/schemas/household';
 import { calculateFee, type FeeAttendee } from '~/lib/fee';
 import { formatAmount } from '~/lib/currency';
 import Modal from '~/components/ui/Modal';
@@ -264,6 +264,14 @@ export function RsvpBottomSheet({
   const handleConfirm = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
+    // The form is rendered behind a `if (!formState) return` gate,
+    // so `formState` is always non-null here. Narrow it once at
+    // the top so the rest of the function can use `formState`
+    // without an alias.
+    if (!formState) {
+      setIsSubmitting(false);
+      return;
+    }
     if (drafts.length === 0) {
       setSubmitError('Add at least one household member before confirming.');
       setIsSubmitting(false);
@@ -283,12 +291,7 @@ export function RsvpBottomSheet({
       // profile path uses so the empty-name rejection message is
       // identical ("Household name is required"). Skipping the call
       // when the value is unchanged avoids a needless round-trip.
-      // `handleConfirm` is defined before the render-gate narrowing
-      // (`if (isLoading || !formState) return ...`), so TS still
-      // types `formState` as `T | null` inside this body. The local
-      // `snapshot` alias re-narrows it for the rename path.
-      const snapshot = formState;
-      if (snapshot && snapshot.householdName !== null) {
+      if (formState.householdName !== null) {
         const trimmed = householdName.trim();
         const parsed = householdNameSchema.safeParse(trimmed);
         if (!parsed.success) {
@@ -296,9 +299,9 @@ export function RsvpBottomSheet({
           setIsSubmitting(false);
           return;
         }
-        if (parsed.data !== snapshot.householdName) {
+        if (parsed.data !== formState.householdName) {
           await updateName.mutateAsync({
-            id: snapshot.householdId,
+            id: formState.householdId,
             name: parsed.data,
           });
         }
@@ -454,7 +457,7 @@ export function RsvpBottomSheet({
                 type="text"
                 value={householdName}
                 onChange={(e) => setHouseholdName(e.target.value)}
-                maxLength={80}
+                maxLength={HOUSEHOLD_NAME_MAX}
                 autoComplete="off"
                 placeholder="e.g. The Garcia Family"
                 className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"

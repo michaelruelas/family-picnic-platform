@@ -353,6 +353,12 @@ describe('RsvpBottomSheet per-member attendance', () => {
           expect.objectContaining({ eventId: 'evt-1' }),
         );
       });
+      // Pin the rename-before-confirm ordering: a refactor that
+      // swaps them would break the spec, so the assertion checks
+      // the call order Vitest assigns to each invocation.
+      const renameOrder = mockUpdateName.mutateAsync.mock.invocationCallOrder[0]!;
+      const confirmOrder = mockConfirm.mutateAsync.mock.invocationCallOrder[0]!;
+      expect(renameOrder).toBeLessThan(confirmOrder);
     });
 
     it('skips the rename when the name is unchanged', async () => {
