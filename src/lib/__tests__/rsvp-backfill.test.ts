@@ -273,6 +273,12 @@ describe('mergeDuplicateRsvps', () => {
     expect(result.auditLogsWritten).toBe(0);
     expect(deletedRsvps).toEqual([]);
     expect(auditLogs).toEqual([]);
+
+    expect(client.rSVP.groupBy).toHaveBeenCalledWith({
+      by: ['eventId', 'userId'],
+      _count: { _all: true },
+      having: { id: { _count: { gt: 1 } } },
+    });
   });
 
   it('apply mode merges duplicates, reassigns potluck signups, and writes audit entries', async () => {
@@ -317,13 +323,14 @@ describe('mergeDuplicateRsvps', () => {
       newValue: expect.objectContaining({ keptRsvpId: 'winner' }),
     });
 
-    const callOrder = [
-      ...vi.mocked(client.rSVP.findUnique).mock.invocationCallOrder,
-      ...vi.mocked(client.potluckSignup.updateMany).mock.invocationCallOrder,
-      ...vi.mocked(client.adminAuditLog.create).mock.invocationCallOrder,
-      ...vi.mocked(client.rSVP.delete).mock.invocationCallOrder,
-    ];
-    expect(callOrder).toEqual([...callOrder].sort((a, b) => a - b));
+    const findUniqueOrders = vi.mocked(client.rSVP.findUnique).mock.invocationCallOrder;
+    const updateManyOrder = vi.mocked(client.potluckSignup.updateMany).mock
+      .invocationCallOrder[0]!;
+    const createOrder = vi.mocked(client.adminAuditLog.create).mock.invocationCallOrder[0]!;
+    const deleteOrder = vi.mocked(client.rSVP.delete).mock.invocationCallOrder[0]!;
+    expect(findUniqueOrders[1]).toBeLessThan(updateManyOrder);
+    expect(updateManyOrder).toBeLessThan(createOrder);
+    expect(createOrder).toBeLessThan(deleteOrder);
   });
 
   it('is idempotent: a second run with no duplicates left is a no-op', async () => {

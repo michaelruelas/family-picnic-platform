@@ -55,7 +55,10 @@ export async function findDuplicateRsvpPlans(client: RsvpBackfillClient): Promis
   const grouped = await client.rSVP.groupBy({
     by: ['eventId', 'userId'],
     _count: { _all: true },
-    having: { eventId: { _count: { gt: 1 } } },
+    // Prisma's groupBy `having` only exposes per-column aggregates. `id` is the
+    // primary key, so the count of distinct id values per group equals the
+    // row count per group, which is what we want for "group with > 1 row".
+    having: { id: { _count: { gt: 1 } } },
   });
 
   if (grouped.length === 0) {
