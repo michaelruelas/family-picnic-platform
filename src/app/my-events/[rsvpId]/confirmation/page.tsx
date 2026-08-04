@@ -7,6 +7,7 @@ import { authOptions } from '~/lib/auth';
 import { RSVPStatus, RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
 import { BreatheSection } from '~/components/ui/BreatheSection';
+import { RsvpLastUpdated } from '~/components/event/RsvpLastUpdated';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,6 +128,7 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
               {rsvp.headcount} {rsvp.headcount === 1 ? 'person' : 'people'} on the way
             </span>
           </div>
+          <RsvpLastUpdated modifiedAt={rsvp.modifiedAt} className="mt-4" />
         </div>
       </BreatheSection>
 

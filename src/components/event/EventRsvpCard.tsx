@@ -6,6 +6,7 @@ import { useRsvpMutation } from '~/hooks';
 import { RSVPStatus, RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
 import { RsvpBottomSheet } from './RsvpBottomSheet';
+import { RsvpLastUpdated } from './RsvpLastUpdated';
 
 interface MemberAttendance {
   id: string;
@@ -142,7 +143,7 @@ export function EventRsvpCard({
                   <span className="text-foreground/80">{existingRsvp.dietaryNotes}</span>
                 </div>
               )}
-              <LastUpdated modifiedAt={existingRsvp.modifiedAt} />
+              <RsvpLastUpdated modifiedAt={existingRsvp.modifiedAt} className="mt-4" />
               {isRsvpOpen && existingRsvp.memberAttendances.length > 0 && (
                 <ul className="mt-4 space-y-1.5">
                   {existingRsvp.memberAttendances.map((att) => (
@@ -199,7 +200,7 @@ export function EventRsvpCard({
               <p className="text-muted-foreground mt-2 text-sm">
                 You can switch back to attending any time before the deadline.
               </p>
-              <LastUpdated modifiedAt={existingRsvp.modifiedAt} />
+              <RsvpLastUpdated modifiedAt={existingRsvp.modifiedAt} className="mt-4" />
               {isRsvpOpen && (
                 <button
                   onClick={() => setIsSheetOpen(true)}
@@ -222,7 +223,7 @@ export function EventRsvpCard({
               <p className="text-muted-foreground mt-2 text-sm">
                 If a spot opens up, we&apos;ll be in touch.
               </p>
-              <LastUpdated modifiedAt={existingRsvp.modifiedAt} />
+              <RsvpLastUpdated modifiedAt={existingRsvp.modifiedAt} className="mt-4" />
             </>
           )}
         </div>
@@ -288,21 +289,5 @@ export function EventRsvpCard({
         currentAttending={currentAttending}
       />
     </>
-  );
-}
-
-function LastUpdated({ modifiedAt }: { modifiedAt: string }) {
-  return (
-    <p className="text-muted-foreground mt-4 text-xs">
-      Last updated{' '}
-      <time dateTime={modifiedAt}>
-        {new Date(modifiedAt).toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-        })}
-      </time>
-    </p>
   );
 }
