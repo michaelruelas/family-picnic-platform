@@ -119,7 +119,7 @@ Required environment variables:
 
 Optional:
 
-- `TWILIO_*` - Twilio SMS credentials
+- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER` - Twilio SMS credentials. `TWILIO_PHONE_NUMBER` must be a valid E.164 number (e.g. `+15551234567`). In Kubernetes it is supplied via the OpenBao-backed `nextjs-secrets` secret (`secret/family-picnic-dev/nextjs:twilio-phone-number`) and consumed by the `nextjs` deployment through an `ExternalSecret` resource. `scripts/populate-openbao-secrets.sh` round-trips the value idempotently.
 - `SENDGRID_*` - SendGrid email credentials
 - `S3_*` - S3-compatible storage for photos
 - `PHOTOPRISM_*` - PhotoPrism credentials

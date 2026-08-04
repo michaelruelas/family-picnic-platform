@@ -5,4 +5,5 @@ export * from './household-member';
 export * from './profile';
 export * from './photo';
 export * from './event';
+export * from './sms';
 export * from './household';

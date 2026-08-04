@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
-import { CommunicationStatus, RSVPStatus, CommunicationChannel } from '~/lib/generated/enums';
+import {
+  CommunicationStatus,
+  RSVPStatus,
+  CommunicationChannel,
+  CommunicationPreference,
+} from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 
@@ -109,11 +114,29 @@ export async function POST(request: NextRequest) {
 
         let targetUserIds: string[] = [];
 
+        const preferenceFilter = {
+          communicationPreference: {
+            in:
+              channel === CommunicationChannel.SMS
+                ? [CommunicationPreference.SMS, CommunicationPreference.BOTH]
+                : [CommunicationPreference.EMAIL, CommunicationPreference.BOTH],
+          },
+        };
+
+        // Phone presence and SMS consent are NOT checked at any point in the
+        // broadcast path today. The worker (`deliverCommunications` /
+        // `deliverOne` in src/lib/ow-workflows.ts:381) just flips QUEUED logs
+        // to SENT without dispatching, so a BOTH user with no phone will
+        // still be queued. The per-event and ad-hoc admin endpoints use
+        // `dispatchAdminSms` (src/lib/sms-dispatch.ts) which DOES check
+        // consent and phone. Wiring the same dispatch into the worker is a
+        // tracked follow-up.
+
         switch (recipientType) {
           case 'ALL':
             targetUserIds = (
               await prisma.user.findMany({
-                where: { householdId: { not: null } },
+                where: { householdId: { not: null }, ...preferenceFilter },
                 select: { id: true },
               })
             ).map((u) => u.id);
@@ -123,6 +146,7 @@ export async function POST(request: NextRequest) {
               await prisma.user.findMany({
                 where: {
                   householdId: { not: null },
+                  ...preferenceFilter,
                   rsvps: {
                     none: {
                       eventId,
@@ -143,7 +167,7 @@ export async function POST(request: NextRequest) {
             }
             targetUserIds = (
               await prisma.user.findMany({
-                where: { householdId: { in: recipientIds } },
+                where: { householdId: { in: recipientIds }, ...preferenceFilter },
                 select: { id: true },
               })
             ).map((u) => u.id);

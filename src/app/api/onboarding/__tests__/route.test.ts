@@ -178,11 +178,23 @@ describe('POST /api/onboarding/complete', () => {
     );
   });
 
-  it('accepts SMS preference', async () => {
+  it('accepts SMS preference when a phone is provided', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     prismaMock.user.update.mockResolvedValue({} as never);
-    const res = await POSTComplete(makeJsonRequest('http://x', { communicationPreference: 'SMS' }));
+    const res = await POSTComplete(
+      makeJsonRequest('http://x', {
+        communicationPreference: 'SMS',
+        phoneNumber: '+15551234567',
+        smsConsent: true,
+      }),
+    );
     expect(res.status).toBe(200);
+  });
+
+  it('rejects SMS preference without a phone', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    const res = await POSTComplete(makeJsonRequest('http://x', { communicationPreference: 'SMS' }));
+    expect(res.status).toBe(400);
   });
 
   it('returns 500 on error', async () => {

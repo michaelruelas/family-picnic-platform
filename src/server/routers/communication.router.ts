@@ -2,7 +2,12 @@ import { router, auditedAdminProcedure, protectedProcedure } from '~/lib/trpc';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { CommunicationStatus, CommunicationChannel, RSVPStatus } from '~/lib/generated/enums';
+import {
+  CommunicationStatus,
+  CommunicationChannel,
+  CommunicationPreference,
+  RSVPStatus,
+} from '~/lib/generated/enums';
 import {
   checkAdminBroadcastRateLimit,
   checkRecipientGroupRateLimit,
@@ -10,6 +15,8 @@ import {
   getRateLimitStatus,
   rateLimitError,
 } from '~/lib/rate-limit';
+import { adminSendSmsInputSchema } from '~/lib/schemas/sms';
+import { dispatchAdminSms } from '~/lib/sms-dispatch';
 
 export const communicationRouter = router({
   getRateLimitStatus: auditedAdminProcedure.query(async ({ ctx }) => {
@@ -44,11 +51,29 @@ export const communicationRouter = router({
 
       let recipientUserIds: string[] = [];
 
+      const preferenceFilter = {
+        communicationPreference: {
+          in:
+            input.channel === CommunicationChannel.SMS
+              ? [CommunicationPreference.SMS, CommunicationPreference.BOTH]
+              : [CommunicationPreference.EMAIL, CommunicationPreference.BOTH],
+        },
+      };
+
+      // Phone presence and SMS consent are NOT checked at any point in the
+      // broadcast path today. The worker (`deliverCommunications` /
+      // `deliverOne` in src/lib/ow-workflows.ts:381) just flips QUEUED logs
+      // to SENT without dispatching, so a BOTH user with no phone will
+      // still be queued. The per-event and ad-hoc admin endpoints use
+      // `dispatchAdminSms` (src/lib/sms-dispatch.ts) which DOES check
+      // consent and phone. Wiring the same dispatch into the worker is a
+      // tracked follow-up.
+
       switch (input.recipientType) {
         case 'ALL':
           recipientUserIds = (
             await prisma.user.findMany({
-              where: { householdId: { not: null } },
+              where: { householdId: { not: null }, ...preferenceFilter },
               select: { id: true },
             })
           ).map((u) => u.id);
@@ -58,6 +83,7 @@ export const communicationRouter = router({
             await prisma.user.findMany({
               where: {
                 householdId: { not: null },
+                ...preferenceFilter,
                 rsvps: {
                   none: {
                     eventId: input.eventId,
@@ -73,7 +99,7 @@ export const communicationRouter = router({
           if (!input.recipientIds) throw new Error('recipientIds required for HOUSEHOLD type');
           recipientUserIds = (
             await prisma.user.findMany({
-              where: { householdId: { in: input.recipientIds } },
+              where: { householdId: { in: input.recipientIds }, ...preferenceFilter },
               select: { id: true },
             })
           ).map((u) => u.id);
@@ -233,5 +259,58 @@ export const communicationRouter = router({
       },
     });
     return user;
+  }),
+
+  sendSms: auditedAdminProcedure.input(adminSendSmsInputSchema).mutation(async ({ ctx, input }) => {
+    const event = await prisma.event.findUnique({
+      where: { id: input.eventId },
+      select: { id: true },
+    });
+    if (!event) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' });
+    }
+
+    const outcome = await dispatchAdminSms({
+      adminUserId: ctx.session.user.id,
+      recipientUserId: input.recipientUserId,
+      body: input.message,
+      eventId: input.eventId,
+      auditAction: 'admin.sendSms',
+    });
+
+    switch (outcome.kind) {
+      case 'SENT':
+        return {
+          success: true,
+          communicationLogId: outcome.communicationLogId,
+          messageId: outcome.messageId,
+        };
+      case 'PROVIDER_NOT_CONFIGURED':
+        throw new TRPCError({
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'SMS provider not configured',
+        });
+      case 'RECIPIENT_NOT_FOUND':
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Recipient not found' });
+      case 'NO_CONSENT':
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Recipient has not consented to SMS messages',
+        });
+      case 'NO_PHONE':
+        throw new TRPCError({
+          code: 'UNPROCESSABLE_CONTENT',
+          message: 'Recipient has no valid phone number on file',
+        });
+      case 'TWILIO_ERROR':
+        throw new TRPCError({
+          code: 'BAD_GATEWAY',
+          message: 'SMS provider rejected the message',
+          cause: {
+            errorCode: outcome.errorCode,
+            communicationLogId: outcome.communicationLogId,
+          },
+        });
+    }
   }),
 });

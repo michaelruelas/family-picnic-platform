@@ -210,7 +210,9 @@ describe('Profile Schema', () => {
     });
 
     it('validates communication preference update', () => {
-      const result = profileUpdateSchema.safeParse({ communicationPreference: 'SMS' });
+      const result = profileUpdateSchema.safeParse({
+        communicationPreference: 'EMAIL',
+      });
       expect(result.success).toBe(true);
     });
 
@@ -218,6 +220,7 @@ describe('Profile Schema', () => {
       const result = profileUpdateSchema.safeParse({
         name: 'New Name',
         communicationPreference: 'BOTH',
+        phoneNumber: '+15551234567',
       });
       expect(result.success).toBe(true);
     });
@@ -230,6 +233,49 @@ describe('Profile Schema', () => {
     it('rejects invalid communication preference', () => {
       const result = profileUpdateSchema.safeParse({ communicationPreference: 'INVALID' });
       expect(result.success).toBe(false);
+    });
+
+    it('accepts a valid E.164 phone number', () => {
+      const result = profileUpdateSchema.safeParse({ phoneNumber: '+15551234567' });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects a phone number that is not E.164', () => {
+      const result = profileUpdateSchema.safeParse({ phoneNumber: '555-123-4567' });
+      expect(result.success).toBe(false);
+    });
+
+    it('requires a phone number when opting in to SMS consent', () => {
+      const result = profileUpdateSchema.safeParse({ smsConsent: true });
+      expect(result.success).toBe(false);
+    });
+
+    it('requires a phone number when communication preference is SMS', () => {
+      const result = profileUpdateSchema.safeParse({ communicationPreference: 'SMS' });
+      expect(result.success).toBe(false);
+    });
+
+    it('requires a phone number when communication preference is BOTH', () => {
+      const result = profileUpdateSchema.safeParse({ communicationPreference: 'BOTH' });
+      expect(result.success).toBe(false);
+    });
+
+    it('accepts SMS consent with a valid E.164 phone number', () => {
+      const result = profileUpdateSchema.safeParse({
+        smsConsent: true,
+        phoneNumber: '+15551234567',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('allows opting out of SMS without a phone number', () => {
+      const result = profileUpdateSchema.safeParse({ smsConsent: false });
+      expect(result.success).toBe(true);
+    });
+
+    it('allows clearing an existing phone number with null', () => {
+      const result = profileUpdateSchema.safeParse({ phoneNumber: null });
+      expect(result.success).toBe(true);
     });
   });
 });

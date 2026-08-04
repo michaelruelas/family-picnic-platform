@@ -443,9 +443,18 @@ describe('profileUpdateSchema', () => {
   it('passes with all fields', () => {
     const result = profileUpdateSchema.safeParse({
       name: 'Alice',
-      communicationPreference: 'BOTH',
+      communicationPreference: 'EMAIL',
+      phoneNumber: '+15551234567',
+      smsConsent: true,
     });
     expect(result.success).toBe(true);
+  });
+
+  it('requires phone when opting in to SMS', () => {
+    const result = profileUpdateSchema.safeParse({
+      communicationPreference: 'BOTH',
+    });
+    expect(result.success).toBe(false);
   });
 
   it('fails with invalid communicationPreference', () => {

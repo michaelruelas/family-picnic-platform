@@ -3,15 +3,76 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockCreate = vi.hoisted(() => vi.fn());
 
 vi.mock('twilio', () => ({
-  default: vi.fn(() => ({
-    messages: { create: mockCreate },
-  })),
+  default: vi.fn(() => ({ messages: { create: mockCreate } })),
 }));
 
 beforeEach(() => {
   vi.resetModules();
   vi.unstubAllEnvs();
   mockCreate.mockReset();
+});
+
+describe('isValidE164', () => {
+  it('accepts a 12-digit E.164 number', async () => {
+    const { isValidE164 } = await import('../twilio');
+    expect(isValidE164('+15551234567')).toBe(true);
+  });
+
+  it('rejects numbers without a leading +', async () => {
+    const { isValidE164 } = await import('../twilio');
+    expect(isValidE164('5551234567')).toBe(false);
+  });
+
+  it('rejects numbers with leading zeros after the country code', async () => {
+    const { isValidE164 } = await import('../twilio');
+    expect(isValidE164('+0123456789')).toBe(false);
+  });
+
+  it('rejects numbers that are too long', async () => {
+    const { isValidE164 } = await import('../twilio');
+    expect(isValidE164('+15551234567890123')).toBe(false);
+  });
+
+  it('rejects empty, null and undefined', async () => {
+    const { isValidE164 } = await import('../twilio');
+    expect(isValidE164('')).toBe(false);
+    expect(isValidE164(null)).toBe(false);
+    expect(isValidE164(undefined)).toBe(false);
+  });
+});
+
+describe('normalizeE164', () => {
+  it('adds + when missing', async () => {
+    const { normalizeE164 } = await import('../twilio');
+    expect(normalizeE164('15551234567')).toBe('+15551234567');
+  });
+
+  it('strips spaces and dashes', async () => {
+    const { normalizeE164 } = await import('../twilio');
+    expect(normalizeE164('+1 555-123-4567')).toBe('+15551234567');
+  });
+
+  it('returns null on invalid input', async () => {
+    const { normalizeE164 } = await import('../twilio');
+    expect(normalizeE164('not a number')).toBeNull();
+    expect(normalizeE164('')).toBeNull();
+  });
+});
+
+describe('getFromPhoneNumber', () => {
+  it('returns the env value when set', async () => {
+    vi.stubEnv('TWILIO_ACCOUNT_SID', 'AC123');
+    vi.stubEnv('TWILIO_AUTH_TOKEN', 'token123');
+    vi.stubEnv('TWILIO_PHONE_NUMBER', '+15559876543');
+    const { getFromPhoneNumber } = await import('../twilio');
+    expect(getFromPhoneNumber()).toBe('+15559876543');
+  });
+
+  it('returns null when unset', async () => {
+    vi.stubEnv('TWILIO_PHONE_NUMBER', '');
+    const { getFromPhoneNumber } = await import('../twilio');
+    expect(getFromPhoneNumber()).toBeNull();
+  });
 });
 
 describe('isConfigured', () => {
@@ -68,6 +129,28 @@ describe('sendSMS', () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
+  it('rejects non-E.164 recipient addresses without calling Twilio', async () => {
+    vi.stubEnv('TWILIO_ACCOUNT_SID', 'AC123');
+    vi.stubEnv('TWILIO_AUTH_TOKEN', 'token123');
+    vi.stubEnv('TWILIO_PHONE_NUMBER', '+15559876543');
+    const { sendSMS, TWILIO_ERR_INVALID_PHONE } = await import('../twilio');
+    const result = await sendSMS({ to: 'not-a-number', body: 'Hi' });
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe(TWILIO_ERR_INVALID_PHONE);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('rejects when TWILIO_PHONE_NUMBER is not valid E.164', async () => {
+    vi.stubEnv('TWILIO_ACCOUNT_SID', 'AC123');
+    vi.stubEnv('TWILIO_AUTH_TOKEN', 'token123');
+    vi.stubEnv('TWILIO_PHONE_NUMBER', '15559876543');
+    const { sendSMS, TWILIO_ERR_INVALID_PHONE } = await import('../twilio');
+    const result = await sendSMS({ to: '+15551234567', body: 'Hi' });
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe(TWILIO_ERR_INVALID_PHONE);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
   it('returns success with messageId when configured', async () => {
     mockCreate.mockResolvedValue({ sid: 'SM9876' });
     vi.stubEnv('TWILIO_ACCOUNT_SID', 'AC123');
@@ -84,7 +167,21 @@ describe('sendSMS', () => {
     });
   });
 
-  it('returns error when Twilio API call fails', async () => {
+  it('returns errorCode when Twilio API call fails with a Twilio error', async () => {
+    const twilioError = new Error('Twilio API error');
+    (twilioError as { code?: number }).code = 21610;
+    mockCreate.mockRejectedValue(twilioError);
+    vi.stubEnv('TWILIO_ACCOUNT_SID', 'AC123');
+    vi.stubEnv('TWILIO_AUTH_TOKEN', 'token123');
+    vi.stubEnv('TWILIO_PHONE_NUMBER', '+15559876543');
+    const { sendSMS } = await import('../twilio');
+    const result = await sendSMS({ to: '+15551234567', body: 'Hello' });
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Twilio API error');
+    expect(result.errorCode).toBe(21610);
+  });
+
+  it('returns error when Twilio API call fails without a code', async () => {
     mockCreate.mockRejectedValue(new Error('Twilio API error'));
     vi.stubEnv('TWILIO_ACCOUNT_SID', 'AC123');
     vi.stubEnv('TWILIO_AUTH_TOKEN', 'token123');
@@ -93,6 +190,7 @@ describe('sendSMS', () => {
     const result = await sendSMS({ to: '+15551234567', body: 'Hello' });
     expect(result.success).toBe(false);
     expect(result.error).toBe('Twilio API error');
+    expect(result.errorCode).toBeUndefined();
   });
 
   it('returns generic error when Twilio throws non-Error', async () => {

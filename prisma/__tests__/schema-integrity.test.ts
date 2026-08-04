@@ -46,6 +46,22 @@ describe('Prisma schema integrity vs SPEC', () => {
     expect(schema).toContain('messageId');
   });
 
+  it('User model has phoneNumber and smsConsent columns', () => {
+    const block = schema.match(/model User \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toMatch(/phoneNumber\s+String\?/);
+    expect(block![1]!).toMatch(/smsConsent\s+Boolean\s+@default\(false\)/);
+    expect(block![1]!).toMatch(/smsConsentAt\s+DateTime\?/);
+    expect(block![1]!).toMatch(/smsConsentIp\s+String\?/);
+  });
+
+  it('CommunicationLog records outbound and recipient phone numbers', () => {
+    const block = schema.match(/model CommunicationLog \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toMatch(/toPhoneNumber\s+String\?/);
+    expect(block![1]!).toMatch(/fromPhoneNumber\s+String\?/);
+  });
+
   it('PotluckSignup references RSVP via rsvpId (not userId)', () => {
     const block = schema.match(/model PotluckSignup \{([^}]+)\}/);
     expect(block).not.toBeNull();

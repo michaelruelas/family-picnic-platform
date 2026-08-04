@@ -127,6 +127,10 @@ model User {
   role                   Role                   @default(ADMIN_ADULT)
   householdId            String?
   communicationPreference CommunicationPreference @default(EMAIL)
+  phoneNumber            String?
+  smsConsent             Boolean                @default(false)
+  smsConsentAt           DateTime?
+  smsConsentIp           String?
   onboardingCompletedAt  DateTime?
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
@@ -149,6 +153,7 @@ model User {
   @@index([householdId])
   @@index([role])
   @@index([deletedAt])
+  @@index([phoneNumber])
 }
 
 model Dependent {
@@ -290,6 +295,8 @@ model CommunicationLog {
   recipientUserId  String?
   channel          CommunicationChannel
   messageId        String?
+  toPhoneNumber    String?
+  fromPhoneNumber  String?
   status           CommunicationStatus  @default(QUEUED)
   errorCode        String?
   errorMessage     String?
