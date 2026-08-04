@@ -8,6 +8,7 @@ import { RSVPStatus, RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 import { RsvpLastUpdated } from '~/components/event/RsvpLastUpdated';
+import { FeeTotalBlock } from '~/components/event/FeeTotalBlock';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,14 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
     notFound();
   }
 
+  // Registration is keyed by (eventId, userId), not by RSVP id, so we
+  // query it separately. Null when no payment row exists yet (free
+  // events that never started checkout, or a decline-first RSVP).
+  const registration = await prisma.registration.findUnique({
+    where: { eventId_userId: { eventId: rsvp.eventId, userId: rsvp.userId } },
+    select: { amountCents: true, currency: true },
+  });
+
   const eventDate = new Date(rsvp.event.date);
   const isPast = eventDate < new Date();
   const rsvpDeadline = rsvp.event.rsvpDeadline ? new Date(rsvp.event.rsvpDeadline) : null;
@@ -82,6 +91,15 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
     (a) => a.attending === RsvpAttending.MAYBE,
   );
   const noAttendances = rsvp.memberAttendances.filter((a) => a.attending === RsvpAttending.NO);
+
+  // Members counted toward the fee: YES, known age, at or above the
+  // event's min age. Mirrors `calculateFee` so the tooltip on the
+  // fee block shows the same number that produced the total.
+  const qualifyingAttendees = rsvp.memberAttendances.filter((a) => {
+    if (a.attending !== RsvpAttending.YES) return false;
+    if (a.memberAgeSnapshot === null) return false;
+    return a.memberAgeSnapshot >= rsvp.event.registrationFeeMinAge;
+  }).length;
 
   const potluckClaims = rsvp.event.potluckSlots.flatMap((slot) =>
     slot.signups.map((signup) => ({ slot, signup })),
@@ -272,25 +290,25 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
         </div>
       </BreatheSection>
 
-      <BreatheSection className="mt-8">
-        <div className="mx-auto max-w-3xl px-5">
-          <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
-            <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Fee</p>
-            <h2 className="font-display text-foreground mt-2 text-2xl font-semibold">
-              Payment total
-            </h2>
-            <p className="text-muted-foreground mt-3 text-sm">
-              No payment is required today. When Stripe checkout ships (QUB-28.2), the family fee
-              will be calculated from attending members and shown here.
-            </p>
-            <p className="text-muted-foreground mt-2 text-xs">
-              {rsvp.headcount === 0
-                ? 'No attending members to bill.'
-                : `${rsvp.headcount} ${rsvp.headcount === 1 ? 'attending member' : 'attending members'} will be billed once payments launch.`}
-            </p>
+      {(registration?.amountCents ?? 0) > 0 && registration && (
+        <BreatheSection className="mt-8">
+          <div className="mx-auto max-w-3xl px-5">
+            <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
+              <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Fee</p>
+              <h2 className="font-display text-foreground mt-2 text-2xl font-semibold">
+                Payment total
+              </h2>
+              <FeeTotalBlock
+                amountCents={registration.amountCents}
+                currency={registration.currency}
+                perAttendeeCents={rsvp.event.registrationFeeCents ?? undefined}
+                qualifyingAttendees={qualifyingAttendees}
+                minAge={rsvp.event.registrationFeeMinAge}
+              />
+            </div>
           </div>
-        </div>
-      </BreatheSection>
+        </BreatheSection>
+      )}
 
       <BreatheSection className="mt-10">
         <div className="mx-auto max-w-3xl px-5 text-center">
