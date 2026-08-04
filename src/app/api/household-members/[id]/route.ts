@@ -95,6 +95,16 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
         if (remaining <= 1) {
           throw new LastMemberError();
         }
+        // Detach attendance rows for this member before the soft
+        // delete so the snapshot survives. The rows are still tied
+        // to their RSVPs, but `householdMemberId` becomes null and
+        // the row now represents a historical "who attended" fact
+        // rather than a live roster entry. The form can still show
+        // them and the user can flip them to NO on the next edit.
+        await tx.rsvpMemberAttendance.updateMany({
+          where: { householdMemberId: id },
+          data: { householdMemberId: null },
+        });
         await tx.householdMember.update({
           where: { id },
           data: { deletedAt: new Date() },

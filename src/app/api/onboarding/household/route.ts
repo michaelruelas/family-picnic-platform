@@ -5,6 +5,31 @@ import { prisma } from '~/lib/prisma';
 import { Prisma } from '~/lib/generated/client';
 import { householdCreateSchema } from '~/lib/schemas';
 
+/**
+ * Upsert a self-member for the given user. The roster must always
+ * include the account holder, both for "at least one member is
+ * required" and because the per-member RSVP form needs at least one
+ * row to render. Returns silently if the user already has a member
+ * entry with the same name.
+ */
+async function seedSelfMember(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  householdId: string,
+  user: { id: string; name: string },
+): Promise<void> {
+  const existing = await tx.householdMember.findFirst({
+    where: { householdId, name: user.name, deletedAt: null },
+    select: { id: true },
+  });
+  if (existing) return;
+  await tx.householdMember.create({
+    data: {
+      householdId,
+      name: user.name,
+    },
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,11 +41,26 @@ export async function POST(request: Request) {
     const { joinHouseholdId } = body as { joinHouseholdId?: string };
 
     if (joinHouseholdId) {
-      await prisma.user.update({
-        where: { id: session.user.id },
-        data: { householdId: joinHouseholdId },
+      // Joining an existing household must (a) link the user and
+      // (b) seed a self-member so the per-member RSVP form has at
+      // least one row. Both happen in the same transaction so a
+      // failure leaves the user in their previous household.
+      const result = await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: session.user.id },
+          data: { householdId: joinHouseholdId },
+        });
+        const me = await tx.user.findUnique({
+          where: { id: session.user.id },
+          select: { id: true, name: true },
+        });
+        if (me) {
+          await seedSelfMember(tx, joinHouseholdId, me);
+        }
+        return { householdId: joinHouseholdId };
       });
-      return NextResponse.json({ success: true, householdId: joinHouseholdId });
+
+      return NextResponse.json({ success: true, householdId: result.householdId });
     }
 
     const parsed = householdCreateSchema.safeParse({ name: body.name });
@@ -32,16 +72,34 @@ export async function POST(request: Request) {
     const trimmedName = parsed.data.name.trim();
 
     try {
-      const household = await prisma.household.create({
-        data: { name: trimmedName },
+      // Create the household and a self-member for the new account
+      // holder in the same transaction. The household roster must
+      // always include the user themselves so the per-member RSVP
+      // form has at least one row on the first visit. The user can
+      // add more family members from the household page after
+      // onboarding completes.
+      const result = await prisma.$transaction(async (tx) => {
+        const household = await tx.household.create({
+          data: { name: trimmedName },
+        });
+
+        await tx.user.update({
+          where: { id: session.user.id },
+          data: { householdId: household.id },
+        });
+
+        const me = await tx.user.findUnique({
+          where: { id: session.user.id },
+          select: { id: true, name: true },
+        });
+        if (me) {
+          await seedSelfMember(tx, household.id, me);
+        }
+
+        return household;
       });
 
-      await prisma.user.update({
-        where: { id: session.user.id },
-        data: { householdId: household.id },
-      });
-
-      return NextResponse.json({ success: true, householdId: household.id });
+      return NextResponse.json({ success: true, householdId: result.id });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         return NextResponse.json(

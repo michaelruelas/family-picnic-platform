@@ -2,11 +2,38 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus, EventStatus } from '~/lib/generated/enums';
+import { RSVPStatus, EventStatus, RsvpAttending } from '~/lib/generated/enums';
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 import { diff, writeAuditLog } from '~/lib/audit';
+import { rsvpMemberAttendanceInputSchema } from '~/lib/schemas';
+import {
+  attendanceFingerprint,
+  buildRosterAsNo,
+  deriveHeadcount,
+  markAllAttendanceNo,
+  resolveAndPersistAttendances,
+  type MemberAttendanceInput,
+} from '~/server/rsvp-attendance';
+
+function normalizeAttendances(
+  attendances: MemberAttendanceInput[] | undefined,
+): MemberAttendanceInput[] {
+  if (!attendances) return [];
+  return attendances.map((a) => ({
+    householdMemberId: a.householdMemberId ?? null,
+    memberName: a.memberName.trim(),
+    memberAge: a.memberAge ?? null,
+    attending: a.attending,
+  }));
+}
+
+function hasAnyYes(attendances: MemberAttendanceInput[] | undefined): boolean {
+  if (!attendances) return false;
+  return attendances.some((a) => a.attending === RsvpAttending.YES);
+}
 
 async function triggerWorkflow(
   eventId: string,
@@ -45,6 +72,23 @@ async function triggerWorkflow(
   }
 }
 
+function trpcErrorToResponse(err: unknown): NextResponse | null {
+  if (err instanceof TRPCError) {
+    const status =
+      err.code === 'BAD_REQUEST'
+        ? 400
+        : err.code === 'FORBIDDEN'
+          ? 403
+          : err.code === 'NOT_FOUND'
+            ? 404
+            : err.code === 'CONFLICT'
+              ? 409
+              : 400;
+    return NextResponse.json({ error: err.message, code: err.code }, { status });
+  }
+  return null;
+}
+
 export async function POST(request: Request) {
   const requestId = generateRequestId();
   const session = await getServerSession(authOptions);
@@ -66,7 +110,7 @@ export async function POST(request: Request) {
 
       try {
         const body = await request.json();
-        const { eventId: reqEventId, action, headcount, dietaryNotes } = body;
+        const { eventId: reqEventId, action, headcount, dietaryNotes, memberAttendances } = body;
         eventId = reqEventId;
 
         if (!eventId || !action) {
@@ -80,15 +124,38 @@ export async function POST(request: Request) {
           const confirmResult = z
             .object({
               eventId: z.string().min(1),
-              headcount: z.number().int().min(1).default(1),
+              headcount: z.number().int().min(0).optional(),
               dietaryNotes: z.string().optional(),
+              memberAttendances: z.array(rsvpMemberAttendanceInputSchema).optional(),
             })
-            .safeParse({ eventId, headcount, dietaryNotes });
+            .safeParse({ eventId, headcount, dietaryNotes, memberAttendances });
 
           if (!confirmResult.success) {
             const errors = confirmResult.error.issues.map((i) => i.message);
             return NextResponse.json(
               { error: errors[0] || 'Invalid input', code: 'BAD_REQUEST' },
+              { status: 400 },
+            );
+          }
+          if (
+            confirmResult.data.memberAttendances !== undefined &&
+            confirmResult.data.memberAttendances.length === 0
+          ) {
+            return NextResponse.json(
+              { error: 'Mark attendance for at least one member', code: 'BAD_REQUEST' },
+              { status: 400 },
+            );
+          }
+          if (
+            confirmResult.data.memberAttendances &&
+            !hasAnyYes(confirmResult.data.memberAttendances)
+          ) {
+            return NextResponse.json(
+              {
+                error:
+                  'At least one member must be marked as going. Use the decline button if no one is attending.',
+                code: 'BAD_REQUEST',
+              },
               { status: 400 },
             );
           }
@@ -141,12 +208,25 @@ export async function POST(request: Request) {
         if (action === 'confirm' || action === 'decline') {
           const user = await prisma.user.findUnique({
             where: { id: session.user.id },
+            select: { id: true, householdId: true },
           });
 
           if (!user) {
             return NextResponse.json(
               { error: 'User not found', code: 'NOT_FOUND' },
               { status: 404 },
+            );
+          }
+
+          const householdId = user.householdId ?? user.id;
+          const attendances = normalizeAttendances(memberAttendances);
+          const tentativeHeadcount =
+            action === 'decline' ? 0 : deriveHeadcount(attendances, headcount);
+
+          if (action === 'confirm' && tentativeHeadcount < 1) {
+            return NextResponse.json(
+              { error: 'At least one member must be marked as going.', code: 'BAD_REQUEST' },
+              { status: 400 },
             );
           }
 
@@ -160,7 +240,7 @@ export async function POST(request: Request) {
               _sum: { headcount: true },
             });
 
-            const totalAfterRsvp = (currentHeadcount._sum.headcount || 0) + (headcount || 1);
+            const totalAfterRsvp = (currentHeadcount._sum.headcount || 0) + tentativeHeadcount;
             if (totalAfterRsvp > event.maxCapacity) {
               const nextPosition = await prisma.rSVP.aggregate({
                 where: {
@@ -190,7 +270,7 @@ export async function POST(request: Request) {
                   },
                   update: {
                     status: RSVPStatus.WAITLISTED,
-                    headcount: headcount || 1,
+                    headcount: tentativeHeadcount,
                     dietaryNotes: dietaryNotes || null,
                     respondedAt: new Date(),
                     waitlistPosition,
@@ -198,14 +278,22 @@ export async function POST(request: Request) {
                   create: {
                     eventId: eventId!,
                     userId: session.user.id,
-                    householdId: user.householdId || user.id,
+                    householdId,
                     status: RSVPStatus.WAITLISTED,
-                    headcount: headcount || 1,
+                    headcount: tentativeHeadcount,
                     dietaryNotes: dietaryNotes || null,
                     respondedAt: new Date(),
                     waitlistPosition,
                   },
                 });
+
+                if (attendances.length > 0) {
+                  await resolveAndPersistAttendances(tx, {
+                    rsvpId: waitlisted.id,
+                    householdId,
+                    attendances,
+                  });
+                }
 
                 if (existingWaitlistRsvp) {
                   const change = diff(
@@ -259,9 +347,9 @@ export async function POST(request: Request) {
           const rsvpData = {
             eventId: eventId!,
             userId: session.user.id,
-            householdId: user.householdId || user.id,
+            householdId,
             status: action === 'confirm' ? RSVPStatus.CONFIRMED : RSVPStatus.DECLINED,
-            headcount: action === 'confirm' ? headcount || 1 : 0,
+            headcount: tentativeHeadcount,
             dietaryNotes: action === 'confirm' ? dietaryNotes || null : null,
             respondedAt: new Date(),
           };
@@ -279,6 +367,7 @@ export async function POST(request: Request) {
                   potluckSignups: {
                     include: { slot: true },
                   },
+                  memberAttendances: { orderBy: { createdAt: 'asc' } },
                 },
               });
 
@@ -310,8 +399,25 @@ export async function POST(request: Request) {
               });
 
               if (existingRsvp) {
-                await tx.adminAuditLog.create({
-                  data: {
+                await markAllAttendanceNo(tx, existingRsvp.id);
+              } else {
+                const roster = await buildRosterAsNo(tx, householdId);
+                if (roster.length > 0) {
+                  await tx.rsvpMemberAttendance.createMany({
+                    data: roster.map((row) => ({
+                      rsvpId: declined.id,
+                      householdMemberId: row.householdMemberId,
+                      memberNameSnapshot: row.memberName,
+                      memberAgeSnapshot: row.memberAge,
+                      attending: row.attending,
+                    })),
+                  });
+                }
+              }
+
+              if (existingRsvp) {
+                await writeAuditLog(
+                  {
                     userId: session.user.id,
                     eventId: eventId!,
                     action: 'RSVP_UPDATE',
@@ -320,6 +426,12 @@ export async function POST(request: Request) {
                       headcount: existingRsvp.headcount,
                       dietaryNotes: existingRsvp.dietaryNotes,
                       waitlistPosition: existingRsvp.waitlistPosition,
+                      memberAttendances: (existingRsvp.memberAttendances ?? []).map((a) => ({
+                        householdMemberId: a.householdMemberId,
+                        memberName: a.memberNameSnapshot,
+                        memberAge: a.memberAgeSnapshot,
+                        attending: a.attending,
+                      })),
                     },
                     newValue: {
                       status: declined.status,
@@ -327,9 +439,18 @@ export async function POST(request: Request) {
                       dietaryNotes: declined.dietaryNotes,
                       waitlistPosition: declined.waitlistPosition,
                       slotsReleased: existingRsvp.potluckSignups.length,
+                      // Decline collapses every row to NO; compute
+                      // the new value from the old rows.
+                      memberAttendances: (existingRsvp.memberAttendances ?? []).map((a) => ({
+                        householdMemberId: a.householdMemberId,
+                        memberName: a.memberNameSnapshot,
+                        memberAge: a.memberAgeSnapshot,
+                        attending: RsvpAttending.NO,
+                      })),
                     },
                   },
-                });
+                  tx,
+                );
               }
 
               const firstWaitlisted = await tx.rSVP.findFirst({
@@ -389,6 +510,7 @@ export async function POST(request: Request) {
                   userId: session.user.id,
                 },
               },
+              include: { memberAttendances: { orderBy: { createdAt: 'asc' } } },
             });
 
             const updatedRsvp = await tx.rSVP.upsert({
@@ -407,19 +529,47 @@ export async function POST(request: Request) {
               create: rsvpData,
             });
 
+            if (attendances.length > 0) {
+              await resolveAndPersistAttendances(tx, {
+                rsvpId: updatedRsvp.id,
+                householdId,
+                attendances,
+              });
+            }
+
             if (existingConfirmRsvp) {
+              const refreshedAfter = await tx.rSVP.findUnique({
+                where: { id: updatedRsvp.id },
+                include: { memberAttendances: { orderBy: { createdAt: 'asc' } } },
+              });
+              const finalAttendances = refreshedAfter?.memberAttendances ?? [];
+              const beforeFp = attendanceFingerprint(existingConfirmRsvp.memberAttendances);
+              const afterFp = attendanceFingerprint(finalAttendances);
+
               const change = diff(
                 {
                   status: existingConfirmRsvp.status,
                   headcount: existingConfirmRsvp.headcount,
                   dietaryNotes: existingConfirmRsvp.dietaryNotes,
                   waitlistPosition: existingConfirmRsvp.waitlistPosition,
+                  memberAttendances: (existingConfirmRsvp.memberAttendances ?? []).map((a) => ({
+                    householdMemberId: a.householdMemberId,
+                    memberName: a.memberNameSnapshot,
+                    memberAge: a.memberAgeSnapshot,
+                    attending: a.attending,
+                  })),
                 },
                 {
                   status: updatedRsvp.status,
                   headcount: updatedRsvp.headcount,
                   dietaryNotes: updatedRsvp.dietaryNotes,
                   waitlistPosition: updatedRsvp.waitlistPosition,
+                  memberAttendances: finalAttendances.map((a) => ({
+                    householdMemberId: a.householdMemberId,
+                    memberName: a.memberNameSnapshot,
+                    memberAge: a.memberAgeSnapshot,
+                    attending: a.attending,
+                  })),
                 },
               );
 
@@ -434,12 +584,25 @@ export async function POST(request: Request) {
                       headcount: existingConfirmRsvp.headcount,
                       dietaryNotes: existingConfirmRsvp.dietaryNotes,
                       waitlistPosition: existingConfirmRsvp.waitlistPosition,
+                      memberAttendances: (existingConfirmRsvp.memberAttendances ?? []).map((a) => ({
+                        householdMemberId: a.householdMemberId,
+                        memberName: a.memberNameSnapshot,
+                        memberAge: a.memberAgeSnapshot,
+                        attending: a.attending,
+                      })),
                     },
                     newValue: {
                       status: updatedRsvp.status,
                       headcount: updatedRsvp.headcount,
                       dietaryNotes: updatedRsvp.dietaryNotes,
                       waitlistPosition: updatedRsvp.waitlistPosition,
+                      memberAttendances: finalAttendances.map((a) => ({
+                        householdMemberId: a.householdMemberId,
+                        memberName: a.memberNameSnapshot,
+                        memberAge: a.memberAgeSnapshot,
+                        attending: a.attending,
+                      })),
+                      attendanceFingerprintChanged: beforeFp !== afterFp,
                     },
                   },
                   tx,
@@ -448,13 +611,15 @@ export async function POST(request: Request) {
             }
           });
 
-          triggerWorkflow(eventId!, session.user.id, 'confirm', headcount, dietaryNotes);
+          triggerWorkflow(eventId!, session.user.id, 'confirm', tentativeHeadcount, dietaryNotes);
 
           return NextResponse.json({ success: true, status: rsvpData.status });
         }
 
         return NextResponse.json({ error: 'Invalid action', code: 'BAD_REQUEST' }, { status: 400 });
       } catch (error) {
+        const mapped = trpcErrorToResponse(error);
+        if (mapped) return mapped;
         log.error({ err: error, eventId }, 'RSVP error');
         return NextResponse.json(
           { error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' },

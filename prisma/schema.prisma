@@ -51,6 +51,12 @@ enum RSVPStatus {
   WAITLISTED
 }
 
+enum RsvpAttending {
+  YES
+  NO
+  MAYBE
+}
+
 enum PotluckCategory {
   MAIN
   SIDE
@@ -109,15 +115,45 @@ model HouseholdMember {
   householdId String
   name        String
   age         Int?
+  // Optional relationship to the account holder (e.g. SPOUSE,
+  // CHILD, PARENT). Kept as a free-form string so the onboarding
+  // wizard can store user input without a Prisma enum migration
+  // when the picker list grows. QUB-21 removes dietary fields
+  // from this scope; relationship is structural.
+  relationship String?
   notes       String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
   household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  rsvpAttendances RsvpMemberAttendance[]
 
   @@index([householdId])
   @@index([deletedAt])
+}
+
+model RsvpMemberAttendance {
+  id                   String        @id @default(cuid())
+  rsvpId               String
+  householdMemberId    String?
+  // Snapshots preserve the member's name/age at the time of the RSVP
+  // so a later member edit or delete does not rewrite the saved
+  // confirmation. memberNameSnapshot is required; memberAgeSnapshot
+  // is optional to match the underlying HouseholdMember model.
+  memberNameSnapshot   String
+  memberAgeSnapshot    Int?
+  attending            RsvpAttending @default(YES)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  rsvp    RSVP             @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
+  member  HouseholdMember? @relation(fields: [householdMemberId], references: [id], onDelete: SetNull)
+
+  @@unique([rsvpId, householdMemberId])
+  @@index([rsvpId])
+  @@index([householdMemberId])
+  @@index([attending])
 }
 
 model User {
@@ -246,6 +282,7 @@ model RSVP {
   event          Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   potluckSignups PotluckSignup[]
+  memberAttendances RsvpMemberAttendance[]
 
   @@unique([eventId, userId])
   @@index([eventId])

@@ -1,10 +1,21 @@
 import { z } from 'zod';
 import { RSVPStatus } from '~/lib/generated/enums';
+import { rsvpMemberAttendanceListSchema } from './rsvp-member-attendance';
+
+const baseFields = {
+  // The headcount is now derived from the per-member attendance list
+  // when memberAttendances is present. The router recomputes the
+  // headcount server-side, so callers may either send memberAttendances
+  // (preferred) or a legacy headcount value. Existing call sites that
+  // still send headcount keep working.
+  headcount: z.number().int().min(0).optional(),
+  dietaryNotes: z.string().optional(),
+  memberAttendances: rsvpMemberAttendanceListSchema.optional(),
+};
 
 export const rsvpConfirmSchema = z.object({
   eventId: z.string().min(1, 'Event ID is required'),
-  headcount: z.number().int().min(1).default(1),
-  dietaryNotes: z.string().optional(),
+  ...baseFields,
 });
 
 export const rsvpDeclineSchema = z.object({
@@ -13,16 +24,14 @@ export const rsvpDeclineSchema = z.object({
 
 export const rsvpUpdateSchema = z.object({
   eventId: z.string().min(1, 'Event ID is required'),
-  headcount: z.number().int().min(1),
-  dietaryNotes: z.string().optional(),
+  ...baseFields,
 });
 
 export const rsvpAdminOverrideSchema = z.object({
   eventId: z.string().min(1, 'Event ID is required'),
   userId: z.string().min(1, 'User ID is required'),
   status: z.enum([RSVPStatus.CONFIRMED, RSVPStatus.DECLINED]),
-  headcount: z.number().int().min(0).optional(),
-  dietaryNotes: z.string().optional(),
+  ...baseFields,
 });
 
 export type RsvpConfirmInput = z.infer<typeof rsvpConfirmSchema>;

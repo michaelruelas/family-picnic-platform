@@ -1,10 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useRsvpMutation } from '~/hooks';
+import { RSVPStatus, RsvpAttending } from '~/lib/generated/enums';
+import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
 import { RsvpBottomSheet } from './RsvpBottomSheet';
-import type { ExistingRsvp } from './types';
+
+interface MemberAttendance {
+  id: string;
+  householdMemberId: string | null;
+  memberName: string;
+  memberAge: number | null;
+  attending: RsvpAttending;
+}
 
 interface EventRsvpCardProps {
   eventId: string;
@@ -16,7 +25,14 @@ interface EventRsvpCardProps {
   rsvpDeadline: string | null;
   maxCapacity: number | null;
   currentAttending: number;
-  existingRsvp: ExistingRsvp | null;
+  existingRsvp: {
+    id: string;
+    status: RSVPStatus;
+    headcount: number;
+    dietaryNotes: string | null;
+    modifiedAt: string;
+    memberAttendances: MemberAttendance[];
+  } | null;
 }
 
 export function EventRsvpCard({
@@ -31,10 +47,10 @@ export function EventRsvpCard({
   currentAttending,
   existingRsvp,
 }: EventRsvpCardProps) {
-  const { decline } = useRsvpMutation();
-  const router = useRouter();
+  const { confirm, decline } = useRsvpMutation();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isRsvpOpen = !isPast && (!rsvpDeadline || new Date(rsvpDeadline) > new Date());
   const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
@@ -47,9 +63,11 @@ export function EventRsvpCard({
 
   const handleDecline = async () => {
     setIsSubmitting(true);
+    setError(null);
     try {
       await decline.mutateAsync({ eventId });
-      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -125,13 +143,39 @@ export function EventRsvpCard({
                 </div>
               )}
               <LastUpdated modifiedAt={existingRsvp.modifiedAt} />
+              {isRsvpOpen && existingRsvp.memberAttendances.length > 0 && (
+                <ul className="mt-4 space-y-1.5">
+                  {existingRsvp.memberAttendances.map((att) => (
+                    <li key={att.id} className="flex items-center justify-between text-sm">
+                      <span className="text-foreground/85">{att.memberName}</span>
+                      <span
+                        className={
+                          att.attending === RsvpAttending.YES
+                            ? 'text-sage font-semibold'
+                            : att.attending === RsvpAttending.MAYBE
+                              ? 'text-sunlight font-semibold'
+                              : 'text-muted-foreground'
+                        }
+                      >
+                        {attendingLabel(att.attending)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {isRsvpOpen && (
                 <div className="mt-5 flex flex-col gap-2">
+                  <Link
+                    href={`/my-events/${existingRsvp.id}/confirmation`}
+                    className="rounded-pill border-border bg-card text-foreground press hover:border-foreground border px-4 py-2.5 text-center text-sm font-semibold transition-all"
+                  >
+                    View confirmation
+                  </Link>
                   <button
                     onClick={() => setIsSheetOpen(true)}
-                    className="rounded-pill border-border bg-card text-foreground press hover:border-foreground border px-4 py-2.5 text-sm font-semibold transition-all"
+                    className="rounded-pill text-muted-foreground hover:text-foreground px-4 py-2.5 text-sm font-medium"
                   >
-                    Edit RSVP
+                    Edit attendance
                   </button>
                   <button
                     onClick={handleDecline}
@@ -179,14 +223,6 @@ export function EventRsvpCard({
                 If a spot opens up, we&apos;ll be in touch.
               </p>
               <LastUpdated modifiedAt={existingRsvp.modifiedAt} />
-              {isRsvpOpen && (
-                <button
-                  onClick={() => setIsSheetOpen(true)}
-                  className="rounded-pill border-border bg-card text-foreground press hover:border-foreground mt-5 w-full border px-4 py-2.5 text-sm font-semibold transition-all"
-                >
-                  Update your RSVP
-                </button>
-              )}
             </>
           )}
         </div>
@@ -197,7 +233,6 @@ export function EventRsvpCard({
           eventName={eventName}
           maxCapacity={maxCapacity}
           currentAttending={currentAttending}
-          existingRsvp={existingRsvp}
         />
       </>
     );
@@ -241,6 +276,7 @@ export function EventRsvpCard({
             </button>
           </>
         )}
+        {error && <p className="text-destructive mt-3 text-sm">{error}</p>}
       </div>
 
       <RsvpBottomSheet
@@ -250,7 +286,6 @@ export function EventRsvpCard({
         eventName={eventName}
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
-        existingRsvp={existingRsvp}
       />
     </>
   );
