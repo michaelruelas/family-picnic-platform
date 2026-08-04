@@ -92,14 +92,11 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
   );
   const noAttendances = rsvp.memberAttendances.filter((a) => a.attending === RsvpAttending.NO);
 
-  // Members counted toward the fee: YES, known age, at or above the
-  // event's min age. Mirrors `calculateFee` so the tooltip on the
-  // fee block shows the same number that produced the total.
-  const qualifyingAttendees = rsvp.memberAttendances.filter((a) => {
-    if (a.attending !== RsvpAttending.YES) return false;
-    if (a.memberAgeSnapshot === null) return false;
-    return a.memberAgeSnapshot >= rsvp.event.registrationFeeMinAge;
-  }).length;
+  // No live qualifying-attendee count here. `Registration.amountCents`
+  // is a snapshot of the fee at RSVP time, so the live count would
+  // diverge from the displayed total after the user edits their
+  // roster. The FeeTotalBlock tooltip therefore shows the per-attendee
+  // rule without claiming a specific multiplier for this snapshot.
 
   const potluckClaims = rsvp.event.potluckSlots.flatMap((slot) =>
     slot.signups.map((signup) => ({ slot, signup })),
@@ -302,7 +299,6 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
                 amountCents={registration.amountCents}
                 currency={registration.currency}
                 perAttendeeCents={rsvp.event.registrationFeeCents ?? undefined}
-                qualifyingAttendees={qualifyingAttendees}
                 minAge={rsvp.event.registrationFeeMinAge}
               />
             </div>
