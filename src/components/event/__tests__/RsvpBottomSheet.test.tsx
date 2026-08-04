@@ -3,12 +3,17 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 
 const mockConfirm = { mutateAsync: vi.fn() };
 const mockDecline = { mutateAsync: vi.fn() };
+const mockRefresh = vi.fn();
 
 vi.mock('~/hooks', () => ({
   useRsvpMutation: () => ({
     confirm: mockConfirm,
     decline: mockDecline,
   }),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: mockRefresh }),
 }));
 
 vi.mock('react-dom', async () => {
@@ -23,6 +28,8 @@ beforeEach(() => {
   mockDecline.mutateAsync.mockReset();
   mockConfirm.mutateAsync.mockResolvedValue({});
   mockDecline.mutateAsync.mockResolvedValue({});
+  mockRefresh.mockReset();
+  defaultProps.onClose.mockClear();
 });
 
 const defaultProps = {

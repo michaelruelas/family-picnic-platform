@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useRsvpMutation } from '~/hooks';
 import Modal from '~/components/ui/Modal';
 import type { ExistingRsvp } from './types';
@@ -37,6 +38,7 @@ export function RsvpBottomSheet({
   existingRsvp,
 }: RsvpBottomSheetProps) {
   const { confirm, decline } = useRsvpMutation();
+  const router = useRouter();
   const initial = getInitialState(existingRsvp);
   const [adults, setAdults] = useState(initial.adults);
   const [kids, setKids] = useState(initial.kids);
@@ -90,6 +92,7 @@ export function RsvpBottomSheet({
         headcount: total,
         dietaryNotes: dietaryNotes.trim() || undefined,
       });
+      router.refresh();
       if (!isOpenRef.current) return;
       setPhase('confirmed');
       setTimeout(() => {
@@ -111,11 +114,20 @@ export function RsvpBottomSheet({
   const handleDecline = async () => {
     setIsSubmitting(true);
     setError(null);
+    pendingErrorRef.current = null;
     try {
       await decline.mutateAsync({ eventId });
+      router.refresh();
+      if (!isOpenRef.current) return;
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      const message =
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      if (!isOpenRef.current) {
+        pendingErrorRef.current = message;
+        return;
+      }
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
