@@ -1,19 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-const mockConfirm = { mutateAsync: vi.fn() };
 const mockDecline = { mutateAsync: vi.fn() };
-const mockRefresh = vi.fn();
 
 vi.mock('~/hooks', () => ({
   useRsvpMutation: () => ({
-    confirm: mockConfirm,
+    confirm: { mutateAsync: vi.fn() },
     decline: mockDecline,
+  }),
+  useRsvpFormState: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
   }),
 }));
 
+vi.mock('next/link', () => ({
+  default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: mockRefresh }),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
 
 vi.mock('react-dom', async () => {
@@ -24,11 +36,8 @@ vi.mock('react-dom', async () => {
 const { EventRsvpCard } = await import('../EventRsvpCard');
 
 beforeEach(() => {
-  mockConfirm.mutateAsync.mockReset();
   mockDecline.mutateAsync.mockReset();
-  mockConfirm.mutateAsync.mockResolvedValue({});
   mockDecline.mutateAsync.mockResolvedValue({});
-  mockRefresh.mockReset();
 });
 
 const baseProps = {
@@ -43,133 +52,124 @@ const baseProps = {
   currentAttending: 10,
 };
 
+const memberAttendances = [
+  {
+    id: 'att-1',
+    householdMemberId: 'mem-1',
+    memberName: 'Alice',
+    memberAge: 35,
+    attending: 'YES' as const,
+  },
+  {
+    id: 'att-2',
+    householdMemberId: 'mem-2',
+    memberName: 'Ben',
+    memberAge: 8,
+    attending: 'NO' as const,
+  },
+];
+
 const confirmedRsvp = {
+  id: 'rsvp-1',
   status: 'CONFIRMED' as const,
-  headcount: 3,
-  dietaryNotes: 'vegetarian',
-  modifiedAt: '2026-07-01T12:00:00Z',
-};
-
-const declinedRsvp = {
-  status: 'DECLINED' as const,
-  headcount: 0,
-  dietaryNotes: null,
-  modifiedAt: '2026-07-01T12:00:00Z',
-};
-
-const waitlistedRsvp = {
-  status: 'WAITLISTED' as const,
   headcount: 2,
   dietaryNotes: null,
   modifiedAt: '2026-07-01T12:00:00Z',
+  memberAttendances,
 };
 
 describe('EventRsvpCard', () => {
-  describe('LastUpdated', () => {
-    it('renders the modifiedAt timestamp when there is an existing RSVP', () => {
-      render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
-
-      const time = screen.getByText(/Last updated/i).querySelector('time');
-      expect(time).not.toBeNull();
-      expect(time).toHaveAttribute('datetime', confirmedRsvp.modifiedAt);
-    });
-
-    it('does not render LastUpdated when there is no existing RSVP', () => {
-      render(<EventRsvpCard {...baseProps} existingRsvp={null} />);
-
-      expect(screen.queryByText(/Last updated/i)).not.toBeInTheDocument();
-    });
-  });
-
-  describe('Edit RSVP routing', () => {
-    it('opens the bottom sheet (not the inline panel) when a CONFIRMED user clicks Edit RSVP', () => {
-      render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /edit rsvp/i }));
-
-      expect(screen.getByRole('heading', { name: /update your party/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /save changes for 3/i })).toBeInTheDocument();
-      expect(screen.queryByText(/Number of people/i)).not.toBeInTheDocument();
-    });
-
-    it('opens the bottom sheet when a DECLINED user clicks RSVP again', () => {
-      render(<EventRsvpCard {...baseProps} existingRsvp={declinedRsvp} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /rsvp again/i }));
-
-      expect(screen.getByRole('heading', { name: /who's coming/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /confirm 1 guest/i })).toBeInTheDocument();
-    });
-
-    it('opens the bottom sheet when a WAITLISTED user clicks Update your RSVP', () => {
-      render(<EventRsvpCard {...baseProps} existingRsvp={waitlistedRsvp} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /update your rsvp/i }));
-
-      expect(screen.getByRole('heading', { name: /update your party/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /save changes for 2/i })).toBeInTheDocument();
-    });
-
-    it('does not show the inline edit panel for any existing RSVP state', () => {
-      const { rerender } = render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
-      expect(screen.queryByText(/Edit your RSVP/i)).not.toBeInTheDocument();
-
-      rerender(<EventRsvpCard {...baseProps} existingRsvp={declinedRsvp} />);
-      expect(screen.queryByText(/Edit your RSVP/i)).not.toBeInTheDocument();
-
-      rerender(<EventRsvpCard {...baseProps} existingRsvp={waitlistedRsvp} />);
-      expect(screen.queryByText(/Edit your RSVP/i)).not.toBeInTheDocument();
-    });
-  });
-
-  describe('decline', () => {
-    it('calls the decline mutation and refreshes the page when a CONFIRMED user clicks Can&apos;t make it', async () => {
-      render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
-
-      const buttons = screen.getAllByRole('button', { name: /Can(&apos;|')t make it/i });
-      fireEvent.click(buttons[0]!);
-
-      expect(mockDecline.mutateAsync).toHaveBeenCalledWith({ eventId: baseProps.eventId });
-
-      await waitFor(() => {
-        expect(mockRefresh).toHaveBeenCalledTimes(1);
-      });
-    });
-  });
-
-  describe('new RSVP', () => {
-    it('renders the Join the gathering card when there is no existing RSVP', () => {
-      render(<EventRsvpCard {...baseProps} existingRsvp={null} />);
-
-      expect(screen.getByRole('heading', { name: /join the gathering/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /rsvp now/i })).toBeInTheDocument();
-    });
-
-    it('opens the sheet with default values when there is no existing RSVP', () => {
-      render(<EventRsvpCard {...baseProps} existingRsvp={null} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /rsvp now/i }));
-
-      expect(screen.getByRole('heading', { name: /who's coming/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /confirm 1 guest/i })).toBeInTheDocument();
-    });
-  });
-
-  describe('not logged in', () => {
-    it('renders the Sign in prompt instead of the sheet', () => {
+  describe('rendering by state', () => {
+    it('shows a sign-in prompt when not logged in', () => {
       render(<EventRsvpCard {...baseProps} isLoggedIn={false} existingRsvp={null} />);
-
-      expect(screen.getByRole('heading', { name: /join the gathering/i })).toBeInTheDocument();
+      expect(screen.getByText(/join the gathering/i)).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /sign in/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /rsvp now/i })).not.toBeInTheDocument();
+    });
+
+    it('shows a past-event message for past events', () => {
+      render(
+        <EventRsvpCard
+          {...baseProps}
+          isPast
+          existingRsvp={{ ...confirmedRsvp, status: 'CONFIRMED' }}
+        />,
+      );
+      expect(screen.getByText(/this gathering has passed/i)).toBeInTheDocument();
+      expect(screen.getByText(/wonderful time/i)).toBeInTheDocument();
+    });
+
+    it('shows the CONFIRMED card with the "You are in" badge', () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
+      expect(screen.getByText(/you're in/i)).toBeInTheDocument();
+      expect(screen.getByText(/see you at annual picnic/i)).toBeInTheDocument();
+      expect(screen.getByText(/2 people on the way/i)).toBeInTheDocument();
+    });
+
+    it('shows the DECLINED card with the change-your-mind copy', () => {
+      render(
+        <EventRsvpCard
+          {...baseProps}
+          existingRsvp={{ ...confirmedRsvp, status: 'DECLINED', headcount: 0 }}
+        />,
+      );
+      expect(screen.getByText(/you declined/i)).toBeInTheDocument();
+      expect(screen.getByText(/changed your mind/i)).toBeInTheDocument();
+    });
+
+    it('shows the WAITLISTED card with update copy when isRsvpOpen', () => {
+      render(
+        <EventRsvpCard
+          {...baseProps}
+          existingRsvp={{ ...confirmedRsvp, status: 'WAITLISTED', headcount: 1 }}
+        />,
+      );
+      expect(screen.getByText(/we.?ll let you know/i)).toBeInTheDocument();
     });
   });
 
-  describe('past event', () => {
-    it('renders the past event message when the event has passed', () => {
-      render(<EventRsvpCard {...baseProps} isPast={true} existingRsvp={confirmedRsvp} />);
+  describe('per-member attendance', () => {
+    it('renders one row per attendance entry with the human-readable label', () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+      expect(screen.getByText('Ben')).toBeInTheDocument();
+      expect(screen.getByText('Going')).toBeInTheDocument();
+      expect(screen.getByText('Not going')).toBeInTheDocument();
+    });
 
-      expect(screen.getByText(/this gathering has passed/i)).toBeInTheDocument();
+    it('omits the per-member list when the array is empty', () => {
+      render(
+        <EventRsvpCard {...baseProps} existingRsvp={{ ...confirmedRsvp, memberAttendances: [] }} />,
+      );
+      expect(screen.queryByText('Going')).not.toBeInTheDocument();
+      expect(screen.queryByText('Not going')).not.toBeInTheDocument();
+    });
+
+    it('omits the per-member list when RSVP is closed', () => {
+      const pastDeadline = '2020-01-01T00:00:00Z';
+      render(
+        <EventRsvpCard {...baseProps} rsvpDeadline={pastDeadline} existingRsvp={confirmedRsvp} />,
+      );
+      expect(screen.queryByText('Going')).not.toBeInTheDocument();
+      expect(screen.queryByText('View confirmation')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('confirmation link', () => {
+    it('links the "View confirmation" button to /my-events/<rsvpId>/confirmation', () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
+      const link = screen.getByRole('link', { name: /view confirmation/i });
+      expect(link).toHaveAttribute('href', '/my-events/rsvp-1/confirmation');
+    });
+  });
+
+  describe('actions', () => {
+    it("calls the decline mutation when the user clicks Can't make it", async () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={confirmedRsvp} />);
+      const declineBtn = await screen.findByRole('button', { name: /make it/i });
+      fireEvent.click(declineBtn);
+      await waitFor(() => {
+        expect(mockDecline.mutateAsync).toHaveBeenCalledWith({ eventId: 'evt-1' });
+      });
     });
   });
 });

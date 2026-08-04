@@ -19,6 +19,19 @@ const prismaMock = vi.hoisted(() => ({
   },
   potluckSignup: { deleteMany: vi.fn() },
   potluckSlot: { update: vi.fn() },
+  rsvpMemberAttendance: {
+    createMany: vi.fn(),
+    deleteMany: vi.fn(),
+    updateMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+  householdMember: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+  },
   adminAuditLog: { create: vi.fn() },
   $transaction: vi.fn(),
 }));
@@ -272,5 +285,51 @@ describe('POST /api/rsvp', () => {
     });
     const res = await POST(badReq);
     expect(res.status).toBe(500);
+  });
+
+  it('rejects an all-NO memberAttendances list with 400', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.event.findUnique.mockResolvedValue({
+      id: 'e1',
+      status: 'PUBLISHED',
+      rsvpDeadline: null,
+      maxCapacity: null,
+    } as never);
+    const res = await POST(
+      makeJsonRequest('http://x', {
+        eventId: 'e1',
+        action: 'confirm',
+        memberAttendances: [{ householdMemberId: null, memberName: 'Pat', attending: 'NO' }],
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/At least one member must be marked as going/);
+  });
+
+  it('rejects a foreign householdMemberId with 400', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.event.findUnique.mockResolvedValue({
+      id: 'e1',
+      status: 'PUBLISHED',
+      rsvpDeadline: null,
+      maxCapacity: null,
+    } as never);
+    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.$transaction.mockImplementation(
+      async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock) as never,
+    );
+    prismaMock.householdMember.findMany.mockResolvedValue([]);
+    prismaMock.rSVP.upsert.mockResolvedValue({ id: 'r-1' } as never);
+    const res = await POST(
+      makeJsonRequest('http://x', {
+        eventId: 'e1',
+        action: 'confirm',
+        memberAttendances: [{ householdMemberId: 'foreign', memberName: 'Pat', attending: 'YES' }],
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/does not belong to this household/);
   });
 });

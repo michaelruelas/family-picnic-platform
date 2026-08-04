@@ -53,6 +53,7 @@ export default async function HouseholdPage() {
               name: true,
               age: true,
               notes: true,
+              relationship: true,
             },
           },
         },

@@ -483,13 +483,6 @@ describe('rsvpConfirmSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('defaults headcount to 1', () => {
-    const result = rsvpConfirmSchema.parse({
-      eventId: 'evt-1',
-    });
-    expect(result.headcount).toBe(1);
-  });
-
   it('passes with explicit headcount', () => {
     const result = rsvpConfirmSchema.safeParse({
       eventId: 'evt-1',
@@ -507,6 +500,17 @@ describe('rsvpConfirmSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('passes with memberAttendances', () => {
+    const result = rsvpConfirmSchema.safeParse({
+      eventId: 'evt-1',
+      memberAttendances: [
+        { householdMemberId: 'mem-1', memberName: 'Pat', attending: 'YES' },
+        { householdMemberId: 'mem-2', memberName: 'Sam', attending: 'NO' },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('fails when eventId is empty', () => {
     const result = rsvpConfirmSchema.safeParse({ eventId: '' });
     expect(result.success).toBe(false);
@@ -517,10 +521,18 @@ describe('rsvpConfirmSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('fails with headcount less than 1', () => {
+  it('fails with negative headcount', () => {
     const result = rsvpConfirmSchema.safeParse({
       eventId: 'evt-1',
-      headcount: 0,
+      headcount: -1,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when memberAttendances is empty', () => {
+    const result = rsvpConfirmSchema.safeParse({
+      eventId: 'evt-1',
+      memberAttendances: [],
     });
     expect(result.success).toBe(false);
   });
@@ -563,22 +575,39 @@ describe('rsvpUpdateSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('passes with memberAttendances', () => {
+    const result = rsvpUpdateSchema.safeParse({
+      eventId: 'evt-1',
+      memberAttendances: [{ householdMemberId: 'mem-1', memberName: 'Pat', attending: 'YES' }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes without headcount when memberAttendances is provided', () => {
+    const result = rsvpUpdateSchema.safeParse({
+      eventId: 'evt-1',
+      memberAttendances: [{ householdMemberId: 'mem-1', memberName: 'Pat', attending: 'YES' }],
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('fails when eventId is missing', () => {
     const result = rsvpUpdateSchema.safeParse({ headcount: 2 });
     expect(result.success).toBe(false);
   });
 
-  it('fails when headcount is less than 1', () => {
+  it('fails with negative headcount', () => {
     const result = rsvpUpdateSchema.safeParse({
       eventId: 'evt-1',
-      headcount: 0,
+      headcount: -1,
     });
     expect(result.success).toBe(false);
   });
 
-  it('fails when headcount is missing', () => {
+  it('fails when memberAttendances is empty', () => {
     const result = rsvpUpdateSchema.safeParse({
       eventId: 'evt-1',
+      memberAttendances: [],
     });
     expect(result.success).toBe(false);
   });
@@ -785,5 +814,93 @@ describe('householdMemberDeleteSchema', () => {
   it('fails when id is missing', () => {
     const result = householdMemberDeleteSchema.safeParse({});
     expect(result.success).toBe(false);
+  });
+});
+
+import {
+  rsvpMemberAttendanceInputSchema,
+  rsvpMemberAttendanceListSchema,
+  attendingLabel,
+} from '~/lib/schemas/rsvp-member-attendance';
+
+describe('rsvpMemberAttendanceInputSchema', () => {
+  it('passes with a YES attendance for a household member', () => {
+    const result = rsvpMemberAttendanceInputSchema.safeParse({
+      householdMemberId: 'mem-1',
+      memberName: 'Pat',
+      memberAge: 30,
+      attending: 'YES',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes with NO and MAYBE', () => {
+    for (const attending of ['NO', 'MAYBE'] as const) {
+      const result = rsvpMemberAttendanceInputSchema.safeParse({
+        householdMemberId: 'mem-1',
+        memberName: 'Pat',
+        attending,
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it('allows an ad-hoc member without a householdMemberId', () => {
+    const result = rsvpMemberAttendanceInputSchema.safeParse({
+      householdMemberId: null,
+      memberName: 'Plus One',
+      attending: 'YES',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an unknown attending value', () => {
+    const result = rsvpMemberAttendanceInputSchema.safeParse({
+      householdMemberId: 'mem-1',
+      memberName: 'Pat',
+      attending: 'YES_NO_MAYBE',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an empty name', () => {
+    const result = rsvpMemberAttendanceInputSchema.safeParse({
+      householdMemberId: 'mem-1',
+      memberName: '   ',
+      attending: 'YES',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a negative age', () => {
+    const result = rsvpMemberAttendanceInputSchema.safeParse({
+      householdMemberId: 'mem-1',
+      memberName: 'Pat',
+      memberAge: -1,
+      attending: 'YES',
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('rsvpMemberAttendanceListSchema', () => {
+  it('rejects an empty array', () => {
+    const result = rsvpMemberAttendanceListSchema.safeParse([]);
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a single member', () => {
+    const result = rsvpMemberAttendanceListSchema.safeParse([
+      { memberName: 'Pat', attending: 'YES' },
+    ]);
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('attendingLabel', () => {
+  it('returns human labels for each enum value', () => {
+    expect(attendingLabel('YES')).toBe('Going');
+    expect(attendingLabel('NO')).toBe('Not going');
+    expect(attendingLabel('MAYBE')).toBe('Maybe');
   });
 });

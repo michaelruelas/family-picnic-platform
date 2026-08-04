@@ -82,6 +82,23 @@ export default async function EditEventPage({ params }: PageProps) {
       <div className="border-border mt-12 border-t pt-12">
         <div className="flex items-center justify-between">
           <div>
+            <h2 className="text-foreground text-2xl font-bold">RSVP Members</h2>
+            <p className="text-muted-foreground mt-2">
+              See per-member attendance for every household that responded
+            </p>
+          </div>
+          <a
+            href={`/admin/events/${event.id}/members`}
+            className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-4 py-2 text-sm font-medium"
+          >
+            View members
+          </a>
+        </div>
+      </div>
+
+      <div className="border-border mt-12 border-t pt-12">
+        <div className="flex items-center justify-between">
+          <div>
             <h2 className="text-foreground text-2xl font-bold">Event Admins</h2>
             <p className="text-muted-foreground mt-2">Manage who can administer this event</p>
           </div>

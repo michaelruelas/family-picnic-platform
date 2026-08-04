@@ -2,25 +2,58 @@ import { prisma } from '~/lib/prisma';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
+import { RSVPStatus, EventStatus } from '~/lib/generated/enums';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 import { PhotoCredit } from '~/components/ui/PhotoCredit';
 import { HERO_IMAGES } from '~/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
+const ACTIVE_RSVP_STATUSES: RSVPStatus[] = [
+  RSVPStatus.CONFIRMED,
+  RSVPStatus.WAITLISTED,
+  RSVPStatus.PENDING,
+];
+
 export default async function Home() {
-  const [upcomingEvents, session] = await Promise.all([
+  const [upcomingEvents, session, nextUserRsvp] = await Promise.all([
     prisma.event.findMany({
-      where: { status: 'PUBLISHED', date: { gte: new Date() } },
+      where: { status: EventStatus.PUBLISHED, date: { gte: new Date() } },
       orderBy: { date: 'asc' },
       take: 3,
     }),
     getServerSession(authOptions),
+    getServerSession(authOptions).then((s) =>
+      s?.user?.id
+        ? prisma.rSVP.findFirst({
+            where: {
+              userId: s.user.id,
+              status: { in: ACTIVE_RSVP_STATUSES },
+              event: {
+                status: EventStatus.PUBLISHED,
+                date: { gte: new Date() },
+              },
+            },
+            orderBy: { event: { date: 'asc' } },
+            select: { id: true, status: true, event: { select: { id: true } } },
+          })
+        : Promise.resolve(null),
+    ),
   ]);
 
   const nextEvent = upcomingEvents[0];
   const nextEventDate = nextEvent ? new Date(nextEvent.date) : null;
   const isLoggedIn = !!session?.user?.id;
+
+  // QUB-17: the homepage RSVP button deep-links into the user's
+  // most recent active RSVP confirmation when one exists. Otherwise
+  // it points at the event page (which opens the form).
+  const rsvpCtaHref = nextUserRsvp
+    ? `/my-events/${nextUserRsvp.id}/confirmation`
+    : nextEvent
+      ? `/events/${nextEvent.id}`
+      : '/events';
+  const rsvpCtaLabel = nextUserRsvp ? 'View your RSVP →' : 'RSVP now →';
 
   return (
     <main className="bg-background pb-24">
@@ -54,7 +87,14 @@ export default async function Home() {
               who make every summer feel like coming home.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-3">
-              {nextEvent ? (
+              {isLoggedIn ? (
+                <Link
+                  href={rsvpCtaHref}
+                  className="rounded-pill bg-terracotta shadow-pop press px-7 py-3.5 text-base font-semibold text-white transition-all hover:scale-[1.02] hover:bg-[#cf6c52]"
+                >
+                  {rsvpCtaLabel}
+                </Link>
+              ) : nextEvent ? (
                 <Link
                   href={`/events/${nextEvent.id}`}
                   className="rounded-pill bg-terracotta shadow-pop press px-7 py-3.5 text-base font-semibold text-white transition-all hover:scale-[1.02] hover:bg-[#cf6c52]"
@@ -226,10 +266,10 @@ export default async function Home() {
                 </p>
               </div>
               <Link
-                href={isLoggedIn ? '/events' : '/login'}
+                href={isLoggedIn ? rsvpCtaHref : '/login'}
                 className="rounded-pill bg-terracotta shadow-pop press shrink-0 px-7 py-3.5 text-base font-semibold text-white transition-all hover:scale-[1.02] hover:bg-[#cf6c52]"
               >
-                {isLoggedIn ? 'Browse Events' : 'Sign in to start'}
+                {isLoggedIn ? rsvpCtaLabel : 'Sign in to start'}
               </Link>
             </div>
           </div>

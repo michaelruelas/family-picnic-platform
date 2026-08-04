@@ -27,6 +27,22 @@ const mockPrisma = {
     deleteMany: vi.fn(),
     findFirst: vi.fn(),
   },
+  rsvpMemberAttendance: {
+    createMany: vi.fn(),
+    deleteMany: vi.fn(),
+    updateMany: vi.fn(),
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+  householdMember: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+  },
   user: {
     findUnique: vi.fn(),
     findMany: vi.fn(),
@@ -116,6 +132,7 @@ vi.mock('~/lib/generated/enums', () => ({
     WAITLISTED: 'WAITLISTED',
     INVITED: 'INVITED',
   },
+  RsvpAttending: { YES: 'YES', NO: 'NO', MAYBE: 'MAYBE' },
   InvitationStatus: {
     PENDING: 'PENDING',
     USED: 'USED',
@@ -1775,6 +1792,7 @@ describe('rsvp.router', () => {
   });
 
   it('decline writes RSVP_UPDATE audit log with diff when declining a prior RSVP', async () => {
+    const { writeAuditLog } = await import('~/lib/audit');
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
     mockPrisma.rSVP.findUnique.mockResolvedValue({
       id: 'rsvp-1',
@@ -1783,6 +1801,7 @@ describe('rsvp.router', () => {
       dietaryNotes: 'Vegan',
       waitlistPosition: null,
       potluckSignups: [{ id: 'ps-1', slotId: 'slot-1', servings: 2 }],
+      memberAttendances: [],
     });
     mockPrisma.rSVP.findFirst.mockResolvedValue(null);
     mockPrisma.rSVP.upsert.mockResolvedValue({
@@ -1791,6 +1810,7 @@ describe('rsvp.router', () => {
       headcount: 0,
       dietaryNotes: null,
       waitlistPosition: null,
+      memberAttendances: [],
     });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
@@ -1798,16 +1818,15 @@ describe('rsvp.router', () => {
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
     await caller.decline({ eventId: 'evt-1' });
 
-    expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledWith(
+    expect(writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          userId: 'user-1',
-          eventId: 'evt-1',
-          action: 'RSVP_UPDATE',
-          oldValue: expect.objectContaining({ status: 'CONFIRMED', headcount: 3 }),
-          newValue: expect.objectContaining({ status: 'DECLINED', headcount: 0 }),
-        }),
+        userId: 'user-1',
+        eventId: 'evt-1',
+        action: 'RSVP_UPDATE',
+        oldValue: expect.objectContaining({ status: 'CONFIRMED', headcount: 3 }),
+        newValue: expect.objectContaining({ status: 'DECLINED', headcount: 0 }),
       }),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
     );
   });
 
@@ -1988,6 +2007,7 @@ describe('rsvp.router', () => {
   });
 
   it('decline writes RSVP_UPDATE audit log when declining a prior RSVP', async () => {
+    const { writeAuditLog } = await import('~/lib/audit');
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
     mockPrisma.rSVP.findUnique.mockResolvedValue({
       id: 'rsvp-1',
@@ -1996,6 +2016,7 @@ describe('rsvp.router', () => {
       dietaryNotes: 'Vegan',
       waitlistPosition: null,
       potluckSignups: [{ id: 'ps-1', slotId: 'slot-1', servings: 2 }],
+      memberAttendances: [],
     });
     mockPrisma.rSVP.findFirst.mockResolvedValue(null);
     mockPrisma.rSVP.upsert.mockResolvedValue({
@@ -2004,6 +2025,7 @@ describe('rsvp.router', () => {
       headcount: 0,
       dietaryNotes: null,
       waitlistPosition: null,
+      memberAttendances: [],
     });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
@@ -2011,23 +2033,25 @@ describe('rsvp.router', () => {
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
     await caller.decline({ eventId: 'evt-1' });
 
-    // Decline writes via tx.adminAuditLog.create (transaction-bound), not writeAuditLog.
-    expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledWith(
+    // Decline uses writeAuditLog so the structured oldValue/newValue
+    // shape matches confirm/update and includes member attendances.
+    expect(writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          action: 'RSVP_UPDATE',
-          oldValue: expect.objectContaining({
-            status: 'CONFIRMED',
-            headcount: 3,
-            dietaryNotes: 'Vegan',
-          }),
-          newValue: expect.objectContaining({
-            status: 'DECLINED',
-            headcount: 0,
-            slotsReleased: 1,
-          }),
+        userId: 'user-1',
+        eventId: 'evt-1',
+        action: 'RSVP_UPDATE',
+        oldValue: expect.objectContaining({
+          status: 'CONFIRMED',
+          headcount: 3,
+          dietaryNotes: 'Vegan',
+        }),
+        newValue: expect.objectContaining({
+          status: 'DECLINED',
+          headcount: 0,
+          slotsReleased: 1,
         }),
       }),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
     );
   });
 
@@ -2221,6 +2245,278 @@ describe('rsvp.router', () => {
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
     await expect(caller.create({ eventId: 'evt-1' })).rejects.toThrow('User not found');
+  });
+
+  // Behavioral tests for FPP-56 review feedback. These exercise the
+  // service layer (server-side validation, snapshot sourcing, audit
+  // fingerprint) rather than reading source text.
+
+  it('confirm rejects a householdMemberId that does not belong to the household', async () => {
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      maxCapacity: null,
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.householdMember.findMany.mockResolvedValue([]); // no member matches
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await expect(
+      caller.confirm({
+        eventId: 'evt-1',
+        memberAttendances: [{ householdMemberId: 'foreign', memberName: 'Pat', attending: 'YES' }],
+      }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('confirm rejects an all-NO memberAttendances list', async () => {
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      maxCapacity: null,
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await expect(
+      caller.confirm({
+        eventId: 'evt-1',
+        memberAttendances: [{ householdMemberId: null, memberName: 'Pat', attending: 'NO' }],
+      }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('confirm sources the snapshot name and age from the database', async () => {
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      maxCapacity: null,
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.householdMember.findMany.mockResolvedValue([
+      { id: 'a', name: 'Real Name', age: 42, deletedAt: null },
+    ]);
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'r-1',
+      eventId: 'evt-1',
+      userId: 'user-1',
+      status: 'CONFIRMED',
+      headcount: 1,
+      dietaryNotes: null,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.confirm({
+      eventId: 'evt-1',
+      memberAttendances: [
+        { householdMemberId: 'a', memberName: 'Tampered', memberAge: 99, attending: 'YES' },
+      ],
+    });
+
+    expect(mockPrisma.rsvpMemberAttendance.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        memberNameSnapshot: 'Real Name',
+        memberAgeSnapshot: 42,
+        attending: 'YES',
+      }),
+    });
+  });
+
+  it('confirm writes attendanceFingerprintChanged on a same-headcount swap', async () => {
+    const { writeAuditLog, diff } = await import('~/lib/audit');
+    // The real `diff` would detect the swap; we stub it so the
+    // audit gate fires.
+    (diff as ReturnType<typeof vi.fn>).mockReturnValue({
+      memberAttendances: { old: 'A:YES B:NO', new: 'A:NO B:YES' },
+    });
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      maxCapacity: null,
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.householdMember.findMany.mockResolvedValue([
+      { id: 'a', name: 'A', age: 30, deletedAt: null },
+      { id: 'b', name: 'B', age: 30, deletedAt: null },
+    ]);
+    // The router calls rSVP.findUnique twice: once for `before`,
+    // once to refresh after persistence. Stub each so the
+    // fingerprint differs.
+    mockPrisma.rSVP.findUnique
+      .mockResolvedValueOnce({
+        id: 'r-1',
+        status: 'CONFIRMED',
+        headcount: 1,
+        dietaryNotes: null,
+        waitlistPosition: null,
+        memberAttendances: [
+          {
+            id: 'att-a',
+            householdMemberId: 'a',
+            memberNameSnapshot: 'A',
+            memberAgeSnapshot: 30,
+            attending: 'YES',
+          },
+          {
+            id: 'att-b',
+            householdMemberId: 'b',
+            memberNameSnapshot: 'B',
+            memberAgeSnapshot: 30,
+            attending: 'NO',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        id: 'r-1',
+        status: 'CONFIRMED',
+        headcount: 1,
+        dietaryNotes: null,
+        waitlistPosition: null,
+        memberAttendances: [
+          {
+            id: 'att-a',
+            householdMemberId: 'a',
+            memberNameSnapshot: 'A',
+            memberAgeSnapshot: 30,
+            attending: 'NO',
+          },
+          {
+            id: 'att-b',
+            householdMemberId: 'b',
+            memberNameSnapshot: 'B',
+            memberAgeSnapshot: 30,
+            attending: 'YES',
+          },
+        ],
+      });
+    mockPrisma.rSVP.upsert.mockResolvedValue({} as never);
+    mockPrisma.rsvpMemberAttendance.findUnique.mockResolvedValue(null);
+    mockPrisma.rsvpMemberAttendance.findFirst.mockResolvedValue(null);
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.confirm({
+      eventId: 'evt-1',
+      memberAttendances: [
+        { householdMemberId: 'a', memberName: 'A', attending: 'NO' },
+        { householdMemberId: 'b', memberName: 'B', attending: 'YES' },
+      ],
+    });
+
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'RSVP_UPDATE',
+        newValue: expect.objectContaining({
+          attendanceFingerprintChanged: true,
+        }),
+      }),
+      expect.objectContaining({ adminAuditLog: expect.any(Object) }),
+    );
+  });
+
+  it('decline materializes the roster as NO on first decline', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue(null);
+    mockPrisma.rSVP.upsert.mockResolvedValue({} as never);
+    mockPrisma.rSVP.findFirst.mockResolvedValue(null);
+    mockPrisma.householdMember.findMany.mockResolvedValue([
+      { id: 'a', name: 'A', age: 30 },
+      { id: 'b', name: 'B', age: 4 },
+    ]);
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.decline({ eventId: 'evt-1' });
+
+    expect(mockPrisma.rsvpMemberAttendance.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({ householdMemberId: 'a', attending: 'NO' }),
+        expect.objectContaining({ householdMemberId: 'b', attending: 'NO' }),
+      ],
+    });
+  });
+
+  it('getRsvpFormState returns the caller household roster and the existing RSVP', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.householdMember.findMany.mockResolvedValue([
+      { id: 'a', name: 'A', age: 30, notes: null },
+    ]);
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'r-1',
+      status: 'CONFIRMED',
+      headcount: 1,
+      memberAttendances: [
+        {
+          id: 'att-1',
+          householdMemberId: 'a',
+          memberNameSnapshot: 'A',
+          memberAgeSnapshot: 30,
+          attending: 'YES',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          rsvpId: 'r-1',
+        },
+      ],
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    const result = await caller.getRsvpFormState({ eventId: 'evt-1' });
+
+    expect(result).toMatchObject({
+      householdId: 'h-1',
+      members: [{ id: 'a', name: 'A', age: 30 }],
+      rsvp: { id: 'r-1', status: 'CONFIRMED', headcount: 1 },
+    });
+    expect(mockPrisma.householdMember.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { householdId: 'h-1', deletedAt: null } }),
+    );
+  });
+
+  it('getRsvpFormState falls back to the user id when householdId is null', async () => {
+    // A user with no household must still load a roster (the
+    // router uses `householdId ?? user.id` as the query key).
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: null });
+    mockPrisma.householdMember.findMany.mockResolvedValue([]);
+    mockPrisma.rSVP.findUnique.mockResolvedValue(null);
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    const result = await caller.getRsvpFormState({ eventId: 'evt-1' });
+
+    expect(result).toMatchObject({ householdId: 'user-1' });
+    expect(mockPrisma.householdMember.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ householdId: 'user-1' }) }),
+    );
+  });
+
+  it('getRsvpFormState returns null when the user record cannot be found', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    const result = await caller.getRsvpFormState({ eventId: 'evt-1' });
+
+    expect(result).toBeNull();
   });
 });
 

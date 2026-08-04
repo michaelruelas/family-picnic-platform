@@ -2,11 +2,9 @@
 
 import { useState } from 'react';
 import { RsvpBottomSheet } from './RsvpBottomSheet';
-import type { ExistingRsvp } from './types';
 
 interface EventStickyBarProps {
   eventId: string;
-  eventName: string;
   eventDate: Date;
   location: string;
   isLoggedIn: boolean;
@@ -14,7 +12,10 @@ interface EventStickyBarProps {
   rsvpDeadline: string | null;
   maxCapacity: number | null;
   currentAttending: number;
-  existingRsvp: ExistingRsvp | null;
+  // Kept as a free-form field so the parent (events page) can pass
+  // through whatever shape it already has. The sticky bar only reads
+  // `status` to decide whether to show the "RSVP'd" badge.
+  existingRsvp: { status: string } | null;
 }
 
 export function EventStickyBar({
@@ -91,7 +92,6 @@ export function EventStickyBar({
         eventId={eventId}
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
-        existingRsvp={existingRsvp}
       />
     </>
   );

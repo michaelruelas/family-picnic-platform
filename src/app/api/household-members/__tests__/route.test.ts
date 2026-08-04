@@ -13,6 +13,11 @@ const prismaMock = vi.hoisted(() => ({
     count: vi.fn(),
   },
   user: { findUnique: vi.fn() },
+  rsvpMemberAttendance: {
+    updateMany: vi.fn(),
+    deleteMany: vi.fn(),
+    findMany: vi.fn(),
+  },
   $transaction: vi.fn(),
 }));
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
@@ -415,6 +420,10 @@ describe('DELETE /api/household-members/[id]', () => {
     } as never);
     prismaMock.householdMember.count.mockResolvedValue(2);
     prismaMock.householdMember.update.mockResolvedValue({} as never);
+    prismaMock.rsvpMemberAttendance.updateMany.mockResolvedValue({ count: 0 } as never);
+    prismaMock.$transaction.mockImplementation(
+      async (fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock) as never,
+    );
     const res = await DELETE(makeJsonRequest('http://x', undefined, 'DELETE'), {
       params: Promise.resolve({ id: 'm-1' }),
     });
@@ -424,6 +433,12 @@ describe('DELETE /api/household-members/[id]', () => {
     expect(prismaMock.$transaction).toHaveBeenCalledWith(expect.any(Function), {
       isolationLevel: 'Serializable',
     });
+    expect(prismaMock.rsvpMemberAttendance.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { householdMemberId: 'm-1' },
+        data: { householdMemberId: null },
+      }),
+    );
     expect(prismaMock.householdMember.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'm-1' },
@@ -467,6 +482,7 @@ describe('DELETE /api/household-members/[id]', () => {
     } as never);
     prismaMock.householdMember.count.mockResolvedValue(2);
     prismaMock.householdMember.update.mockResolvedValue({} as never);
+    prismaMock.rsvpMemberAttendance.updateMany.mockResolvedValue({ count: 0 } as never);
 
     let call = 0;
     prismaMock.$transaction.mockImplementation(async (fn: (tx: typeof prismaMock) => unknown) => {

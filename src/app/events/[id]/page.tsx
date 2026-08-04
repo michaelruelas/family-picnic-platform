@@ -97,11 +97,22 @@ export default async function EventDetailPage({ params }: Props) {
         ? prisma.rSVP.findFirst({
             where: { eventId: id, userId },
             select: {
+              id: true,
               status: true,
               headcount: true,
               dietaryNotes: true,
               waitlistPosition: true,
               modifiedAt: true,
+              memberAttendances: {
+                orderBy: { createdAt: 'asc' },
+                select: {
+                  id: true,
+                  householdMemberId: true,
+                  memberNameSnapshot: true,
+                  memberAgeSnapshot: true,
+                  attending: true,
+                },
+              },
             },
           })
         : Promise.resolve(null),
@@ -143,10 +154,18 @@ export default async function EventDetailPage({ params }: Props) {
 
   const existingRsvpForCard = userRsvp
     ? {
+        id: userRsvp.id,
         status: userRsvp.status as RSVPStatus,
         headcount: userRsvp.headcount,
         dietaryNotes: userRsvp.dietaryNotes,
         modifiedAt: userRsvp.modifiedAt.toISOString(),
+        memberAttendances: userRsvp.memberAttendances.map((att) => ({
+          id: att.id,
+          householdMemberId: att.householdMemberId,
+          memberName: att.memberNameSnapshot,
+          memberAge: att.memberAgeSnapshot,
+          attending: att.attending,
+        })),
       }
     : null;
 
@@ -481,11 +500,10 @@ export default async function EventDetailPage({ params }: Props) {
       {!isPast && (
         <EventStickyBar
           eventId={event.id}
-          eventName={event.name}
           eventDate={eventDate}
           location={event.location}
           isLoggedIn={isLoggedIn}
-          existingRsvp={existingRsvpForCard}
+          existingRsvp={existingRsvpForCard ? { status: existingRsvpForCard.status } : null}
           rsvpDeadline={event.rsvpDeadline?.toISOString() ?? null}
           maxCapacity={event.maxCapacity ?? null}
           currentAttending={totalAttending}

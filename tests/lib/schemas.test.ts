@@ -26,11 +26,11 @@ describe('RSVP Schemas', () => {
       expect(result.success).toBe(true);
     });
 
-    it('applies default headcount', () => {
+    it('defaults headcount to undefined (derived server-side)', () => {
       const result = rsvpConfirmSchema.safeParse({ eventId: 'event-123' });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.headcount).toBe(1);
+        expect(result.data.headcount).toBeUndefined();
         expect(result.data.dietaryNotes).toBeUndefined();
       }
     });
@@ -40,14 +40,19 @@ describe('RSVP Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('rejects headcount less than 1', () => {
-      const result = rsvpConfirmSchema.safeParse({ eventId: 'event-123', headcount: 0 });
+    it('rejects negative headcount', () => {
+      const result = rsvpConfirmSchema.safeParse({ eventId: 'event-123', headcount: -1 });
       expect(result.success).toBe(false);
     });
 
     it('rejects non-integer headcount', () => {
       const result = rsvpConfirmSchema.safeParse({ eventId: 'event-123', headcount: 1.5 });
       expect(result.success).toBe(false);
+    });
+
+    it('accepts headcount of 0 (memberAttendances will be used instead)', () => {
+      const result = rsvpConfirmSchema.safeParse({ eventId: 'event-123', headcount: 0 });
+      expect(result.success).toBe(true);
     });
   });
 
