@@ -434,8 +434,19 @@ describe('FPP-78 payment audit coverage', () => {
       );
       expect(res.status).toBe(200);
       expect(mockWriteAuditLog).toHaveBeenCalledTimes(1);
+      // Assert the newValue fields the handler writes on a canceled
+      // event: chargeStatus flips to CANCELED. Same shape as the
+      // payment_failed test: a typo that drops the field would not
+      // surface without these assertions.
       expect(mockWriteAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({ action: ACTION.FAILED }),
+        expect.objectContaining({
+          action: ACTION.FAILED,
+          userId: 'u-canceled',
+          eventId: 'e-canceled',
+          newValue: expect.objectContaining({
+            chargeStatus: 'CANCELED',
+          }),
+        }),
       );
     });
   });
@@ -637,11 +648,19 @@ describe('FPP-78 payment audit coverage', () => {
 
       // Exactly one audit row, on the failure path.
       expect(freshWriteAuditLog).toHaveBeenCalledTimes(1);
+      // Assert the chargeId and error from the Stripe rejection land in
+      // newValue. The audit log's value is in the data it carries, and
+      // a typo in the source that drops either field would not surface
+      // without these assertions.
       expect(freshWriteAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
           action: ACTION.INTENT_FAILED,
           userId: 'user-1',
           eventId: 'evt-1',
+          newValue: expect.objectContaining({
+            chargeId: 'ch-1',
+            error: 'stripe is down',
+          }),
         }),
       );
     });

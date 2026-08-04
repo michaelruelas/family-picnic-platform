@@ -173,7 +173,7 @@ The `AdminAuditLog` table is the source of truth for paid-feature forensics. The
 | Action                     | Fires when                                                                                       | Call site                                                                             |
 | -------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
 | `payment.intentCreated`    | `payment.createPaymentIntent` succeeds and Stripe returns a new PaymentIntent.                   | `src/server/routers/payment.router.ts` — `createPaymentIntentInner`                   |
-| `payment.intentFailed`     | Stripe rejects `paymentIntents.create` in `payment.createPaymentIntent`.                         | `src/server/routers/payment.router.ts` — `catch` of `createPaymentInner`              |
+| `payment.intentFailed`     | Stripe rejects `paymentIntents.create` in `payment.createPaymentIntent`.                         | `src/server/routers/payment.router.ts` — `catch` of `createPaymentIntentInner`        |
 | `payment.succeeded`        | Stripe webhook fires `payment_intent.succeeded` and the charge flips to `SUCCEEDED`.             | `src/app/api/stripe/webhook/route.ts` — `handlePaymentIntentSucceeded`                |
 | `payment.failed`           | Stripe webhook fires `payment_intent.payment_failed` or `payment_intent.canceled`.               | `src/app/api/stripe/webhook/route.ts` — `handlePaymentIntentFailed`                   |
 | `payment.refunded`         | Admin issues an in-app refund via `admin.refund`.                                                | `src/server/routers/admin.router.ts` — `refund`                                       |
@@ -182,3 +182,5 @@ The `AdminAuditLog` table is the source of truth for paid-feature forensics. The
 | `payment.receiptResent`    | Admin re-sends the receipt email via `admin.resendReceipt` on a succeeded charge.                | `src/server/routers/admin.router.ts` — `resendReceipt`                                |
 
 The smoke check for FPP-74 ("Audit log writes on signup, RSVP change, registration, payment") confirms each of these rows lands under the matching `(userId, eventId, action)` tuple. The dedicated test `tests/integration/fpp-78-payment-audit-coverage.test.ts` replays a webhook stream end-to-end and asserts exactly one audit row per state transition.
+
+Retry dedup: Stripe replays `payment_intent.succeeded` and `charge.updated` after transient failures. The webhook handler skips the audit write when the target state already matches (see `webhook/route.ts:140` for `payment.succeeded` and `:449` for `payment.refundReconciled` on `charge.updated`), so a replay does not produce a second row.
