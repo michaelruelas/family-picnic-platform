@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Modal from '~/components/ui/Modal';
 import { trpc } from '~/lib/trpc-client';
-import { formatAmount } from '~/lib/stripe';
+import { formatAmount } from '~/lib/currency';
 import type { AdminChargeRow } from './ChargesTable';
 
 interface RefundDialogProps {

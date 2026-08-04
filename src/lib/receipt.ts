@@ -1,5 +1,5 @@
 import { sendEmail } from './sendgrid';
-import { formatAmount } from './stripe';
+import { formatAmount } from './currency';
 
 export type ReceiptInput = {
   to: string;

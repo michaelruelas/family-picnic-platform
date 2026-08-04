@@ -4,7 +4,7 @@ import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { EventStatus, RegistrationStatus } from '~/lib/generated/enums';
 import { isConfigured as stripeConfigured, getPublishableKey } from '~/lib/stripe';
-import { formatAmount } from '~/lib/stripe';
+import { formatAmount } from '~/lib/currency';
 import PaymentForm from '~/components/payment/PaymentForm';
 
 export const dynamic = 'force-dynamic';

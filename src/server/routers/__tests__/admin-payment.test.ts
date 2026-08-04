@@ -44,10 +44,13 @@ vi.mock('~/lib/stripe', async (importOriginal) => {
   return {
     ...actual,
     createRefund: (...args: unknown[]) => mockCreateRefund(...args),
-    formatAmount: mockFormatAmount,
     isConfigured: () => mockIsStripeConfigured(),
   };
 });
+
+vi.mock('~/lib/currency', () => ({
+  formatAmount: mockFormatAmount,
+}));
 
 const mockSendRegistrationReceipt = vi.fn();
 vi.mock('~/lib/receipt', () => ({

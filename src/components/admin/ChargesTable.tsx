@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { ChargeStatus, RefundStatus, RegistrationStatus } from '~/lib/generated/enums';
 import { trpc } from '~/lib/trpc-client';
-import { formatAmount } from '~/lib/stripe';
+import { formatAmount } from '~/lib/currency';
 import RefundDialog from './RefundDialog';
 import ForfeitDialog from './ForfeitDialog';
 import { useToast } from '~/components/ui/Toast';

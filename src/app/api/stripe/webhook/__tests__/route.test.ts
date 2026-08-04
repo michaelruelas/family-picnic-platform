@@ -256,17 +256,11 @@ describe('POST /api/stripe/webhook', () => {
       refundedCents: 0,
       status: 'PAID',
     });
-    prismaMock.registration.update.mockResolvedValue({
-      id: 'reg-4',
-      eventId: 'e-4',
-      userId: 'u-4',
-      refundedCents: 2500,
-      status: 'REFUNDED',
-    });
+    prismaMock.registration.updateMany.mockResolvedValue({ count: 1 });
 
     const res = await POST(makeWebhookRequest('{"id":"evt_4"}'));
     expect(res.status).toBe(200);
-    expect(prismaMock.registration.update).toHaveBeenCalledWith({
+    expect(prismaMock.registration.updateMany).toHaveBeenCalledWith({
       where: { id: 'reg-4' },
       data: { refundedCents: 2500, status: 'REFUNDED' },
     });
@@ -315,7 +309,7 @@ describe('POST /api/stripe/webhook', () => {
       receiptUrl: 'https://stripe.com/r/already',
     });
     prismaMock.refund.findMany.mockResolvedValue([]); // no in-app refunds
-    prismaMock.registration.findUnique.mockResolvedValue({
+    prismaMock.registration.findUniqueOrThrow.mockResolvedValue({
       id: 'reg-partial',
       eventId: 'e-partial',
       userId: 'u-partial',
@@ -323,6 +317,15 @@ describe('POST /api/stripe/webhook', () => {
       status: 'PAID',
     });
     prismaMock.registration.updateMany.mockResolvedValue({ count: 1 });
+    // The audit path needs userId/eventId; handleChargeUpdated fetches
+    // them from the registration after reconcileRefundedAmount returns.
+    prismaMock.registration.findUniqueOrThrow.mockResolvedValueOnce({
+      id: 'reg-partial',
+      eventId: 'e-partial',
+      userId: 'u-partial',
+      refundedCents: 0,
+      status: 'PAID',
+    });
 
     const res = await POST(makeWebhookRequest('{"id":"evt_partial"}'));
     expect(res.status).toBe(200);
@@ -374,13 +377,7 @@ describe('POST /api/stripe/webhook', () => {
       refundedCents: 0,
       status: 'PAID',
     });
-    prismaMock.registration.update.mockResolvedValue({
-      id: 'reg-ref',
-      eventId: 'e-ref',
-      userId: 'u-ref',
-      refundedCents: 2500,
-      status: 'REFUNDED',
-    });
+    prismaMock.registration.updateMany.mockResolvedValue({ count: 1 });
 
     const res = await POST(makeWebhookRequest('{"id":"evt_refunded_audit"}'));
     expect(res.status).toBe(200);
@@ -577,17 +574,11 @@ describe('POST /api/stripe/webhook', () => {
       refundedCents: 0,
       status: 'PAID',
     });
-    prismaMock.registration.update.mockResolvedValue({
-      id: 'reg-oob',
-      eventId: 'e-oob',
-      userId: 'u-oob',
-      refundedCents: 5000,
-      status: 'REFUNDED',
-    });
+    prismaMock.registration.updateMany.mockResolvedValue({ count: 1 });
 
     const res = await POST(makeWebhookRequest('{"id":"evt_oob"}'));
     expect(res.status).toBe(200);
-    expect(prismaMock.registration.update).toHaveBeenCalledWith({
+    expect(prismaMock.registration.updateMany).toHaveBeenCalledWith({
       where: { id: 'reg-oob' },
       data: { refundedCents: 5000, status: 'REFUNDED' },
     });

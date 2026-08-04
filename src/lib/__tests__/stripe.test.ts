@@ -290,7 +290,7 @@ describe('verifyWebhookSignature', () => {
 
 describe('formatAmount', () => {
   it('formats USD amounts in en-US', async () => {
-    const { formatAmount } = await import('../stripe');
+    const { formatAmount } = await import('../currency');
     expect(formatAmount(2500)).toBe('$25.00');
     expect(formatAmount(0)).toBe('$0.00');
     expect(formatAmount(1)).toBe('$0.01');

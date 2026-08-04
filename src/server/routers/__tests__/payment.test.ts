@@ -42,13 +42,16 @@ vi.mock('~/lib/stripe', async (importOriginal) => {
     createRefund: (...args: unknown[]) => mockCreateRefund(...args),
     getPublishableKey: () => mockGetPublishableKey(),
     isConfigured: () => mockIsStripeConfigured(),
-    formatAmount: (cents: number, currency = 'usd') =>
-      new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency.toUpperCase(),
-      }).format(cents / 100),
   };
 });
+
+vi.mock('~/lib/currency', () => ({
+  formatAmount: (cents: number, currency = 'usd') =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+    }).format(cents / 100),
+}));
 
 const mockSendRegistrationReceipt = vi.fn();
 vi.mock('~/lib/receipt', () => ({

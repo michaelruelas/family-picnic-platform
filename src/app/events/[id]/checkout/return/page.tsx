@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { ChargeStatus, RegistrationStatus } from '~/lib/generated/enums';
-import { formatAmount } from '~/lib/stripe';
+import { formatAmount } from '~/lib/currency';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +37,16 @@ export default async function CheckoutReturnPage({ params, searchParams }: Props
 
   const registration = await prisma.registration.findUnique({
     where: { eventId_userId: { eventId: id, userId: session.user.id } },
-    include: { charges: { orderBy: { createdAt: 'desc' }, take: 1 } },
+    select: {
+      status: true,
+      amountCents: true,
+      currency: true,
+      charges: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { status: true },
+      },
+    },
   });
 
   // The webhook may not have run yet. The Stripe-side status is the

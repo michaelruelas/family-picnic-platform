@@ -166,14 +166,6 @@ export async function verifyWebhookSignature(args: {
   return { id: event.id, type: event.type, data: { object: event.data.object } };
 }
 
-export function formatAmount(cents: number, currency = 'usd'): string {
-  const amount = cents / 100;
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency.toUpperCase(),
-  }).format(amount);
-}
-
 export function generateTestWebhookHeader(args: { payload: string; secret: string }): string {
   const stripe = getStripeClient();
   return stripe.webhooks.generateTestHeaderString({

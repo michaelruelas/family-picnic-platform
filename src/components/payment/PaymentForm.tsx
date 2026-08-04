@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { loadStripe, type Stripe as StripeJs } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { trpc } from '~/lib/trpc-client';
-import { formatAmount } from '~/lib/stripe';
+import { formatAmount } from '~/lib/currency';
 import Spinner from '~/components/ui/Spinner';
 
 interface PaymentFormProps {
