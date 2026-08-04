@@ -68,6 +68,8 @@ bun run db:migrate   # Run migrations (creates revision history)
 bun run db:seed      # Seed database with sample data
 bun run db:studio    # Open Prisma Studio (GUI)
 bun run db:validate  # Validate Prisma schema
+bun run db:backfill-rsvp-duplicates        # One-time RSVP dedup, dry-run
+bun run db:backfill-rsvp-duplicates --apply  # Same script, writes changes
 ````
 
 ## One-Command Dev Setup
@@ -145,3 +147,11 @@ Test accounts (all use password `password123`):
 | priya.patel@example.com         | User  |
 
 Seeding resets data - run `bun run db:seed` after `db:push` or `db:migrate`.
+
+## RSVP Duplicate Backfill (FPP-28)
+
+A one-time script to merge duplicate `RSVP` rows that the pre-fix re-registration bug could have created for the same `(eventId, userId)`. The current schema enforces `@@unique([eventId, userId])`, so the script finds zero duplicates on a healthy database and exits clean. Run it only if you suspect legacy duplicates from before the in-place update fix shipped.
+
+- Default (`bun run db:backfill-rsvp-duplicates`): dry-run. Prints the planned winner per group with no writes.
+- With `--apply`: merges the most recent RSVP per group into the winner, reassigns any `PotluckSignup` rows from losers to the winner, and writes one `RSVP_MERGE` audit entry per loser. Exits non-zero on any per-group failure.
+- Idempotent: re-running after a successful `--apply` finds no duplicates and exits clean.

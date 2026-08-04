@@ -25,6 +25,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
+    "db:backfill-rsvp-duplicates": "bun run prisma/backfill-rsvp-duplicates.ts",
     "postinstall": "prisma generate",
     "prepare": "husky",
     "release:dry": "release-please --dry-run",
