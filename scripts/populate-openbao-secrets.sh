@@ -3,8 +3,8 @@
 # populate-openbao-secrets.sh
 #
 # Idempotently populates the OpenBao secret paths required by the
-# family-picnic-dev ArgoCD Application. Runs `bao kv get` / `bao kv put`
-# via `kubectl exec` into the openbao-0 pod, so no local OpenBao CLI is
+# family-picnic-{env} cluster(s). Runs `bao kv get` / `bao kv put` via
+# `kubectl exec` into the openbao-0 pod, so no local OpenBao CLI is
 # required.
 #
 # Precedence for each value: existing OpenBao > existing .env.dev > generate
@@ -12,31 +12,47 @@
 # somewhere; it only fills in the gaps.
 #
 # Generated random values are also written to
-# ./family-picnic-dev-secrets.txt (mode 0600, gitignored) so they can be
-# referenced later. A matching ./.env.dev (mode 0600, gitignored) is kept
-# in sync for `bun run dev` against a port-forwarded cluster.
+# ./${LOCAL_OUTPUT} (mode 0600, gitignored) so they can be referenced
+# later. A matching ./.env.dev (mode 0600, gitignored) is kept in sync for
+# `bun run dev` against a port-forwarded cluster.
 #
 # Usage:
-#   ./scripts/populate-openbao-secrets.sh
+#   ./scripts/populate-openbao-secrets.sh                # defaults to dev
+#   ./scripts/populate-openbao-secrets.sh prod           # explicit env
 #
 # Env overrides:
+#   TARGET_ENV        default: dev
 #   OPENBAO_NAMESPACE  default: security
 #   OPENBAO_POD        default: openbao-0
-#   SECRET_PREFIX      default: secret/family-picnic-dev
-#   LOCAL_OUTPUT       default: ./family-picnic-dev-secrets.txt
+#   SECRET_PREFIX      default: secret/family-picnic-${TARGET_ENV}
+#   LOCAL_OUTPUT       default: ./family-picnic-${TARGET_ENV}-secrets.txt
 #   ENV_DEV_OUTPUT     default: ./.env.dev
-#   APP_DOMAIN         default: family-picnic.dev.qubitquilt.dev
-#   PHOTOS_DOMAIN      default: photos.family-picnic.dev.qubitquilt.dev
+#   APP_DOMAIN         default: family-picnic.dev.qubitquilt.dev (ignored unless TARGET_ENV=dev)
+#   PHOTOS_DOMAIN      default: photos.family-picnic.dev.qubitquilt.dev (ignored unless TARGET_ENV=dev)
 
 set -euo pipefail
 
+TARGET_ENV="${1:-${TARGET_ENV:-dev}}"
+
+case "$TARGET_ENV" in
+  dev|prod) ;;
+  *)
+    echo "ERROR: TARGET_ENV must be one of: dev, prod (got '$TARGET_ENV')" >&2
+    exit 64
+    ;;
+esac
+
 OPENBAO_NAMESPACE="${OPENBAO_NAMESPACE:-security}"
 OPENBAO_POD="${OPENBAO_POD:-openbao-0}"
-SECRET_PREFIX="${SECRET_PREFIX:-secret/family-picnic-dev}"
-LOCAL_OUTPUT="${LOCAL_OUTPUT:-./family-picnic-dev-secrets.txt}"
+SECRET_PREFIX="${SECRET_PREFIX:-secret/family-picnic-$TARGET_ENV}"
+LOCAL_OUTPUT="${LOCAL_OUTPUT:-./family-picnic-$TARGET_ENV-secrets.txt}"
 ENV_DEV_OUTPUT="${ENV_DEV_OUTPUT:-./.env.dev}"
 APP_DOMAIN="${APP_DOMAIN:-family-picnic.dev.qubitquilt.dev}"
 PHOTOS_DOMAIN="${PHOTOS_DOMAIN:-photos.family-picnic.dev.qubitquilt.dev}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/openbao.sh
+. "$SCRIPT_DIR/lib/openbao.sh"
 
 # --- preflight ---------------------------------------------------------------
 
@@ -61,26 +77,7 @@ if ! kubectl -n "$OPENBAO_NAMESPACE" get pod "$OPENBAO_POD" >/dev/null 2>&1; the
   exit 1
 fi
 
-# --- helpers -----------------------------------------------------------------
-
-bao_exec() {
-  kubectl -n "$OPENBAO_NAMESPACE" exec -i "$OPENBAO_POD" -- bao "$@"
-}
-
-# bao_get_json <path>
-# Prints the JSON body of an OpenBao KV v2 secret, or empty string if unset.
-bao_get_json() {
-  local path="$1"
-  bao_exec kv get -format=json "$path" 2>/dev/null || true
-}
-
-# extract <json> <key>
-# Pulls .data.data.<key> out of an OpenBao KV v2 response.
-extract() {
-  local json="$1" key="$2"
-  [ -n "$json" ] || return 0
-  printf '%s' "$json" | jq -r --arg k "$key" '.data.data[$k] // empty' 2>/dev/null || true
-}
+# --- script-local helpers -----------------------------------------------------
 
 # env_dev_get <key>
 # Reads <key>=... from $ENV_DEV_OUTPUT, stripping surrounding quotes.
@@ -216,6 +213,15 @@ STRIPE_WEBHOOK_SECRET=$(resolve \
   "printf ''")
 [ -n "$STRIPE_WEBHOOK_SECRET" ] && PRESERVED+=("nextjs/stripe-webhook-secret") || true
 
+# STRIPE_API_KEY is bootstrap-only (used by scripts/setup-stripe-webhook.sh
+# to register the webhook endpoint). It is intentionally NOT pushed to
+# OpenBao or wired into the cluster secret — the runtime app never reads
+# it. We only round-trip it via .env.dev for convenience.
+STRIPE_API_KEY=$(resolve \
+  "" \
+  "$(env_dev_get STRIPE_API_KEY)" \
+  "printf ''")
+
 # DATABASE_URL: in-cluster form for OpenBao, localhost form for .env.dev.
 # Each form is preserved independently if the user has set it.
 IN_CLUSTER_DATABASE_URL="postgresql://postgres:${PG_PASS}@postgres:5432/familypicnic?schema=public"
@@ -307,9 +313,13 @@ SENDGRID_API_KEY="${SENDGRID_API_KEY}"
 SENDGRID_FROM_EMAIL="dev@${APP_DOMAIN}"
 
 # --- Stripe (leave empty until you paste real test keys) ---
+# STRIPE_*_KEY values are used at runtime by the Next.js app; STRIPE_API_KEY
+# is bootstrap-only — it lets scripts/setup-stripe-webhook.sh register the
+# webhook endpoint without re-pasting the key each run.
 STRIPE_SECRET_KEY="${STRIPE_SECRET_KEY}"
 STRIPE_PUBLISHABLE_KEY="${STRIPE_PUBLISHABLE_KEY}"
 STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET}"
+STRIPE_API_KEY="${STRIPE_API_KEY}"
 
 # --- S3 (using photoprism via Next.js; no S3 in dev) ---
 S3_ENDPOINT=""
