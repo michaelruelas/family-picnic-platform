@@ -141,6 +141,10 @@ export function useHouseholdNameMutation() {
       void utils.household.getById.invalidate();
       void utils.household.list.invalidate();
       void utils.household.getTree.invalidate();
+      // The RSVP form caches the household name in its snapshot; a
+      // successful rename must invalidate it so the next open shows
+      // the new value rather than a stale default.
+      void utils.rsvp.getRsvpFormState.invalidate();
     },
   });
 

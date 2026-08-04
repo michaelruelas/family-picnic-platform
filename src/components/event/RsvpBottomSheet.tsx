@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useRsvpFormState, useRsvpMutation } from '~/hooks';
+import { useHouseholdNameMutation, useRsvpFormState, useRsvpMutation } from '~/hooks';
 import { RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
+import { householdNameSchema } from '~/lib/schemas/household';
 import { calculateFee, type FeeAttendee } from '~/lib/fee';
 import { formatAmount } from '~/lib/currency';
 import Modal from '~/components/ui/Modal';
@@ -117,6 +118,7 @@ export function RsvpBottomSheet({
 }: RsvpBottomSheetProps) {
   const router = useRouter();
   const { confirm, decline } = useRsvpMutation();
+  const { updateName } = useHouseholdNameMutation();
   // Only query the form state when the sheet is open so we do not
   // start a fetch when the parent has not asked for it.
   const {
@@ -135,6 +137,13 @@ export function RsvpBottomSheet({
   const [phase, setPhase] = useState<'form' | 'confirmed'>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedRsvpId, setConfirmedRsvpId] = useState<string | null>(null);
+  // FPP-80: household name is editable from the RSVP form. The
+  // sheet seeds the input from the server snapshot and only
+  // commits a rename to `household.update` when the trimmed value
+  // differs from the stored one. When the caller has no household
+  // (formState.householdName is null) the input is hidden because
+  // there is nothing to rename.
+  const [householdName, setHouseholdName] = useState('');
   // Tracks whether the user has begun editing. We only seed from
   // the server snapshot when the form is empty, so a refetch that
   // races with the confirm mutation cannot overwrite in-progress
@@ -157,6 +166,7 @@ export function RsvpBottomSheet({
       setDietaryNotes('');
       setSubmitError(null);
       setConfirmedRsvpId(null);
+      setHouseholdName('');
       setHydrated(false);
       /* eslint-enable react-hooks/set-state-in-effect */
     }
@@ -175,6 +185,7 @@ export function RsvpBottomSheet({
     setDrafts(buildInitialDrafts(formState.members, formState.rsvp?.memberAttendances ?? []));
     setDietaryNotes(formState.rsvp?.dietaryNotes ?? '');
     setShowDietary(Boolean(formState.rsvp?.dietaryNotes));
+    setHouseholdName(formState.householdName ?? '');
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [isOpen, hydrated, formState]);
@@ -266,6 +277,32 @@ export function RsvpBottomSheet({
       return;
     }
     try {
+      // FPP-80: when the caller belongs to a household, save any
+      // rename through `household.update` before the RSVP goes
+      // through. We use the same household-name Zod schema that the
+      // profile path uses so the empty-name rejection message is
+      // identical ("Household name is required"). Skipping the call
+      // when the value is unchanged avoids a needless round-trip.
+      // `handleConfirm` is defined before the render-gate narrowing
+      // (`if (isLoading || !formState) return ...`), so TS still
+      // types `formState` as `T | null` inside this body. The local
+      // `snapshot` alias re-narrows it for the rename path.
+      const snapshot = formState;
+      if (snapshot && snapshot.householdName !== null) {
+        const trimmed = householdName.trim();
+        const parsed = householdNameSchema.safeParse(trimmed);
+        if (!parsed.success) {
+          setSubmitError(parsed.error.issues[0]?.message ?? 'Household name is required');
+          setIsSubmitting(false);
+          return;
+        }
+        if (parsed.data !== snapshot.householdName) {
+          await updateName.mutateAsync({
+            id: snapshot.householdId,
+            name: parsed.data,
+          });
+        }
+      }
       const result = await confirm.mutateAsync({
         eventId,
         dietaryNotes: dietaryNotes.trim() || undefined,
@@ -393,6 +430,37 @@ export function RsvpBottomSheet({
                 : 'Mark attendance for each person in your household.'}
             </p>
           </div>
+
+          {/*
+            FPP-80: household name input at the top of the form.
+            Hidden when the caller has no household (formState.householdName
+            is null) because there is nothing to rename. Saved on
+            submit via the same `household.update` procedure as the
+            profile path.
+          */}
+          {formState.householdName !== null && (
+            <div className="mt-8" data-testid="rsvp-household-name-field">
+              <label
+                htmlFor="rsvp-household-name"
+                className="text-foreground block text-sm font-medium"
+              >
+                Household name
+              </label>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Update the name shown on your confirmation and across events.
+              </p>
+              <input
+                id="rsvp-household-name"
+                type="text"
+                value={householdName}
+                onChange={(e) => setHouseholdName(e.target.value)}
+                maxLength={80}
+                autoComplete="off"
+                placeholder="e.g. The Garcia Family"
+                className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+              />
+            </div>
+          )}
 
           {drafts.length === 0 ? (
             <div className="bg-sunlight/20 mt-8 rounded-2xl p-6 text-center">
