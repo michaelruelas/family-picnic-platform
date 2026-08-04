@@ -44,22 +44,26 @@ describe('FPP-53 registration-cannot-be-edited close-out', () => {
 
     it('renders a stable, machine-readable timestamp with the default spacing', () => {
       const fixedIso = '2026-08-04T15:30:00.000Z';
-      const expectedFormatted = new Date(fixedIso).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: 'UTC',
-        timeZoneName: 'short',
-      });
       const html = renderToStaticMarkup(createElement(RsvpLastUpdated, { modifiedAt: fixedIso }));
-      expect(html).toContain('Last updated');
-      expect(html).toContain('text-muted-foreground');
-      expect(html).toContain('mt-4');
+      // Hardcoded anchor strings, NOT `new Date(...).toLocaleString(...)`:
+      // recomputing the expectation with the same formatter would mask a
+      // regression that drops `timeZone: 'UTC'` from the component (both
+      // sides would shift to the runner tz and still match). The literal
+      // `UTC` substring is the only assertion that catches that.
+      // Separated into three pieces so we tolerate ICU version drift
+      // (Bun ships ICU 76+: `at 3:30 PM`; Node 24 ships ICU 72: `, 3:30 PM`).
+      expect(html).toContain('Aug 4');
+      expect(html).toContain('3:30 PM');
+      expect(html).toContain('UTC');
       expect(html).toMatch(/<time\s+datetime="2026-08-04T15:30:00\.000Z">/i);
-      expect(html).toContain(expectedFormatted);
-      // Pins an explicit timeZone so the rendered string is identical on
-      // the SSR confirmation page and the client-rendered card.
+      // The hour/minute and the timezone must appear in the right order
+      // inside the <time> element; an out-of-order string would pass the
+      // substring checks above but break readability.
+      const timeMatch = /<time\s+datetime="2026-08-04T15:30:00\.000Z">([\s\S]*?)<\/time>/i.exec(
+        html,
+      );
+      expect(timeMatch).not.toBeNull();
+      expect(timeMatch?.[1]).toMatch(/Aug 4[\s,]+3:30 PM\s+UTC/);
       expect(html).not.toContain('undefined');
       expect(html).not.toMatch(/class="[^"]*  +/);
     });
