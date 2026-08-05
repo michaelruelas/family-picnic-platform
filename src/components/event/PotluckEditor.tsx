@@ -28,10 +28,7 @@ export default function PotluckEditor({
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
 
-  const slotsQuery = trpc.potluck.getSlotsForEvent.useQuery(
-    { eventId },
-    { enabled: !!eventId },
-  );
+  const slotsQuery = trpc.potluck.getSlotsForEvent.useQuery({ eventId }, { enabled: !!eventId });
 
   const slots: EventSlot[] = (slotsQuery.data ?? []) as EventSlot[];
 
