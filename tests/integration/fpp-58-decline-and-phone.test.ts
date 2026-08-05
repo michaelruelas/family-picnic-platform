@@ -185,16 +185,43 @@ describe('FPP-58: RSVP names + decline path + phone capture', () => {
       expect(content).toMatch(/setShowContact\(Boolean\(formState\.phoneNumber\)\)/);
     });
 
+    it('shares the contact validate + diff + PATCH helper across confirm and decline', async () => {
+      // RD-001: the validate → diff → PATCH block used to be duplicated
+      // between handleConfirm and handleDecline. A future tweak to
+      // the consent-required rule would have to land in both, and
+      // would almost certainly miss one. The fix is a single helper
+      // that both handlers call.
+      const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
+      expect(content).toMatch(/const\s+persistContactIfChanged\s*=\s*async/);
+      // The helper must do the schema validation, the diff, and the
+      // PATCH in one place. handleConfirm and handleDecline call
+      // it instead of inlining the steps.
+      expect(content).toMatch(/rsvpContactSchema\.safeParse\(/);
+      expect(content).toMatch(/diffContact\(/);
+      // The helper should be called from both submit handlers.
+      const confirmBlock = content.split(/const\s+handleConfirm\s*=\s*async/)[1] ?? '';
+      const declineBlock = content.split(/const\s+handleDecline\s*=\s*async/)[1] ?? '';
+      expect(confirmBlock).toMatch(/persistContactIfChanged\(\)/);
+      expect(declineBlock).toMatch(/persistContactIfChanged\(\)/);
+      // And the decline path must NOT inline the validate → diff →
+      // PATCH block (which is what we are trying to dedupe).
+      expect(declineBlock).not.toMatch(/rsvpContactSchema\.safeParse\(/);
+      expect(declineBlock).not.toMatch(/diffContact\(/);
+    });
+
     it('validates the contact block before mutating anything', async () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
-      // The schema is consulted inside handleConfirm so a phone
-      // without consent, or a non-E.164 phone, surfaces a friendly
-      // error before we hit the server.
-      expect(content).toMatch(/rsvpContactSchema\.safeParse\(\{[\s\S]*?phone,\s*smsConsent/);
-      // The same gate applies on the decline path so a bad phone
-      // is caught even when the user clicks "Can't make it".
-      const declineBlock = content.split(/const handleDecline = async/)[1] ?? '';
-      expect(declineBlock).toMatch(/rsvpContactSchema\.safeParse\(\{[\s\S]*?phone,\s*smsConsent/);
+      // The schema is consulted inside persistContactIfChanged so
+      // a phone without consent, or a non-E.164 phone, surfaces a
+      // friendly error before we hit the server. The helper is
+      // called from both submit handlers, so a bad phone is caught
+      // on the decline path too.
+      const helperBlock = content.split(/const\s+persistContactIfChanged\s*=\s*async/)[1] ?? '';
+      expect(helperBlock).toMatch(/rsvpContactSchema\.safeParse\(\{[\s\S]*?phone,\s*smsConsent/);
+      const confirmBlock = content.split(/const\s+handleConfirm\s*=\s*async/)[1] ?? '';
+      const declineBlock = content.split(/const\s+handleDecline\s*=\s*async/)[1] ?? '';
+      expect(confirmBlock).toMatch(/persistContactIfChanged\(\)/);
+      expect(declineBlock).toMatch(/persistContactIfChanged\(\)/);
     });
 
     it('writes the patch through user.updatePreferences, not the rsvp router', async () => {

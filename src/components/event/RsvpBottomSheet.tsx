@@ -378,6 +378,37 @@ export function RsvpBottomSheet({
     setShowAddMember(false);
   };
 
+  // FPP-34: validate the optional phone + consent block before any
+  // RSVP mutation. When validation passes, compute the diff and
+  // PATCH when something changed. Returns false when the caller
+  // should bail (the submit error has already been set).
+  //
+  // The helper is a closure so the contact rules, the form-state
+  // snapshot, and the in-flight setState callbacks stay in one
+  // place. Both `handleConfirm` and `handleDecline` go through it
+  // so a tweak to the consent-required rule lands in both at once.
+  const persistContactIfChanged = async (): Promise<boolean> => {
+    if (!formState) return true;
+    const contactParsed = rsvpContactSchema.safeParse({ phone, smsConsent });
+    if (!contactParsed.success) {
+      const firstIssue = contactParsed.error.issues[0]?.message ?? 'Phone or consent is invalid';
+      setSubmitError(firstIssue);
+      setIsSubmitting(false);
+      return false;
+    }
+    const contactPatch = diffContact(
+      { phone, smsConsent },
+      {
+        phoneNumber: formState.phoneNumber ?? null,
+        smsConsent: Boolean(formState.smsConsent),
+      },
+    );
+    if (Object.keys(contactPatch).length > 0) {
+      await updatePreferences.mutateAsync(contactPatch);
+    }
+    return true;
+  };
+
   const handleConfirm = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
@@ -421,23 +452,13 @@ export function RsvpBottomSheet({
       setIsSubmitting(false);
       return;
     }
-    // FPP-34: validate the optional phone + consent block before we
-    // mutate anything. The schema enforces the "consent is required
-    // when a phone is set" rule so a non-E.164 phone or a phone with
-    // no consent box checked surfaces a single, friendly error here
-    // rather than a 400 from the server after the user already
-    // typed a name for every attendee.
-    const contactParsed = rsvpContactSchema.safeParse({
-      phone,
-      smsConsent,
-    });
-    if (!contactParsed.success) {
-      const firstIssue = contactParsed.error.issues[0]?.message ?? 'Phone or consent is invalid';
-      setSubmitError(firstIssue);
-      setIsSubmitting(false);
-      return;
-    }
     try {
+      // FPP-34: validate + persist the optional phone + consent
+      // before any RSVP write. Returns false on validation failure;
+      // the helper has already set the error message.
+      if (!(await persistContactIfChanged())) {
+        return;
+      }
       // FPP-80: when the caller belongs to a household, save any
       // rename through `household.update` before the RSVP goes
       // through. We use the same household-name Zod schema that the
@@ -458,20 +479,6 @@ export function RsvpBottomSheet({
             name: parsed.data,
           });
         }
-      }
-      // FPP-34: persist the optional phone + consent through
-      // `user.updatePreferences` before the RSVP goes through.
-      // `diffContact` returns an empty patch when nothing changed,
-      // so opening the form and submitting without typing is a
-      // no-op. When the patch is non-empty, smsConsent is also
-      // rewritten to clear any stale `true` that would otherwise
-      // re-enable Twilio for an empty phone.
-      const contactPatch = diffContact(
-        { phone, smsConsent },
-        { phoneNumber: formState.phoneNumber ?? null, smsConsent: Boolean(formState.smsConsent) },
-      );
-      if (Object.keys(contactPatch).length > 0) {
-        await updatePreferences.mutateAsync(contactPatch);
       }
       // FPP-36: persist renames to underlying household members
       // before the confirm so the snapshot the server writes
@@ -532,26 +539,10 @@ export function RsvpBottomSheet({
       // decline, so a user who opts in to SMS on the form and then
       // declines the event still gets their profile updated. The
       // RSVP goes from "no response" to "declined" either way; the
-      // contact preference is independent.
-      if (formState) {
-        const contactParsed = rsvpContactSchema.safeParse({ phone, smsConsent });
-        if (!contactParsed.success) {
-          const firstIssue =
-            contactParsed.error.issues[0]?.message ?? 'Phone or consent is invalid';
-          setSubmitError(firstIssue);
-          setIsSubmitting(false);
-          return;
-        }
-        const contactPatch = diffContact(
-          { phone, smsConsent },
-          {
-            phoneNumber: formState.phoneNumber ?? null,
-            smsConsent: Boolean(formState.smsConsent),
-          },
-        );
-        if (Object.keys(contactPatch).length > 0) {
-          await updatePreferences.mutateAsync(contactPatch);
-        }
+      // contact preference is independent. Shared helper keeps the
+      // confirm and decline paths in lockstep.
+      if (!(await persistContactIfChanged())) {
+        return;
       }
       await decline.mutateAsync({ eventId });
       onClose();
