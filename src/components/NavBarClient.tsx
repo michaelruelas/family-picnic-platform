@@ -33,8 +33,6 @@ export default function NavBarClient() {
           <div className="hidden gap-1 md:flex">
             <NavLink href="/">Home</NavLink>
             <NavLink href="/events">Events</NavLink>
-            <NavLink href="/potluck">Potluck</NavLink>
-            <NavLink href="/photos">Photos</NavLink>
           </div>
           <button
             type="button"
