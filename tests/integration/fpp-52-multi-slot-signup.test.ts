@@ -6,7 +6,7 @@ const potluckPagePath = path.join(process.cwd(), 'src/app/events/[id]/potluck/pa
 const slotListPath = path.join(process.cwd(), 'src/components/potluck/SlotList.tsx');
 const mySlotsPath = path.join(process.cwd(), 'src/components/potluck/MySlotsSummary.tsx');
 const eventDetailPath = path.join(process.cwd(), 'src/app/events/[id]/page.tsx');
-const potluckIndexPath = path.join(process.cwd(), 'src/app/potluck/page.tsx');
+const potluckRedirectPath = path.join(process.cwd(), 'src/app/potluck/route.ts');
 const rsvpCardPath = path.join(process.cwd(), 'src/components/event/EventRsvpCard.tsx');
 const rsvpSheetPath = path.join(process.cwd(), 'src/components/event/RsvpBottomSheet.tsx');
 const potluckRouterPath = path.join(process.cwd(), 'src/server/routers/potluck.router.ts');
@@ -96,9 +96,9 @@ describe('FPP-25 — My-slots summary + remove', () => {
     expect(sheetContent).toContain('Skip to potluck signup');
   });
 
-  it('reaches the potluck page from the potluck overview CTA', async () => {
-    const content = await fs.readFile(potluckIndexPath, 'utf-8');
-    expect(content).toMatch(/href=\{`\/events\/\$\{event\.id\}\/potluck`\}/);
+  it('redirects /potluck to the next upcoming event with dishes', async () => {
+    const content = await fs.readFile(potluckRedirectPath, 'utf-8');
+    expect(content).toMatch(/\/events\/\$\{target\.id\}\/potluck/);
   });
 
   it('reaches the potluck page from the event detail menu section', async () => {
