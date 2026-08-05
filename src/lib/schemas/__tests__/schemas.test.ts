@@ -904,3 +904,91 @@ describe('attendingLabel', () => {
     expect(attendingLabel('MAYBE')).toBe('Maybe');
   });
 });
+
+// FPP-36: the shared attendee-name schema enforces trim, max length,
+// and no-control-characters on every entry point (RSVP form rows,
+// household-member create / update).
+import { attendeeNameSchema, ATTENDEE_NAME_MAX } from '~/lib/schemas/attendee-name';
+
+describe('attendeeNameSchema (FPP-36)', () => {
+  it('passes with a normal name', () => {
+    const result = attendeeNameSchema.safeParse('Alice');
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe('Alice');
+  });
+
+  it('trims leading and trailing whitespace', () => {
+    const result = attendeeNameSchema.safeParse('   Alice   ');
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe('Alice');
+  });
+
+  it('rejects an empty string', () => {
+    const result = attendeeNameSchema.safeParse('');
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects whitespace-only input', () => {
+    const result = attendeeNameSchema.safeParse('     ');
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a name at exactly the max length', () => {
+    const name = 'a'.repeat(ATTENDEE_NAME_MAX);
+    const result = attendeeNameSchema.safeParse(name);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a name one character over the max length', () => {
+    const name = 'a'.repeat(ATTENDEE_NAME_MAX + 1);
+    const result = attendeeNameSchema.safeParse(name);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects ASCII control characters (0x00-0x1F, 0x7F)', () => {
+    for (const code of [0x00, 0x07, 0x09, 0x0a, 0x0d, 0x1f, 0x7f]) {
+      const value = `Alice${String.fromCharCode(code)}Bob`;
+      const result = attendeeNameSchema.safeParse(value);
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it('rejects Unicode line separators and narrow spaces', () => {
+    for (const char of ['\u2028', '\u2029', '\u202f', '\u205f', '\u3000']) {
+      const value = `Alice${char}Bob`;
+      const result = attendeeNameSchema.safeParse(value);
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it('accepts common punctuation and diacritics', () => {
+    const result = attendeeNameSchema.safeParse('María-José O\u2019Brien');
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('household-member schemas reuse attendee-name rules (FPP-36)', () => {
+  it('rejects empty name on create', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: '   ',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects control characters on create', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: 'Alice\u2028Bob',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an oversized name on update', () => {
+    const result = householdMemberUpdateSchema.safeParse({
+      id: 'm-1',
+      name: 'a'.repeat(ATTENDEE_NAME_MAX + 1),
+    });
+    expect(result.success).toBe(false);
+  });
+});

@@ -32,6 +32,7 @@ import {
   deriveHeadcount,
 } from '~/server/rsvp-attendance';
 import { RsvpAttending } from '~/lib/generated/enums';
+import { ATTENDEE_NAME_MAX } from '~/lib/schemas/attendee-name';
 
 beforeEach(() => {
   for (const model of Object.values(prismaMock)) {
@@ -189,6 +190,23 @@ describe('rsvp-attendance service', () => {
         memberAge: 7,
         attending: RsvpAttending.MAYBE,
       });
+    });
+
+    // FPP-36 review finding 1: the ad-hoc clamp must use the
+    // shared `ATTENDEE_NAME_MAX` constant so the cap and the
+    // schema stay in sync when the limit is bumped.
+    it('clamps an oversized ad-hoc name to ATTENDEE_NAME_MAX', async () => {
+      prismaMock.householdMember.findMany.mockResolvedValue([]);
+      const oversized = 'a'.repeat(ATTENDEE_NAME_MAX + 25);
+      const { rows } = await resolveAttendancesForHousehold(prismaMock as unknown as Tx, 'h-1', [
+        {
+          householdMemberId: null,
+          memberName: oversized,
+          memberAge: null,
+          attending: RsvpAttending.YES,
+        },
+      ]);
+      expect(rows[0]?.memberName).toHaveLength(ATTENDEE_NAME_MAX);
     });
   });
 

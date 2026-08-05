@@ -3,9 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useHouseholdNameMutation, useRsvpFormState, useRsvpMutation } from '~/hooks';
+import {
+  useHouseholdMemberNameMutation,
+  useHouseholdNameMutation,
+  useRsvpFormState,
+  useRsvpMutation,
+} from '~/hooks';
 import { RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
+import { ATTENDEE_NAME_MAX, attendeeNameSchema } from '~/lib/schemas/attendee-name';
 import { householdNameSchema, HOUSEHOLD_NAME_MAX } from '~/lib/schemas/household';
 import { calculateFee, type FeeAttendee } from '~/lib/fee';
 import { formatAmount } from '~/lib/currency';
@@ -39,6 +45,14 @@ interface AttendanceDraft {
   memberName: string;
   memberAge: number | null;
   attending: RsvpAttending;
+  /**
+   * FPP-36: name as it was when the row hydrated from the server.
+   * The submit handler compares the current draft `memberName`
+   * against this baseline to decide whether a household member
+   * needs a PATCH. Ad-hoc guests (id = null) leave this empty
+   * because there is no row to write back to.
+   */
+  originalMemberName: string | null;
 }
 
 const ATTENDANCE_OPTIONS: RsvpAttending[] = [
@@ -57,6 +71,7 @@ function defaultAttendanceForNewMember(
     memberName: name,
     memberAge: age,
     attending: RsvpAttending.YES,
+    originalMemberName: name,
   };
 }
 
@@ -78,6 +93,7 @@ function buildInitialDrafts(
       memberName: att.memberNameSnapshot,
       memberAge: att.memberAgeSnapshot,
       attending: att.attending,
+      originalMemberName: att.householdMemberId ? att.memberNameSnapshot : null,
     });
   }
 
@@ -89,6 +105,10 @@ function buildInitialDrafts(
         memberName: m.name,
         memberAge: m.age,
         attending: prior.attending,
+        // The snapshot wins on first hydrate so a later edit to the
+        // household member name is not silently overwritten. The
+        // submit handler compares against this baseline.
+        originalMemberName: prior.originalMemberName ?? m.name,
       };
     }
     return defaultAttendanceForNewMember(m.id, m.name, m.age);
@@ -120,6 +140,7 @@ export function RsvpBottomSheet({
   const router = useRouter();
   const { confirm, decline } = useRsvpMutation();
   const { updateName } = useHouseholdNameMutation();
+  const { updateName: updateMemberName } = useHouseholdMemberNameMutation();
   // Only query the form state when the sheet is open so we do not
   // start a fetch when the parent has not asked for it.
   const {
@@ -198,6 +219,26 @@ export function RsvpBottomSheet({
     [drafts],
   );
 
+  // FPP-36: live-validate every slot name so an empty / oversized /
+  // control-character-laden name blocks confirm. The first failing
+  // row is surfaced inline so the user can correct it without a
+  // round-trip to the server.
+  const nameErrors = useMemo(() => {
+    const errors: Array<{ index: number; message: string }> = [];
+    drafts.forEach((draft, index) => {
+      const parsed = attendeeNameSchema.safeParse(draft.memberName);
+      if (!parsed.success) {
+        errors.push({
+          index,
+          message: parsed.error.issues[0]?.message ?? 'Name is required',
+        });
+      }
+    });
+    return errors;
+  }, [drafts]);
+  const firstNameError = nameErrors[0] ?? null;
+  const hasInvalidNames = nameErrors.length > 0;
+
   // Live fee total. Recomputed on every draft change so the user
   // sees the price move as they flip members to YES / NO. Hidden
   // when the event has no fee configured.
@@ -221,6 +262,26 @@ export function RsvpBottomSheet({
     setDrafts((current) => current.map((d, i) => (i === index ? { ...d, attending: value } : d)));
   };
 
+  const updateMemberNameDraft = (index: number, value: string) => {
+    setDrafts((current) => current.map((d, i) => (i === index ? { ...d, memberName: value } : d)));
+  };
+
+  // FPP-36 review finding 4: strip trailing whitespace when the
+  // user leaves the input. Live-trimming on every keystroke would
+  // jump the caret mid-edit; trimming on blur keeps the cursor
+  // honest while editing and the visible value honest on commit.
+  // We only strip the trailing edge so a user can still type a
+  // leading capital without it collapsing on every character.
+  const trimMemberNameDraft = (index: number) => {
+    setDrafts((current) =>
+      current.map((d, i) => {
+        if (i !== index) return d;
+        const trimmed = d.memberName.replace(/\s+$/, '');
+        return trimmed === d.memberName ? d : { ...d, memberName: trimmed };
+      }),
+    );
+  };
+
   const removeMember = (index: number) => {
     setDrafts((current) => current.filter((_, i) => i !== index));
   };
@@ -228,15 +289,21 @@ export function RsvpBottomSheet({
   const addAdHocMember = () => {
     const name = newMember.name.trim();
     if (!name) return;
+    const nameParsed = attendeeNameSchema.safeParse(newMember.name);
+    if (!nameParsed.success) {
+      setSubmitError(nameParsed.error.issues[0]?.message ?? 'Name is required');
+      return;
+    }
     if (newMember.age.trim() === '') {
       setSubmitError(null);
       setDrafts((current) => [
         ...current,
         {
           householdMemberId: null,
-          memberName: name,
+          memberName: nameParsed.data,
           memberAge: null,
           attending: RsvpAttending.YES,
+          originalMemberName: null,
         },
       ]);
       setNewMember({ name: '', age: '' });
@@ -253,9 +320,10 @@ export function RsvpBottomSheet({
       ...current,
       {
         householdMemberId: null,
-        memberName: name,
+        memberName: nameParsed.data,
         memberAge: ageValue,
         attending: RsvpAttending.YES,
+        originalMemberName: null,
       },
     ]);
     setNewMember({ name: '', age: '' });
@@ -265,6 +333,21 @@ export function RsvpBottomSheet({
   const handleConfirm = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
+    // FPP-36 BoopPr finding F1: when the rename loop fails midway,
+    // earlier rows have already been persisted. Track them at the
+    // function scope so the catch block can surface what was
+    // renamed before the error. Each rename is recorded as an
+    // `from → to` pair so the summary stays disambiguated when
+    // two renames land on the same value (e.g. Alice → Alicia and
+    // Bob → Alicia both rename to "Alicia"). Reset on every
+    // confirm so a previous failure does not leak into a later
+    // successful submit.
+    const renames: Array<{ from: string; to: string }> = [];
+    const renameSummary = () => {
+      if (renames.length === 0) return '';
+      const list = renames.map((r) => `${r.from} → ${r.to}`).join(', ');
+      return `Renamed ${renames.length} member${renames.length === 1 ? '' : 's'} (${list}) before the error. `;
+    };
     // The form is rendered behind a `if (!formState) return` gate,
     // so `formState` is always non-null here. Narrow it once at
     // the top so the rest of the function can use `formState`
@@ -275,6 +358,11 @@ export function RsvpBottomSheet({
     }
     if (drafts.length === 0) {
       setSubmitError('Add at least one household member before confirming.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (hasInvalidNames) {
+      setSubmitError(firstNameError?.message ?? 'Each attendee needs a valid name.');
       setIsSubmitting(false);
       return;
     }
@@ -307,10 +395,34 @@ export function RsvpBottomSheet({
           });
         }
       }
+      // FPP-36: persist renames to underlying household members
+      // before the confirm so the snapshot the server writes
+      // matches the live row. Each rename is independent: a
+      // failure on member N leaves the earlier rows persisted.
+      // We track the successes (see `renames` at the top of
+      // `handleConfirm`) so the failure message can tell the user
+      // exactly which rows made it through. Ad-hoc guests (id =
+      // null) skip this step.
+      const trimmedDrafts = drafts.map((d) => ({
+        ...d,
+        memberName: attendeeNameSchema.parse(d.memberName),
+      }));
+      for (const draft of trimmedDrafts) {
+        if (!draft.householdMemberId) continue;
+        if (draft.memberName === draft.originalMemberName) continue;
+        await updateMemberName.mutateAsync({
+          id: draft.householdMemberId,
+          name: draft.memberName,
+        });
+        renames.push({
+          from: draft.originalMemberName ?? draft.memberName,
+          to: draft.memberName,
+        });
+      }
       const result = await confirm.mutateAsync({
         eventId,
         dietaryNotes: dietaryNotes.trim() || undefined,
-        memberAttendances: drafts.map((d) => ({
+        memberAttendances: trimmedDrafts.map((d) => ({
           householdMemberId: d.householdMemberId,
           memberName: d.memberName,
           memberAge: d.memberAge,
@@ -327,9 +439,9 @@ export function RsvpBottomSheet({
         router.push(`/my-events/${result.id}/confirmation`);
       }, 1200);
     } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'Something went wrong. Please try again.',
-      );
+      const base = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      const summary = renameSummary();
+      setSubmitError(summary ? `${summary}${base}` : base);
     } finally {
       setIsSubmitting(false);
     }
@@ -474,40 +586,107 @@ export function RsvpBottomSheet({
             </div>
           ) : (
             <ul className="mt-8 space-y-2">
-              {drafts.map((draft, index) => (
-                <li
-                  key={`${draft.householdMemberId ?? draft.memberName}-${index}`}
-                  className="border-border bg-card/40 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-foreground truncate font-medium">{draft.memberName}</p>
-                    {draft.memberAge !== null && (
-                      <p className="text-muted-foreground text-xs">{draft.memberAge} yrs</p>
-                    )}
-                  </div>
-                  <select
-                    aria-label={`Attendance for ${draft.memberName}`}
-                    value={draft.attending}
-                    onChange={(e) => updateAttendance(index, e.target.value as RsvpAttending)}
-                    className="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+              {drafts.map((draft, index) => {
+                const rowError = nameErrors.find((e) => e.index === index)?.message;
+                // FPP-36: source the accessible name from the
+                // snapshot when one exists, and from the schema-
+                // validated live value otherwise. The snapshot
+                // passed through `attendeeNameSchema` on hydrate
+                // so it can never contain control characters.
+                // Ad-hoc guests (no `originalMemberName`) fall
+                // back to the trimmed live value, but only when
+                // that value also passes `attendeeNameSchema` —
+                // the trim alone does not strip line separators
+                // or other forbidden characters, so a guest
+                // mid-typing a control character would otherwise
+                // surface it to a screen reader before the form
+                // blocks submit. The final `slot N` fallback
+                // covers the empty-string and invalid-input cases
+                // before the user has typed anything sensible.
+                // Note the use of `||` (not `??`) for the
+                // secondary tier so an empty trimmed name falls
+                // through to the slot label rather than leaving
+                // the screen reader to announce "Name for" with
+                // an empty suffix.
+                const trimmedLiveName = draft.memberName.trim();
+                const safeLiveName = attendeeNameSchema.safeParse(trimmedLiveName).success
+                  ? trimmedLiveName
+                  : null;
+                const accessibleName =
+                  draft.originalMemberName ?? safeLiveName ?? `slot ${index + 1}`;
+                return (
+                  <li
+                    key={`${draft.householdMemberId ?? draft.memberName}-${index}`}
+                    className="border-border bg-card/40 flex flex-col gap-2 rounded-2xl border px-4 py-3"
                   >
-                    {ATTENDANCE_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {attendingLabel(opt)}
-                      </option>
-                    ))}
-                  </select>
-                  {!draft.householdMemberId && (
-                    <button
-                      type="button"
-                      onClick={() => removeMember(index)}
-                      className="text-muted-foreground hover:text-destructive text-xs"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </li>
-              ))}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        {/*
+                          FPP-36: every adult and child slot gets a
+                          required name input. We keep the input
+                          uncontrolled-style by binding to the draft
+                          state so the value survives re-renders.
+                          The `maxLength` matches
+                          ATTENDEE_NAME_MAX so the browser blocks
+                          oversized input before the user can paste
+                          a too-long string. `onBlur` strips trailing
+                          whitespace so the visible value matches
+                          what gets persisted (Finding 4 of the FPP-36
+                          review).
+                        */}
+                        <input
+                          type="text"
+                          aria-label={`Name for ${accessibleName}`}
+                          value={draft.memberName}
+                          onChange={(e) => updateMemberNameDraft(index, e.target.value)}
+                          onBlur={() => trimMemberNameDraft(index)}
+                          maxLength={ATTENDEE_NAME_MAX}
+                          autoComplete="off"
+                          placeholder="Name"
+                          data-testid="rsvp-attendee-name"
+                          className={`border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block w-full rounded-xl border px-3 py-2 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none ${
+                            rowError ? 'border-destructive focus:border-destructive' : ''
+                          }`}
+                        />
+                        {draft.memberAge !== null && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            {draft.memberAge} yrs
+                          </p>
+                        )}
+                      </div>
+                      <select
+                        aria-label={`Attendance for ${accessibleName}`}
+                        value={draft.attending}
+                        onChange={(e) => updateAttendance(index, e.target.value as RsvpAttending)}
+                        className="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                      >
+                        {ATTENDANCE_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {attendingLabel(opt)}
+                          </option>
+                        ))}
+                      </select>
+                      {!draft.householdMemberId && (
+                        <button
+                          type="button"
+                          onClick={() => removeMember(index)}
+                          className="text-muted-foreground hover:text-destructive text-xs"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    {rowError && (
+                      <p
+                        className="text-destructive text-xs"
+                        data-testid="rsvp-attendee-name-error"
+                      >
+                        {rowError}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
 
@@ -524,6 +703,7 @@ export function RsvpBottomSheet({
                   value={newMember.name}
                   onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
                   placeholder="Name"
+                  aria-label="Guest name"
                   className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                 />
                 <input
@@ -630,7 +810,7 @@ export function RsvpBottomSheet({
 
           <button
             onClick={handleConfirm}
-            disabled={isSubmitting || yesCount === 0}
+            disabled={isSubmitting || yesCount === 0 || hasInvalidNames}
             className="rounded-pill bg-terracotta shadow-soft press mt-7 w-full px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
           >
             {isSubmitting

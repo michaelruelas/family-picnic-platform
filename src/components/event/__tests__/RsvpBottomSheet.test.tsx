@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const mockConfirm = { mutateAsync: vi.fn() };
 const mockDecline = { mutateAsync: vi.fn() };
 const mockUpdateName = { mutateAsync: vi.fn() };
+const mockUpdateMemberName = { mutateAsync: vi.fn() };
 const mockRefresh = vi.fn();
 const mockRefetchFormState = vi.fn();
 
@@ -23,6 +24,9 @@ vi.mock('~/hooks', () => ({
   useHouseholdNameMutation: () => ({
     updateName: mockUpdateName,
   }),
+  useHouseholdMemberNameMutation: () => ({
+    updateName: mockUpdateMemberName,
+  }),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -40,9 +44,11 @@ beforeEach(() => {
   mockConfirm.mutateAsync.mockReset();
   mockDecline.mutateAsync.mockReset();
   mockUpdateName.mutateAsync.mockReset();
+  mockUpdateMemberName.mutateAsync.mockReset();
   mockConfirm.mutateAsync.mockResolvedValue({ id: 'rsvp-1' });
   mockDecline.mutateAsync.mockResolvedValue({});
   mockUpdateName.mutateAsync.mockResolvedValue({});
+  mockUpdateMemberName.mutateAsync.mockResolvedValue({});
   mockRefresh.mockReset();
   mockRefetchFormState.mockReset();
   mockFormState.data = null;
@@ -169,8 +175,10 @@ describe('RsvpBottomSheet per-member attendance', () => {
     setRosterReady();
     render(<RsvpBottomSheet {...baseProps} />);
     fireEvent.click(screen.getByRole('button', { name: /add a one-time guest/i }));
-    const nameInput = screen.getByPlaceholderText(/^name$/i);
-    fireEvent.change(nameInput, { target: { value: 'Cousin' } });
+    // FPP-36: the per-slot attendee inputs also have `Name` as a
+    // placeholder, so grab the guest-add input by its aria-label.
+    const guestNameInput = screen.getByLabelText(/guest name/i);
+    fireEvent.change(guestNameInput, { target: { value: 'Cousin' } });
     fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
     expect(screen.getByLabelText('Attendance for Cousin')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /confirm 3 guests/i }));
@@ -388,6 +396,224 @@ describe('RsvpBottomSheet per-member attendance', () => {
         expect(screen.getByText('A household with this name already exists')).toBeInTheDocument();
       });
       expect(mockConfirm.mutateAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('per-slot attendee name (FPP-36)', () => {
+    it('renders an editable name input for every roster member', () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      const inputs = screen.getAllByTestId('rsvp-attendee-name');
+      expect(inputs).toHaveLength(2);
+      expect((inputs[0] as HTMLInputElement).value).toBe('Alice');
+      expect((inputs[1] as HTMLInputElement).value).toBe('Ben');
+    });
+
+    it('lets the user rename a slot in place', () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+      fireEvent.change(inputs[0]!, { target: { value: 'Alicia' } });
+      expect(inputs[0]!.value).toBe('Alicia');
+    });
+
+    it('Patches the household member and confirms the RSVP with the new name', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+      fireEvent.change(inputs[0]!, { target: { value: 'Alicia' } });
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+
+      await waitFor(() => {
+        expect(mockUpdateMemberName.mutateAsync).toHaveBeenCalledWith({
+          id: 'mem-1',
+          name: 'Alicia',
+        });
+      });
+      await waitFor(() => {
+        expect(mockConfirm.mutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            eventId: 'evt-1',
+            memberAttendances: expect.arrayContaining([
+              expect.objectContaining({ householdMemberId: 'mem-1', memberName: 'Alicia' }),
+            ]),
+          }),
+        );
+      });
+    });
+
+    it('skips the PATCH when no slot name changed', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      await waitFor(() => {
+        expect(mockUpdateMemberName.mutateAsync).not.toHaveBeenCalled();
+        expect(mockConfirm.mutateAsync).toHaveBeenCalled();
+      });
+    });
+
+    it('blocks confirm when a slot name is empty', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+      fireEvent.change(inputs[0]!, { target: { value: '   ' } });
+      const submit = screen.getByRole('button', { name: /confirm 2 guests/i });
+      expect(submit).toBeDisabled();
+      expect(screen.getByTestId('rsvp-attendee-name-error').textContent).toMatch(
+        /name is required/i,
+      );
+      expect(mockUpdateMemberName.mutateAsync).not.toHaveBeenCalled();
+      expect(mockConfirm.mutateAsync).not.toHaveBeenCalled();
+    });
+
+    // FPP-36 review finding 4: the input strips trailing
+    // whitespace on blur so the visible value matches what gets
+    // persisted.
+    it('trims trailing whitespace on blur', () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+      fireEvent.change(inputs[0]!, { target: { value: 'Alicia   ' } });
+      fireEvent.blur(inputs[0]!);
+      expect(inputs[0]!.value).toBe('Alicia');
+    });
+
+    // FPP-36 review finding 3: the aria-label is sourced from the
+    // validated snapshot, so a control-character payload never
+    // leaks into the accessible name.
+    it('does not surface control characters in the aria-label', () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+      // Type a string that the schema would reject.
+      fireEvent.change(inputs[0]!, { target: { value: 'Alice\u2028Bob' } });
+      // The aria-label still references the snapshot ("Alice"),
+      // never the live value, so screen readers never announce
+      // the control character.
+      expect(inputs[0]!.getAttribute('aria-label')).toBe('Name for Alice');
+    });
+
+    // FPP-36 re-review observation: when the secondary fallback
+    // (`draft.memberName.trim()`) returns an empty string, the
+    // tertiary tier (`slot N`) must take over so screen readers
+    // do not announce "Name for" with an empty suffix. Switching
+    // `??` to `||` on the secondary tier closes this gap.
+    it('falls back to a slot label when the live name is empty (guest path)', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      // Add a guest (no `originalMemberName`) and then clear the
+      // input to exercise the empty-string fallback.
+      fireEvent.click(screen.getByRole('button', { name: /add a one-time guest/i }));
+      const guestNameInput = screen.getByLabelText(/guest name/i);
+      fireEvent.change(guestNameInput, { target: { value: 'Cousin' } });
+      fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+
+      // Wait for the guest row to mount.
+      await waitFor(() => {
+        expect(screen.getByLabelText('Attendance for Cousin')).toBeInTheDocument();
+      });
+      const guestInput = (await waitFor(() => {
+        const all = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+        const guest = all.find((input) => input.value === 'Cousin');
+        expect(guest).toBeDefined();
+        return guest!;
+      })) as HTMLInputElement;
+      fireEvent.change(guestInput, { target: { value: '' } });
+      // The aria-label falls through to the slot label rather than
+      // rendering "Name for " with nothing after. Re-query the input
+      // so the assertion runs against the post-render DOM.
+      await waitFor(() => {
+        const all = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+        const guest = all.find((input) => input.value === '');
+        expect(guest?.getAttribute('aria-label')).toBe('Name for slot 3');
+      });
+    });
+
+    // BoopPr finding F2: when the live name on a guest row has a
+    // forbidden character (a line separator, for example), the
+    // trimmed value still contains it because trim() does not strip
+    // control characters. The accessible name must fall back to the
+    // generic slot label rather than surface the forbidden character
+    // to a screen reader.
+    it('falls back to a slot label when a guest types a forbidden character', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add a one-time guest/i }));
+      const guestNameInput = screen.getByLabelText(/guest name/i);
+      fireEvent.change(guestNameInput, { target: { value: 'Cousin' } });
+      fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Attendance for Cousin')).toBeInTheDocument();
+      });
+      const guestInput = (await waitFor(() => {
+        const all = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+        const guest = all.find((input) => input.value === 'Cousin');
+        expect(guest).toBeDefined();
+        return guest!;
+      })) as HTMLInputElement;
+      // Type a string with a U+2028 line separator. The schema
+      // blocks submit, but the aria-label must not surface the
+      // control character to a screen reader in the meantime.
+      fireEvent.change(guestInput, { target: { value: 'Cousin\u2028Bob' } });
+      await waitFor(() => {
+        const all = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+        const guest = all.find((input) => input.value === 'Cousin\u2028Bob');
+        expect(guest?.getAttribute('aria-label')).toBe('Name for slot 3');
+      });
+    });
+
+    // BoopPr finding F1: when the rename loop fails midway, the
+    // error message must surface which rows succeeded so the user
+    // knows what state the household is in.
+    it('reports renamed members in the error message when a later rename fails', async () => {
+      setRosterReady();
+      // First rename succeeds; second rejects with a server error.
+      mockUpdateMemberName.mutateAsync
+        .mockResolvedValueOnce({})
+        .mockRejectedValueOnce(new Error('Forbidden: duplicate name'));
+      render(<RsvpBottomSheet {...baseProps} />);
+      const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+      fireEvent.change(inputs[0]!, { target: { value: 'Alicia' } });
+      fireEvent.change(inputs[1]!, { target: { value: 'Benjamin' } });
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+
+      // Confirm was not called because the second rename failed.
+      await waitFor(() => {
+        expect(mockConfirm.mutateAsync).not.toHaveBeenCalled();
+      });
+      // The error message names the renamed member using the
+      // `from → to` format so two renames that land on the same
+      // value do not collapse into an ambiguous list.
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Renamed 1 member \(Alice → Alicia\) before the error/i),
+        ).toBeInTheDocument();
+      });
+      expect(mockUpdateMemberName.mutateAsync).toHaveBeenCalledTimes(2);
+    });
+
+    // BoopPr finding F1: two renames that collide on the new
+    // value must still be disambiguated by the original name in
+    // the summary.
+    it('disambiguates colliding rename targets with the original name', async () => {
+      setRosterReady();
+      // Rename Alice → Alicia and Ben → Alicia. Both mocks succeed
+      // so we land on the confirmed phase, then we inspect the
+      // tracked renames via a synthetic failure on the confirm.
+      mockConfirm.mutateAsync.mockRejectedValueOnce(new Error('payment offline'));
+      render(<RsvpBottomSheet {...baseProps} />);
+      const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+      fireEvent.change(inputs[0]!, { target: { value: 'Alicia' } });
+      fireEvent.change(inputs[1]!, { target: { value: 'Alicia' } });
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+
+      // The summary names both rows with their original names so
+      // the user can tell which household members were renamed
+      // even when the new names collide.
+      await waitFor(() => {
+        expect(screen.getByText(/Alice → Alicia, Ben → Alicia/i)).toBeInTheDocument();
+      });
     });
   });
 });

@@ -154,7 +154,11 @@ describe('Per-member RSVP attendance (FPP-30, FPP-29)', () => {
 
     it('submits memberAttendances to the confirm mutation', async () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
-      expect(content).toMatch(/memberAttendances:\s*drafts\.map/);
+      // FPP-36 renames draft.memberName through `trimmedDrafts`
+      // before the confirm mutation runs, but the per-row shape
+      // (householdMemberId, memberName, memberAge, attending) is
+      // unchanged. Match either the legacy or the new mapping.
+      expect(content).toMatch(/memberAttendances:\s*(trimmedDrafts|drafts)\.map/);
     });
 
     it('redirects to the confirmation page after a successful confirm', async () => {

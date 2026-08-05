@@ -86,82 +86,100 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           class="mt-8 space-y-2"
         >
           <li
-            class="border-border bg-card/40 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3"
+            class="border-border bg-card/40 flex flex-col gap-2 rounded-2xl border px-4 py-3"
           >
             <div
-              class="min-w-0 flex-1"
+              class="flex items-center justify-between gap-3"
             >
-              <p
-                class="text-foreground truncate font-medium"
+              <div
+                class="min-w-0 flex-1"
               >
-                Alice
-              </p>
-              <p
-                class="text-muted-foreground text-xs"
+                <input
+                  aria-label="Name for Alice"
+                  autocomplete="off"
+                  class="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block w-full rounded-xl border px-3 py-2 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none "
+                  data-testid="rsvp-attendee-name"
+                  maxlength="120"
+                  placeholder="Name"
+                  type="text"
+                  value="Alice"
+                />
+                <p
+                  class="text-muted-foreground mt-1 text-xs"
+                >
+                  35
+                   yrs
+                </p>
+              </div>
+              <select
+                aria-label="Attendance for Alice"
+                class="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
               >
-                35
-                 yrs
-              </p>
+                <option
+                  value="YES"
+                >
+                  Going
+                </option>
+                <option
+                  value="NO"
+                >
+                  Not going
+                </option>
+                <option
+                  value="MAYBE"
+                >
+                  Maybe
+                </option>
+              </select>
             </div>
-            <select
-              aria-label="Attendance for Alice"
-              class="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
-            >
-              <option
-                value="YES"
-              >
-                Going
-              </option>
-              <option
-                value="NO"
-              >
-                Not going
-              </option>
-              <option
-                value="MAYBE"
-              >
-                Maybe
-              </option>
-            </select>
           </li>
           <li
-            class="border-border bg-card/40 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3"
+            class="border-border bg-card/40 flex flex-col gap-2 rounded-2xl border px-4 py-3"
           >
             <div
-              class="min-w-0 flex-1"
+              class="flex items-center justify-between gap-3"
             >
-              <p
-                class="text-foreground truncate font-medium"
+              <div
+                class="min-w-0 flex-1"
               >
-                Ben
-              </p>
-              <p
-                class="text-muted-foreground text-xs"
+                <input
+                  aria-label="Name for Ben"
+                  autocomplete="off"
+                  class="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block w-full rounded-xl border px-3 py-2 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none "
+                  data-testid="rsvp-attendee-name"
+                  maxlength="120"
+                  placeholder="Name"
+                  type="text"
+                  value="Ben"
+                />
+                <p
+                  class="text-muted-foreground mt-1 text-xs"
+                >
+                  8
+                   yrs
+                </p>
+              </div>
+              <select
+                aria-label="Attendance for Ben"
+                class="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
               >
-                8
-                 yrs
-              </p>
+                <option
+                  value="YES"
+                >
+                  Going
+                </option>
+                <option
+                  value="NO"
+                >
+                  Not going
+                </option>
+                <option
+                  value="MAYBE"
+                >
+                  Maybe
+                </option>
+              </select>
             </div>
-            <select
-              aria-label="Attendance for Ben"
-              class="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
-            >
-              <option
-                value="YES"
-              >
-                Going
-              </option>
-              <option
-                value="NO"
-              >
-                Not going
-              </option>
-              <option
-                value="MAYBE"
-              >
-                Maybe
-              </option>
-            </select>
           </li>
         </ul>
         <button
@@ -299,82 +317,100 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           class="mt-8 space-y-2"
         >
           <li
-            class="border-border bg-card/40 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3"
+            class="border-border bg-card/40 flex flex-col gap-2 rounded-2xl border px-4 py-3"
           >
             <div
-              class="min-w-0 flex-1"
+              class="flex items-center justify-between gap-3"
             >
-              <p
-                class="text-foreground truncate font-medium"
+              <div
+                class="min-w-0 flex-1"
               >
-                Alice
-              </p>
-              <p
-                class="text-muted-foreground text-xs"
+                <input
+                  aria-label="Name for Alice"
+                  autocomplete="off"
+                  class="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block w-full rounded-xl border px-3 py-2 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none "
+                  data-testid="rsvp-attendee-name"
+                  maxlength="120"
+                  placeholder="Name"
+                  type="text"
+                  value="Alice"
+                />
+                <p
+                  class="text-muted-foreground mt-1 text-xs"
+                >
+                  35
+                   yrs
+                </p>
+              </div>
+              <select
+                aria-label="Attendance for Alice"
+                class="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
               >
-                35
-                 yrs
-              </p>
+                <option
+                  value="YES"
+                >
+                  Going
+                </option>
+                <option
+                  value="NO"
+                >
+                  Not going
+                </option>
+                <option
+                  value="MAYBE"
+                >
+                  Maybe
+                </option>
+              </select>
             </div>
-            <select
-              aria-label="Attendance for Alice"
-              class="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
-            >
-              <option
-                value="YES"
-              >
-                Going
-              </option>
-              <option
-                value="NO"
-              >
-                Not going
-              </option>
-              <option
-                value="MAYBE"
-              >
-                Maybe
-              </option>
-            </select>
           </li>
           <li
-            class="border-border bg-card/40 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3"
+            class="border-border bg-card/40 flex flex-col gap-2 rounded-2xl border px-4 py-3"
           >
             <div
-              class="min-w-0 flex-1"
+              class="flex items-center justify-between gap-3"
             >
-              <p
-                class="text-foreground truncate font-medium"
+              <div
+                class="min-w-0 flex-1"
               >
-                Ben
-              </p>
-              <p
-                class="text-muted-foreground text-xs"
+                <input
+                  aria-label="Name for Ben"
+                  autocomplete="off"
+                  class="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block w-full rounded-xl border px-3 py-2 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none "
+                  data-testid="rsvp-attendee-name"
+                  maxlength="120"
+                  placeholder="Name"
+                  type="text"
+                  value="Ben"
+                />
+                <p
+                  class="text-muted-foreground mt-1 text-xs"
+                >
+                  8
+                   yrs
+                </p>
+              </div>
+              <select
+                aria-label="Attendance for Ben"
+                class="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
               >
-                8
-                 yrs
-              </p>
+                <option
+                  value="YES"
+                >
+                  Going
+                </option>
+                <option
+                  value="NO"
+                >
+                  Not going
+                </option>
+                <option
+                  value="MAYBE"
+                >
+                  Maybe
+                </option>
+              </select>
             </div>
-            <select
-              aria-label="Attendance for Ben"
-              class="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
-            >
-              <option
-                value="YES"
-              >
-                Going
-              </option>
-              <option
-                value="NO"
-              >
-                Not going
-              </option>
-              <option
-                value="MAYBE"
-              >
-                Maybe
-              </option>
-            </select>
           </li>
         </ul>
         <button

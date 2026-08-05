@@ -1,15 +1,16 @@
 import { z } from 'zod';
+import { attendeeNameSchema } from './attendee-name';
 
 export const householdMemberCreateSchema = z.object({
   householdId: z.string().min(1, 'Household ID is required'),
-  name: z.string().trim().min(1, 'Name is required'),
+  name: attendeeNameSchema,
   age: z.number().int().nonnegative().max(120).nullable().optional(),
   notes: z.string().trim().max(500).nullable().optional(),
 });
 
 export const householdMemberUpdateSchema = z.object({
   id: z.string().min(1, 'Member ID is required'),
-  name: z.string().trim().min(1, 'Name cannot be empty').optional(),
+  name: attendeeNameSchema.optional(),
   age: z.number().int().nonnegative().max(120).nullable().optional(),
   notes: z.string().trim().max(500).nullable().optional(),
 });

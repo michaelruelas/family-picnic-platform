@@ -17,6 +17,7 @@ export {
   useHouseholdDependents,
   useDependentMutations,
   useHouseholdNameMutation,
+  useHouseholdMemberNameMutation,
 } from './useHousehold';
 export { useBreatheIn } from './useBreatheIn';
 export { useMounted } from './useMounted';
