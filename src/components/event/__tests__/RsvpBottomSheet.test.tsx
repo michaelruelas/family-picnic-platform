@@ -582,14 +582,38 @@ describe('RsvpBottomSheet per-member attendance', () => {
       await waitFor(() => {
         expect(mockConfirm.mutateAsync).not.toHaveBeenCalled();
       });
-      // The error message names the renamed member so the user
-      // knows what was already persisted.
+      // The error message names the renamed member using the
+      // `from → to` format so two renames that land on the same
+      // value do not collapse into an ambiguous list.
       await waitFor(() => {
         expect(
-          screen.getByText(/Renamed 1 member \(Alicia\) before the error/i),
+          screen.getByText(/Renamed 1 member \(Alice → Alicia\) before the error/i),
         ).toBeInTheDocument();
       });
       expect(mockUpdateMemberName.mutateAsync).toHaveBeenCalledTimes(2);
+    });
+
+    // BoopPr finding F1: two renames that collide on the new
+    // value must still be disambiguated by the original name in
+    // the summary.
+    it('disambiguates colliding rename targets with the original name', async () => {
+      setRosterReady();
+      // Rename Alice → Alicia and Ben → Alicia. Both mocks succeed
+      // so we land on the confirmed phase, then we inspect the
+      // tracked renames via a synthetic failure on the confirm.
+      mockConfirm.mutateAsync.mockRejectedValueOnce(new Error('payment offline'));
+      render(<RsvpBottomSheet {...baseProps} />);
+      const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+      fireEvent.change(inputs[0]!, { target: { value: 'Alicia' } });
+      fireEvent.change(inputs[1]!, { target: { value: 'Alicia' } });
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+
+      // The summary names both rows with their original names so
+      // the user can tell which household members were renamed
+      // even when the new names collide.
+      await waitFor(() => {
+        expect(screen.getByText(/Alice → Alicia, Ben → Alicia/i)).toBeInTheDocument();
+      });
     });
   });
 });

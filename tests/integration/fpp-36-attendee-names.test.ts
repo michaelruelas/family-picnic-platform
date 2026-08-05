@@ -141,12 +141,21 @@ describe('FPP-36: per-slot attendee names', () => {
 
     // BoopPr finding F1: when a rename fails mid-loop, the error
     // message must surface which rows were already persisted.
+    // The summary must include both the original and the new name
+    // (in `from → to` form) so two renames that land on the same
+    // value do not collapse into an ambiguous list.
     it('rename loop surfaces a partial-success summary in the error message', async () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
-      // The loop tracks the names it has already persisted.
-      expect(content).toMatch(/renamedNames\.push/);
-      // The catch block prefixes the error with the summary.
-      expect(content).toMatch(/summary \? `\$\{summary\}\$\{base\}` : base/);
+      // The catch block prefixes the error with the summary. The
+      // assertion targets the user-visible error text so the test
+      // survives a refactor of the internal list/identifier.
+      expect(content).toMatch(/summary\s*\?\s*`\$\{summary\}\$\{base\}`\s*:\s*base/);
+      // The summary uses the `from → to` arrow so the original
+      // name is always visible alongside the new one.
+      expect(content).toMatch(/\$\{r\.from\}\s*→\s*\$\{r\.to\}/);
+      // Pluralization handles the single-row case (`member`) and
+      // the multi-row case (`members`).
+      expect(content).toMatch(/\$\{renames\.length === 1 \? '' : 's'\}/);
     });
 
     it('blocks confirm when any slot name fails attendee-name validation', async () => {

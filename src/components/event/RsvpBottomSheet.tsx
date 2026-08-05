@@ -336,14 +336,17 @@ export function RsvpBottomSheet({
     // FPP-36 BoopPr finding F1: when the rename loop fails midway,
     // earlier rows have already been persisted. Track them at the
     // function scope so the catch block can surface what was
-    // renamed before the error. Reset on every confirm so a
-    // previous failure does not leak into a later successful
-    // submit.
-    const renamedNames: string[] = [];
+    // renamed before the error. Each rename is recorded as an
+    // `from → to` pair so the summary stays disambiguated when
+    // two renames land on the same value (e.g. Alice → Alicia and
+    // Bob → Alicia both rename to "Alicia"). Reset on every
+    // confirm so a previous failure does not leak into a later
+    // successful submit.
+    const renames: Array<{ from: string; to: string }> = [];
     const renameSummary = () => {
-      if (renamedNames.length === 0) return '';
-      const list = renamedNames.join(', ');
-      return `Renamed ${renamedNames.length} member${renamedNames.length === 1 ? '' : 's'} (${list}) before the error. `;
+      if (renames.length === 0) return '';
+      const list = renames.map((r) => `${r.from} → ${r.to}`).join(', ');
+      return `Renamed ${renames.length} member${renames.length === 1 ? '' : 's'} (${list}) before the error. `;
     };
     // The form is rendered behind a `if (!formState) return` gate,
     // so `formState` is always non-null here. Narrow it once at
@@ -396,7 +399,7 @@ export function RsvpBottomSheet({
       // before the confirm so the snapshot the server writes
       // matches the live row. Each rename is independent: a
       // failure on member N leaves the earlier rows persisted.
-      // We track the successes (see `renamedNames` at the top of
+      // We track the successes (see `renames` at the top of
       // `handleConfirm`) so the failure message can tell the user
       // exactly which rows made it through. Ad-hoc guests (id =
       // null) skip this step.
@@ -411,7 +414,10 @@ export function RsvpBottomSheet({
           id: draft.householdMemberId,
           name: draft.memberName,
         });
-        renamedNames.push(draft.memberName);
+        renames.push({
+          from: draft.originalMemberName ?? draft.memberName,
+          to: draft.memberName,
+        });
       }
       const result = await confirm.mutateAsync({
         eventId,
