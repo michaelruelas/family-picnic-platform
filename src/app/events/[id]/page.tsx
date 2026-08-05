@@ -7,6 +7,7 @@ import PhotoCard from '~/components/PhotoCard';
 import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS } from '~/lib/constants';
 import { EventRsvpCard } from '~/components/event/EventRsvpCard';
 import { EventStickyBar } from '~/components/event/EventStickyBar';
+import EventSubNav from '~/components/event/EventSubNav';
 import { SignInPrompt } from '~/components/event/SignInPrompt';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 import type { RSVPStatus } from '~/lib/generated/enums';
@@ -164,6 +165,7 @@ export default async function EventDetailPage({ params }: Props) {
   );
 
   const totalPotluckDishes = event.potluckSlots.reduce((sum, slot) => sum + slot.signups.length, 0);
+  const totalPhotos = event.photos.length;
 
   const existingRsvpForCard = userRsvp
     ? {
@@ -226,7 +228,16 @@ export default async function EventDetailPage({ params }: Props) {
         </div>
       </BreatheSection>
 
-      <div className="mx-auto max-w-6xl px-5 pt-10 md:pt-14">
+      <div className="mx-auto max-w-6xl px-5 pt-6 md:pt-8">
+        <EventSubNav
+          eventId={event.id}
+          dishCount={totalPotluckDishes}
+          photoCount={totalPhotos}
+          active="overview"
+        />
+      </div>
+
+      <div className="mx-auto max-w-6xl px-5 pt-6 md:pt-10">
         <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
           <div className="space-y-12">
             <BreatheSection>
