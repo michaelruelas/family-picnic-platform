@@ -81,6 +81,57 @@ export const potluckRouter = router({
       });
     }),
 
+  /**
+   * Returns the event's slots in the EventSlot shape the client
+   * `SlotList` component consumes. Used by the Dishes tab inside
+   * the RSVP bottom sheet to mount the same UI as the standalone
+   * /events/[id]/potluck page without going through the tRPC
+   * `listSlots` route which returns the raw Prisma rows. Excludes
+   * signups from non-confirmed RSVPs so the dish list matches the
+   * public potluck overview.
+   */
+  getSlotsForEvent: protectedProcedure
+    .input(z.object({ eventId: z.string() }))
+    .query(async ({ input }) => {
+      const slots = await prisma.potluckSlot.findMany({
+        where: { eventId: input.eventId },
+        orderBy: { category: 'asc' },
+        include: {
+          signups: {
+            where: { rsvp: { status: RSVPStatus.CONFIRMED } },
+            orderBy: { id: 'asc' },
+            include: {
+              rsvp: {
+                select: {
+                  userId: true,
+                  user: { select: { id: true, name: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return slots.map((slot) => ({
+        id: slot.id,
+        name: slot.name,
+        category: slot.category,
+        slotType: slot.slotType,
+        maxSignups: slot.maxSignups,
+        currentSignups: slot.currentSignups,
+        signups: slot.signups.map((s) => ({
+          id: s.id,
+          dishName: s.dishName,
+          servings: s.servings,
+          dietaryLabels: s.dietaryLabels,
+          rsvp: {
+            userId: s.rsvp.userId,
+            user: s.rsvp.user,
+          },
+        })),
+      }));
+    }),
+
   signup: protectedProcedure
     .input(
       z.object({

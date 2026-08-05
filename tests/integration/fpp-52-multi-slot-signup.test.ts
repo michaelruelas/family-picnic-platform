@@ -6,11 +6,11 @@ const potluckPagePath = path.join(process.cwd(), 'src/app/events/[id]/potluck/pa
 const slotListPath = path.join(process.cwd(), 'src/components/potluck/SlotList.tsx');
 const mySlotsPath = path.join(process.cwd(), 'src/components/potluck/MySlotsSummary.tsx');
 const eventDetailPath = path.join(process.cwd(), 'src/app/events/[id]/page.tsx');
-const potluckRedirectPath = path.join(process.cwd(), 'src/app/potluck/route.ts');
 const rsvpCardPath = path.join(process.cwd(), 'src/components/event/EventRsvpCard.tsx');
 const rsvpSheetPath = path.join(process.cwd(), 'src/components/event/RsvpBottomSheet.tsx');
 const potluckRouterPath = path.join(process.cwd(), 'src/server/routers/potluck.router.ts');
 const usePotluckHookPath = path.join(process.cwd(), 'src/hooks/usePotluck.ts');
+const potluckEditorPath = path.join(process.cwd(), 'src/components/event/PotluckEditor.tsx');
 
 describe('FPP-27 — Slot list view grouped by category', () => {
   it('has a route at /events/[id]/potluck', async () => {
@@ -82,23 +82,53 @@ describe('FPP-25 — My-slots summary + remove', () => {
     const pageContent = await fs.readFile(potluckPagePath, 'utf-8');
     expect(pageContent).toContain('MySlotsSummary');
   });
+});
 
-  it('reaches My slots from the RSVP card on the event detail page', async () => {
+describe('FPP-21 — Potluck editing moved into the RSVP bottom sheet (Dishes tab)', () => {
+  it('replaces the standalone Manage potluck link with Edit attendance & dishes on the RSVP card', async () => {
     const cardContent = await fs.readFile(rsvpCardPath, 'utf-8');
-    expect(cardContent).toContain('/potluck');
-    expect(cardContent).toContain('Manage potluck dishes');
+    expect(cardContent).not.toContain('Manage potluck dishes');
+    expect(cardContent).toContain('Edit attendance');
+    expect(cardContent).toContain('dishes');
   });
 
-  it('reaches My slots from the RSVP form bottom sheet', async () => {
+  it('renders Attendance and Dishes tabs in the RSVP bottom sheet', async () => {
     const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
-    expect(sheetContent).toContain('/potluck');
-    expect(sheetContent).toContain('See who is bringing what');
-    expect(sheetContent).toContain('Skip to potluck signup');
+    expect(sheetContent).toContain('Attendance');
+    expect(sheetContent).toContain('Dishes');
+    expect(sheetContent).toContain('rsvp-tab-attendance');
+    expect(sheetContent).toContain('rsvp-tab-dishes');
   });
 
-  it('redirects /potluck to the next upcoming event with dishes', async () => {
-    const content = await fs.readFile(potluckRedirectPath, 'utf-8');
-    expect(content).toMatch(/\/events\/\$\{target\.id\}\/potluck/);
+  it('embeds PotluckEditor in the Dishes tab when the RSVP is confirmed', async () => {
+    const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
+    expect(sheetContent).toContain('PotluckEditor');
+    expect(sheetContent).toContain("status === 'CONFIRMED'");
+  });
+
+  it('shows an RSVP-first hint in the Dishes tab when the RSVP is not confirmed', async () => {
+    const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
+    expect(sheetContent).toContain('RSVP first');
+  });
+
+  it('supports the ?rsvpOpen=1#dishes deep link to open the sheet on the Dishes tab', async () => {
+    const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
+    expect(sheetContent).toContain('rsvpOpen');
+    expect(sheetContent).toContain('#dishes');
+  });
+
+  it('renders the standalone potluck page as read-only with a deep link to the editor', async () => {
+    const pageContent = await fs.readFile(potluckPagePath, 'utf-8');
+    expect(pageContent).toContain('readOnly');
+    expect(pageContent).toContain('Edit my dishes');
+    expect(pageContent).toContain('rsvpOpen=1');
+  });
+
+  it('mounts PotluckEditor with the event id', async () => {
+    const editorContent = await fs.readFile(potluckEditorPath, 'utf-8');
+    expect(editorContent).toContain('PotluckEditor');
+    expect(editorContent).toContain('SlotList');
+    expect(editorContent).toContain('MySlotsSummary');
   });
 
   it('reaches the potluck page from the event detail menu section', async () => {
@@ -114,6 +144,11 @@ describe('FPP-26/25 — Backed by the potluck router + hook', () => {
     const content = await fs.readFile(potluckRouterPath, 'utf-8');
     expect(content).toContain('getMySignups');
     expect(content).toContain('orderBy: { claimedAt:');
+  });
+
+  it('exposes a getSlotsForEvent query used by the Dishes tab', async () => {
+    const content = await fs.readFile(potluckRouterPath, 'utf-8');
+    expect(content).toContain('getSlotsForEvent');
   });
 
   it('invalidates getMySignups when signups change', async () => {

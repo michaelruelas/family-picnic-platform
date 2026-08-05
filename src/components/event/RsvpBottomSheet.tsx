@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useHouseholdNameMutation, useRsvpFormState, useRsvpMutation } from '~/hooks';
 import { RsvpAttending } from '~/lib/generated/enums';
@@ -10,6 +10,7 @@ import { householdNameSchema, HOUSEHOLD_NAME_MAX } from '~/lib/schemas/household
 import { calculateFee, type FeeAttendee } from '~/lib/fee';
 import { formatAmount } from '~/lib/currency';
 import Modal from '~/components/ui/Modal';
+import PotluckEditor from './PotluckEditor';
 import type { ExistingRsvp } from './types';
 
 interface RsvpBottomSheetProps {
@@ -117,7 +118,6 @@ export function RsvpBottomSheet({
   registrationFeeConfig,
   existingRsvp: _existingRsvp,
 }: RsvpBottomSheetProps) {
-  const router = useRouter();
   const { confirm, decline } = useRsvpMutation();
   const { updateName } = useHouseholdNameMutation();
   // Only query the form state when the sheet is open so we do not
@@ -135,9 +135,18 @@ export function RsvpBottomSheet({
   const [showDietary, setShowDietary] = useState(false);
   const [dietaryNotes, setDietaryNotes] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [phase, setPhase] = useState<'form' | 'confirmed'>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [confirmedRsvpId, setConfirmedRsvpId] = useState<string | null>(null);
+  // FPP-21: the bottom sheet now hosts a two-tab editor so the
+  // user can manage potluck dishes from the same surface that
+  // collects attendance. The Dishes tab is enabled only after the
+  // RSVP is confirmed; the Attendance tab is the default. After a
+  // successful confirm we switch to the Dishes tab so the user
+  // can immediately claim a slot. Deep link: when the URL is
+  // /events/[id]?rsvpOpen=1#dishes we land on the Dishes tab.
+  type Tab = 'attendance' | 'dishes';
+  const [activeTab, setActiveTab] = useState<Tab>('attendance');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const searchParams = useSearchParams();
   // FPP-80: household name is editable from the RSVP form. The
   // sheet seeds the input from the server snapshot and only
   // commits a rename to `household.update` when the trimmed value
@@ -159,18 +168,36 @@ export function RsvpBottomSheet({
       // triggered by a prop change, not a render-time cascading
       // update.
       /* eslint-disable react-hooks/set-state-in-effect */
-      setPhase('form');
       setDrafts([]);
       setNewMember({ name: '', age: '' });
       setShowAddMember(false);
       setShowDietary(false);
       setDietaryNotes('');
       setSubmitError(null);
-      setConfirmedRsvpId(null);
       setHouseholdName('');
       setHydrated(false);
+      setActiveTab('attendance');
+      setShowSuccess(false);
       /* eslint-enable react-hooks/set-state-in-effect */
     }
+  }, [isOpen]);
+
+  // FPP-21: honor the ?rsvpOpen=1#dishes deep link from the
+  // per-event potluck page. We only consult the search params on
+  // mount so the user's manual tab picks are not overridden on
+  // every render. The hash anchor (#dishes) is read from
+  // window.location because Next.js does not expose it on the
+  // router's search params.
+  useEffect(() => {
+    if (!isOpen) return;
+    const rsvpOpen = searchParams?.get('rsvpOpen') === '1';
+    const hash = typeof window !== 'undefined' ? window.location.hash : '';
+    if (rsvpOpen && hash === '#dishes') {
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setActiveTab('dishes');
+      /* eslint-enable react-hooks/set-state-in-effect */
+    }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [isOpen]);
 
   // Seed drafts from the server snapshot only on the first load.
@@ -317,15 +344,14 @@ export function RsvpBottomSheet({
           attending: d.attending,
         })),
       });
-      setConfirmedRsvpId(result.id);
-      setPhase('confirmed');
       if (onConfirmed) {
         onConfirmed(result.id);
       }
-      setTimeout(() => {
-        onClose();
-        router.push(`/my-events/${result.id}/confirmation`);
-      }, 1200);
+      // FPP-21: stay on the sheet and switch to the Dishes tab so
+      // the user can immediately claim a dish. The success banner
+      // confirms the RSVP without forcing a redirect.
+      setShowSuccess(true);
+      setActiveTab('dishes');
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : 'Something went wrong. Please try again.',
@@ -419,7 +445,65 @@ export function RsvpBottomSheet({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg" variant="bottom-sheet">
-      {phase === 'form' ? (
+      {/*
+        FPP-21: two-tab editor. The Attendance tab collects the
+        household roster; the Dishes tab embeds PotluckEditor so
+        the user can claim a slot without leaving the sheet. The
+        Dishes tab is enabled only after the RSVP is confirmed.
+      */}
+      <div
+        className="border-border bg-secondary/40 mx-auto mb-5 flex w-full max-w-md rounded-2xl border p-1"
+        role="tablist"
+        aria-label="RSVP sections"
+        data-testid="rsvp-tabs"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'attendance'}
+          data-testid="rsvp-tab-attendance"
+          onClick={() => setActiveTab('attendance')}
+          className={
+            activeTab === 'attendance'
+              ? 'bg-card text-foreground flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition-colors'
+              : 'text-muted-foreground hover:text-foreground flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors'
+          }
+        >
+          Attendance
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'dishes'}
+          data-testid="rsvp-tab-dishes"
+          onClick={() => setActiveTab('dishes')}
+          className={
+            activeTab === 'dishes'
+              ? 'bg-card text-foreground flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition-colors'
+              : 'text-muted-foreground hover:text-foreground flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors'
+          }
+        >
+          Dishes
+        </button>
+      </div>
+
+      {showSuccess && (
+        <div
+          className="bg-sage/15 ring-sage/30 mb-5 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm ring-1"
+          data-testid="rsvp-success-banner"
+          role="status"
+        >
+          <span className="bg-sage/30 text-sage flex h-7 w-7 items-center justify-center rounded-full font-bold">
+            ✓
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-foreground font-semibold">You&apos;re on the list!</p>
+            <p className="text-muted-foreground text-xs">Pick a dish below or close the sheet.</p>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'attendance' ? (
         <>
           <div className="text-center md:text-left">
             <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
@@ -649,37 +733,30 @@ export function RsvpBottomSheet({
           </button>
         </>
       ) : (
-        <div className="py-8 text-center">
-          <div className="bg-sage/20 mx-auto flex h-20 w-20 items-center justify-center rounded-full">
-            <svg
-              className="text-sage h-10 w-10"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h3 className="font-display text-foreground mt-6 text-3xl font-medium tracking-tight">
-            You&apos;re on the list!
-          </h3>
-          <p className="text-muted-foreground mt-2 text-base">
-            We can&apos;t wait to see you and the family.
-          </p>
-          {confirmedRsvpId && (
-            <>
-              <p className="text-muted-foreground mt-1 text-xs">
-                Redirecting to your confirmation…
+        <div data-testid="rsvp-dishes-tab">
+          {!formState.rsvp ? (
+            <div className="py-6 text-center">
+              <p className="text-muted-foreground text-sm">Loading your RSVP…</p>
+            </div>
+          ) : formState.rsvp.status === 'CONFIRMED' ? (
+            <PotluckEditor eventId={eventId} hasRsvp isRsvpConfirmed />
+          ) : (
+            <div className="py-6 text-center">
+              <div className="text-4xl">🍽️</div>
+              <h3 className="font-display text-foreground mt-4 text-2xl font-semibold">
+                RSVP first
+              </h3>
+              <p className="text-muted-foreground mt-2 text-sm">
+                Confirm your attendance on the Attendance tab to claim potluck dishes.
               </p>
-              <Link
-                href={`/events/${eventId}/potluck`}
-                onClick={onClose}
-                className="text-terracotta decoration-terracotta/30 hover:decoration-terracotta mt-4 inline-block text-sm font-semibold underline underline-offset-4"
+              <button
+                type="button"
+                onClick={() => setActiveTab('attendance')}
+                className="rounded-pill bg-terracotta press mt-5 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
               >
-                Skip to potluck signup →
-              </Link>
-            </>
+                Go to Attendance
+              </button>
+            </div>
           )}
         </div>
       )}
