@@ -7,30 +7,20 @@ import Select from '~/components/ui/Select';
 import Button from '~/components/ui/Button';
 import { VALID_REACTIONS } from '~/lib/constants';
 
-interface PhotoSearchProps {
-  events: { id: string; name: string }[];
-}
-
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
   { value: 'most_reacted', label: 'Most Reacted' },
 ];
 
-export default function PhotoSearch({ events }: PhotoSearchProps) {
+export default function PhotoSearch({ eventId }: { eventId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState(searchParams.get('q') || '');
-  const [eventId, setEventId] = useState(searchParams.get('event') || '');
   const [dateFrom, setDateFrom] = useState(searchParams.get('from') || '');
   const [dateTo, setDateTo] = useState(searchParams.get('to') || '');
   const [reaction, setReaction] = useState(searchParams.get('reaction') || '');
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest');
-
-  const eventOptions = [
-    { value: '', label: 'All Events' },
-    ...events.map((e) => ({ value: e.id, label: e.name })),
-  ];
 
   const reactionOptions = [
     { value: '', label: 'Any Reaction' },
@@ -40,25 +30,23 @@ export default function PhotoSearch({ events }: PhotoSearchProps) {
   const handleSearch = useCallback(() => {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
-    if (eventId) params.set('event', eventId);
     if (dateFrom) params.set('from', dateFrom);
     if (dateTo) params.set('to', dateTo);
     if (reaction) params.set('reaction', reaction);
     if (sortBy !== 'newest') params.set('sort', sortBy);
 
     const paramString = params.toString();
-    router.push(`/photos${paramString ? `?${paramString}` : ''}`);
-  }, [query, eventId, dateFrom, dateTo, reaction, sortBy, router]);
+    router.push(`/events/${eventId}/photos${paramString ? `?${paramString}` : ''}`);
+  }, [query, dateFrom, dateTo, reaction, sortBy, router, eventId]);
 
   const handleClear = useCallback(() => {
     setQuery('');
-    setEventId('');
     setDateFrom('');
     setDateTo('');
     setReaction('');
     setSortBy('newest');
-    router.push('/photos');
-  }, [router]);
+    router.push(`/events/${eventId}/photos`);
+  }, [router, eventId]);
 
   return (
     <div className="rounded-xl bg-white p-4 shadow-sm">
@@ -69,13 +57,6 @@ export default function PhotoSearch({ events }: PhotoSearchProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-        />
-
-        <Select
-          options={eventOptions}
-          value={eventId}
-          onChange={(e) => setEventId(e.target.value)}
-          placeholder="All Events"
         />
 
         <Select

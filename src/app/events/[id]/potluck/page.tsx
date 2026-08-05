@@ -7,6 +7,7 @@ import { RSVPStatus, EventStatus } from '~/lib/generated/enums';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 import MySlotsSummary from '~/components/potluck/MySlotsSummary';
 import SlotList, { type EventSlot } from '~/components/potluck/SlotList';
+import EventSubNav from '~/components/event/EventSubNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,6 +90,12 @@ export default async function EventPotluckPage({ params }: PageProps) {
     })),
   }));
 
+  const dishCount = slots.reduce((sum, slot) => sum + slot.signups.length, 0);
+
+  const eventPhotos = await prisma.photo.count({
+    where: { eventId: id, deletedAt: null },
+  });
+
   return (
     <main className="bg-background min-h-screen pb-24">
       <BreatheSection>
@@ -112,6 +119,14 @@ export default async function EventPotluckPage({ params }: PageProps) {
       </BreatheSection>
 
       <div className="mx-auto max-w-4xl px-5">
+        <div className="mt-6">
+          <EventSubNav
+            eventId={event.id}
+            dishCount={dishCount}
+            photoCount={eventPhotos}
+            active="potluck"
+          />
+        </div>
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_320px]">
           <div className="order-2 lg:order-1">
             {!isEventPublished || isPast ? (
