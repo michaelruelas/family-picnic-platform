@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as barrel from '~/lib/schemas';
 import {
   rsvpConfirmSchema,
   rsvpDeclineSchema,
@@ -573,5 +574,123 @@ describe('Household Schemas', () => {
       });
       expect(result.success).toBe(false);
     });
+  });
+});
+
+// FPP-34: phone + comms consent collected on the RSVP form. The
+// shared schema lives in src/lib/schemas/rsvp-contact.ts and is
+// exported via the schemas barrel. We test both the validator and
+// the diff helper that decides what to send to user.updatePreferences.
+describe('rsvpContactSchema', () => {
+  it('imports from the schemas barrel', async () => {
+    const barrel = await import('~/lib/schemas');
+    expect(barrel.rsvpContactSchema).toBeDefined();
+    expect(barrel.diffContact).toBeDefined();
+  });
+
+  it('accepts an empty payload (the form defaults)', () => {
+    const result = barrel.rsvpContactSchema.safeParse({ phone: '', smsConsent: false });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a valid E.164 phone when smsConsent is true', () => {
+    const result = barrel.rsvpContactSchema.safeParse({
+      phone: '+15551234567',
+      smsConsent: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a phone that is not E.164 even when consent is true', () => {
+    const result = barrel.rsvpContactSchema.safeParse({
+      phone: '555-1234',
+      smsConsent: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a phone without consent', () => {
+    const result = barrel.rsvpContactSchema.safeParse({
+      phone: '+15551234567',
+      smsConsent: false,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const consentIssue = result.error.issues.find((i) => i.path[0] === 'smsConsent');
+      expect(consentIssue?.message).toMatch(/consent/i);
+    }
+  });
+
+  it('rejects a phone without an explicit consent value', () => {
+    const result = barrel.rsvpContactSchema.safeParse({ phone: '+15551234567' });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts consent=true with no phone (legitimate: opt in without saving yet)', () => {
+    const result = barrel.rsvpContactSchema.safeParse({ phone: '', smsConsent: true });
+    expect(result.success).toBe(true);
+  });
+
+  it('trims whitespace before validating the phone', () => {
+    const result = barrel.rsvpContactSchema.safeParse({
+      phone: '  +15551234567  ',
+      smsConsent: true,
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+// diffContact is the "should we PATCH?" gate. Returning an empty
+// patch is the success case for a no-op submit; returning a non-empty
+// patch means the user changed something and we owe the server a
+// round-trip.
+describe('diffContact', () => {
+  const cleanSnapshot = { phoneNumber: null as string | null, smsConsent: false };
+
+  it('returns an empty patch when both fields are already in sync', () => {
+    const patch = barrel.diffContact({ phone: '', smsConsent: false }, cleanSnapshot);
+    expect(patch).toEqual({});
+  });
+
+  it('returns an empty patch when nothing changed on a filled profile', () => {
+    const patch = barrel.diffContact(
+      { phone: '+15551234567', smsConsent: true },
+      { phoneNumber: '+15551234567', smsConsent: true },
+    );
+    expect(patch).toEqual({});
+  });
+
+  it('emits a phone + consent patch when the user adds a new phone', () => {
+    const patch = barrel.diffContact({ phone: '+15551234567', smsConsent: true }, cleanSnapshot);
+    expect(patch.phoneNumber).toBe('+15551234567');
+    expect(patch.smsConsent).toBe(true);
+    expect(patch.smsConsentAt).toBeInstanceOf(Date);
+  });
+
+  it('clears phone and consent when the user removes a saved phone', () => {
+    const patch = barrel.diffContact(
+      { phone: '', smsConsent: false },
+      { phoneNumber: '+15551234567', smsConsent: true },
+    );
+    expect(patch.phoneNumber).toBeNull();
+    expect(patch.smsConsent).toBe(false);
+    expect(patch.smsConsentAt).toBeNull();
+  });
+
+  it('trims the phone before comparing so a stray space does not trigger a PATCH', () => {
+    const patch = barrel.diffContact(
+      { phone: '  +15551234567  ', smsConsent: true },
+      { phoneNumber: '+15551234567', smsConsent: true },
+    );
+    expect(patch).toEqual({});
+  });
+
+  it('only re-stamps smsConsent when the consent flag flipped, not when only the phone changed', () => {
+    const patch = barrel.diffContact(
+      { phone: '+15559876543', smsConsent: true },
+      { phoneNumber: '+15551234567', smsConsent: true },
+    );
+    expect(patch.phoneNumber).toBe('+15559876543');
+    expect(patch.smsConsent).toBeUndefined();
   });
 });
