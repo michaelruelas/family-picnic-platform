@@ -19,6 +19,7 @@ const { default: PotluckSignupForm } = await import('../PotluckSignupForm');
 const baseSlot = {
   id: 's-1',
   name: 'Salad',
+  category: 'MAIN',
   slotType: SlotType.UNLIMITED,
   maxSignups: null,
   currentSignups: 0,

@@ -23,7 +23,8 @@ export const potluckRouter = router({
           .trim()
           .max(120)
           .optional()
-          .transform((v) => (v === undefined || v === '' ? null : v)),
+          .nullable()
+          .transform((v) => (v == null || v === '' ? null : v)),
         slotType: z.enum([SlotType.LIMITED, SlotType.UNLIMITED]),
         maxSignups: z.number().int().positive().optional(),
       }),
@@ -50,7 +51,8 @@ export const potluckRouter = router({
           .trim()
           .max(120)
           .optional()
-          .transform((v) => (v === undefined ? undefined : v === '' ? null : v)),
+          .nullable()
+          .transform((v) => (v === undefined ? undefined : v == null || v === '' ? null : v)),
         maxSignups: z.number().int().positive().optional(),
       }),
     )

@@ -9,7 +9,7 @@ import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 import { RsvpLastUpdated } from '~/components/event/RsvpLastUpdated';
 import { FeeTotalBlock } from '~/components/event/FeeTotalBlock';
-import { POTLUCK_CATEGORY_LABELS } from '~/lib/constants';
+import { POTLUCK_CATEGORY_LABELS, slotDisplayName } from '~/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -277,7 +277,7 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
                     >
                       <span className="text-foreground font-medium">{signup.dishName}</span>
                       <span className="text-muted-foreground text-xs">
-                        {slot.name ?? POTLUCK_CATEGORY_LABELS[slot.category] ?? slot.category} ·{' '}
+                        {slotDisplayName(slot)} ·{' '}
                         {signup.servings} {signup.servings === 1 ? 'serving' : 'servings'}
                       </span>
                     </li>
