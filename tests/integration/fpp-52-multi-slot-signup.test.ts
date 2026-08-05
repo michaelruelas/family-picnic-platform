@@ -6,7 +6,6 @@ const potluckPagePath = path.join(process.cwd(), 'src/app/events/[id]/potluck/pa
 const slotListPath = path.join(process.cwd(), 'src/components/potluck/SlotList.tsx');
 const mySlotsPath = path.join(process.cwd(), 'src/components/potluck/MySlotsSummary.tsx');
 const eventDetailPath = path.join(process.cwd(), 'src/app/events/[id]/page.tsx');
-const potluckIndexPath = path.join(process.cwd(), 'src/app/potluck/page.tsx');
 const rsvpCardPath = path.join(process.cwd(), 'src/components/event/EventRsvpCard.tsx');
 const rsvpSheetPath = path.join(process.cwd(), 'src/components/event/RsvpBottomSheet.tsx');
 const potluckRouterPath = path.join(process.cwd(), 'src/server/routers/potluck.router.ts');
@@ -83,23 +82,14 @@ describe('FPP-25 — My-slots summary + remove', () => {
     expect(pageContent).toContain('MySlotsSummary');
   });
 
-  it('reaches My slots from the RSVP card on the event detail page', async () => {
-    const cardContent = await fs.readFile(rsvpCardPath, 'utf-8');
-    expect(cardContent).toContain('/potluck');
-    expect(cardContent).toContain('Manage potluck dishes');
-  });
-
-  it('reaches My slots from the RSVP form bottom sheet', async () => {
-    const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
-    expect(sheetContent).toContain('/potluck');
-    expect(sheetContent).toContain('See who is bringing what');
-    expect(sheetContent).toContain('Skip to potluck signup');
-  });
-
-  it('reaches the potluck page from the potluck overview CTA', async () => {
-    const content = await fs.readFile(potluckIndexPath, 'utf-8');
-    expect(content).toMatch(/href=\{`\/events\/\$\{event\.id\}\/potluck`\}/);
-  });
+  // FPP-51 removed the standalone potluck index page and the
+  // RSVP card's "Manage potluck dishes" deep link. Replacements
+  // for these reachability checks land in slot 04 (FPP-21),
+  // which introduces the Dishes tab inside the RSVP bottom
+  // sheet and the Edit attendance & dishes CTA on the RSVP
+  // card. Slot 01 only ships the page deletion and the 301
+  // route, so we keep the remaining tests focused on the slot
+  // it actually changes.
 
   it('reaches the potluck page from the event detail menu section', async () => {
     const content = await fs.readFile(eventDetailPath, 'utf-8');
