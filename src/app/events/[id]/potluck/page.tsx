@@ -127,6 +127,24 @@ export default async function EventPotluckPage({ params }: PageProps) {
             active="potluck"
           />
         </div>
+        {userId && (
+          <div
+            className="bg-sunlight/20 ring-sunlight/40 mt-6 flex flex-col gap-3 rounded-2xl px-5 py-4 text-sm ring-1 sm:flex-row sm:items-center sm:justify-between"
+            data-testid="potluck-readonly-banner"
+          >
+            <p className="text-foreground">
+              <span className="font-semibold">Bring a dish from your RSVP.</span> Open the sheet to
+              claim a slot.
+            </p>
+            <Link
+              href={`/events/${event.id}?rsvpOpen=1#dishes`}
+              className="rounded-pill bg-foreground text-background press hover:bg-foreground/90 inline-flex items-center justify-center px-4 py-2 text-sm font-semibold transition-all"
+              data-testid="potluck-edit-my-dishes"
+            >
+              Edit my dishes
+            </Link>
+          </div>
+        )}
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_320px]">
           <div className="order-2 lg:order-1">
             {!isEventPublished || isPast ? (
@@ -148,6 +166,7 @@ export default async function EventPotluckPage({ params }: PageProps) {
                 userId={userId}
                 isRsvpConfirmed={isRsvpConfirmed}
                 hasRsvp={hasRsvp}
+                readOnly
               />
             )}
           </div>

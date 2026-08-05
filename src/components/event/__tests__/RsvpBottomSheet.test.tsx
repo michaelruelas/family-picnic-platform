@@ -31,6 +31,7 @@ vi.mock('~/hooks', () => ({
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh, push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('react-dom', async () => {
