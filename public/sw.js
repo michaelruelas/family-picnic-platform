@@ -46,11 +46,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (
-    url.pathname === '/' ||
-    url.pathname.startsWith('/events') ||
-    url.pathname.startsWith('/potluck')
-  ) {
+  if (url.pathname === '/' || url.pathname.startsWith('/events')) {
     event.respondWith(staleWhileRevalidate(request));
     return;
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useHouseholdNameMutation, useRsvpFormState, useRsvpMutation } from '~/hooks';
 import { RsvpAttending } from '~/lib/generated/enums';
@@ -9,6 +9,7 @@ import { householdNameSchema, HOUSEHOLD_NAME_MAX } from '~/lib/schemas/household
 import { calculateFee, type FeeAttendee } from '~/lib/fee';
 import { formatAmount } from '~/lib/currency';
 import Modal from '~/components/ui/Modal';
+import { PotluckSection } from '~/components/potluck/PotluckSection';
 import type { ExistingRsvp } from './types';
 
 interface RsvpBottomSheetProps {
@@ -31,6 +32,14 @@ interface RsvpBottomSheetProps {
   // this prop is no longer used for hydration but is kept so existing
   // call sites (events page, sticky bar) compile without changes.
   existingRsvp?: ExistingRsvp | null;
+  isPast?: boolean;
+  /**
+   * FPP-51: the potluck page deep-links here with `?openRsvp=potluck`
+   * so the sheet opens pre-focused on the potluck section. When
+   * true, the potluck area is scrolled into view as soon as the
+   * sheet becomes visible.
+   */
+  initialPotluckFocus?: boolean;
 }
 
 interface AttendanceDraft {
@@ -115,6 +124,8 @@ export function RsvpBottomSheet({
   onConfirmed,
   registrationFeeConfig,
   existingRsvp: _existingRsvp,
+  isPast = false,
+  initialPotluckFocus = false,
 }: RsvpBottomSheetProps) {
   const router = useRouter();
   const { confirm, decline } = useRsvpMutation();
@@ -149,6 +160,13 @@ export function RsvpBottomSheet({
   // races with the confirm mutation cannot overwrite in-progress
   // edits.
   const [hydrated, setHydrated] = useState(false);
+  // FPP-51: when the sheet is opened with `?openRsvp=potluck` we
+  // focus the potluck section on first render. The ref targets
+  // the section's DOM node and the effect below scrolls it into
+  // view. We only fire the scroll once per open so manual scrolls
+  // by the user are not undone.
+  const potluckSectionRef = useRef<HTMLDivElement | null>(null);
+  const potluckFocusAppliedRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -168,6 +186,7 @@ export function RsvpBottomSheet({
       setConfirmedRsvpId(null);
       setHouseholdName('');
       setHydrated(false);
+      potluckFocusAppliedRef.current = false;
       /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [isOpen]);
@@ -189,6 +208,21 @@ export function RsvpBottomSheet({
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [isOpen, hydrated, formState]);
+
+  // FPP-51: when the sheet opens with `?openRsvp=potluck`, scroll
+  // the potluck section into view. We wait for the roster to
+  // finish loading (otherwise the section is hidden) and apply
+  // the scroll exactly once per open. Subsequent re-opens reset
+  // the gate via the close-effect above.
+  useEffect(() => {
+    if (!isOpen || !initialPotluckFocus) return;
+    if (potluckFocusAppliedRef.current) return;
+    if (isLoading || !formState) return;
+    const node = potluckSectionRef.current;
+    if (!node) return;
+    potluckFocusAppliedRef.current = true;
+    node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [isOpen, initialPotluckFocus, isLoading, formState]);
 
   const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
   const isFull = spotsRemaining !== null && spotsRemaining <= 0;
@@ -617,6 +651,16 @@ export function RsvpBottomSheet({
               {submitError}
             </p>
           )}
+
+          {/*
+            FPP-51: potluck management lives inside the RSVP form.
+            The section is gated on a confirmed RSVP (the potluck
+            router enforces this) and gracefully degrades to a hint
+            for users who have not yet RSVPed yes.
+          */}
+          <div ref={potluckSectionRef} data-testid="rsvp-potluck-anchor">
+            <PotluckSection eventId={eventId} isPast={isPast} />
+          </div>
 
           <button
             onClick={handleConfirm}

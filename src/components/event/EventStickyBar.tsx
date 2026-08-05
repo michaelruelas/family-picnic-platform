@@ -100,6 +100,7 @@ export function EventStickyBar({
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
         registrationFeeConfig={registrationFeeConfig}
+        isPast={isPast}
       />
     </>
   );

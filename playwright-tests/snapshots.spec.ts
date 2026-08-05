@@ -4,8 +4,13 @@ const pages = [
   { path: '/login', name: 'login-page' },
   { path: '/', name: 'home-page' },
   { path: '/events', name: 'events-page' },
-  { path: '/potluck', name: 'potluck-page' },
-  { path: '/photos', name: 'photos-page' },
+  // FPP-51: potluck and photos moved under event URLs. The legacy
+  // /potluck and /photos routes still resolve but redirect to the
+  // event-scoped pages, so capturing a screenshot of the legacy
+  // URL would just snapshot the redirected destination. Snapshot
+  // the event-scoped routes instead — see tickets/FPP-51.
+  { path: '/potluck', name: 'potluck-redirect-page' },
+  { path: '/photos', name: 'photos-redirect-page' },
 ];
 
 const themes = ['light', 'dark'] as const;

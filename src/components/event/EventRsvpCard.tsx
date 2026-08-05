@@ -45,6 +45,14 @@ interface EventRsvpCardProps {
     registrationFeeCents?: number;
     registrationFeeCurrency?: string;
   } | null;
+  /**
+   * FPP-51: the potluck page deep-links back to the event page
+   * with `?openRsvp=potluck` so the sheet opens pre-focused on
+   * the potluck section. The server passes the flag down so the
+   * sheet starts open and scrolls to the potluck area.
+   */
+  initialOpen?: boolean;
+  initialPotluckFocus?: boolean;
 }
 
 export function EventRsvpCard({
@@ -59,9 +67,11 @@ export function EventRsvpCard({
   currentAttending,
   registrationFeeConfig,
   existingRsvp,
+  initialOpen = false,
+  initialPotluckFocus = false,
 }: EventRsvpCardProps) {
   const { confirm, decline } = useRsvpMutation();
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(initialOpen);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -262,6 +272,8 @@ export function EventRsvpCard({
           maxCapacity={maxCapacity}
           currentAttending={currentAttending}
           registrationFeeConfig={registrationFeeConfig}
+          isPast={isPast}
+          initialPotluckFocus={initialPotluckFocus}
         />
       </>
     );
@@ -316,6 +328,8 @@ export function EventRsvpCard({
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
         registrationFeeConfig={registrationFeeConfig}
+        isPast={isPast}
+        initialPotluckFocus={initialPotluckFocus}
       />
     </>
   );

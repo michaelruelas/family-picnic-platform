@@ -528,7 +528,7 @@ The application uses flat route organization under `src/app/` without route grou
 Route groups `(auth)` and `(event)` were evaluated for shared layouts but were not adopted:
 
 - `(auth)/login/` — redundant with `/login/`, OAuth callbacks handled via `/api/auth/[...nextauth]`
-- `(event)/[eventId]/rsvp/`, `(event)/[eventId]/potluck/`, `(event)/[eventId]/photos/` — inline on event detail page `/events/[id]`
+- `(event)/[eventId]/rsvp/`, `(event)/[eventId]/potluck/`, `(event)/[eventId]/photos/` — initially inline on the event detail page; FPP-51 split potluck and photos into dedicated event-scoped pages, with potluck edits living in the RSVP form (deep-link via `?openRsvp=potluck`).
 
 ### Chosen Route Layout
 
@@ -542,16 +542,18 @@ No nested route groups; each page is a standalone route directory with its own `
 
 ### Public Routes
 
-| Route              | Description                      |
-| ------------------ | -------------------------------- |
-| `/`                | Home page                        |
-| `/login`           | Login page                       |
-| `/events`          | Events list                      |
-| `/events/[id]`     | Event detail with RSVP & potluck |
-| `/events/calendar` | Calendar view                    |
-| `/potluck`         | Potluck overview                 |
-| `/photos`          | Photo gallery                    |
-| `/my-events`       | User's RSVP history              |
+| Route                  | Description                                                            |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `/`                    | Home page                                                              |
+| `/login`               | Login page                                                             |
+| `/events`              | Events list                                                            |
+| `/events/[id]`         | Event detail with RSVP, inline potluck + photos summaries              |
+| `/events/[id]/potluck` | Event-scoped potluck (read-only). Edits live in the RSVP form (FPP-51) |
+| `/events/[id]/photos`  | Event-scoped photo gallery                                             |
+| `/events/calendar`     | Calendar view                                                          |
+| `/my-events`           | User's RSVP history                                                    |
+
+Legacy top-level routes (`/potluck`, `/photos`) are 308 redirects to the next relevant event (or a friendly message if none).
 
 ### Authenticated Routes
 

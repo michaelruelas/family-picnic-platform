@@ -1,5 +1,6 @@
 import { prisma } from '~/lib/prisma';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import PhotoCard from '~/components/PhotoCard';
@@ -14,6 +15,7 @@ export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ openRsvp?: string }>;
 }
 
 type PublicPotluckSignup = {
@@ -28,8 +30,14 @@ type PrivatePotluckSignup = PublicPotluckSignup & {
   };
 };
 
-export default async function EventDetailPage({ params }: Props) {
+export default async function EventDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { openRsvp } = await searchParams;
+  // FPP-51: the potluck page deep-links here with `?openRsvp=potluck`
+  // so the RSVP sheet opens pre-focused on potluck. Anything truthy
+  // counts as "open", but only `potluck` flips the deep-link flag
+  // passed to the sheet.
+  const initialPotluckFocus = openRsvp === 'potluck';
   const session = await getServerSession(authOptions);
   const isLoggedIn = !!session?.user?.id;
   const userId = session?.user?.id ?? null;
@@ -348,9 +356,17 @@ export default async function EventDetailPage({ params }: Props) {
                     The Potluck
                   </h2>
                 </div>
-                <p className="text-sage text-sm font-semibold">
-                  {totalPotluckDishes} {totalPotluckDishes === 1 ? 'dish' : 'dishes'} claimed
-                </p>
+                <div className="flex flex-col items-end gap-1">
+                  <p className="text-sage text-sm font-semibold">
+                    {totalPotluckDishes} {totalPotluckDishes === 1 ? 'dish' : 'dishes'} claimed
+                  </p>
+                  <Link
+                    href={`/events/${event.id}/potluck`}
+                    className="text-terracotta decoration-terracotta/30 hover:decoration-terracotta text-sm font-semibold underline underline-offset-4 transition-colors"
+                  >
+                    View full potluck →
+                  </Link>
+                </div>
               </div>
 
               {event.potluckSlots.length === 0 ? (
@@ -374,12 +390,7 @@ export default async function EventDetailPage({ params }: Props) {
                           (s) => s.signups.length === 0 || s.slotType === 'UNLIMITED',
                         );
                         if (openSlots.length === 0) return null;
-                        return (
-                          <AddDishCard
-                            eventId={event.id}
-                            existingCategories={Object.keys(slotsByCategory)}
-                          />
-                        );
+                        return <AddDishCard eventId={event.id} />;
                       })()}
                     {Object.entries(slotsByCategory).map(([category, slots]) => {
                       const dishes = slots.flatMap((slot) => slot.signups).slice(0, 4);
@@ -456,7 +467,7 @@ export default async function EventDetailPage({ params }: Props) {
             </BreatheSection>
 
             <BreatheSection>
-              <div className="flex items-end justify-between">
+              <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
                     Captured moments
@@ -465,6 +476,14 @@ export default async function EventDetailPage({ params }: Props) {
                     Photos
                   </h2>
                 </div>
+                {event.photos.length > 0 && (
+                  <Link
+                    href={`/events/${event.id}/photos`}
+                    className="text-terracotta decoration-terracotta/30 hover:decoration-terracotta text-sm font-semibold underline underline-offset-4 transition-colors"
+                  >
+                    View all photos →
+                  </Link>
+                )}
               </div>
               {event.photos.length === 0 ? (
                 <div className="bg-secondary mt-6 rounded-3xl p-12 text-center">
@@ -514,6 +533,8 @@ export default async function EventDetailPage({ params }: Props) {
                     : null
                 }
                 existingRsvp={existingRsvpForCard}
+                initialOpen={initialPotluckFocus && isLoggedIn}
+                initialPotluckFocus={initialPotluckFocus && isLoggedIn}
               />
             </div>
           </aside>
@@ -613,22 +634,17 @@ function PotluckCategoryCard({
   );
 }
 
-function AddDishCard({
-  eventId: _eventId,
-  existingCategories: _existingCategories,
-}: {
-  eventId: string;
-  existingCategories: string[];
-}) {
+function AddDishCard({ eventId }: { eventId: string }) {
   return (
-    <div className="border-sage/40 hover:bg-sage/5 flex w-[260px] shrink-0 flex-col items-center justify-center rounded-3xl border-2 border-dashed bg-transparent p-6 text-center transition-colors md:w-[280px]">
+    <Link
+      href={`/events/${eventId}/potluck`}
+      className="border-sage/40 hover:bg-sage/5 flex w-[260px] shrink-0 flex-col items-center justify-center rounded-3xl border-2 border-dashed bg-transparent p-6 text-center transition-colors md:w-[280px]"
+    >
       <div className="bg-sage/15 flex h-12 w-12 items-center justify-center rounded-full text-2xl">
         🍴
       </div>
       <h4 className="font-display text-foreground mt-3 text-lg font-semibold">Bring a dish</h4>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Look for an open slot on the menu above and sign up.
-      </p>
-    </div>
+      <p className="text-muted-foreground mt-1 text-sm">Pick an open slot from the full menu.</p>
+    </Link>
   );
 }

@@ -6,6 +6,9 @@ const mockDecline = { mutateAsync: vi.fn() };
 const mockUpdateName = { mutateAsync: vi.fn() };
 const mockRefresh = vi.fn();
 const mockRefetchFormState = vi.fn();
+const mockRefetchPotluckSlots = vi.fn();
+const mockPotluckSignup = { mutateAsync: vi.fn() };
+const mockPotluckCancelSignup = { mutateAsync: vi.fn() };
 
 const mockFormState = {
   data: null as unknown,
@@ -27,6 +30,28 @@ vi.mock('~/hooks', () => ({
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh, push: vi.fn() }),
+}));
+
+vi.mock('~/lib/trpc-client', () => ({
+  trpc: {
+    potluck: {
+      listSlots: {
+        useQuery: () => ({
+          data: [],
+          isLoading: false,
+          error: null,
+          refetch: mockRefetchPotluckSlots,
+        }),
+      },
+      signup: { useMutation: () => ({ ...mockPotluckSignup, isPending: false }) },
+      cancelSignup: { useMutation: () => ({ ...mockPotluckCancelSignup, isPending: false }) },
+    },
+    rsvp: {
+      getMyRsvp: {
+        useQuery: () => ({ data: null, isLoading: false, error: null }),
+      },
+    },
+  },
 }));
 
 vi.mock('react-dom', async () => {
