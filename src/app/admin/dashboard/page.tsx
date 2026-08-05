@@ -3,7 +3,6 @@ import { requireAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { RSVPStatus } from '~/lib/generated/enums';
 import DashboardCard from '~/components/admin/DashboardCard';
-import { getDietarySummary } from '~/lib/dietary';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +25,6 @@ async function getEventsWithDashboard() {
       });
 
       const confirmedRsvps = rsvps.filter((r) => r.status === RSVPStatus.CONFIRMED);
-      const dietarySummary = getDietarySummary(confirmedRsvps);
       const declinedRsvps = rsvps.filter((r) => r.status === RSVPStatus.DECLINED);
       const pendingRsvps = rsvps.filter(
         (r) => r.status === RSVPStatus.PENDING || r.status === RSVPStatus.INVITED,
@@ -79,7 +77,6 @@ async function getEventsWithDashboard() {
           headcount: totalHeadcount,
         },
         foodSummary: Object.values(foodSummary),
-        dietarySummary,
         recentAuditLogs,
       };
     }),
@@ -169,7 +166,7 @@ export default async function AdminDashboardPage() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          {eventsWithDashboard.map(({ event, rsvpSummary, foodSummary, dietarySummary }) => (
+          {eventsWithDashboard.map(({ event, rsvpSummary, foodSummary }) => (
             <DashboardCard
               key={event.id}
               eventId={event.id}
@@ -183,7 +180,6 @@ export default async function AdminDashboardPage() {
               eventStatus={event.status}
               rsvpSummary={rsvpSummary}
               foodSummary={foodSummary}
-              dietarySummary={dietarySummary}
               maxCapacity={event.maxCapacity}
             />
           ))}

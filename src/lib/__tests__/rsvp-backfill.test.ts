@@ -7,7 +7,6 @@ type RsvpRow = {
   userId: string;
   status: string;
   headcount: number;
-  dietaryNotes: string | null;
   respondedAt: Date | null;
   modifiedAt: Date;
   waitlistPosition: number | null;
@@ -20,7 +19,6 @@ function makeRsvp(overrides: Partial<RsvpRow>): RsvpRow {
     userId: 'user-1',
     status: 'CONFIRMED',
     headcount: 1,
-    dietaryNotes: null,
     respondedAt: new Date('2026-01-01T00:00:00Z'),
     modifiedAt: new Date('2026-01-01T00:00:00Z'),
     waitlistPosition: null,
@@ -163,7 +161,6 @@ describe('findDuplicateRsvpPlans', () => {
             id: 'newest',
             modifiedAt: new Date('2026-03-01T00:00:00Z'),
             headcount: 4,
-            dietaryNotes: 'vegan',
           }),
           makeRsvp({
             id: 'middle',
@@ -288,14 +285,12 @@ describe('mergeDuplicateRsvps', () => {
       modifiedAt: new Date('2026-02-01T00:00:00Z'),
       status: 'CONFIRMED',
       headcount: 3,
-      dietaryNotes: 'vegetarian',
     });
     const loser = makeRsvp({
       id: 'loser',
       modifiedAt: new Date('2026-01-01T00:00:00Z'),
       status: 'CONFIRMED',
       headcount: 1,
-      dietaryNotes: null,
     });
     const rsvpsByGroup = new Map<string, RsvpRow[]>([['event-1:user-1', [winner, loser]]]);
     const potluckReassignCounts = new Map<string, number>([['loser', 2]]);

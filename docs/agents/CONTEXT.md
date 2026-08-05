@@ -8,7 +8,7 @@ Family Picnic Platform is a private family engagement hub for an annual picnic e
 
 - **Household** - A family unit (e.g., "The Garcia Family"). Contains one or more Users and their Dependents.
 - **User** - An adult member of a household. Authenticated via Google OAuth or dev credentials.
-- **Dependent** - A child or other family member with dietary restrictions, managed by a User.
+- **Dependent** - A child or other family member, possibly with structured dietary labels, managed by a User.
 - **Event** - The annual picnic. Has a date, location, RSVP deadline, and max capacity.
 - **Invitation** - Links a Household to an Event. Single-use token sent via email.
 - **RSVP** - A Household's response to an Event (CONFIRMED/DECLINED/WAITLISTED).
@@ -46,7 +46,7 @@ Family Picnic Platform is a private family engagement hub for an annual picnic e
 1. Admin creates Event and sends Invitations to Households
 2. Invitation contains a single-use token
 3. User clicks link, authenticates, and submits RSVP
-4. RSVP includes headcount and dietary notes
+4. RSVP includes headcount
 5. If event is at capacity, user is placed on waitlist
 
 ### Potluck Coordination

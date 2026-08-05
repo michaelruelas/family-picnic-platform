@@ -22,7 +22,6 @@ describe('RSVP Schemas', () => {
       const result = rsvpConfirmSchema.safeParse({
         eventId: 'event-123',
         headcount: 2,
-        dietaryNotes: 'vegetarian',
       });
       expect(result.success).toBe(true);
     });
@@ -32,7 +31,6 @@ describe('RSVP Schemas', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.headcount).toBeUndefined();
-        expect(result.data.dietaryNotes).toBeUndefined();
       }
     });
 

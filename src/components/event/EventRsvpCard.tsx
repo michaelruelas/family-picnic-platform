@@ -38,7 +38,6 @@ interface EventRsvpCardProps {
     id: string;
     status: RSVPStatus;
     headcount: number;
-    dietaryNotes: string | null;
     modifiedAt: string;
     memberAttendances: MemberAttendance[];
     /** Fee snapshotted onto the Registration row at confirm / update time. */
@@ -162,12 +161,6 @@ export function EventRsvpCard({
                     Snapshot at RSVP time — changes to the event fee do not retroactively update
                     this amount.
                   </span>
-                </div>
-              )}
-              {existingRsvp.dietaryNotes && (
-                <div className="bg-sunlight/20 ring-sunlight/40 mt-4 rounded-2xl px-4 py-3 text-sm ring-1">
-                  <span className="text-foreground font-semibold">Dietary note:</span>{' '}
-                  <span className="text-foreground/80">{existingRsvp.dietaryNotes}</span>
                 </div>
               )}
               <RsvpLastUpdated modifiedAt={existingRsvp.modifiedAt} />

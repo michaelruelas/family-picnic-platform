@@ -13,7 +13,6 @@ export type ExistingRsvp = {
   id: string;
   status: RSVPStatus;
   headcount: number;
-  dietaryNotes: string | null;
   modifiedAt: string;
   memberAttendances: ExistingRsvpMemberAttendance[];
 };

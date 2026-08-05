@@ -9,7 +9,6 @@ interface RSVPFormProps {
   existingRsvp?: {
     status: RSVPStatus;
     headcount: number;
-    dietaryNotes: string | null;
     waitlistPosition?: number | null;
   } | null;
   rsvpDeadline?: string | null;
@@ -31,7 +30,6 @@ export default function RSVPForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [headcount, setHeadcount] = useState(existingRsvp?.headcount || 1);
-  const [dietaryNotes, setDietaryNotes] = useState(existingRsvp?.dietaryNotes || '');
   const [error, setError] = useState<string | null>(null);
   const [showDeclineConfirm, setShowDeclineConfirm] = useState(false);
 
@@ -49,7 +47,6 @@ export default function RSVPForm({
         await confirm.mutateAsync({
           eventId,
           headcount,
-          dietaryNotes: dietaryNotes || undefined,
         });
       } else {
         await decline.mutateAsync({ eventId });
@@ -123,19 +120,6 @@ export default function RSVPForm({
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-stone-700">
-                Dietary Notes (optional)
-              </label>
-              <textarea
-                value={dietaryNotes}
-                onChange={(e) => setDietaryNotes(e.target.value)}
-                placeholder="Allergies, preferences, etc."
-                rows={2}
-                className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
-              />
-            </div>
-
             <div className="flex gap-3">
               <button
                 onClick={() => handleSubmit('confirm')}
@@ -148,7 +132,6 @@ export default function RSVPForm({
                 onClick={() => {
                   setIsEditing(false);
                   setHeadcount(existingRsvp.headcount);
-                  setDietaryNotes(existingRsvp.dietaryNotes || '');
                   setError(null);
                 }}
                 disabled={isSubmitting}
@@ -176,9 +159,6 @@ export default function RSVPForm({
               Headcount: {existingRsvp.headcount}
               {existingRsvp.headcount > 1 && ' (including guests)'}
             </p>
-            {existingRsvp.dietaryNotes && (
-              <p className="text-sm text-stone-600">Dietary notes: {existingRsvp.dietaryNotes}</p>
-            )}
             {isRsvpOpen && (
               <div className="mt-2 flex gap-2">
                 <button
@@ -288,19 +268,6 @@ export default function RSVPForm({
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-stone-700">
-              Dietary Notes (optional)
-            </label>
-            <textarea
-              value={dietaryNotes}
-              onChange={(e) => setDietaryNotes(e.target.value)}
-              placeholder="Allergies, preferences, etc."
-              rows={2}
-              className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
-            />
-          </div>
-
           <button
             onClick={() => handleSubmit('confirm')}
             disabled={isSubmitting}
@@ -363,19 +330,6 @@ export default function RSVPForm({
               </option>
             ))}
           </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-stone-700">
-            Dietary Notes (optional)
-          </label>
-          <textarea
-            value={dietaryNotes}
-            onChange={(e) => setDietaryNotes(e.target.value)}
-            placeholder="Allergies, preferences, etc."
-            rows={2}
-            className="mt-1 block w-full rounded-lg border border-stone-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
-          />
         </div>
 
         <div className="flex gap-3">

@@ -314,11 +314,4 @@ const features = [
     emoji: '👨‍👩‍👧‍👦',
     bgClass: 'bg-terracotta/15',
   },
-  {
-    title: 'Allergies respected',
-    description:
-      'Note dietary needs once and we&apos;ll make sure the host knows. Nobody should go hungry.',
-    emoji: '🌿',
-    bgClass: 'bg-sage/20',
-  },
 ];

@@ -41,7 +41,6 @@ async function triggerWorkflow(
   userId: string,
   action: 'confirm' | 'decline',
   headcount?: number,
-  dietaryNotes?: string,
 ) {
   try {
     const { getOpenWorkflow } = await import('~/lib/ow-client');
@@ -59,7 +58,6 @@ async function triggerWorkflow(
         userId,
         householdId: user.householdId || userId,
         headcount: headcount ?? 1,
-        dietaryNotes,
       });
     } else {
       await ow.runWorkflow(rsvpDecline.spec, {
@@ -111,7 +109,7 @@ export async function POST(request: Request) {
 
       try {
         const body = await request.json();
-        const { eventId: reqEventId, action, headcount, dietaryNotes, memberAttendances } = body;
+        const { eventId: reqEventId, action, headcount, memberAttendances } = body;
         eventId = reqEventId;
 
         if (!eventId || !action) {
@@ -126,10 +124,9 @@ export async function POST(request: Request) {
             .object({
               eventId: z.string().min(1),
               headcount: z.number().int().min(0).optional(),
-              dietaryNotes: z.string().optional(),
               memberAttendances: z.array(rsvpMemberAttendanceInputSchema).optional(),
             })
-            .safeParse({ eventId, headcount, dietaryNotes, memberAttendances });
+            .safeParse({ eventId, headcount, memberAttendances });
 
           if (!confirmResult.success) {
             const errors = confirmResult.error.issues.map((i) => i.message);
@@ -281,7 +278,6 @@ export async function POST(request: Request) {
                   update: {
                     status: RSVPStatus.WAITLISTED,
                     headcount: tentativeHeadcount,
-                    dietaryNotes: dietaryNotes || null,
                     respondedAt: new Date(),
                     waitlistPosition,
                   },
@@ -291,7 +287,6 @@ export async function POST(request: Request) {
                     householdId,
                     status: RSVPStatus.WAITLISTED,
                     headcount: tentativeHeadcount,
-                    dietaryNotes: dietaryNotes || null,
                     respondedAt: new Date(),
                     waitlistPosition,
                   },
@@ -335,13 +330,11 @@ export async function POST(request: Request) {
                     {
                       status: existingWaitlistRsvp.status,
                       headcount: existingWaitlistRsvp.headcount,
-                      dietaryNotes: existingWaitlistRsvp.dietaryNotes,
                       waitlistPosition: existingWaitlistRsvp.waitlistPosition,
                     },
                     {
                       status: waitlisted.status,
                       headcount: waitlisted.headcount,
-                      dietaryNotes: waitlisted.dietaryNotes,
                       waitlistPosition: waitlisted.waitlistPosition,
                     },
                   );
@@ -355,13 +348,11 @@ export async function POST(request: Request) {
                         oldValue: {
                           status: existingWaitlistRsvp.status,
                           headcount: existingWaitlistRsvp.headcount,
-                          dietaryNotes: existingWaitlistRsvp.dietaryNotes,
                           waitlistPosition: existingWaitlistRsvp.waitlistPosition,
                         },
                         newValue: {
                           status: waitlisted.status,
                           headcount: waitlisted.headcount,
-                          dietaryNotes: waitlisted.dietaryNotes,
                           waitlistPosition: waitlisted.waitlistPosition,
                         },
                       },
@@ -385,7 +376,6 @@ export async function POST(request: Request) {
             householdId,
             status: action === 'confirm' ? RSVPStatus.CONFIRMED : RSVPStatus.DECLINED,
             headcount: tentativeHeadcount,
-            dietaryNotes: action === 'confirm' ? dietaryNotes || null : null,
             respondedAt: new Date(),
           };
 
@@ -427,7 +417,6 @@ export async function POST(request: Request) {
                 update: {
                   status: rsvpData.status,
                   headcount: rsvpData.headcount,
-                  dietaryNotes: rsvpData.dietaryNotes,
                   respondedAt: rsvpData.respondedAt,
                 },
                 create: rsvpData,
@@ -459,7 +448,6 @@ export async function POST(request: Request) {
                     oldValue: {
                       status: existingRsvp.status,
                       headcount: existingRsvp.headcount,
-                      dietaryNotes: existingRsvp.dietaryNotes,
                       waitlistPosition: existingRsvp.waitlistPosition,
                       memberAttendances: (existingRsvp.memberAttendances ?? []).map((a) => ({
                         householdMemberId: a.householdMemberId,
@@ -471,7 +459,6 @@ export async function POST(request: Request) {
                     newValue: {
                       status: declined.status,
                       headcount: declined.headcount,
-                      dietaryNotes: declined.dietaryNotes,
                       waitlistPosition: declined.waitlistPosition,
                       slotsReleased: existingRsvp.potluckSignups.length,
                       // Decline collapses every row to NO; compute
@@ -558,7 +545,6 @@ export async function POST(request: Request) {
               update: {
                 status: rsvpData.status,
                 headcount: rsvpData.headcount,
-                dietaryNotes: rsvpData.dietaryNotes,
                 respondedAt: rsvpData.respondedAt,
               },
               create: rsvpData,
@@ -610,7 +596,6 @@ export async function POST(request: Request) {
                 {
                   status: existingConfirmRsvp.status,
                   headcount: existingConfirmRsvp.headcount,
-                  dietaryNotes: existingConfirmRsvp.dietaryNotes,
                   waitlistPosition: existingConfirmRsvp.waitlistPosition,
                   memberAttendances: (existingConfirmRsvp.memberAttendances ?? []).map((a) => ({
                     householdMemberId: a.householdMemberId,
@@ -622,7 +607,6 @@ export async function POST(request: Request) {
                 {
                   status: updatedRsvp.status,
                   headcount: updatedRsvp.headcount,
-                  dietaryNotes: updatedRsvp.dietaryNotes,
                   waitlistPosition: updatedRsvp.waitlistPosition,
                   memberAttendances: finalAttendances.map((a) => ({
                     householdMemberId: a.householdMemberId,
@@ -642,7 +626,6 @@ export async function POST(request: Request) {
                     oldValue: {
                       status: existingConfirmRsvp.status,
                       headcount: existingConfirmRsvp.headcount,
-                      dietaryNotes: existingConfirmRsvp.dietaryNotes,
                       waitlistPosition: existingConfirmRsvp.waitlistPosition,
                       memberAttendances: (existingConfirmRsvp.memberAttendances ?? []).map((a) => ({
                         householdMemberId: a.householdMemberId,
@@ -654,7 +637,6 @@ export async function POST(request: Request) {
                     newValue: {
                       status: updatedRsvp.status,
                       headcount: updatedRsvp.headcount,
-                      dietaryNotes: updatedRsvp.dietaryNotes,
                       waitlistPosition: updatedRsvp.waitlistPosition,
                       memberAttendances: finalAttendances.map((a) => ({
                         householdMemberId: a.householdMemberId,
@@ -671,7 +653,7 @@ export async function POST(request: Request) {
             }
           });
 
-          triggerWorkflow(eventId!, session.user.id, 'confirm', tentativeHeadcount, dietaryNotes);
+          triggerWorkflow(eventId!, session.user.id, 'confirm', tentativeHeadcount);
 
           return NextResponse.json({ success: true, status: rsvpData.status });
         }

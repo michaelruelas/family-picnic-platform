@@ -1432,14 +1432,13 @@ describe('rsvp.router', () => {
       userId: 'user-1',
       status: 'CONFIRMED',
       headcount: 3,
-      dietaryNotes: 'Veggie',
     });
     mockPrisma.invitation.updateMany.mockResolvedValue({ count: 1 });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
-    const result = await caller.confirm({ eventId: 'evt-1', headcount: 3, dietaryNotes: 'Veggie' });
+    const result = await caller.confirm({ eventId: 'evt-1', headcount: 3 });
 
     expect(mockPrisma.rSVP.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1447,12 +1446,10 @@ describe('rsvp.router', () => {
         create: expect.objectContaining({
           status: 'CONFIRMED',
           headcount: 3,
-          dietaryNotes: 'Veggie',
         }),
         update: expect.objectContaining({
           status: 'CONFIRMED',
           headcount: 3,
-          dietaryNotes: 'Veggie',
         }),
       }),
     );
@@ -1464,7 +1461,6 @@ describe('rsvp.router', () => {
     const { writeAuditLog } = await import('~/lib/audit');
     (diff as ReturnType<typeof vi.fn>).mockReturnValue({
       headcount: { old: 2, new: 4 },
-      dietaryNotes: { old: 'No nuts', new: 'Vegetarian' },
     });
 
     const futureDate = new Date(Date.now() + 86400000 * 30);
@@ -1481,7 +1477,6 @@ describe('rsvp.router', () => {
       userId: 'user-1',
       status: 'CONFIRMED',
       headcount: 2,
-      dietaryNotes: 'No nuts',
       waitlistPosition: null,
     });
     mockPrisma.rSVP.upsert.mockResolvedValue({
@@ -1490,7 +1485,6 @@ describe('rsvp.router', () => {
       userId: 'user-1',
       status: 'CONFIRMED',
       headcount: 4,
-      dietaryNotes: 'Vegetarian',
       waitlistPosition: null,
     });
     mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
@@ -1501,7 +1495,6 @@ describe('rsvp.router', () => {
     await caller.confirm({
       eventId: 'evt-1',
       headcount: 4,
-      dietaryNotes: 'Vegetarian',
     });
 
     expect(writeAuditLog).toHaveBeenCalledWith(
@@ -1511,11 +1504,9 @@ describe('rsvp.router', () => {
         action: 'RSVP_UPDATE',
         oldValue: expect.objectContaining({
           headcount: 2,
-          dietaryNotes: 'No nuts',
         }),
         newValue: expect.objectContaining({
           headcount: 4,
-          dietaryNotes: 'Vegetarian',
         }),
       }),
       expect.objectContaining({ adminAuditLog: expect.any(Object) }),
@@ -1538,7 +1529,6 @@ describe('rsvp.router', () => {
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 2,
-      dietaryNotes: null,
       waitlistPosition: null,
     });
     mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
@@ -1607,7 +1597,6 @@ describe('rsvp.router', () => {
       userId: 'user-1',
       status: 'CONFIRMED',
       headcount: 2,
-      dietaryNotes: null,
       waitlistPosition: null,
     });
     mockPrisma.rSVP.upsert.mockResolvedValue({
@@ -1616,7 +1605,6 @@ describe('rsvp.router', () => {
       userId: 'user-1',
       status: 'WAITLISTED',
       headcount: 2,
-      dietaryNotes: null,
       waitlistPosition: 1,
     });
 
@@ -1695,12 +1683,11 @@ describe('rsvp.router', () => {
     await expect(caller.confirm({ eventId: 'evt-1' })).rejects.toThrow('User not found');
   });
 
-  it('update modifies headcount and dietaryNotes', async () => {
+  it('update modifies headcount', async () => {
     mockPrisma.rSVP.findUnique.mockResolvedValue({
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 2,
-      dietaryNotes: 'Original',
       waitlistPosition: null,
     });
     mockPrisma.rSVP.update.mockResolvedValue({
@@ -1708,19 +1695,18 @@ describe('rsvp.router', () => {
       eventId: 'evt-1',
       userId: 'user-1',
       headcount: 5,
-      dietaryNotes: 'Updated',
       waitlistPosition: null,
     });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
-    const result = await caller.update({ eventId: 'evt-1', headcount: 5, dietaryNotes: 'Updated' });
+    const result = await caller.update({ eventId: 'evt-1', headcount: 5 });
 
     expect(mockPrisma.rSVP.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { eventId_userId: { eventId: 'evt-1', userId: 'user-1' } },
-        data: { headcount: 5, dietaryNotes: 'Updated' },
+        data: { headcount: 5 },
       }),
     );
     expect(result.headcount).toBe(5);
@@ -1742,28 +1728,25 @@ describe('rsvp.router', () => {
     const { writeAuditLog } = await import('~/lib/audit');
     (diff as ReturnType<typeof vi.fn>).mockReturnValue({
       headcount: { old: 2, new: 5 },
-      dietaryNotes: { old: 'Original', new: 'Updated' },
     });
 
     mockPrisma.rSVP.findUnique.mockResolvedValue({
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 2,
-      dietaryNotes: 'Original',
       waitlistPosition: null,
     });
     mockPrisma.rSVP.update.mockResolvedValue({
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 5,
-      dietaryNotes: 'Updated',
       waitlistPosition: null,
     });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
-    await caller.update({ eventId: 'evt-1', headcount: 5, dietaryNotes: 'Updated' });
+    await caller.update({ eventId: 'evt-1', headcount: 5 });
 
     expect(writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1772,11 +1755,9 @@ describe('rsvp.router', () => {
         action: 'RSVP_UPDATE',
         oldValue: expect.objectContaining({
           headcount: 2,
-          dietaryNotes: 'Original',
         }),
         newValue: expect.objectContaining({
           headcount: 5,
-          dietaryNotes: 'Updated',
         }),
       }),
       expect.objectContaining({ adminAuditLog: expect.any(Object) }),
@@ -1792,21 +1773,19 @@ describe('rsvp.router', () => {
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 3,
-      dietaryNotes: 'Same',
       waitlistPosition: null,
     });
     mockPrisma.rSVP.update.mockResolvedValue({
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 3,
-      dietaryNotes: 'Same',
       waitlistPosition: null,
     });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
-    await caller.update({ eventId: 'evt-1', headcount: 3, dietaryNotes: 'Same' });
+    await caller.update({ eventId: 'evt-1', headcount: 3 });
 
     expect(writeAuditLog).not.toHaveBeenCalled();
   });
@@ -1847,7 +1826,6 @@ describe('rsvp.router', () => {
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 3,
-      dietaryNotes: 'Vegan',
       waitlistPosition: null,
       potluckSignups: [{ id: 'ps-1', slotId: 'slot-1', servings: 2 }],
       memberAttendances: [],
@@ -1857,7 +1835,6 @@ describe('rsvp.router', () => {
       id: 'rsvp-1',
       status: 'DECLINED',
       headcount: 0,
-      dietaryNotes: null,
       waitlistPosition: null,
       memberAttendances: [],
     });
@@ -1927,14 +1904,12 @@ describe('rsvp.router', () => {
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 2,
-      dietaryNotes: 'No nuts',
       waitlistPosition: null,
     });
     mockPrisma.rSVP.upsert.mockResolvedValue({
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 4,
-      dietaryNotes: 'Vegetarian',
       waitlistPosition: null,
     });
     mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
@@ -1945,14 +1920,13 @@ describe('rsvp.router', () => {
     await caller.confirm({
       eventId: 'evt-1',
       headcount: 4,
-      dietaryNotes: 'Vegetarian',
     });
 
     expect(writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'RSVP_UPDATE',
-        oldValue: expect.objectContaining({ headcount: 2, dietaryNotes: 'No nuts' }),
-        newValue: expect.objectContaining({ headcount: 4, dietaryNotes: 'Vegetarian' }),
+        oldValue: expect.objectContaining({ headcount: 2 }),
+        newValue: expect.objectContaining({ headcount: 4 }),
       }),
       expect.objectContaining({ adminAuditLog: expect.any(Object) }),
     );
@@ -1974,14 +1948,12 @@ describe('rsvp.router', () => {
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 2,
-      dietaryNotes: 'Same',
       waitlistPosition: null,
     });
     mockPrisma.rSVP.upsert.mockResolvedValue({
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 2,
-      dietaryNotes: 'Same',
       waitlistPosition: null,
     });
     mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
@@ -1989,7 +1961,7 @@ describe('rsvp.router', () => {
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
-    await caller.confirm({ eventId: 'evt-1', headcount: 2, dietaryNotes: 'Same' });
+    await caller.confirm({ eventId: 'evt-1', headcount: 2 });
 
     expect(writeAuditLog).not.toHaveBeenCalled();
   });
@@ -2002,27 +1974,25 @@ describe('rsvp.router', () => {
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 2,
-      dietaryNotes: 'Original',
       waitlistPosition: null,
     });
     mockPrisma.rSVP.update.mockResolvedValue({
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 5,
-      dietaryNotes: 'Updated',
       waitlistPosition: null,
     });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
-    await caller.update({ eventId: 'evt-1', headcount: 5, dietaryNotes: 'Updated' });
+    await caller.update({ eventId: 'evt-1', headcount: 5 });
 
     expect(writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'RSVP_UPDATE',
-        oldValue: expect.objectContaining({ headcount: 2, dietaryNotes: 'Original' }),
-        newValue: expect.objectContaining({ headcount: 5, dietaryNotes: 'Updated' }),
+        oldValue: expect.objectContaining({ headcount: 2 }),
+        newValue: expect.objectContaining({ headcount: 5 }),
       }),
       expect.objectContaining({ adminAuditLog: expect.any(Object) }),
     );
@@ -2036,21 +2006,19 @@ describe('rsvp.router', () => {
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 3,
-      dietaryNotes: 'Same',
       waitlistPosition: null,
     });
     mockPrisma.rSVP.update.mockResolvedValue({
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 3,
-      dietaryNotes: 'Same',
       waitlistPosition: null,
     });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
-    await caller.update({ eventId: 'evt-1', headcount: 3, dietaryNotes: 'Same' });
+    await caller.update({ eventId: 'evt-1', headcount: 3 });
 
     expect(writeAuditLog).not.toHaveBeenCalled();
   });
@@ -2062,7 +2030,6 @@ describe('rsvp.router', () => {
       id: 'rsvp-1',
       status: 'CONFIRMED',
       headcount: 3,
-      dietaryNotes: 'Vegan',
       waitlistPosition: null,
       potluckSignups: [{ id: 'ps-1', slotId: 'slot-1', servings: 2 }],
       memberAttendances: [],
@@ -2072,7 +2039,6 @@ describe('rsvp.router', () => {
       id: 'rsvp-1',
       status: 'DECLINED',
       headcount: 0,
-      dietaryNotes: null,
       waitlistPosition: null,
       memberAttendances: [],
     });
@@ -2092,7 +2058,6 @@ describe('rsvp.router', () => {
         oldValue: expect.objectContaining({
           status: 'CONFIRMED',
           headcount: 3,
-          dietaryNotes: 'Vegan',
         }),
         newValue: expect.objectContaining({
           status: 'DECLINED',
@@ -2361,7 +2326,6 @@ describe('rsvp.router', () => {
       userId: 'user-1',
       status: 'CONFIRMED',
       headcount: 1,
-      dietaryNotes: null,
     });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
@@ -2410,7 +2374,6 @@ describe('rsvp.router', () => {
         id: 'r-1',
         status: 'CONFIRMED',
         headcount: 1,
-        dietaryNotes: null,
         waitlistPosition: null,
         memberAttendances: [
           {
@@ -2433,7 +2396,6 @@ describe('rsvp.router', () => {
         id: 'r-1',
         status: 'CONFIRMED',
         headcount: 1,
-        dietaryNotes: null,
         waitlistPosition: null,
         memberAttendances: [
           {

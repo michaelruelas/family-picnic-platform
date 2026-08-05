@@ -100,7 +100,6 @@ export const rsvpConfirm = ow.defineWorkflow<
     userId: string;
     householdId: string;
     headcount: number;
-    dietaryNotes?: string;
   },
   { status: 'CONFIRMED' | 'WAITLISTED'; waitlistPosition?: number }
 >({ name: 'rsvp-confirm', schema: rsvpConfirmSchema }, async ({ input, step }) => {

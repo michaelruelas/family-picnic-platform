@@ -156,8 +156,6 @@ export function RsvpBottomSheet({
   const [drafts, setDrafts] = useState<AttendanceDraft[]>([]);
   const [newMember, setNewMember] = useState({ name: '', age: '' });
   const [showAddMember, setShowAddMember] = useState(false);
-  const [showDietary, setShowDietary] = useState(false);
-  const [dietaryNotes, setDietaryNotes] = useState('');
   // FPP-34: optional phone + comms consent. The phone is a free-form
   // E.164 string the user types; the consent checkbox gates saving a
   // non-empty value. We hydrate both from the formState snapshot so
@@ -202,8 +200,6 @@ export function RsvpBottomSheet({
       setDrafts([]);
       setNewMember({ name: '', age: '' });
       setShowAddMember(false);
-      setShowDietary(false);
-      setDietaryNotes('');
       setPhone('');
       setSmsConsent(false);
       setShowContact(false);
@@ -245,8 +241,6 @@ export function RsvpBottomSheet({
     // hydration is gated on `hydrated` so it never runs twice.
     /* eslint-disable react-hooks/set-state-in-effect */
     setDrafts(buildInitialDrafts(formState.members, formState.rsvp?.memberAttendances ?? []));
-    setDietaryNotes(formState.rsvp?.dietaryNotes ?? '');
-    setShowDietary(Boolean(formState.rsvp?.dietaryNotes));
     setHouseholdName(formState.householdName ?? '');
     // FPP-34: hydrate the optional phone + consent from the server
     // snapshot. The phone string is whatever the user has saved;
@@ -506,7 +500,6 @@ export function RsvpBottomSheet({
       }
       const result = await confirm.mutateAsync({
         eventId,
-        dietaryNotes: dietaryNotes.trim() || undefined,
         memberAttendances: trimmedDrafts.map((d) => ({
           householdMemberId: d.householdMemberId,
           memberName: d.memberName,
@@ -919,30 +912,6 @@ export function RsvpBottomSheet({
               </span>
             </div>
           )}
-
-          <div className="mt-3">
-            {!showDietary ? (
-              <button
-                onClick={() => setShowDietary(true)}
-                className="text-terracotta decoration-terracotta/30 hover:decoration-terracotta text-sm font-semibold underline underline-offset-4 transition-colors"
-              >
-                + Add a dietary note (optional)
-              </button>
-            ) : (
-              <div>
-                <label className="text-foreground mb-2 block text-sm font-medium">
-                  Dietary note (optional)
-                </label>
-                <textarea
-                  value={dietaryNotes}
-                  onChange={(e) => setDietaryNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Allergies, preferences, etc."
-                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
-                />
-              </div>
-            )}
-          </div>
 
           {/*
             FPP-34: optional phone + comms consent. Collapsed by

@@ -213,12 +213,6 @@ export default async function EventMembersPage({ params }: PageProps) {
                     No member attendance recorded (legacy RSVP).
                   </p>
                 )}
-
-                {rsvp.dietaryNotes && (
-                  <p className="text-muted-foreground mt-3 text-xs">
-                    🥗 Dietary note: {rsvp.dietaryNotes}
-                  </p>
-                )}
               </div>
             );
           })}

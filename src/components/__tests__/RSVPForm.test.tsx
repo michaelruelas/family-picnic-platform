@@ -33,7 +33,7 @@ describe('RSVPForm', () => {
         eventId="e1"
         isPast={true}
         currentAttending={0}
-        existingRsvp={{ status: 'CONFIRMED', headcount: 1, dietaryNotes: null }}
+        existingRsvp={{ status: 'CONFIRMED', headcount: 1 }}
       />,
     );
     expect(screen.getByText(/You attended/i)).toBeInTheDocument();
@@ -52,7 +52,6 @@ describe('RSVPForm', () => {
       expect(mockConfirm.mutateAsync).toHaveBeenCalledWith({
         eventId: 'e1',
         headcount: 1,
-        dietaryNotes: undefined,
       });
     });
   });
@@ -85,7 +84,7 @@ describe('RSVPForm', () => {
         eventId="e1"
         isPast={false}
         currentAttending={1}
-        existingRsvp={{ status: 'CONFIRMED', headcount: 2, dietaryNotes: 'vegetarian' }}
+        existingRsvp={{ status: 'CONFIRMED', headcount: 2 }}
       />,
     );
     expect(screen.getByText(/You.*Attending/i)).toBeInTheDocument();
@@ -97,7 +96,7 @@ describe('RSVPForm', () => {
         eventId="e1"
         isPast={false}
         currentAttending={0}
-        existingRsvp={{ status: 'DECLINED', headcount: 0, dietaryNotes: null }}
+        existingRsvp={{ status: 'DECLINED', headcount: 0 }}
       />,
     );
     expect(screen.getByText(/You Declined/i)).toBeInTheDocument();
@@ -113,7 +112,6 @@ describe('RSVPForm', () => {
         existingRsvp={{
           status: 'WAITLISTED',
           headcount: 1,
-          dietaryNotes: null,
           waitlistPosition: 3,
         }}
       />,

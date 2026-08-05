@@ -194,7 +194,6 @@ async function main() {
       householdId: garciaHousehold.id,
       status: 'CONFIRMED',
       headcount: 3,
-      dietaryNotes: 'One child is nut-free and dairy-free',
       respondedAt: new Date('2026-07-01T10:00:00Z'),
     },
   });
@@ -206,7 +205,6 @@ async function main() {
       householdId: thompsonHousehold.id,
       status: 'CONFIRMED',
       headcount: 2,
-      dietaryNotes: 'Vegetarian options please',
       respondedAt: new Date('2026-07-01T11:00:00Z'),
     },
   });

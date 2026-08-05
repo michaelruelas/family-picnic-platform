@@ -172,17 +172,16 @@ RSVP (1) ──────< (N) PotluckSignup
 
 #### RSVP
 
-| Field        | Type      | Description                               |
-| ------------ | --------- | ----------------------------------------- |
-| id           | UUID      | Primary key                               |
-| eventId      | UUID      | FK to Event                               |
-| userId       | UUID      | FK to User (responder)                    |
-| householdId  | UUID      | FK to Household                           |
-| status       | Enum      | INVITED, PENDING, CONFIRMED, DECLINED     |
-| headcount    | Int       | Number of attending (includes dependents) |
-| dietaryNotes | String?   | Special dietary requirements              |
-| respondedAt  | DateTime? | Response timestamp                        |
-| createdAt    | DateTime  | Creation timestamp                        |
+| Field       | Type      | Description                               |
+| ----------- | --------- | ----------------------------------------- |
+| id          | UUID      | Primary key                               |
+| eventId     | UUID      | FK to Event                               |
+| userId      | UUID      | FK to User (responder)                    |
+| householdId | UUID      | FK to Household                           |
+| status      | Enum      | INVITED, PENDING, CONFIRMED, DECLINED     |
+| headcount   | Int       | Number of attending (includes dependents) |
+| respondedAt | DateTime? | Response timestamp                        |
+| createdAt   | DateTime  | Creation timestamp                        |
 
 **State Machine**: `INVITED → PENDING → RESPONDED (CONFIRMED | DECLINED)`
 
@@ -415,10 +414,9 @@ enum RefundStatus {
 2. User selects household (or creates if new)
 3. User confirms attendance for household
 4. User specifies headcount (including dependents)
-5. User adds dietary notes (optional)
-6. RSVP status transitions: INVITED → PENDING → CONFIRMED/DECLINED
-7. Confirmation sent via preferred channel
-8. If DECLINED → block potluck signup
+5. RSVP status transitions: INVITED → PENDING → CONFIRMED/DECLINED
+6. Confirmation sent via preferred channel
+7. If DECLINED → block potluck signup
 ```
 
 **Two-Phase RSVP**:

@@ -3,10 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  getDietaryLabelConfig,
-  STANDARD_DIETARY_LABELS,
-} from '~/components/dietary/DietaryLabelChip';
 
 interface RsvpSummary {
   total: number;
@@ -28,7 +24,6 @@ interface DashboardCardProps {
   eventStatus: string;
   rsvpSummary: RsvpSummary;
   foodSummary: FoodCategory[];
-  dietarySummary?: Record<string, number>;
   maxCapacity?: number | null;
 }
 
@@ -39,7 +34,6 @@ export default function DashboardCard({
   eventStatus,
   rsvpSummary,
   foodSummary,
-  dietarySummary,
   maxCapacity,
 }: DashboardCardProps) {
   const router = useRouter();
@@ -145,27 +139,6 @@ export default function DashboardCard({
                 </p>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {dietarySummary && Object.values(dietarySummary).some((c) => c > 0) && (
-        <div className="bg-sage/15 mt-4 rounded-lg p-3">
-          <p className="text-sage text-sm font-medium">Dietary Restrictions</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {STANDARD_DIETARY_LABELS.map((label) => {
-              const count = dietarySummary[label] || 0;
-              if (count === 0) return null;
-              const config = getDietaryLabelConfig(label);
-              return (
-                <span
-                  key={label}
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${config.color}`}
-                >
-                  {config.emoji} {config.label}: {count}
-                </span>
-              );
-            })}
           </div>
         </div>
       )}

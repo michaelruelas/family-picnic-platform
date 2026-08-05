@@ -139,9 +139,6 @@ export default function LoginForm({ devAuthEnabled }: LoginFormProps) {
             <li className="flex items-center gap-2">
               <span className="text-sage">✓</span> Share photos from events
             </li>
-            <li className="flex items-center gap-2">
-              <span className="text-sage">✓</span> Track dietary needs for your household
-            </li>
           </ul>
         </div>
 
