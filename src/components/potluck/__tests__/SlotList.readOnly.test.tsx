@@ -83,14 +83,7 @@ beforeEach(() => {
 describe('SlotList readOnly mode (FPP-21)', () => {
   it('does not render any potluck-claim-* testids when readOnly is true', () => {
     render(
-      <SlotList
-        eventId="evt-1"
-        slots={baseSlots}
-        userId="u-1"
-        hasRsvp
-        isRsvpConfirmed
-        readOnly
-      />,
+      <SlotList eventId="evt-1" slots={baseSlots} userId="u-1" hasRsvp isRsvpConfirmed readOnly />,
     );
     const claims = screen.queryAllByTestId(/^potluck-claim-/);
     expect(claims).toHaveLength(0);
@@ -107,14 +100,7 @@ describe('SlotList readOnly mode (FPP-21)', () => {
       slot: { id: 's-1', name: 'Mac and cheese', category: 'MAIN', slotType: 'UNLIMITED' },
     });
     render(
-      <SlotList
-        eventId="evt-1"
-        slots={baseSlots}
-        userId="u-1"
-        hasRsvp
-        isRsvpConfirmed
-        readOnly
-      />,
+      <SlotList eventId="evt-1" slots={baseSlots} userId="u-1" hasRsvp isRsvpConfirmed readOnly />,
     );
     expect(screen.queryAllByTestId(/^potluck-edit-/)).toHaveLength(0);
     expect(screen.queryAllByTestId(/^potluck-drop-/)).toHaveLength(0);
@@ -131,14 +117,7 @@ describe('SlotList readOnly mode (FPP-21)', () => {
       slot: { id: 's-1', name: 'Mac and cheese', category: 'MAIN', slotType: 'UNLIMITED' },
     });
     render(
-      <SlotList
-        eventId="evt-1"
-        slots={baseSlots}
-        userId="u-1"
-        hasRsvp
-        isRsvpConfirmed
-        readOnly
-      />,
+      <SlotList eventId="evt-1" slots={baseSlots} userId="u-1" hasRsvp isRsvpConfirmed readOnly />,
     );
     expect(screen.getByTestId('yours-badge')).toBeInTheDocument();
   });

@@ -111,7 +111,10 @@ export default async function EventPhotosPage({ params }: PageProps) {
             </p>
           </div>
         ) : (
-          <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3" data-testid="event-photo-grid">
+          <div
+            className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3"
+            data-testid="event-photo-grid"
+          >
             {event.photos.map((photo) => (
               <PhotoCard
                 key={photo.id}

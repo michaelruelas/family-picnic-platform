@@ -133,8 +133,8 @@ export default async function EventPotluckPage({ params }: PageProps) {
             data-testid="potluck-readonly-banner"
           >
             <p className="text-foreground">
-              <span className="font-semibold">Bring a dish from your RSVP.</span> Open the sheet
-              to claim a slot.
+              <span className="font-semibold">Bring a dish from your RSVP.</span> Open the sheet to
+              claim a slot.
             </p>
             <Link
               href={`/events/${event.id}?rsvpOpen=1#dishes`}
