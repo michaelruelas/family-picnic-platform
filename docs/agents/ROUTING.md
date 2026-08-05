@@ -4,16 +4,22 @@ Next.js App Router pages and API endpoints.
 
 ## Public Routes
 
-| Route              | File                               | Description                      |
-| ------------------ | ---------------------------------- | -------------------------------- |
-| `/`                | `src/app/page.tsx`                 | Home page                        |
-| `/login`           | `src/app/login/page.tsx`           | Login page                       |
-| `/events`          | `src/app/events/page.tsx`          | Events list                      |
-| `/events/[id]`     | `src/app/events/[id]/page.tsx`     | Event detail with RSVP & potluck |
-| `/events/calendar` | `src/app/events/calendar/page.tsx` | Calendar view                    |
-| `/potluck`         | `src/app/potluck/page.tsx`         | Potluck overview                 |
-| `/photos`          | `src/app/photos/page.tsx`          | Photo gallery                    |
-| `/my-events`       | `src/app/my-events/page.tsx`       | User's RSVP history              |
+| Route                  | File                                   | Description                      |
+| ---------------------- | -------------------------------------- | -------------------------------- |
+| `/`                    | `src/app/page.tsx`                     | Home page                        |
+| `/login`               | `src/app/login/page.tsx`               | Login page                       |
+| `/events`              | `src/app/events/page.tsx`              | Events list                      |
+| `/events/[id]`         | `src/app/events/[id]/page.tsx`         | Event detail with RSVP & sub-nav |
+| `/events/[id]/potluck` | `src/app/events/[id]/potluck/page.tsx` | Event-scoped potluck (read-only) |
+| `/events/[id]/photos`  | `src/app/events/[id]/photos/page.tsx`  | Event-scoped photo gallery       |
+| `/events/calendar`     | `src/app/events/calendar/page.tsx`     | Calendar view                    |
+| `/my-events`           | `src/app/my-events/page.tsx`           | User's RSVP history              |
+
+Legacy `/potluck` and `/photos` URLs are redirected (301) to the
+relevant event-scoped URL by `src/app/potluck/route.ts` and
+`src/app/photos/route.ts` respectively. When no event matches
+the redirect, the route returns a 404 HTML body with a link to
+`/events`.
 
 ## Authenticated Routes
 
