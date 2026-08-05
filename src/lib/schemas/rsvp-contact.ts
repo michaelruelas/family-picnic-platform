@@ -49,6 +49,12 @@ export type RsvpContactInput = z.infer<typeof rsvpContactSchema>;
  *   and only emit a PATCH when something actually changed (either the
  *   phone or the consent). This avoids a needless round-trip when the
  *   user opens the form and submits without typing anything.
+ *
+ * The patch only carries `phoneNumber` and `smsConsent`. `smsConsentAt`
+ * and `smsConsentIp` are written by the server in
+ * `user.updatePreferences`, where the actual IP and timestamp come
+ * from the request context. The client cannot produce a trustworthy
+ * consent timestamp, so we do not try to ship one across the wire.
  */
 export interface ContactProfileSnapshot {
   phoneNumber: string | null;
@@ -58,8 +64,6 @@ export interface ContactProfileSnapshot {
 export interface ContactPatch {
   phoneNumber?: string | null;
   smsConsent?: boolean;
-  smsConsentAt?: Date | null;
-  smsConsentIp?: string | null;
 }
 
 export function diffContact(
@@ -72,8 +76,6 @@ export function diffContact(
     return {
       phoneNumber: null,
       smsConsent: false,
-      smsConsentAt: null,
-      smsConsentIp: null,
     };
   }
   // Non-empty path: the schema has already enforced smsConsent=true,
@@ -84,10 +86,6 @@ export function diffContact(
   if (!phoneChanged && !consentChanged) return {};
   const patch: ContactPatch = {};
   if (phoneChanged) patch.phoneNumber = trimmed;
-  if (consentChanged) {
-    patch.smsConsent = consent;
-    patch.smsConsentAt = consent ? new Date() : null;
-    patch.smsConsentIp = consent ? null : null;
-  }
+  if (consentChanged) patch.smsConsent = consent;
   return patch;
 }

@@ -155,7 +155,15 @@ describe('FPP-58: RSVP names + decline path + phone capture', () => {
       expect(trpc).toMatch(/headers\?:\s*Headers/);
       const userRouter = await fs.readFile(userRouterPath, 'utf-8');
       expect(userRouter).toMatch(/smsConsentIp/);
-      expect(userRouter).toMatch(/extractClientIp/);
+      // The user router must reuse the allowlist-based extractClientIp
+      // from the shared client-ip module rather than ship a less-secure
+      // local duplicate. Local copies tend to skip the trusted-proxy
+      // gate and would silently stamp a spoofed header from the client.
+      expect(userRouter).toContain('~/lib/client-ip');
+      expect(userRouter).toMatch(/parseTrustedProxyIps/);
+      expect(userRouter).toMatch(/TRUSTED_PROXY_IPS/);
+      // And the duplicate local definition must be gone.
+      expect(userRouter).not.toMatch(/function\s+extractClientIp\s*\(/);
     });
 
     it('renders the phone input + consent checkbox on the RSVP form', async () => {

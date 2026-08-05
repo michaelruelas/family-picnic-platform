@@ -664,7 +664,11 @@ describe('diffContact', () => {
     const patch = barrel.diffContact({ phone: '+15551234567', smsConsent: true }, cleanSnapshot);
     expect(patch.phoneNumber).toBe('+15551234567');
     expect(patch.smsConsent).toBe(true);
-    expect(patch.smsConsentAt).toBeInstanceOf(Date);
+    // The patch only carries phone + consent. smsConsentAt and
+    // smsConsentIp are server-stamped from the request context, not
+    // the form state.
+    expect(patch).not.toHaveProperty('smsConsentAt');
+    expect(patch).not.toHaveProperty('smsConsentIp');
   });
 
   it('clears phone and consent when the user removes a saved phone', () => {
@@ -674,7 +678,10 @@ describe('diffContact', () => {
     );
     expect(patch.phoneNumber).toBeNull();
     expect(patch.smsConsent).toBe(false);
-    expect(patch.smsConsentAt).toBeNull();
+    // Consent revocation timestamp / IP is wiped server-side. The
+    // client patch only signals the intent; the server applies it.
+    expect(patch).not.toHaveProperty('smsConsentAt');
+    expect(patch).not.toHaveProperty('smsConsentIp');
   });
 
   it('trims the phone before comparing so a stray space does not trigger a PATCH', () => {
