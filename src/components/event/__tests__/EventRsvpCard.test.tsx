@@ -17,6 +17,9 @@ vi.mock('~/hooks', () => ({
   useHouseholdNameMutation: () => ({
     updateName: { mutateAsync: vi.fn() },
   }),
+  useHouseholdMemberNameMutation: () => ({
+    updateName: { mutateAsync: vi.fn() },
+  }),
 }));
 
 vi.mock('next/link', () => ({

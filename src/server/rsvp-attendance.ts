@@ -2,6 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { RsvpAttending } from '~/lib/generated/enums';
+import { ATTENDEE_NAME_MAX } from '~/lib/schemas/attendee-name';
 import { rsvpMemberAttendanceInputSchema } from '~/lib/schemas/rsvp-member-attendance';
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
@@ -111,7 +112,7 @@ export async function resolveAttendancesForHousehold(
       // cannot write arbitrary text into the snapshot.
       rows.push({
         householdMemberId: null,
-        memberName: att.memberName.trim().slice(0, 120),
+        memberName: att.memberName.trim().slice(0, ATTENDEE_NAME_MAX),
         memberAge:
           att.memberAge !== null && att.memberAge !== undefined
             ? Math.max(0, Math.min(120, att.memberAge))

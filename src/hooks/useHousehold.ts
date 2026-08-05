@@ -1,3 +1,4 @@
+import { useMutation } from '@tanstack/react-query';
 import { trpc } from '~/lib/trpc-client';
 
 interface UseHouseholdReturn {
@@ -145,6 +146,46 @@ export function useHouseholdNameMutation() {
       // successful rename must invalidate it so the next open shows
       // the new value rather than a stale default.
       void utils.rsvp.getRsvpFormState.invalidate();
+    },
+  });
+
+  return {
+    updateName,
+  };
+}
+
+/**
+ * FPP-36: lets the RSVP form rename an individual household member
+ * through the existing `/api/household-members/[id]` PATCH endpoint.
+ * The form reuses the same input schema as the household profile
+ * (`householdMemberUpdateSchema`) so the trim, max-length, and
+ * control-character rules stay in sync.
+ */
+export function useHouseholdMemberNameMutation() {
+  const utils = trpc.useUtils();
+
+  const updateName = useMutation({
+    mutationFn: async (input: { id: string; name: string }) => {
+      const response = await fetch(`/api/household-members/${input.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: input.name }),
+      });
+      if (!response.ok) {
+        const errorBody = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(errorBody?.error ?? 'Failed to rename member');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      // The RSVP form snapshot is what reads the household roster;
+      // invalidating it forces the next open to pull the freshly
+      // renamed member instead of the stale snapshot.
+      void utils.rsvp.getRsvpFormState.invalidate();
+      void utils.user.getProfile.invalidate();
+      void utils.household.getById.invalidate();
     },
   });
 

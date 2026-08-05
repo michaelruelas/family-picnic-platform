@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { RsvpAttending } from '~/lib/generated/enums';
+import { attendeeNameSchema } from './attendee-name';
 
 export const RSVP_ATTENDING_VALUES = [
   RsvpAttending.YES,
@@ -16,10 +17,14 @@ export const rsvpAttendingSchema = z.enum(RSVP_ATTENDING_VALUES);
  * `householdMemberId` is optional so an ad-hoc guest (not in the
  * household member list) can still be added on the fly, but the
  * current UI always sends the id of a real HouseholdMember.
+ *
+ * `memberName` reuses `attendeeNameSchema` so the trim, max-length,
+ * and no-control-characters rules stay in sync with the household
+ * member schemas (FPP-36 acceptance criteria).
  */
 export const rsvpMemberAttendanceInputSchema = z.object({
   householdMemberId: z.string().min(1).nullable().optional(),
-  memberName: z.string().trim().min(1, 'Name is required').max(120),
+  memberName: attendeeNameSchema,
   memberAge: z.number().int().nonnegative().max(120).nullable().optional(),
   attending: rsvpAttendingSchema,
 });
