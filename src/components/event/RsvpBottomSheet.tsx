@@ -333,6 +333,18 @@ export function RsvpBottomSheet({
   const handleConfirm = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
+    // FPP-36 BoopPr finding F1: when the rename loop fails midway,
+    // earlier rows have already been persisted. Track them at the
+    // function scope so the catch block can surface what was
+    // renamed before the error. Reset on every confirm so a
+    // previous failure does not leak into a later successful
+    // submit.
+    const renamedNames: string[] = [];
+    const renameSummary = () => {
+      if (renamedNames.length === 0) return '';
+      const list = renamedNames.join(', ');
+      return `Renamed ${renamedNames.length} member${renamedNames.length === 1 ? '' : 's'} (${list}) before the error. `;
+    };
     // The form is rendered behind a `if (!formState) return` gate,
     // so `formState` is always non-null here. Narrow it once at
     // the top so the rest of the function can use `formState`
@@ -383,9 +395,11 @@ export function RsvpBottomSheet({
       // FPP-36: persist renames to underlying household members
       // before the confirm so the snapshot the server writes
       // matches the live row. Each rename is independent: a
-      // failure on member 3 does not roll back member 1, but it
-      // does block the confirm (the user will see the error and
-      // can retry). Ad-hoc guests (id = null) skip this step.
+      // failure on member N leaves the earlier rows persisted.
+      // We track the successes (see `renamedNames` at the top of
+      // `handleConfirm`) so the failure message can tell the user
+      // exactly which rows made it through. Ad-hoc guests (id =
+      // null) skip this step.
       const trimmedDrafts = drafts.map((d) => ({
         ...d,
         memberName: attendeeNameSchema.parse(d.memberName),
@@ -397,6 +411,7 @@ export function RsvpBottomSheet({
           id: draft.householdMemberId,
           name: draft.memberName,
         });
+        renamedNames.push(draft.memberName);
       }
       const result = await confirm.mutateAsync({
         eventId,
@@ -418,9 +433,9 @@ export function RsvpBottomSheet({
         router.push(`/my-events/${result.id}/confirmation`);
       }, 1200);
     } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'Something went wrong. Please try again.',
-      );
+      const base = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      const summary = renameSummary();
+      setSubmitError(summary ? `${summary}${base}` : base);
     } finally {
       setIsSubmitting(false);
     }
@@ -568,24 +583,31 @@ export function RsvpBottomSheet({
               {drafts.map((draft, index) => {
                 const rowError = nameErrors.find((e) => e.index === index)?.message;
                 // FPP-36: source the accessible name from the
-                // snapshot when one exists, and from the live
-                // (trimmed) value otherwise. The snapshot passed
-                // through `attendeeNameSchema` on hydrate so it can
-                // never contain control characters. Ad-hoc guests
-                // (no `originalMemberName`) fall back to the live
-                // trimmed value because that is exactly what will be
-                // persisted — the schema rejects any value that
-                // contains control characters, so the fallback
-                // cannot leak a forbidden character into the
-                // accessible name in practice. The final `slot N`
-                // fallback covers the empty-string edge case before
-                // the user has typed anything. Note the use of `||`
-                // (not `??`) for the secondary tier so an empty
-                // trimmed name falls through to the slot label
-                // instead of leaving the screen reader to announce
-                // "Name for" with nothing after.
+                // snapshot when one exists, and from the schema-
+                // validated live value otherwise. The snapshot
+                // passed through `attendeeNameSchema` on hydrate
+                // so it can never contain control characters.
+                // Ad-hoc guests (no `originalMemberName`) fall
+                // back to the trimmed live value, but only when
+                // that value also passes `attendeeNameSchema` —
+                // the trim alone does not strip line separators
+                // or other forbidden characters, so a guest
+                // mid-typing a control character would otherwise
+                // surface it to a screen reader before the form
+                // blocks submit. The final `slot N` fallback
+                // covers the empty-string and invalid-input cases
+                // before the user has typed anything sensible.
+                // Note the use of `||` (not `??`) for the
+                // secondary tier so an empty trimmed name falls
+                // through to the slot label rather than leaving
+                // the screen reader to announce "Name for" with
+                // an empty suffix.
+                const trimmedLiveName = draft.memberName.trim();
+                const safeLiveName = attendeeNameSchema.safeParse(trimmedLiveName).success
+                  ? trimmedLiveName
+                  : null;
                 const accessibleName =
-                  draft.originalMemberName ?? (draft.memberName.trim() || `slot ${index + 1}`);
+                  draft.originalMemberName ?? safeLiveName ?? `slot ${index + 1}`;
                 return (
                   <li
                     key={`${draft.householdMemberId ?? draft.memberName}-${index}`}

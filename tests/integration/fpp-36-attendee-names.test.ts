@@ -89,8 +89,9 @@ describe('FPP-36: per-slot attendee names', () => {
     // FPP-36 review finding 3: source the accessible name from the
     // validated snapshot when one exists, so a control-character
     // payload never leaks into the accessible name. Ad-hoc guests
-    // (no snapshot) fall back to the trimmed live value, which is
-    // what gets persisted after schema validation.
+    // (no snapshot) fall back to the trimmed live value, but only
+    // after the schema accepts it — trim alone does not strip
+    // control characters.
     it('aria-label is sourced from originalMemberName, not the raw live input', async () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
       // The snapshot is the primary source.
@@ -98,18 +99,22 @@ describe('FPP-36: per-slot attendee names', () => {
       // The fallback for ad-hoc guests trims the live value, so the
       // accessible name matches what gets persisted.
       expect(content).toMatch(/draft\.memberName\.trim\(\)/);
+      // The live fallback must pass through `attendeeNameSchema`
+      // before it lands in the accessible name — trim() alone
+      // strips whitespace but not control characters.
+      expect(content).toMatch(/attendeeNameSchema\.safeParse\(/);
       // The final fallback (empty input) is a generic slot label.
       expect(content).toMatch(/`slot \$\{index \+ 1\}`/);
       expect(content).toMatch(/aria-label=\{`Name for \$\{accessibleName\}`\}/);
       expect(content).toMatch(/aria-label=\{`Attendance for \$\{accessibleName\}`\}/);
       // The accessible name is never derived from the untrimmed live input.
       expect(content).not.toMatch(/accessibleName\s*=\s*draft\.memberName\b/);
-      // Secondary tier must use `||` (not `??`) so an empty
-      // trimmed name falls through to the slot label rather than
-      // leaving the screen reader to announce "Name for" with an
-      // empty suffix. The expression is parenthesized so `??` and
-      // `||` do not need a TS5076 eslint-disable.
-      expect(content).toMatch(/trim\(\)\s*\|\|\s*`slot/);
+      // The final tier falls through to a generic slot label when
+      // the live value fails schema validation (empty, control
+      // characters, oversized). The schema check is the gate, not
+      // just the empty-string check, so we assert the safeParse
+      // path is wired in.
+      expect(content).toMatch(/safeLiveName\s*\?\?\s*`slot/);
     });
 
     // FPP-36 review finding 4: trim trailing whitespace on blur so
@@ -132,6 +137,16 @@ describe('FPP-36: per-slot attendee names', () => {
       expect(content).toContain('updateMemberName.mutateAsync');
       // The rename should be skipped when the name has not changed.
       expect(content).toMatch(/draft\.memberName\s*===\s*draft\.originalMemberName/);
+    });
+
+    // BoopPr finding F1: when a rename fails mid-loop, the error
+    // message must surface which rows were already persisted.
+    it('rename loop surfaces a partial-success summary in the error message', async () => {
+      const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
+      // The loop tracks the names it has already persisted.
+      expect(content).toMatch(/renamedNames\.push/);
+      // The catch block prefixes the error with the summary.
+      expect(content).toMatch(/summary \? `\$\{summary\}\$\{base\}` : base/);
     });
 
     it('blocks confirm when any slot name fails attendee-name validation', async () => {

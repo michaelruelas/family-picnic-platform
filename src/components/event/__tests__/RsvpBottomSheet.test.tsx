@@ -528,5 +528,68 @@ describe('RsvpBottomSheet per-member attendance', () => {
         expect(guest?.getAttribute('aria-label')).toBe('Name for slot 3');
       });
     });
+
+    // BoopPr finding F2: when the live name on a guest row has a
+    // forbidden character (a line separator, for example), the
+    // trimmed value still contains it because trim() does not strip
+    // control characters. The accessible name must fall back to the
+    // generic slot label rather than surface the forbidden character
+    // to a screen reader.
+    it('falls back to a slot label when a guest types a forbidden character', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add a one-time guest/i }));
+      const guestNameInput = screen.getByLabelText(/guest name/i);
+      fireEvent.change(guestNameInput, { target: { value: 'Cousin' } });
+      fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Attendance for Cousin')).toBeInTheDocument();
+      });
+      const guestInput = (await waitFor(() => {
+        const all = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+        const guest = all.find((input) => input.value === 'Cousin');
+        expect(guest).toBeDefined();
+        return guest!;
+      })) as HTMLInputElement;
+      // Type a string with a U+2028 line separator. The schema
+      // blocks submit, but the aria-label must not surface the
+      // control character to a screen reader in the meantime.
+      fireEvent.change(guestInput, { target: { value: 'Cousin\u2028Bob' } });
+      await waitFor(() => {
+        const all = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+        const guest = all.find((input) => input.value === 'Cousin\u2028Bob');
+        expect(guest?.getAttribute('aria-label')).toBe('Name for slot 3');
+      });
+    });
+
+    // BoopPr finding F1: when the rename loop fails midway, the
+    // error message must surface which rows succeeded so the user
+    // knows what state the household is in.
+    it('reports renamed members in the error message when a later rename fails', async () => {
+      setRosterReady();
+      // First rename succeeds; second rejects with a server error.
+      mockUpdateMemberName.mutateAsync
+        .mockResolvedValueOnce({})
+        .mockRejectedValueOnce(new Error('Forbidden: duplicate name'));
+      render(<RsvpBottomSheet {...baseProps} />);
+      const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
+      fireEvent.change(inputs[0]!, { target: { value: 'Alicia' } });
+      fireEvent.change(inputs[1]!, { target: { value: 'Benjamin' } });
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+
+      // Confirm was not called because the second rename failed.
+      await waitFor(() => {
+        expect(mockConfirm.mutateAsync).not.toHaveBeenCalled();
+      });
+      // The error message names the renamed member so the user
+      // knows what was already persisted.
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Renamed 1 member \(Alicia\) before the error/i),
+        ).toBeInTheDocument();
+      });
+      expect(mockUpdateMemberName.mutateAsync).toHaveBeenCalledTimes(2);
+    });
   });
 });
