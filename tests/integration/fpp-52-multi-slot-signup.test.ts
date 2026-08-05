@@ -10,6 +10,7 @@ const rsvpCardPath = path.join(process.cwd(), 'src/components/event/EventRsvpCar
 const rsvpSheetPath = path.join(process.cwd(), 'src/components/event/RsvpBottomSheet.tsx');
 const potluckRouterPath = path.join(process.cwd(), 'src/server/routers/potluck.router.ts');
 const usePotluckHookPath = path.join(process.cwd(), 'src/hooks/usePotluck.ts');
+const potluckEditorPath = path.join(process.cwd(), 'src/components/event/PotluckEditor.tsx');
 
 describe('FPP-27 — Slot list view grouped by category', () => {
   it('has a route at /events/[id]/potluck', async () => {
@@ -81,15 +82,54 @@ describe('FPP-25 — My-slots summary + remove', () => {
     const pageContent = await fs.readFile(potluckPagePath, 'utf-8');
     expect(pageContent).toContain('MySlotsSummary');
   });
+});
 
-  // FPP-51 removed the standalone potluck index page and the
-  // RSVP card's "Manage potluck dishes" deep link. Replacements
-  // for these reachability checks land in slot 04 (FPP-21),
-  // which introduces the Dishes tab inside the RSVP bottom
-  // sheet and the Edit attendance & dishes CTA on the RSVP
-  // card. Slot 01 only ships the page deletion and the 301
-  // route, so we keep the remaining tests focused on the slot
-  // it actually changes.
+describe('FPP-21 — Potluck editing moved into the RSVP bottom sheet (Dishes tab)', () => {
+  it('replaces the standalone Manage potluck link with Edit attendance & dishes on the RSVP card', async () => {
+    const cardContent = await fs.readFile(rsvpCardPath, 'utf-8');
+    expect(cardContent).not.toContain('Manage potluck dishes');
+    expect(cardContent).toContain('Edit attendance');
+    expect(cardContent).toContain('dishes');
+  });
+
+  it('renders Attendance and Dishes tabs in the RSVP bottom sheet', async () => {
+    const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
+    expect(sheetContent).toContain('Attendance');
+    expect(sheetContent).toContain('Dishes');
+    expect(sheetContent).toContain('rsvp-tab-attendance');
+    expect(sheetContent).toContain('rsvp-tab-dishes');
+  });
+
+  it('embeds PotluckEditor in the Dishes tab when the RSVP is confirmed', async () => {
+    const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
+    expect(sheetContent).toContain('PotluckEditor');
+    expect(sheetContent).toContain("status === 'CONFIRMED'");
+  });
+
+  it('shows an RSVP-first hint in the Dishes tab when the RSVP is not confirmed', async () => {
+    const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
+    expect(sheetContent).toContain('RSVP first');
+  });
+
+  it('supports the ?rsvpOpen=1#dishes deep link to open the sheet on the Dishes tab', async () => {
+    const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
+    expect(sheetContent).toContain('rsvpOpen');
+    expect(sheetContent).toContain('#dishes');
+  });
+
+  it('renders the standalone potluck page as read-only with a deep link to the editor', async () => {
+    const pageContent = await fs.readFile(potluckPagePath, 'utf-8');
+    expect(pageContent).toContain('readOnly');
+    expect(pageContent).toContain('Edit my dishes');
+    expect(pageContent).toContain('rsvpOpen=1');
+  });
+
+  it('mounts PotluckEditor with the event id', async () => {
+    const editorContent = await fs.readFile(potluckEditorPath, 'utf-8');
+    expect(editorContent).toContain('PotluckEditor');
+    expect(editorContent).toContain('SlotList');
+    expect(editorContent).toContain('MySlotsSummary');
+  });
 
   it('reaches the potluck page from the event detail menu section', async () => {
     const content = await fs.readFile(eventDetailPath, 'utf-8');
@@ -104,6 +144,11 @@ describe('FPP-26/25 — Backed by the potluck router + hook', () => {
     const content = await fs.readFile(potluckRouterPath, 'utf-8');
     expect(content).toContain('getMySignups');
     expect(content).toContain('orderBy: { claimedAt:');
+  });
+
+  it('exposes a getSlotsForEvent query used by the Dishes tab', async () => {
+    const content = await fs.readFile(potluckRouterPath, 'utf-8');
+    expect(content).toContain('getSlotsForEvent');
   });
 
   it('invalidates getMySignups when signups change', async () => {

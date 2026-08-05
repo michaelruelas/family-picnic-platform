@@ -31,6 +31,13 @@ interface SlotListProps {
   userId: string | null;
   isRsvpConfirmed: boolean;
   hasRsvp: boolean;
+  /**
+   * When true, hide all claim / edit / drop affordances. The
+   * standalone /events/[id]/potluck page sets this so users reach
+   * the editor from the Dishes tab inside the RSVP sheet. The
+   * Dishes tab uses the editable default.
+   */
+  readOnly?: boolean;
 }
 
 const DISPLAY_CATEGORY_ORDER = ['MAIN', 'SIDE', 'DESSERT', 'DRINK', 'OTHER'] as const;
@@ -60,6 +67,7 @@ export default function SlotList({
   userId,
   isRsvpConfirmed,
   hasRsvp,
+  readOnly = false,
 }: SlotListProps) {
   const { signups: mySignups } = useMyPotluckSignups({
     eventId,
@@ -265,7 +273,7 @@ export default function SlotList({
                     )}
 
                     <div className="mt-4 flex gap-2">
-                      {isMine ? (
+                      {readOnly ? null : isMine ? (
                         <>
                           <Button
                             variant="outline"
