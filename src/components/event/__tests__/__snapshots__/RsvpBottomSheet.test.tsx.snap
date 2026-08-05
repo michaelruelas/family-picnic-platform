@@ -221,15 +221,6 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
         </p>
         <div
           class="mt-3"
-        >
-          <button
-            class="text-terracotta decoration-terracotta/30 hover:decoration-terracotta text-sm font-semibold underline underline-offset-4 transition-colors"
-          >
-            + Add a dietary note (optional)
-          </button>
-        </div>
-        <div
-          class="mt-3"
           data-testid="rsvp-contact-section"
         >
           <button
@@ -486,15 +477,6 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           2 people
            going
         </p>
-        <div
-          class="mt-3"
-        >
-          <button
-            class="text-terracotta decoration-terracotta/30 hover:decoration-terracotta text-sm font-semibold underline underline-offset-4 transition-colors"
-          >
-            + Add a dietary note (optional)
-          </button>
-        </div>
         <div
           class="mt-3"
           data-testid="rsvp-contact-section"

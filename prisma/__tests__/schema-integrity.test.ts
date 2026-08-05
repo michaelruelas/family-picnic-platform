@@ -27,9 +27,12 @@ describe('Prisma schema integrity vs SPEC', () => {
     expect(match![1]!.trim()).toContain('UNSUBSCRIBED');
   });
 
-  it('RSVP model has householdId and dietaryNotes', () => {
+  it('RSVP model has householdId', () => {
     expect(schema).toContain('householdId');
-    expect(schema).toContain('dietaryNotes');
+  });
+
+  it('RSVP model does not have dietaryNotes (FPP-55 removed the field)', () => {
+    expect(schema).not.toContain('dietaryNotes');
   });
 
   it('Event model uses description (not details)', () => {

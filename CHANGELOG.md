@@ -13,6 +13,10 @@ All notable changes to this project are documented here.
 
 - **Stripe webhook bootstrap script (FPP-47)** — `scripts/setup-stripe-webhook.sh` registers the production webhook endpoint via `stripe webhook_endpoints create`, pushes `stripe-webhook-secret` to OpenBao at `secret/family-picnic-${ENV}/nextjs` (idempotent; refuses to create a duplicate URL), and pins `api_version` to `2025-08-27.basil` to match `src/lib/stripe.ts`. `dev` is intentionally rejected — use `stripe listen` instead. `scripts/lib/openbao.sh` extracts the `bao_exec` / `bao_get_json` / `bao_put_kv` / `extract` helpers so `scripts/populate-openbao-secrets.sh` and the new bootstrap script share them. The populate script accepts a positional `dev|prod` arg. `STRIPE_API_KEY` is bootstrap-only (surfaced into `.env.dev` for convenience; never pushed to OpenBao; never read by the Next.js runtime).
 
+### Removed
+
+- **`RSVP.dietaryNotes` (FPP-55)** — Platform-level free-form dietary note field removed from the RSVP schema, RSVP form, and confirmation flow. Historical values are preserved in the database column for audit. The migration `20260805171107_fpp55_remove_dietary_notes` writes an `AdminAuditLog` row with action `FPP55_DIETARY_NOTES_REMOVED` (idempotent via a `NOT EXISTS` guard on the action type). `Dependent.dietaryLabels` and `PotluckSignup.dietaryLabels` are unchanged (per-attendee and per-dish structured labels remain).
+
 ### Fixed
 
 - **Google OAuth signIn lookup** (`src/lib/auth.ts`) — filter `deletedAt: null` on the active-user lookup, then refuse sign-in entirely when the email matches a soft-deleted tombstone. The `User.email` unique index covers soft-deleted rows, so re-provisioning would throw on insert; refusing matches the dev-credentials `authorize` behavior and ADR-001 ("account recovery won't do"). The admin must explicitly re-invite a deleted user.

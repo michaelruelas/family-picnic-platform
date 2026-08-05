@@ -158,26 +158,6 @@ describe('RsvpBottomSheet per-member attendance', () => {
     });
   });
 
-  it('pre-fills dietary notes from the existing RSVP', async () => {
-    mockFormState.data = {
-      householdId: 'h-1',
-      householdName: 'The Garcia Family',
-      members,
-      rsvp: {
-        id: 'rsvp-1',
-        status: 'CONFIRMED',
-        headcount: 1,
-        dietaryNotes: 'vegan',
-        memberAttendances: [],
-      },
-    };
-    render(<RsvpBottomSheet {...baseProps} />);
-    await waitFor(() => {
-      const textarea = screen.getByPlaceholderText(/allergies/i) as HTMLTextAreaElement;
-      expect(textarea.value).toBe('vegan');
-    });
-  });
-
   it('preserves a one-time guest through a confirm cycle', async () => {
     setRosterReady();
     render(<RsvpBottomSheet {...baseProps} />);

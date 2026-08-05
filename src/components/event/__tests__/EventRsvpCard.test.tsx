@@ -83,7 +83,6 @@ const confirmedRsvp = {
   id: 'rsvp-1',
   status: 'CONFIRMED' as const,
   headcount: 2,
-  dietaryNotes: null,
   modifiedAt: '2026-07-01T12:00:00Z',
   memberAttendances,
 };

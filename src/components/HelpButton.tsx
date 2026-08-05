@@ -22,7 +22,7 @@ const HELP_CONTENT: Record<string, HelpContent> = {
   potluck: {
     title: 'Potluck Help',
     content:
-      'Sign up to bring a dish for the potluck. Choose a category (main, side, dessert, etc.) and let us know if you have any dietary restrictions.',
+      'Sign up to bring a dish for the potluck. Choose a category (main, side, dessert, etc.) and list any dietary labels on your dish.',
   },
   photos: {
     title: 'Photos Help',

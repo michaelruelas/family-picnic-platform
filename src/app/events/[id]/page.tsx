@@ -102,7 +102,6 @@ export default async function EventDetailPage({ params }: Props) {
               id: true,
               status: true,
               headcount: true,
-              dietaryNotes: true,
               waitlistPosition: true,
               modifiedAt: true,
               memberAttendances: {
@@ -172,7 +171,6 @@ export default async function EventDetailPage({ params }: Props) {
         id: userRsvp.id,
         status: userRsvp.status as RSVPStatus,
         headcount: userRsvp.headcount,
-        dietaryNotes: userRsvp.dietaryNotes,
         modifiedAt: userRsvp.modifiedAt.toISOString(),
         memberAttendances: userRsvp.memberAttendances.map((att) => ({
           id: att.id,

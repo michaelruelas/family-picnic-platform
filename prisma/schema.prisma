@@ -289,7 +289,10 @@ model RSVP {
   householdId      String
   status           RSVPStatus @default(INVITED)
   headcount        Int        @default(1)
-  dietaryNotes    String?
+  // FPP-55: the platform-level dietary restrictions field was removed
+  // from the application. Historical values stay in the database column
+  // for audit (the column is preserved but not exposed by Prisma); the
+  // application no longer reads or writes it.
   respondedAt      DateTime?
   modifiedAt       DateTime   @updatedAt
   waitlistPosition Int?

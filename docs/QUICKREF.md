@@ -66,7 +66,6 @@ const rsvp = await prisma.rSVP.create({
     householdId: session.user.householdId,
     status: isAtCapacity ? 'WAITLISTED' : 'CONFIRMED',
     headcount,
-    dietaryNotes,
   },
 });
 ```

@@ -9,7 +9,6 @@ const baseFields = {
   // (preferred) or a legacy headcount value. Existing call sites that
   // still send headcount keep working.
   headcount: z.number().int().min(0).optional(),
-  dietaryNotes: z.string().optional(),
   memberAttendances: rsvpMemberAttendanceListSchema.optional(),
 };
 

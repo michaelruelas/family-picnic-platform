@@ -18,7 +18,7 @@ Located in `src/server/routers/`:
 | `potluck`       | `potluck.router.ts`       | listSlots, signup, updateSignup, cancelSignup, getFoodSummary                 |
 | `photo`         | `photo.router.ts`         | getUploadUrl, confirmUpload, search, delete, addReaction, removeReaction      |
 | `communication` | `communication.router.ts` | sendInvite, sendRsvpReminder, sendBroadcast, unsubscribe, getRateLimitStatus  |
-| `admin`         | `admin.router.ts`         | getUsers, getAuditLog, dashboard, csvImport, getDietarySummary                |
+| `admin`         | `admin.router.ts`         | getUsers, getAuditLog, dashboard, csvImport                                   |
 
 ## Procedure Types
 

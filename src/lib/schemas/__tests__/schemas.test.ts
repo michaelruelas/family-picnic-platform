@@ -491,15 +491,6 @@ describe('rsvpConfirmSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('passes with dietaryNotes', () => {
-    const result = rsvpConfirmSchema.safeParse({
-      eventId: 'evt-1',
-      headcount: 2,
-      dietaryNotes: 'Nut allergy',
-    });
-    expect(result.success).toBe(true);
-  });
-
   it('passes with memberAttendances', () => {
     const result = rsvpConfirmSchema.safeParse({
       eventId: 'evt-1',
@@ -562,15 +553,6 @@ describe('rsvpUpdateSchema', () => {
     const result = rsvpUpdateSchema.safeParse({
       eventId: 'evt-1',
       headcount: 3,
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('passes with dietaryNotes', () => {
-    const result = rsvpUpdateSchema.safeParse({
-      eventId: 'evt-1',
-      headcount: 2,
-      dietaryNotes: 'Gluten-free',
     });
     expect(result.success).toBe(true);
   });
@@ -638,7 +620,6 @@ describe('rsvpAdminOverrideSchema', () => {
       userId: 'user-1',
       status: 'CONFIRMED',
       headcount: 5,
-      dietaryNotes: 'Vegan',
     });
     expect(result.success).toBe(true);
   });

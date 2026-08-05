@@ -172,9 +172,6 @@ export default async function MyEventsPage() {
                           </span>
                         </div>
                       </div>
-                      {rsvp.dietaryNotes && (
-                        <p className="text-terracotta mt-2 text-sm">🥗 {rsvp.dietaryNotes}</p>
-                      )}
                       {hasPotluck && rsvp.status === 'CONFIRMED' && (
                         <p className="text-muted-foreground mt-2 text-sm">
                           {userPotluckSignups.length > 0 ? (
@@ -247,9 +244,6 @@ export default async function MyEventsPage() {
                           )}
                         </div>
                       </div>
-                      {rsvp.dietaryNotes && (
-                        <p className="text-terracotta mt-2 text-sm">🥗 {rsvp.dietaryNotes}</p>
-                      )}
                       {hasPotluck && rsvp.status === 'CONFIRMED' && (
                         <p className="text-muted-foreground mt-2 text-sm">
                           {userPotluckSignups.length > 0 ? (

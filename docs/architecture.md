@@ -72,13 +72,13 @@
 
 ### 2.1 Frontend Components
 
-| Component           | Purpose                                                                             |
-| ------------------- | ----------------------------------------------------------------------------------- |
-| RSVP Card           | Allows guests to respond to event invitations with attendee count and dietary notes |
-| Household Dashboard | Manages family members, dependents, and view family RSVP history                    |
-| Potluck Planner     | Displays categorized food slots, allows signup with item details                    |
-| Photo Gallery       | Grid view of event photos with reactions, powered by PhotoPrism                     |
-| Admin Dashboard     | Event management, broadcast messaging, user management, audit logs                  |
+| Component           | Purpose                                                            |
+| ------------------- | ------------------------------------------------------------------ |
+| RSVP Card           | Allows guests to respond to event invitations with attendee count  |
+| Household Dashboard | Manages family members, dependents, and view family RSVP history   |
+| Potluck Planner     | Displays categorized food slots, allows signup with item details   |
+| Photo Gallery       | Grid view of event photos with reactions, powered by PhotoPrism    |
+| Admin Dashboard     | Event management, broadcast messaging, user management, audit logs |
 
 ### 2.2 API Routers (tRPC)
 
@@ -504,7 +504,7 @@ model Event      { id, title, date, location, description, createdAt }
 model Invitation { id, eventId, householdId, token, expiresAt }
 
 // Response & Potluck
-model RSVP           { id, invitationId, attendeeCount, dietaryNotes, createdAt }
+model RSVP           { id, invitationId, attendeeCount, createdAt }
 model PotluckSlot    { id, eventId, category, description }
 model PotluckSignup  { id, slotId, rsvpId, itemName, bringing }
 

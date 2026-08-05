@@ -25,7 +25,6 @@ async function triggerWorkflow(
   userId: string,
   action: 'confirm' | 'decline',
   headcount?: number,
-  dietaryNotes?: string,
 ) {
   try {
     const { getOpenWorkflow } = await import('~/lib/ow-client');
@@ -43,7 +42,6 @@ async function triggerWorkflow(
         userId,
         householdId: user.householdId || userId,
         headcount: headcount ?? 1,
-        dietaryNotes,
       });
     } else {
       await ow.runWorkflow(rsvpDecline.spec, {
@@ -92,7 +90,6 @@ export const rsvpRouter = router({
       z.object({
         eventId: z.string(),
         headcount: z.number().int().min(0).default(0),
-        dietaryNotes: z.string().optional(),
         memberAttendances: z.array(z.unknown()).optional(),
       }),
     )
@@ -134,7 +131,6 @@ export const rsvpRouter = router({
             householdId: caller.householdId,
             status: RSVPStatus.CONFIRMED,
             headcount,
-            dietaryNotes: input.dietaryNotes ?? null,
             respondedAt: new Date(),
           },
         });
@@ -229,7 +225,6 @@ export const rsvpRouter = router({
         },
         data: {
           headcount,
-          dietaryNotes: input.dietaryNotes ?? null,
         },
       });
 
@@ -287,7 +282,6 @@ export const rsvpRouter = router({
         {
           status: before.status,
           headcount: before.headcount,
-          dietaryNotes: before.dietaryNotes,
           memberAttendances: (before.memberAttendances ?? []).map((a) => ({
             householdMemberId: a.householdMemberId,
             memberName: a.memberNameSnapshot,
@@ -298,7 +292,6 @@ export const rsvpRouter = router({
         {
           status: after.status,
           headcount: after.headcount,
-          dietaryNotes: after.dietaryNotes,
           memberAttendances: finalAttendances.map((a) => ({
             householdMemberId: a.householdMemberId,
             memberName: a.memberNameSnapshot,
@@ -316,7 +309,6 @@ export const rsvpRouter = router({
             action: 'RSVP_UPDATE',
             oldValue: {
               headcount: before.headcount,
-              dietaryNotes: before.dietaryNotes,
               memberAttendances: (before.memberAttendances ?? []).map((a) => ({
                 householdMemberId: a.householdMemberId,
                 memberName: a.memberNameSnapshot,
@@ -326,7 +318,6 @@ export const rsvpRouter = router({
             },
             newValue: {
               headcount: after.headcount,
-              dietaryNotes: after.dietaryNotes,
               memberAttendances: finalAttendances.map((a) => ({
                 householdMemberId: a.householdMemberId,
                 memberName: a.memberNameSnapshot,
@@ -431,7 +422,6 @@ export const rsvpRouter = router({
         update: {
           status: isWaitlisted ? RSVPStatus.WAITLISTED : RSVPStatus.CONFIRMED,
           headcount: tentativeHeadcount,
-          dietaryNotes: input.dietaryNotes ?? null,
           respondedAt: new Date(),
           waitlistPosition: isWaitlisted ? waitlistPosition : null,
         },
@@ -441,7 +431,6 @@ export const rsvpRouter = router({
           householdId,
           status: isWaitlisted ? RSVPStatus.WAITLISTED : RSVPStatus.CONFIRMED,
           headcount: tentativeHeadcount,
-          dietaryNotes: input.dietaryNotes ?? null,
           respondedAt: new Date(),
           waitlistPosition: isWaitlisted ? waitlistPosition : null,
         },
@@ -502,7 +491,6 @@ export const rsvpRouter = router({
           {
             status: before.status,
             headcount: before.headcount,
-            dietaryNotes: before.dietaryNotes,
             waitlistPosition: before.waitlistPosition,
             memberAttendances: (before.memberAttendances ?? []).map((a) => ({
               householdMemberId: a.householdMemberId,
@@ -514,7 +502,6 @@ export const rsvpRouter = router({
           {
             status: upserted.status,
             headcount: upserted.headcount,
-            dietaryNotes: upserted.dietaryNotes,
             waitlistPosition: upserted.waitlistPosition,
             memberAttendances: finalAttendances.map((a) => ({
               householdMemberId: a.householdMemberId,
@@ -534,7 +521,6 @@ export const rsvpRouter = router({
               oldValue: {
                 status: before.status,
                 headcount: before.headcount,
-                dietaryNotes: before.dietaryNotes,
                 waitlistPosition: before.waitlistPosition,
                 memberAttendances: (before.memberAttendances ?? []).map((a) => ({
                   householdMemberId: a.householdMemberId,
@@ -546,7 +532,6 @@ export const rsvpRouter = router({
               newValue: {
                 status: upserted.status,
                 headcount: upserted.headcount,
-                dietaryNotes: upserted.dietaryNotes,
                 waitlistPosition: upserted.waitlistPosition,
                 memberAttendances: finalAttendances.map((a) => ({
                   householdMemberId: a.householdMemberId,
@@ -576,13 +561,7 @@ export const rsvpRouter = router({
       });
     }
 
-    triggerWorkflow(
-      input.eventId,
-      ctx.session.user.id,
-      'confirm',
-      tentativeHeadcount,
-      input.dietaryNotes,
-    );
+    triggerWorkflow(input.eventId, ctx.session.user.id, 'confirm', tentativeHeadcount);
 
     return { ...rsvp, isWaitlisted, waitlistPosition };
   }),
@@ -631,7 +610,6 @@ export const rsvpRouter = router({
         update: {
           status: RSVPStatus.DECLINED,
           headcount: 0,
-          dietaryNotes: null,
           respondedAt: new Date(),
           waitlistPosition: null,
         },
@@ -641,7 +619,6 @@ export const rsvpRouter = router({
           householdId,
           status: RSVPStatus.DECLINED,
           headcount: 0,
-          dietaryNotes: null,
           respondedAt: new Date(),
         },
       });
@@ -676,7 +653,6 @@ export const rsvpRouter = router({
             oldValue: {
               status: existingRsvp.status,
               headcount: existingRsvp.headcount,
-              dietaryNotes: existingRsvp.dietaryNotes,
               waitlistPosition: existingRsvp.waitlistPosition,
               memberAttendances: (existingRsvp.memberAttendances ?? []).map((a) => ({
                 householdMemberId: a.householdMemberId,
@@ -691,7 +667,6 @@ export const rsvpRouter = router({
             newValue: {
               status: updated.status,
               headcount: updated.headcount,
-              dietaryNotes: updated.dietaryNotes,
               waitlistPosition: updated.waitlistPosition,
               slotsReleased: existingRsvp.potluckSignups.length,
               memberAttendances: (existingRsvp.memberAttendances ?? []).map((a) => ({
@@ -830,7 +805,6 @@ export const rsvpRouter = router({
           update: {
             status: input.status,
             headcount,
-            dietaryNotes: input.dietaryNotes ?? null,
             respondedAt: new Date(),
           },
           create: {
@@ -839,7 +813,6 @@ export const rsvpRouter = router({
             householdId,
             status: input.status,
             headcount,
-            dietaryNotes: input.dietaryNotes ?? null,
             respondedAt: new Date(),
           },
         });

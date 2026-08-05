@@ -128,7 +128,6 @@ interface RsvpConfirmInput {
   userId: string;
   householdId: string;
   headcount: number;
-  dietaryNotes?: string;
 }
 
 interface RsvpConfirmOutput {
@@ -182,7 +181,6 @@ export const rsvpConfirm = defineWorkflow<RsvpConfirmInput, RsvpConfirmOutput>(
         update: {
           status: isWaitlisted ? RSVPStatus.WAITLISTED : RSVPStatus.CONFIRMED,
           headcount: input.headcount,
-          dietaryNotes: input.dietaryNotes || null,
           respondedAt: new Date(),
           waitlistPosition: isWaitlisted ? waitlistPosition : null,
         },
@@ -192,7 +190,6 @@ export const rsvpConfirm = defineWorkflow<RsvpConfirmInput, RsvpConfirmOutput>(
           householdId: input.householdId,
           status: isWaitlisted ? RSVPStatus.WAITLISTED : RSVPStatus.CONFIRMED,
           headcount: input.headcount,
-          dietaryNotes: input.dietaryNotes || null,
           respondedAt: new Date(),
           waitlistPosition: isWaitlisted ? waitlistPosition : null,
         },
@@ -318,7 +315,6 @@ export const rsvpDecline = defineWorkflow<RsvpDeclineInput, RsvpDeclineOutput>(
         update: {
           status: RSVPStatus.DECLINED,
           headcount: 0,
-          dietaryNotes: null,
           respondedAt: new Date(),
           waitlistPosition: null,
         },

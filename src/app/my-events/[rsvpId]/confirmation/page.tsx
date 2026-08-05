@@ -236,13 +236,6 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
                 )}
               </ul>
             )}
-
-            {rsvp.dietaryNotes && (
-              <div className="bg-sunlight/20 ring-sunlight/40 mt-6 rounded-2xl px-4 py-3 text-sm ring-1">
-                <span className="text-foreground font-semibold">Dietary note:</span>{' '}
-                <span className="text-foreground/80">{rsvp.dietaryNotes}</span>
-              </div>
-            )}
           </div>
         </div>
       </BreatheSection>
