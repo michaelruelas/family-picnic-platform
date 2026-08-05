@@ -4,6 +4,25 @@ import { prisma } from '~/lib/prisma';
 import { CommunicationPreference } from '~/lib/generated/enums';
 import { profileUpdateSchema } from '~/lib/schemas/profile';
 
+/**
+ * Best-effort IP extraction from a Headers object. Returns null when
+ * no IP-bearing header is present (e.g. local development or an
+ * upstream proxy that strips forwarding headers). Used by
+ * `updatePreferences` to record the source of an SMS consent grant
+ * so an audit can later verify the opt-in came from a real session.
+ */
+function extractClientIp(headers: Headers | undefined): string | null {
+  if (!headers) return null;
+  const candidates = ['x-forwarded-for', 'x-real-ip', 'cf-connecting-ip', 'true-client-ip'];
+  for (const name of candidates) {
+    const value = headers.get(name);
+    if (!value) continue;
+    const first = value.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  return null;
+}
+
 export const userRouter = router({
   getProfile: protectedProcedure.query(async ({ ctx }) => {
     const user = await prisma.user.findUnique({
@@ -50,6 +69,11 @@ export const userRouter = router({
         updateData.smsConsent = input.smsConsent;
         if (input.smsConsent) {
           updateData.smsConsentAt = new Date();
+          // Stamp the IP so an audit can later verify the opt-in
+          // came from a real session. Falls back to null when no
+          // IP-bearing header is present (local dev, stripped proxy).
+          const ip = extractClientIp(ctx.headers);
+          if (ip) updateData.smsConsentIp = ip;
         } else {
           updateData.smsConsentAt = null;
           updateData.smsConsentIp = null;

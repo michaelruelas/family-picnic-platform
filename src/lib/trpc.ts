@@ -8,6 +8,9 @@ import { writeAuditLog } from './audit';
 
 interface Ctx {
   session: Session | null;
+  // Forwarded by the tRPC fetch adapter so procedures can stamp
+  // audit metadata (e.g. the IP captured at SMS consent time).
+  headers?: Headers;
 }
 
 interface AuthedCtx {

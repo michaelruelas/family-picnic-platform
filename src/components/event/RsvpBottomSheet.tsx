@@ -8,10 +8,12 @@ import {
   useHouseholdNameMutation,
   useRsvpFormState,
   useRsvpMutation,
+  useUserProfileMutation,
 } from '~/hooks';
 import { RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
 import { ATTENDEE_NAME_MAX, attendeeNameSchema } from '~/lib/schemas/attendee-name';
+import { diffContact, rsvpContactSchema } from '~/lib/schemas/rsvp-contact';
 import { householdNameSchema, HOUSEHOLD_NAME_MAX } from '~/lib/schemas/household';
 import { calculateFee, type FeeAttendee } from '~/lib/fee';
 import { formatAmount } from '~/lib/currency';
@@ -141,6 +143,7 @@ export function RsvpBottomSheet({
   const { confirm, decline } = useRsvpMutation();
   const { updateName } = useHouseholdNameMutation();
   const { updateName: updateMemberName } = useHouseholdMemberNameMutation();
+  const { updatePreferences } = useUserProfileMutation();
   // Only query the form state when the sheet is open so we do not
   // start a fetch when the parent has not asked for it.
   const {
@@ -155,6 +158,13 @@ export function RsvpBottomSheet({
   const [showAddMember, setShowAddMember] = useState(false);
   const [showDietary, setShowDietary] = useState(false);
   const [dietaryNotes, setDietaryNotes] = useState('');
+  // FPP-34: optional phone + comms consent. The phone is a free-form
+  // E.164 string the user types; the consent checkbox gates saving a
+  // non-empty value. We hydrate both from the formState snapshot so
+  // a returning user sees what is already on file.
+  const [phone, setPhone] = useState('');
+  const [smsConsent, setSmsConsent] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // FPP-21: the bottom sheet now hosts a two-tab editor so the
@@ -194,6 +204,9 @@ export function RsvpBottomSheet({
       setShowAddMember(false);
       setShowDietary(false);
       setDietaryNotes('');
+      setPhone('');
+      setSmsConsent(false);
+      setShowContact(false);
       setSubmitError(null);
       setHouseholdName('');
       setHydrated(false);
@@ -235,6 +248,14 @@ export function RsvpBottomSheet({
     setDietaryNotes(formState.rsvp?.dietaryNotes ?? '');
     setShowDietary(Boolean(formState.rsvp?.dietaryNotes));
     setHouseholdName(formState.householdName ?? '');
+    // FPP-34: hydrate the optional phone + consent from the server
+    // snapshot. The phone string is whatever the user has saved;
+    // consent is the boolean gate. Opening the contact section on
+    // hydrate would be presumptuous — we let the user opt in by
+    // clicking the "+ Add SMS updates" toggle when they want it.
+    setPhone(formState.phoneNumber ?? '');
+    setSmsConsent(Boolean(formState.smsConsent));
+    setShowContact(Boolean(formState.phoneNumber));
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [isOpen, hydrated, formState]);
@@ -400,6 +421,22 @@ export function RsvpBottomSheet({
       setIsSubmitting(false);
       return;
     }
+    // FPP-34: validate the optional phone + consent block before we
+    // mutate anything. The schema enforces the "consent is required
+    // when a phone is set" rule so a non-E.164 phone or a phone with
+    // no consent box checked surfaces a single, friendly error here
+    // rather than a 400 from the server after the user already
+    // typed a name for every attendee.
+    const contactParsed = rsvpContactSchema.safeParse({
+      phone,
+      smsConsent,
+    });
+    if (!contactParsed.success) {
+      const firstIssue = contactParsed.error.issues[0]?.message ?? 'Phone or consent is invalid';
+      setSubmitError(firstIssue);
+      setIsSubmitting(false);
+      return;
+    }
     try {
       // FPP-80: when the caller belongs to a household, save any
       // rename through `household.update` before the RSVP goes
@@ -421,6 +458,20 @@ export function RsvpBottomSheet({
             name: parsed.data,
           });
         }
+      }
+      // FPP-34: persist the optional phone + consent through
+      // `user.updatePreferences` before the RSVP goes through.
+      // `diffContact` returns an empty patch when nothing changed,
+      // so opening the form and submitting without typing is a
+      // no-op. When the patch is non-empty, smsConsent is also
+      // rewritten to clear any stale `true` that would otherwise
+      // re-enable Twilio for an empty phone.
+      const contactPatch = diffContact(
+        { phone, smsConsent },
+        { phoneNumber: formState.phoneNumber ?? null, smsConsent: Boolean(formState.smsConsent) },
+      );
+      if (Object.keys(contactPatch).length > 0) {
+        await updatePreferences.mutateAsync(contactPatch);
       }
       // FPP-36: persist renames to underlying household members
       // before the confirm so the snapshot the server writes
@@ -477,6 +528,31 @@ export function RsvpBottomSheet({
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      // FPP-34: persist any phone + consent changes before the
+      // decline, so a user who opts in to SMS on the form and then
+      // declines the event still gets their profile updated. The
+      // RSVP goes from "no response" to "declined" either way; the
+      // contact preference is independent.
+      if (formState) {
+        const contactParsed = rsvpContactSchema.safeParse({ phone, smsConsent });
+        if (!contactParsed.success) {
+          const firstIssue =
+            contactParsed.error.issues[0]?.message ?? 'Phone or consent is invalid';
+          setSubmitError(firstIssue);
+          setIsSubmitting(false);
+          return;
+        }
+        const contactPatch = diffContact(
+          { phone, smsConsent },
+          {
+            phoneNumber: formState.phoneNumber ?? null,
+            smsConsent: Boolean(formState.smsConsent),
+          },
+        );
+        if (Object.keys(contactPatch).length > 0) {
+          await updatePreferences.mutateAsync(contactPatch);
+        }
+      }
       await decline.mutateAsync({ eventId });
       onClose();
     } catch (err) {
@@ -873,6 +949,65 @@ export function RsvpBottomSheet({
                   placeholder="Allergies, preferences, etc."
                   className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                 />
+              </div>
+            )}
+          </div>
+
+          {/*
+            FPP-34: optional phone + comms consent. Collapsed by
+            default; opening it pre-fills the user's saved phone so a
+            returning user sees what is on file. The consent checkbox
+            is required when a phone is present so we never store a
+            number without explicit opt-in. Both values flow through
+            `user.updatePreferences` on submit so the Twilio
+            sms-dispatch gate (QUB-8) can honor the consent.
+          */}
+          <div className="mt-3" data-testid="rsvp-contact-section">
+            {!showContact ? (
+              <button
+                type="button"
+                onClick={() => setShowContact(true)}
+                className="text-terracotta decoration-terracotta/30 hover:decoration-terracotta text-sm font-semibold underline underline-offset-4 transition-colors"
+              >
+                {phone ? 'Edit SMS updates (phone saved)' : '+ Get SMS updates (optional)'}
+              </button>
+            ) : (
+              <div className="bg-secondary/40 mt-1 rounded-2xl p-4">
+                <label htmlFor="rsvp-phone" className="text-foreground block text-sm font-medium">
+                  Mobile phone
+                </label>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  We&apos;ll text event updates only with your consent. Standard rates may apply.
+                </p>
+                <input
+                  id="rsvp-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+15551234567"
+                  data-testid="rsvp-phone-input"
+                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                />
+                <label className="text-foreground mt-4 flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={smsConsent}
+                    onChange={(e) => setSmsConsent(e.target.checked)}
+                    data-testid="rsvp-sms-consent"
+                    className="border-border text-terracotta focus:ring-foreground/20 mt-0.5 h-4 w-4 rounded"
+                  />
+                  <span>
+                    I agree to receive SMS updates about events from this organizer. I can opt out
+                    at any time by clearing the phone number above.
+                  </span>
+                </label>
+                {phone.trim().length > 0 && !smsConsent && (
+                  <p className="text-destructive mt-2 text-xs" data-testid="rsvp-sms-consent-error">
+                    Check the consent box above to save this phone number.
+                  </p>
+                )}
               </div>
             )}
           </div>

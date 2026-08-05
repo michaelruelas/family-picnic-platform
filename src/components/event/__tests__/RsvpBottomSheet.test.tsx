@@ -5,6 +5,7 @@ const mockConfirm = { mutateAsync: vi.fn() };
 const mockDecline = { mutateAsync: vi.fn() };
 const mockUpdateName = { mutateAsync: vi.fn() };
 const mockUpdateMemberName = { mutateAsync: vi.fn() };
+const mockUpdatePreferences = { mutateAsync: vi.fn() };
 const mockRefresh = vi.fn();
 const mockRefetchFormState = vi.fn();
 
@@ -27,6 +28,9 @@ vi.mock('~/hooks', () => ({
   useHouseholdMemberNameMutation: () => ({
     updateName: mockUpdateMemberName,
   }),
+  useUserProfileMutation: () => ({
+    updatePreferences: mockUpdatePreferences,
+  }),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -46,10 +50,12 @@ beforeEach(() => {
   mockDecline.mutateAsync.mockReset();
   mockUpdateName.mutateAsync.mockReset();
   mockUpdateMemberName.mutateAsync.mockReset();
+  mockUpdatePreferences.mutateAsync.mockReset();
   mockConfirm.mutateAsync.mockResolvedValue({ id: 'rsvp-1' });
   mockDecline.mutateAsync.mockResolvedValue({});
   mockUpdateName.mutateAsync.mockResolvedValue({});
   mockUpdateMemberName.mutateAsync.mockResolvedValue({});
+  mockUpdatePreferences.mutateAsync.mockResolvedValue({});
   mockRefresh.mockReset();
   mockRefetchFormState.mockReset();
   mockFormState.data = null;
