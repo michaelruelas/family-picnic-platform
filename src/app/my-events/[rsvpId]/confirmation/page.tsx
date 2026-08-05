@@ -247,45 +247,79 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
         </div>
       </BreatheSection>
 
-      <BreatheSection className="mt-8">
-        <div className="mx-auto max-w-3xl px-5">
-          <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
-            <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-              Potluck
-            </p>
-            <h2 className="font-display text-foreground mt-2 text-2xl font-semibold">
-              What you&apos;re bringing
-            </h2>
-            {potluckClaims.length === 0 ? (
+      {/*
+        FPP-35: a declined RSVP does not carry potluck claims; the
+        confirmation page should thank the user and stop here
+        instead of showing the empty "Nothing claimed yet" potluck
+        section that previously read as "you forgot to sign up".
+      */}
+      {rsvp.status !== RSVPStatus.DECLINED && (
+        <BreatheSection className="mt-8">
+          <div className="mx-auto max-w-3xl px-5">
+            <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
+              <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
+                Potluck
+              </p>
+              <h2 className="font-display text-foreground mt-2 text-2xl font-semibold">
+                What you&apos;re bringing
+              </h2>
+              {potluckClaims.length === 0 ? (
+                <p className="text-muted-foreground mt-3 text-sm">
+                  Nothing claimed yet. You can sign up for a dish on the{' '}
+                  <Link
+                    href={`/events/${rsvp.event.id}`}
+                    className="text-terracotta underline underline-offset-4"
+                  >
+                    event page
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <ul className="mt-5 space-y-2">
+                  {potluckClaims.map(({ slot, signup }) => (
+                    <li
+                      key={signup.id}
+                      className="bg-secondary/40 flex items-center justify-between rounded-2xl px-4 py-3 text-sm"
+                    >
+                      <span className="text-foreground font-medium">{signup.dishName}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {slot.name} · {signup.servings}{' '}
+                        {signup.servings === 1 ? 'serving' : 'servings'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </BreatheSection>
+      )}
+
+      {rsvp.status === RSVPStatus.DECLINED && (
+        <BreatheSection className="mt-8">
+          <div className="mx-auto max-w-3xl px-5">
+            <div className="bg-secondary/40 rounded-3xl p-7 text-center md:p-9">
+              <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
+                Thanks for letting us know
+              </p>
+              <h2 className="font-display text-foreground mt-2 text-2xl font-semibold">
+                We&apos;ll save your spot for next time
+              </h2>
               <p className="text-muted-foreground mt-3 text-sm">
-                Nothing claimed yet. You can sign up for a dish on the{' '}
+                Your household is on the &ldquo;not going&rdquo; list. If plans change, you can flip
+                back to attending from the{' '}
                 <Link
                   href={`/events/${rsvp.event.id}`}
                   className="text-terracotta underline underline-offset-4"
                 >
                   event page
-                </Link>
-                .
+                </Link>{' '}
+                any time before the deadline.
               </p>
-            ) : (
-              <ul className="mt-5 space-y-2">
-                {potluckClaims.map(({ slot, signup }) => (
-                  <li
-                    key={signup.id}
-                    className="bg-secondary/40 flex items-center justify-between rounded-2xl px-4 py-3 text-sm"
-                  >
-                    <span className="text-foreground font-medium">{signup.dishName}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {slot.name} · {signup.servings}{' '}
-                      {signup.servings === 1 ? 'serving' : 'servings'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            </div>
           </div>
-        </div>
-      </BreatheSection>
+        </BreatheSection>
+      )}
 
       {(registration?.amountCents ?? 0) > 0 && registration && (
         <BreatheSection className="mt-8">

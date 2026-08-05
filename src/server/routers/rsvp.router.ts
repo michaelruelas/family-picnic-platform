@@ -962,13 +962,22 @@ export const rsvpRouter = router({
    * the per-event answer. We also include historical rows whose
    * member has since been soft-deleted so the form can show them
    * and the user can keep or flip them to NO.
+   *
+   * FPP-34: the caller's phone + sms consent also surface here so the
+   * RSVP form can hydrate the optional SMS opt-in without an extra
+   * round-trip to the user router.
    */
   getRsvpFormState: protectedProcedure
     .input(z.object({ eventId: z.string() }))
     .query(async ({ ctx, input }) => {
       const caller = await prisma.user.findUnique({
         where: { id: ctx.session.user.id },
-        select: { id: true, householdId: true },
+        select: {
+          id: true,
+          householdId: true,
+          phoneNumber: true,
+          smsConsent: true,
+        },
       });
       if (!caller) return null;
 
@@ -1005,6 +1014,11 @@ export const rsvpRouter = router({
         rsvp,
         householdId,
         householdName: household?.name ?? null,
+        // FPP-34: phone + smsConsent feed the RSVP form's optional
+        // SMS opt-in. Returned as a snapshot the client can hydrate
+        // without an extra request.
+        phoneNumber: caller.phoneNumber ?? null,
+        smsConsent: caller.smsConsent,
       };
     }),
 });

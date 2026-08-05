@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { CommunicationPreference } from '~/lib/generated/enums';
 import { profileUpdateSchema } from '~/lib/schemas/profile';
+import { extractClientIp, parseTrustedProxyIps } from '~/lib/client-ip';
 
 export const userRouter = router({
   getProfile: protectedProcedure.query(async ({ ctx }) => {
@@ -50,6 +51,14 @@ export const userRouter = router({
         updateData.smsConsent = input.smsConsent;
         if (input.smsConsent) {
           updateData.smsConsentAt = new Date();
+          // Stamp the source IP so an audit can later verify the
+          // opt-in came from a real session. The trusted-proxy
+          // allowlist is the only thing that makes x-forwarded-for
+          // trustworthy; an empty allowlist (the safe default) means
+          // no IP is recorded. Configure via TRUSTED_PROXY_IPS.
+          const trusted = parseTrustedProxyIps(process.env.TRUSTED_PROXY_IPS);
+          const { ip } = extractClientIp(ctx.headers ?? new Headers(), trusted);
+          if (ip) updateData.smsConsentIp = ip;
         } else {
           updateData.smsConsentAt = null;
           updateData.smsConsentIp = null;
