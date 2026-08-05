@@ -734,7 +734,17 @@ export function RsvpBottomSheet({
         </>
       ) : (
         <div data-testid="rsvp-dishes-tab">
-          {!formState.rsvp ? (
+          {/* FPP-37 B1: after a successful confirm, `formState.rsvp`
+              is still the pre-confirm snapshot until the
+              `getRsvpFormState` refetch lands. Gate the Dishes tab
+              on the local `showSuccess` flag so the user never sees
+              "Loading your RSVP…" or "RSVP first" in the moment after
+              they hit Confirm. Once the refetch settles, the flag
+              is irrelevant because the server snapshot now matches
+              what we just wrote. */}
+          {showSuccess ? (
+            <PotluckEditor eventId={eventId} hasRsvp isRsvpConfirmed />
+          ) : !formState.rsvp ? (
             <div className="py-6 text-center">
               <p className="text-muted-foreground text-sm">Loading your RSVP…</p>
             </div>
