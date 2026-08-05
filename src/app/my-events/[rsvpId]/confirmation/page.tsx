@@ -277,8 +277,8 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
                     >
                       <span className="text-foreground font-medium">{signup.dishName}</span>
                       <span className="text-muted-foreground text-xs">
-                        {slotDisplayName(slot)} ·{' '}
-                        {signup.servings} {signup.servings === 1 ? 'serving' : 'servings'}
+                        {slotDisplayName(slot)} · {signup.servings}{' '}
+                        {signup.servings === 1 ? 'serving' : 'servings'}
                       </span>
                     </li>
                   ))}

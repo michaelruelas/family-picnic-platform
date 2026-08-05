@@ -247,9 +247,7 @@ export default function PotluckSignupForm({
 
   return (
     <div className="border-border bg-secondary/60 mt-3 rounded-lg border p-3">
-      <h4 className="text-foreground text-sm font-medium">
-        Sign Up for {slotDisplayName(slot)}
-      </h4>
+      <h4 className="text-foreground text-sm font-medium">Sign Up for {slotDisplayName(slot)}</h4>
       {error && (
         <div className="bg-destructive/10 text-destructive mt-2 rounded p-2 text-sm">{error}</div>
       )}
