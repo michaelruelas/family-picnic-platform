@@ -52,7 +52,7 @@ describe('FPP-54 — slot name is optional (category is required)', () => {
     const router = await fs.readFile(potluckRouterPath, 'utf-8');
     // The zod schema for `name` is optional and transforms empty / whitespace to null.
     expect(router).toMatch(/createSlot[\s\S]*?name:[\s\S]*?z\.string\(\)[\s\S]*?\.optional\(\)/);
-    expect(router).toMatch(/v\s*===\s*undefined\s*\|\|\s*v\s*===\s*['"]['"]\s*\?\s*null\s*:\s*v/);
+    expect(router).toMatch(/v\s*==\s*null\s*\|\|\s*v\s*===\s*['"]['"]\s*\?\s*null\s*:\s*v/);
   });
 });
 
