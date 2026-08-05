@@ -20,6 +20,9 @@ vi.mock('~/hooks', () => ({
   useHouseholdMemberNameMutation: () => ({
     updateName: { mutateAsync: vi.fn() },
   }),
+  useUserProfileMutation: () => ({
+    updatePreferences: { mutateAsync: vi.fn() },
+  }),
 }));
 
 vi.mock('next/link', () => ({
@@ -247,6 +250,48 @@ describe('EventRsvpCard', () => {
       await waitFor(() => {
         expect(mockDecline.mutateAsync).toHaveBeenCalledWith({ eventId: 'evt-1' });
       });
+    });
+  });
+
+  // FPP-35: a user who has not yet RSVPed must still have a way to
+  // decline without going through the attendance form. The card
+  // already showed the primary RSVP / waitlist CTA; this branch
+  // exercises the secondary "Can't make it" link that lives next
+  // to it.
+  describe('no-RSVP decline path (FPP-35)', () => {
+    it('shows a "Can\'t make it" link when no RSVP exists yet', () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={null} />);
+      const declineBtn = screen.getByTestId('rsvp-card-decline-link');
+      expect(declineBtn).toBeInTheDocument();
+      expect(declineBtn).toHaveTextContent(/Can.?t make it/);
+    });
+
+    it('calls the decline mutation when the no-RSVP user clicks the link', async () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={null} />);
+      fireEvent.click(screen.getByTestId('rsvp-card-decline-link'));
+      await waitFor(() => {
+        expect(mockDecline.mutateAsync).toHaveBeenCalledWith({ eventId: 'evt-1' });
+      });
+    });
+
+    it('hides the decline link when the RSVP deadline has passed', () => {
+      const pastDeadline = '2020-01-01T00:00:00Z';
+      render(<EventRsvpCard {...baseProps} rsvpDeadline={pastDeadline} existingRsvp={null} />);
+      // The primary CTA flips to "RSVP closed" and the secondary
+      // decline link disappears with it.
+      expect(screen.queryByTestId('rsvp-card-decline-link')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /rsvp closed/i })).toBeInTheDocument();
+    });
+
+    it('still shows the decline link when the event is full (waitlist CTA)', () => {
+      render(
+        <EventRsvpCard {...baseProps} maxCapacity={10} currentAttending={10} existingRsvp={null} />,
+      );
+      // The primary CTA becomes "Join the waitlist" but the
+      // decline link is still visible — full does not mean the
+      // user cannot opt out.
+      expect(screen.getByRole('button', { name: /join the waitlist/i })).toBeInTheDocument();
+      expect(screen.getByTestId('rsvp-card-decline-link')).toBeInTheDocument();
     });
   });
 });

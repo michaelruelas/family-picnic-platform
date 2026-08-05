@@ -141,7 +141,7 @@ For complete documentation on:
 
 ### Public Routes
 
-`/`, `/login`, `/events`, `/events/[id]`, `/events/calendar`, `/potluck`, `/photos`, `/my-events`
+`/`, `/login`, `/events`, `/events/[id]`, `/events/[id]/potluck`, `/events/[id]/photos`, `/events/calendar`, `/my-events`
 
 ### Authenticated Routes
 

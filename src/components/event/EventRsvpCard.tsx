@@ -268,6 +268,13 @@ export function EventRsvpCard({
     );
   }
 
+  // FPP-35: the decline path is distinct from "haven't RSVPed". A user
+  // who hasn't responded yet gets a low-emphasis "Can't make it"
+  // link that writes a DECLINED RSVP directly, without forcing
+  // them through the attendance form. The decline mutation is the
+  // same one used by the confirmed-state card; the server handles
+  // the first-time-decline case by materializing the household
+  // roster as NO so the confirmation page still has rows.
   return (
     <>
       <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1">
@@ -307,6 +314,16 @@ export function EventRsvpCard({
           </>
         )}
         {error && <p className="text-destructive mt-3 text-sm">{error}</p>}
+        {isRsvpOpen && (
+          <button
+            onClick={handleDecline}
+            disabled={isSubmitting}
+            className="rounded-pill text-muted-foreground hover:text-destructive mt-3 w-full px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+            data-testid="rsvp-card-decline-link"
+          >
+            {isSubmitting ? 'Updating...' : "Can't make it"}
+          </button>
+        )}
       </div>
 
       <RsvpBottomSheet
