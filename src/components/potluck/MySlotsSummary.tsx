@@ -120,8 +120,7 @@ export default function MySlotsSummary({
                     {POTLUCK_CATEGORY_EMOJIS[signup.slot.category] ?? '🍴'}
                   </span>{' '}
                   {POTLUCK_CATEGORY_LABELS[signup.slot.category] ?? signup.slot.category}
-                  {' · '}
-                  {signup.slot.name}
+                  {signup.slot.name ? ` · ${signup.slot.name}` : ''}
                   {signup.servings > 1 ? ` · ${signup.servings} servings` : ''}
                 </p>
               </div>

@@ -49,6 +49,53 @@ describe('POST /api/admin/potluck-slots', () => {
     expect(res.status).toBe(400);
   });
 
+  it('FPP-54: creates a slot without a name', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    prismaMock.event.findUnique.mockResolvedValue({ id: 'e1' } as never);
+    prismaMock.potluckSlot.create.mockResolvedValue({
+      id: 's-1',
+      name: null,
+    } as never);
+    const res = await POST(
+      makeJsonRequest('http://x', {
+        eventId: 'e1',
+        category: 'DESSERT',
+        slotType: 'UNLIMITED',
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(prismaMock.potluckSlot.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventId: 'e1',
+          category: 'DESSERT',
+          name: null,
+          slotType: 'UNLIMITED',
+        }),
+      }),
+    );
+  });
+
+  it('FPP-54: trims whitespace-only name to null', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    prismaMock.event.findUnique.mockResolvedValue({ id: 'e1' } as never);
+    prismaMock.potluckSlot.create.mockResolvedValue({ id: 's-1' } as never);
+    const res = await POST(
+      makeJsonRequest('http://x', {
+        eventId: 'e1',
+        category: 'DESSERT',
+        slotType: 'UNLIMITED',
+        name: '   ',
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(prismaMock.potluckSlot.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: null }),
+      }),
+    );
+  });
+
   it('returns 404 when event not found', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue(null);
@@ -143,6 +190,20 @@ describe('PATCH /api/admin/potluck-slots/[id]', () => {
     prismaMock.potluckSlot.update.mockResolvedValue({} as never);
     const res = await PATCH(makeJsonRequest('http://x', { name: 'New' }, 'PATCH'), slotParams);
     expect(res.status).toBe(200);
+  });
+
+  it('FPP-54: clears slot name when an empty string is sent', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    prismaMock.potluckSlot.findUnique.mockResolvedValue({ id: 's-1', slotType: 'OPEN' } as never);
+    prismaMock.potluckSlot.update.mockResolvedValue({} as never);
+    const res = await PATCH(makeJsonRequest('http://x', { name: '' }, 'PATCH'), slotParams);
+    expect(res.status).toBe(200);
+    expect(prismaMock.potluckSlot.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 's-1' },
+        data: { name: null },
+      }),
+    );
   });
 
   it('returns 400 when LIMITED slot has maxSignups < 1', async () => {

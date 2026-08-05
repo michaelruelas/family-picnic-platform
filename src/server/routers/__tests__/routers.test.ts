@@ -2691,6 +2691,54 @@ describe('potluck.router', () => {
     );
   });
 
+  it('FPP-54: createSlot accepts a slot without a name (category-only)', async () => {
+    mockPrisma.potluckSlot.create.mockResolvedValue({
+      id: 'slot-1',
+      name: null,
+    });
+
+    const { potluckRouter } = await import('~/server/routers/potluck.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(potluckRouter)({ session: adminSession });
+    const result = await caller.createSlot({
+      eventId: 'evt-1',
+      category: 'DESSERT',
+      slotType: 'UNLIMITED',
+    });
+
+    expect(mockPrisma.potluckSlot.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventId: 'evt-1',
+          category: 'DESSERT',
+          name: null,
+          slotType: 'UNLIMITED',
+        }),
+      }),
+    );
+    expect(result.id).toBe('slot-1');
+  });
+
+  it('FPP-54: createSlot trims whitespace-only names to null', async () => {
+    mockPrisma.potluckSlot.create.mockResolvedValue({ id: 'slot-1' });
+
+    const { potluckRouter } = await import('~/server/routers/potluck.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(potluckRouter)({ session: adminSession });
+    await caller.createSlot({
+      eventId: 'evt-1',
+      category: 'DESSERT',
+      name: '   ',
+      slotType: 'UNLIMITED',
+    });
+
+    expect(mockPrisma.potluckSlot.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: null }),
+      }),
+    );
+  });
+
   it('updateSlot updates potluck slot fields', async () => {
     mockPrisma.potluckSlot.update.mockResolvedValue({
       id: 'slot-1',
@@ -2710,6 +2758,22 @@ describe('potluck.router', () => {
       }),
     );
     expect(result.name).toBe('Updated');
+  });
+
+  it('FPP-54: updateSlot clears the name when an empty string is sent', async () => {
+    mockPrisma.potluckSlot.update.mockResolvedValue({ id: 'slot-1', name: null });
+
+    const { potluckRouter } = await import('~/server/routers/potluck.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(potluckRouter)({ session: adminSession });
+    await caller.updateSlot({ id: 'slot-1', name: '' });
+
+    expect(mockPrisma.potluckSlot.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'slot-1' },
+        data: { name: null },
+      }),
+    );
   });
 
   it('deleteSlot deletes a potluck slot', async () => {

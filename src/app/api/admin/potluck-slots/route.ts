@@ -11,9 +11,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { eventId, category, name, slotType, maxSignups } = body;
 
-    if (!eventId || !category || !name || !slotType) {
+    if (!eventId || !category || !slotType) {
       return NextResponse.json(
-        { error: 'eventId, category, name, and slotType are required' },
+        { error: 'eventId, category, and slotType are required' },
         { status: 400 },
       );
     }
@@ -30,11 +30,12 @@ export async function POST(request: Request) {
       );
     }
 
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
     const slot = await prisma.potluckSlot.create({
       data: {
         eventId,
         category,
-        name: name.trim(),
+        name: trimmedName === '' ? null : trimmedName,
         slotType,
         maxSignups: slotType === 'LIMITED' ? maxSignups : null,
         currentSignups: 0,

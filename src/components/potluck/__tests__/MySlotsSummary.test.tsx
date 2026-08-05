@@ -12,7 +12,7 @@ const mockMySignups: Array<{
   servings: number;
   dietaryLabels: string[];
   claimedAt: Date;
-  slot: { id: string; name: string; category: string; slotType: string };
+  slot: { id: string; name: string | null; category: string; slotType: string };
 }> = [];
 
 vi.mock('~/hooks', () => ({
@@ -135,5 +135,28 @@ describe('MySlotsSummary', () => {
       />,
     );
     expect(screen.queryByText(/Manage dishes on the/i)).not.toBeInTheDocument();
+  });
+
+  describe('FPP-54 — optional slot name', () => {
+    it('omits the slot name segment when the slot has no name', () => {
+      mockMySignups.push({
+        id: 'ps-1',
+        slotId: 's-1',
+        dishName: 'Carrot cake',
+        servings: 1,
+        dietaryLabels: [],
+        claimedAt: new Date(),
+        slot: { id: 's-1', name: null, category: 'DESSERT', slotType: 'LIMITED' },
+      });
+      render(<MySlotsSummary eventId="evt-1" userId="u-1" hasRsvp isRsvpConfirmed />);
+      const row = screen.getByTestId('my-slot-row-s-1');
+      // Category is shown, slot name is not.
+      expect(row.textContent).toMatch(/Desserts/);
+      // The category label is the last text in the meta line; no
+      // trailing "· " artefacts from a null name.
+      expect(row.textContent).not.toMatch(/Desserts\s+·\s+·/);
+      // The dish the user is bringing is still the headline.
+      expect(screen.getByText('Carrot cake')).toBeInTheDocument();
+    });
   });
 });

@@ -29,7 +29,10 @@ describe('FPP-27 — Slot list view grouped by category', () => {
     const content = await fs.readFile(slotListPath, 'utf-8');
     expect(content).toContain('POTLUCK_CATEGORY_LABELS');
     expect(content).toContain('remainingCapacity');
-    expect(content).toContain('slot.name');
+    // FPP-54: the slot name is rendered via the shared `slotDisplayName`
+    // helper. The component still surfaces the name (or a category-based
+    // placeholder when the slot has none).
+    expect(content).toMatch(/slotDisplayName\(/);
     expect(content).toContain('currentSignups');
   });
 

@@ -19,9 +19,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Slot not found' }, { status: 404 });
     }
 
-    const updateData: { name?: string; maxSignups?: number | null } = {};
+    const updateData: { name?: string | null; maxSignups?: number | null } = {};
     if (name !== undefined) {
-      updateData.name = name.trim();
+      const trimmed = typeof name === 'string' ? name.trim() : '';
+      updateData.name = trimmed === '' ? null : trimmed;
     }
     if (maxSignups !== undefined) {
       if (slot.slotType === 'LIMITED') {

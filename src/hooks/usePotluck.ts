@@ -86,7 +86,8 @@ export interface MyPotluckSignup {
   claimedAt: Date;
   slot: {
     id: string;
-    name: string;
+    // FPP-54: name is optional on the slot.
+    name: string | null;
     category: string;
     slotType: string;
   };

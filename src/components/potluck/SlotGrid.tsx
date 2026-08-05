@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SlotForm from './SlotForm';
+import { POTLUCK_CATEGORY_LABELS, slotDisplayName } from '~/lib/constants';
 
 interface PotluckSlot {
   id: string;
-  name: string;
+  name: string | null;
   category: string;
   slotType: string;
   maxSignups: number | null;
@@ -24,13 +25,7 @@ interface SlotGridProps {
   slots: PotluckSlot[];
 }
 
-const categoryLabels: Record<string, string> = {
-  MAIN: 'Main Dishes',
-  SIDE: 'Side Dishes',
-  DESSERT: 'Desserts',
-  DRINK: 'Drinks',
-  OTHER: 'Other Items',
-};
+const categoryLabels: Record<string, string> = POTLUCK_CATEGORY_LABELS;
 
 const categoryEmojis: Record<string, string> = {
   MAIN: '🍖',
@@ -150,7 +145,7 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                   <div className="space-y-3">
                     <input
                       type="text"
-                      value={slot.name}
+                      value={slot.name ?? ''}
                       onChange={(e) => {
                         const newName = e.target.value;
                         handleUpdate(
@@ -160,7 +155,7 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                         );
                       }}
                       className="border-border focus:border-terracotta focus:ring-foreground/20 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-                      placeholder="Slot name"
+                      placeholder="Slot name (optional)"
                     />
                     {slot.slotType === 'LIMITED' && (
                       <input
@@ -168,7 +163,7 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                         value={slot.maxSignups ?? 1}
                         onChange={(e) => {
                           const newMax = Number(e.target.value);
-                          handleUpdate(slot.id, slot.name, newMax);
+                          handleUpdate(slot.id, slot.name ?? '', newMax);
                         }}
                         min="1"
                         max="100"
@@ -187,7 +182,8 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                 ) : deleteConfirm === slot.id ? (
                   <div className="space-y-2">
                     <p className="text-foreground/85 text-sm">
-                      Delete <strong>{slot.name}</strong>? This will also remove all signups.
+                      Delete <strong>{slotDisplayName(slot)}</strong>? This will also remove all
+                      signups.
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -208,7 +204,7 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                 ) : (
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-foreground font-medium">{slot.name}</p>
+                      <p className="text-foreground font-medium">{slotDisplayName(slot)}</p>
                       <p className="text-muted-foreground text-sm">
                         {slot.slotType === 'UNLIMITED'
                           ? `${slot.currentSignups} signups`
