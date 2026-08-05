@@ -157,9 +157,11 @@ describe('Per-member RSVP attendance (FPP-30, FPP-29)', () => {
       expect(content).toMatch(/memberAttendances:\s*drafts\.map/);
     });
 
-    it('redirects to the confirmation page after a successful confirm', async () => {
+    it('stays on the sheet and shows the success banner after a successful confirm (FPP-21)', async () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
-      expect(content).toContain('/my-events/${result.id}/confirmation');
+      expect(content).not.toContain('/my-events/${result.id}/confirmation');
+      expect(content).toContain('rsvp-success-banner');
+      expect(content).toContain("setActiveTab('dishes')");
     });
   });
 
