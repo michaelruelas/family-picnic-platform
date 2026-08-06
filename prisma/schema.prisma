@@ -83,6 +83,21 @@ enum CommunicationStatus {
   UNSUBSCRIBED
 }
 
+enum CommunicationLogKind {
+  // The default for pre-FPP-88 rows and any general broadcast
+  // that does not fit a more specific kind. The send pipeline
+  // picks these up by default.
+  BROADCAST
+  // FPP-88: invitation sends. `body` holds the wizard URL the
+  // recipient clicks. The send pipeline formats the email or
+  // SMS body from this URL.
+  INVITATION
+  // FPP-88: forwarded decline notes. The guest attached a note
+  // when declining and the note was forwarded to the event
+  // owner via this row. `body` holds the note text.
+  DECLINE_NOTE
+}
+
 // reactions are stored as emoji strings
 
 model Household {
@@ -356,6 +371,14 @@ model CommunicationLog {
   sentByUserId     String
   recipientUserId  String?
   channel          CommunicationChannel
+  // FPP-88 review: disambiguates the `body` payload. FPP-88
+  // introduced the `body` column for two distinct purposes
+  // (invitation URL, decline note). The `kind` column tells
+  // the send pipeline which shape `body` has so a future
+  // queue reader can branch without sniffing the body. Defaults
+  // to BROADCAST so pre-FPP-88 rows and unrelated broadcast
+  // writes keep working without a code change.
+  kind             CommunicationLogKind  @default(BROADCAST)
   messageId        String?
   toPhoneNumber    String?
   fromPhoneNumber  String?
@@ -364,11 +387,11 @@ model CommunicationLog {
   errorMessage     String?
   attemptedAt      DateTime             @default(now())
   deliveredAt      DateTime?
-  // FPP-88: payload body. For invitations this holds the URL the
-  // recipient clicks to open the RSVP wizard landing page
-  // (`<baseUrl>/events/invitation/<token>`). The send pipeline is
-  // expected to read this when formatting the email/SMS. Nullable
-  // for pre-FPP-88 rows that pre-date the field.
+  // FPP-88: payload body. Shape depends on `kind`:
+  //   - INVITATION:    `<baseUrl>/events/invitation/<token>`
+  //   - DECLINE_NOTE:  free-form note text
+  //   - BROADCAST:     whatever the broadcast writer stored
+  // Nullable for pre-FPP-88 rows.
   body             String?              @db.Text
 
   event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -379,6 +402,7 @@ model CommunicationLog {
   @@index([recipientUserId])
   @@index([status])
   @@index([sentByUserId])
+  @@index([kind])
 }
 
 model Photo {

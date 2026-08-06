@@ -13,7 +13,12 @@ import {
   checkAllRecipientRateLimits,
   rateLimitError,
 } from '~/lib/rate-limit';
-import { InvitationStatus, CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
+import {
+  InvitationStatus,
+  CommunicationStatus,
+  CommunicationChannel,
+  CommunicationLogKind,
+} from '~/lib/generated/enums';
 
 function trpcErrorToResponse(err: unknown): NextResponse | null {
   if (err instanceof TRPCError) {
@@ -119,6 +124,10 @@ export async function POST(request: Request) {
             recipientUserId,
             channel: channel as CommunicationChannel,
             status: CommunicationStatus.QUEUED,
+            // FPP-88 review: tag the row so the send pipeline
+            // can branch on `kind` instead of sniffing `body`.
+            // Mirrors the tRPC router.
+            kind: CommunicationLogKind.INVITATION,
             // FPP-88: mirror the tRPC router and stash the wizard
             // landing page URL on the log row. The send pipeline
             // reads this when formatting the email/SMS.

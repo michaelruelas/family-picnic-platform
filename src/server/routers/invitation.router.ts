@@ -2,7 +2,12 @@ import { router, auditedAdminProcedure } from '~/lib/trpc';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { InvitationStatus, CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
+import {
+  InvitationStatus,
+  CommunicationStatus,
+  CommunicationChannel,
+  CommunicationLogKind,
+} from '~/lib/generated/enums';
 import {
   generateInvitationToken,
   getInvitationExpiry,
@@ -88,6 +93,11 @@ export const invitationRouter = router({
               recipientUserId,
               channel: input.channel as CommunicationChannel,
               status: CommunicationStatus.QUEUED,
+              // FPP-88 review: tag the row so the send pipeline
+              // can branch on `kind` instead of sniffing `body`.
+              // Without this, an invitation URL and a decline
+              // note are indistinguishable in the queue.
+              kind: CommunicationLogKind.INVITATION,
               // FPP-88: stash the wizard landing page URL on the log
               // row so the email/SMS send pipeline (and any future
               // "view invitations" page) can read it. The actual

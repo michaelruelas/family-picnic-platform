@@ -9,6 +9,7 @@ import {
   AdminPermission,
   CommunicationStatus,
   CommunicationChannel,
+  CommunicationLogKind,
 } from '~/lib/generated/enums';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
@@ -586,6 +587,10 @@ export async function POST(request: Request) {
                     recipientUserId: owner.userId,
                     channel: CommunicationChannel.EMAIL,
                     status: CommunicationStatus.QUEUED,
+                    // FPP-88 review: tag the row so the send
+                    // pipeline can branch on `kind` instead of
+                    // sniffing `body`. Mirrors the tRPC router.
+                    kind: CommunicationLogKind.DECLINE_NOTE,
                     body: declineNote,
                   })),
                 });

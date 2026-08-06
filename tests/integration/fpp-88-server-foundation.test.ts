@@ -79,6 +79,10 @@ describe('FPP-88: server foundation (declineMessage, validate/commit, invitation
       // Must write the note text into the new body column.
       expect(declineBlock).toMatch(/communicationLog\.createMany/);
       expect(declineBlock).toMatch(/body:\s*declineMessage/);
+      // FPP-88 review: tag the row with `kind: DECLINE_NOTE` so
+      // the send pipeline can branch on `kind` instead of
+      // sniffing `body`.
+      expect(declineBlock).toMatch(/kind:\s*CommunicationLogKind\.DECLINE_NOTE/);
     });
 
     it('tRPC decline handler skips the CommunicationLog write when the note is empty', async () => {
@@ -249,11 +253,31 @@ describe('FPP-88: server foundation (declineMessage, validate/commit, invitation
       const sendSlice = sendEnd >= 0 ? sendBlock.slice(0, sendEnd) : sendBlock;
       expect(sendSlice).toMatch(/buildInvitationUrl\(token\)/);
       expect(sendSlice).toMatch(/body:\s*buildInvitationUrl\(token\)/);
+      // FPP-88 review: tag the row with `kind: INVITATION` so
+      // the send pipeline can branch on `kind` instead of
+      // sniffing `body`.
+      expect(sendSlice).toMatch(/kind:\s*CommunicationLogKind\.INVITATION/);
     });
 
     it('REST mirror at /api/admin/invitations/send writes the URL into CommunicationLog.body', async () => {
       const rest = await fs.readFile(invitationRestPath, 'utf-8');
       expect(rest).toMatch(/body:\s*buildInvitationUrl\(token\)/);
+      // FPP-88 review: same kind tag as the tRPC path.
+      expect(rest).toMatch(/kind:\s*CommunicationLogKind\.INVITATION/);
+    });
+
+    it('FPP-88 review: both new write paths import CommunicationLogKind and use the new enum', async () => {
+      const router = await fs.readFile(rsvpRouterPath, 'utf-8');
+      const invitationRouter = await fs.readFile(invitationRouterPath, 'utf-8');
+      const rest = await fs.readFile(rsvpRestPath, 'utf-8');
+      const invitationRest = await fs.readFile(invitationRestPath, 'utf-8');
+      // Every FPP-88 write path must import the enum and use it
+      // to tag the row. Otherwise the kind column ships with no
+      // caller and a future pipeline change cannot branch.
+      expect(router).toMatch(/CommunicationLogKind/);
+      expect(invitationRouter).toMatch(/CommunicationLogKind/);
+      expect(rest).toMatch(/CommunicationLogKind/);
+      expect(invitationRest).toMatch(/CommunicationLogKind/);
     });
 
     it('CommunicationLog model has a nullable body column', async () => {

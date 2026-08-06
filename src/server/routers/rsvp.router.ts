@@ -10,6 +10,7 @@ import {
   AdminPermission,
   CommunicationStatus,
   CommunicationChannel,
+  CommunicationLogKind,
 } from '~/lib/generated/enums';
 import { writeAuditLog, diff } from '~/lib/audit';
 import {
@@ -777,6 +778,11 @@ export const rsvpRouter = router({
             recipientUserId: owner.userId,
             channel: CommunicationChannel.EMAIL,
             status: CommunicationStatus.QUEUED,
+            // FPP-88 review: tag the row so the send pipeline
+            // can branch on `kind` instead of sniffing `body`.
+            // Without this, an invitation URL and a decline
+            // note are indistinguishable in the queue.
+            kind: CommunicationLogKind.DECLINE_NOTE,
             body: declineMessage,
           })),
         });
