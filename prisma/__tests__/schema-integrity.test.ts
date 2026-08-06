@@ -113,4 +113,35 @@ describe('Prisma schema integrity vs SPEC', () => {
   it('User model has eventAdmins relation', () => {
     expect(schema).toMatch(/model User \{[\s\S]*?eventAdmins\s+EventAdmin\[\]/);
   });
+
+  it('FPP-88: RSVP model has a nullable declineMessage column', () => {
+    const block = schema.match(/model RSVP \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toMatch(/declineMessage\s+String\?/);
+  });
+
+  it('FPP-88: CommunicationLog model has a nullable body column', () => {
+    const block = schema.match(/model CommunicationLog \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toMatch(/body\s+String\?/);
+  });
+
+  it('FPP-88 review: CommunicationLogKind enum has BROADCAST, INVITATION, DECLINE_NOTE', () => {
+    const match = schema.match(/enum CommunicationLogKind \{([^}]+)\}/);
+    expect(match).not.toBeNull();
+    expect(match![1]!.trim()).toContain('BROADCAST');
+    expect(match![1]!.trim()).toContain('INVITATION');
+    expect(match![1]!.trim()).toContain('DECLINE_NOTE');
+  });
+
+  it('FPP-88 review: CommunicationLog has a `kind` column with BROADCAST default', () => {
+    const block = schema.match(/model CommunicationLog \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toMatch(
+      /kind\s+CommunicationLogKind\s+@default\(BROADCAST\)/,
+    );
+    // The kind column should be indexed so the send pipeline
+    // can filter by it without a full scan.
+    expect(block![1]!).toMatch(/@@index\(\[kind\]\)/);
+  });
 });

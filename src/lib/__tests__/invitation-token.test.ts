@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 
 describe('invitation-token', () => {
   describe('generateInvitationToken', () => {
@@ -78,6 +78,66 @@ describe('invitation-token', () => {
       const expectedMax = after + 365 * 24 * 60 * 60 * 1000;
       expect(result.getTime()).toBeGreaterThanOrEqual(expectedMin - 100);
       expect(result.getTime()).toBeLessThanOrEqual(expectedMax + 100);
+    });
+  });
+
+  describe('FPP-88: buildInvitationUrl', () => {
+    const originalBase = process.env.NEXTAUTH_URL;
+    const originalNodeEnv = process.env.NODE_ENV;
+    // NODE_ENV is typed as readonly by @types/node. Use a
+    // mutable alias so the test can flip it between the
+    // production and the unset cases.
+    const env = process.env as Record<string, string | undefined>;
+
+    afterEach(() => {
+      if (originalBase === undefined) {
+        delete process.env.NEXTAUTH_URL;
+      } else {
+        process.env.NEXTAUTH_URL = originalBase;
+      }
+      if (originalNodeEnv === undefined) {
+        delete env.NODE_ENV;
+      } else {
+        env.NODE_ENV = originalNodeEnv;
+      }
+    });
+
+    it('joins NEXTAUTH_URL with /events/invitation/<token>', async () => {
+      process.env.NEXTAUTH_URL = 'https://example.com';
+      const { buildInvitationUrl } = await import('../invitation-token');
+      const url = buildInvitationUrl('ABC-123');
+      expect(url).toBe('https://example.com/events/invitation/ABC-123');
+    });
+
+    it('strips a trailing slash from NEXTAUTH_URL', async () => {
+      process.env.NEXTAUTH_URL = 'https://example.com/';
+      const { buildInvitationUrl } = await import('../invitation-token');
+      const url = buildInvitationUrl('ABC-123');
+      expect(url).toBe('https://example.com/events/invitation/ABC-123');
+    });
+
+    it('falls back to localhost in test env when NEXTAUTH_URL is unset', async () => {
+      delete process.env.NEXTAUTH_URL;
+      env.NODE_ENV = 'test';
+      const { buildInvitationUrl } = await import('../invitation-token');
+      const url = buildInvitationUrl('ABC-123');
+      expect(url).toBe('http://localhost:3000/events/invitation/ABC-123');
+    });
+
+    it('FPP-88 review: throws when NEXTAUTH_URL is unset in non-test env', async () => {
+      delete process.env.NEXTAUTH_URL;
+      env.NODE_ENV = 'production';
+      const { buildInvitationUrl } = await import('../invitation-token');
+      expect(() => buildInvitationUrl('ABC-123')).toThrow(/NEXTAUTH_URL/);
+    });
+
+    it('FPP-88 review: throws when NEXTAUTH_URL is unset in development', async () => {
+      delete process.env.NEXTAUTH_URL;
+      delete env.NODE_ENV;
+      const { buildInvitationUrl } = await import('../invitation-token');
+      // NODE_ENV is undefined here, not 'test', so the helper
+      // must throw instead of falling back.
+      expect(() => buildInvitationUrl('ABC-123')).toThrow(/NEXTAUTH_URL/);
     });
   });
 });

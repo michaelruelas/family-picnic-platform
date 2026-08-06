@@ -2,7 +2,15 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus, EventStatus, RsvpAttending } from '~/lib/generated/enums';
+import {
+  RSVPStatus,
+  EventStatus,
+  RsvpAttending,
+  AdminPermission,
+  CommunicationStatus,
+  CommunicationChannel,
+  CommunicationLogKind,
+} from '~/lib/generated/enums';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
@@ -109,7 +117,7 @@ export async function POST(request: Request) {
 
       try {
         const body = await request.json();
-        const { eventId: reqEventId, action, headcount, memberAttendances } = body;
+        const { eventId: reqEventId, action, headcount, memberAttendances, declineMessage } = body;
         eventId = reqEventId;
 
         if (!eventId || !action) {
@@ -161,8 +169,9 @@ export async function POST(request: Request) {
           const declineResult = z
             .object({
               eventId: z.string().min(1),
+              declineMessage: z.string().trim().max(1000, 'Decline note is too long').optional(),
             })
-            .safeParse({ eventId });
+            .safeParse({ eventId, declineMessage });
 
           if (!declineResult.success) {
             const errors = declineResult.error.issues.map((i) => i.message);
@@ -227,6 +236,12 @@ export async function POST(request: Request) {
 
           const householdId = user.householdId ?? user.id;
           const attendances = normalizeAttendances(memberAttendances);
+          // FPP-88: optional decline note. Trim and treat an empty
+          // string as "no note" so the UI can submit an empty field
+          // without a separate branch.
+          const trimmedDeclineMessage =
+            typeof declineMessage === 'string' ? declineMessage.trim() : '';
+          const declineNote = trimmedDeclineMessage.length > 0 ? trimmedDeclineMessage : null;
           const tentativeHeadcount =
             action === 'decline' ? 0 : deriveHeadcount(attendances, headcount);
 
@@ -377,6 +392,8 @@ export async function POST(request: Request) {
             status: action === 'confirm' ? RSVPStatus.CONFIRMED : RSVPStatus.DECLINED,
             headcount: tentativeHeadcount,
             respondedAt: new Date(),
+            // FPP-88: only set on decline; confirm passes through with null.
+            declineMessage: action === 'decline' ? declineNote : null,
           };
 
           if (action === 'decline') {
@@ -395,6 +412,17 @@ export async function POST(request: Request) {
                   memberAttendances: { orderBy: { createdAt: 'asc' } },
                 },
               });
+
+              // FPP-88 review: the waitlist promotion must only
+              // run when the decliner was previously CONFIRMED.
+              // An unconditional promotion (the pre-review
+              // behaviour) would let a WAITLISTED decliner
+              // trigger a CONFIRMED promotion of the next
+              // waitlisted row, inflating the confirmed
+              // headcount. Mirror the tRPC gate so both paths
+              // stay in lockstep.
+              const wasConfirmed = existingRsvp?.status === RSVPStatus.CONFIRMED;
+              const hadWaitlistPosition = existingRsvp?.waitlistPosition;
 
               for (const signup of existingRsvp?.potluckSignups || []) {
                 await tx.potluckSlot.update({
@@ -418,6 +446,7 @@ export async function POST(request: Request) {
                   status: rsvpData.status,
                   headcount: rsvpData.headcount,
                   respondedAt: rsvpData.respondedAt,
+                  declineMessage: rsvpData.declineMessage,
                 },
                 create: rsvpData,
               });
@@ -469,55 +498,104 @@ export async function POST(request: Request) {
                         memberAge: a.memberAgeSnapshot,
                         attending: RsvpAttending.NO,
                       })),
+                      declineMessage: rsvpData.declineMessage,
                     },
                   },
                   tx,
                 );
               }
 
-              const firstWaitlisted = await tx.rSVP.findFirst({
-                where: {
-                  eventId: eventId!,
-                  status: RSVPStatus.WAITLISTED,
-                },
-                orderBy: { waitlistPosition: 'asc' },
-              });
-
-              if (firstWaitlisted) {
-                await tx.rSVP.update({
-                  where: { id: firstWaitlisted.id },
-                  data: {
-                    status: RSVPStatus.CONFIRMED,
-                    waitlistPosition: null,
-                    respondedAt: new Date(),
+              if (wasConfirmed) {
+                const firstWaitlisted = await tx.rSVP.findFirst({
+                  where: {
+                    eventId: eventId!,
+                    status: RSVPStatus.WAITLISTED,
                   },
+                  orderBy: { waitlistPosition: 'asc' },
                 });
 
+                if (firstWaitlisted) {
+                  await tx.rSVP.update({
+                    where: { id: firstWaitlisted.id },
+                    data: {
+                      status: RSVPStatus.CONFIRMED,
+                      waitlistPosition: null,
+                      respondedAt: new Date(),
+                    },
+                  });
+
+                  await tx.rSVP.updateMany({
+                    where: {
+                      eventId: eventId!,
+                      status: RSVPStatus.WAITLISTED,
+                      waitlistPosition: { gt: firstWaitlisted.waitlistPosition! },
+                    },
+                    data: {
+                      waitlistPosition: { decrement: 1 },
+                    },
+                  });
+
+                  await tx.adminAuditLog.create({
+                    data: {
+                      userId: firstWaitlisted.userId,
+                      eventId: eventId!,
+                      action: 'WAITLIST_PROMOTION',
+                      oldValue: {
+                        status: RSVPStatus.WAITLISTED,
+                        position: firstWaitlisted.waitlistPosition,
+                      },
+                      newValue: { status: RSVPStatus.CONFIRMED },
+                    },
+                  });
+                }
+              } else if (hadWaitlistPosition) {
+                // The decliner was on the waitlist, not
+                // confirmed. Renumber the rest of the waitlist
+                // so positions stay contiguous but do NOT
+                // promote anyone (the freed slot does not free
+                // a confirmed seat).
                 await tx.rSVP.updateMany({
                   where: {
                     eventId: eventId!,
                     status: RSVPStatus.WAITLISTED,
-                    waitlistPosition: { gt: firstWaitlisted.waitlistPosition! },
+                    waitlistPosition: { gt: hadWaitlistPosition },
                   },
                   data: {
                     waitlistPosition: { decrement: 1 },
                   },
                 });
-
-                await tx.adminAuditLog.create({
-                  data: {
-                    userId: firstWaitlisted.userId,
-                    eventId: eventId!,
-                    action: 'WAITLIST_PROMOTION',
-                    oldValue: {
-                      status: RSVPStatus.WAITLISTED,
-                      position: firstWaitlisted.waitlistPosition,
-                    },
-                    newValue: { status: RSVPStatus.CONFIRMED },
-                  },
-                });
               }
             });
+
+            // FPP-88: forward the decline note to the event owner so
+            // the host actually receives it. Mirrors the tRPC
+            // router behaviour; both paths stay in lockstep.
+            if (declineNote) {
+              const owners = await prisma.eventAdmin.findMany({
+                where: {
+                  eventId: eventId!,
+                  role: AdminPermission.OWNER,
+                },
+                select: { userId: true },
+              });
+
+              if (owners.length > 0) {
+                await prisma.communicationLog.createMany({
+                  data: owners.map((owner) => ({
+                    eventId: eventId!,
+                    sentByUserId: session.user.id,
+                    recipientUserId: owner.userId,
+                    channel: CommunicationChannel.EMAIL,
+                    status: CommunicationStatus.QUEUED,
+                    // FPP-88 review: tag the row so the send
+                    // pipeline can branch on `kind` instead of
+                    // sniffing `body`. Mirrors the tRPC router.
+                    kind: CommunicationLogKind.DECLINE_NOTE,
+                    body: declineNote,
+                  })),
+                });
+              }
+            }
 
             triggerWorkflow(eventId!, session.user.id, 'decline');
 

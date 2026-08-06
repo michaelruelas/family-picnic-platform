@@ -19,6 +19,11 @@ export const rsvpConfirmSchema = z.object({
 
 export const rsvpDeclineSchema = z.object({
   eventId: z.string().min(1, 'Event ID is required'),
+  // FPP-88: optional free-form note the guest can attach when
+  // declining. Trimmed and bounded so a hostile client cannot ship
+  // a megabyte of text. Forwarded to the event owner via a
+  // CommunicationLog row when non-empty.
+  declineMessage: z.string().trim().max(1000, 'Decline note is too long').optional(),
 });
 
 export const rsvpUpdateSchema = z.object({
