@@ -252,4 +252,23 @@ describe('DataTable', () => {
 
     expect(screen.queryByRole('columnheader', { name: /email/i })).not.toBeInTheDocument();
   });
+
+  it('applies the sticky positioning class when stickyHeader is true', () => {
+    const { container } = render(
+      <DataTable columns={baseColumns} data={sampleData} rowKey="id" stickyHeader />,
+    );
+    const thead = container.querySelector('thead');
+    expect(thead).not.toBeNull();
+    expect(thead!.className).toContain('sticky');
+    expect(thead!.className).toContain('top-0');
+  });
+
+  it('applies the cursor-pointer class when onRowClick is provided', () => {
+    const { container } = render(
+      <DataTable columns={baseColumns} data={sampleData} rowKey="id" onRowClick={() => {}} />,
+    );
+    const firstBodyRow = container.querySelector('tbody tr');
+    expect(firstBodyRow).not.toBeNull();
+    expect(firstBodyRow!.className).toContain('cursor-pointer');
+  });
 });
