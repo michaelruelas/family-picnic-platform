@@ -43,26 +43,31 @@ Located in `tests/integration/`:
 
 Located in `playwright-tests/`:
 
-- `auth.spec.ts` - Login/logout flows
-- `admin.spec.ts` - Admin event management
-- `user.spec.ts` - User RSVP and browsing
-- `snapshots.spec.ts` - Page screenshot tests
+- `smoke.spec.ts` - Every public route returns 200 + correct h1
+- `public.spec.ts` - Signed-out happy paths (home, events, calendar, login)
+- `user.spec.ts` - User flows (auth, RSVP, potluck, household, profile)
+- `admin.spec.ts` - Admin flows (events CRUD, invitations, audit log, comms)
+- `helpers/` - Shared auth, API, and fixture helpers
+
+End-to-end tests run against a dedicated Playwright-managed server on
+port 3100 so they never collide with `bun run dev` on port 3000. The
+suite reseeds the database on each run via `prisma/seed.e2e.ts`.
 
 ## E2E Setup
 
-Before running e2e tests for the first time:
-
 ```bash
-npm run db:push      # Push schema to database
-npm run db:seed      # Seed test users
+bun run db:push           # Push schema to database
+bun run db:seed:e2e       # Seed the e2e fixtures
 npx playwright install chromium
+bun run test:e2e          # Run the suite
 ```
 
-Update snapshots:
+The Playwright `webServer` block in `playwright.config.ts` boots the
+server on port 3100 automatically. The `global-setup` runs the seed
+before any test so the suite starts from a known baseline.
 
-```bash
-npm run test:e2e -- --update-snapshots
-```
+See `docs/agents/E2E.md` for the full architecture, CI flow, and
+troubleshooting guide.
 
 ## CI Configuration
 

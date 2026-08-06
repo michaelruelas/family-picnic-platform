@@ -15,14 +15,17 @@ bun run start        # Start production server (requires build first)
 ### Testing & Quality
 
 ```bash
-bun test             # Run all tests (Vitest)
-bun run test:watch   # Watch mode for development
-bun run test:coverage # Coverage report
+bun run test           # Run all tests (Vitest) — note: use `bun run`, not `bun test`
+bun run test:watch     # Watch mode for development
+bun run test:coverage  # Coverage report
 
-bun run lint         # ESLint
-bun run typecheck    # TypeScript type checking
-bun run ci           # Full CI suite: typecheck + lint + format:check + test:coverage
+bun run test:e2e       # Run Playwright e2e suite (separate from bun run test)
 ```
+
+**Important:** always use `bun run test` (which invokes `vitest run`) and
+`bun run test:e2e` (which invokes `playwright test`). The bare `bun test`
+starts Bun's native test runner, which picks up the Playwright `.spec.ts`
+files and fails because they don't have Bun's expected exports.
 
 ### Local CI (wrkflw)
 

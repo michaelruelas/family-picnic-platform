@@ -15,7 +15,14 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/lib/__tests__/setup.ts'],
     include: ['**/*.test.{ts,tsx}'],
-    exclude: ['node_modules', '.next', 'src/lib/generated', '**/playwright-tests/**'],
+    exclude: [
+      'node_modules',
+      '.next',
+      'src/lib/generated',
+      'playwright-tests',
+      'playwright-tests/**',
+      '**/playwright-tests/**',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
