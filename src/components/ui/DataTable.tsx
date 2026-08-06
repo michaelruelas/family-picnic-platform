@@ -29,6 +29,26 @@ export type DataTableSortFn =
   | 'text'
   | 'textCaseSensitive';
 
+/**
+ * A column descriptor. Intentionally narrower than TanStack's `ColumnDef` —
+ * we expose only what the two current consumers (ChargesTable, AuditLogTable)
+ * need. The fields below are NOT supported today:
+ *
+ * - `filterFn` / column filtering — filter the data upstream and pass the
+ *   already-filtered array.
+ * - `meta` / per-column metadata — use the `className` field for layout
+ *   tweaks; richer meta needs a return to TanStack's full surface.
+ * - `aggregationFn` / row aggregation — not used yet.
+ * - `enableGlobalFilter` — global search is a wrapper-level concern.
+ * - Row selection (`enableRowSelection`) — when we need checkboxes, drop the
+ *   primitive and lift selection state above it.
+ * - `size` / column resizing — the layout is fixed for now.
+ * - `sortDescFirst` — defaults to TanStack's text-vs-number heuristic.
+ *   Add this once a consumer needs a numeric column to default-desc.
+ *
+ * If you need one of the above, lift the cap deliberately rather than
+ * threading it through one column at a time.
+ */
 export interface DataTableColumn<TData, TValue = unknown> {
   id: string;
   header: string;
@@ -164,7 +184,19 @@ export default function DataTable<TData extends RowData>({
   const getRowId = useCallback(
     (row: TData, index: number) => {
       const value = (row as Record<string, unknown>)[rowKey];
-      if (value === null || value === undefined) return `row-${index}`;
+      if (value === null || value === undefined) {
+        // Dev-only signal: a missing rowKey usually means the consumer passed
+        // the wrong column name to `rowKey`, or a row slipped through without
+        // a stable id. Production builds can quiet this with a `process.env`
+        // gate; for now the log only fires in dev where the noise is helpful.
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `[DataTable] Row at index ${index} has no value for rowKey "${rowKey}". ` +
+              `Falling back to a positional id; sort/selection state will not survive a reorder.`,
+          );
+        }
+        return `row-${index}`;
+      }
       return String(value);
     },
     [rowKey],

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import DataTable, { type DataTableColumn } from './DataTable';
 import Input from './Input';
 import Button from './Button';
+import { formatDate } from '~/lib/format-date';
 
 interface Person {
   id: string;
@@ -120,7 +121,7 @@ export function ChargesTableDemo() {
       id: 'when',
       header: 'When',
       accessorFn: (row) => row.createdAt,
-      cell: ({ value }) => new Date(String(value)).toLocaleString(),
+      cell: ({ value }) => formatDate(value),
       enableSorting: true,
       sortFn: 'datetime',
     },

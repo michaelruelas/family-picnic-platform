@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react';
 import type { ChargeStatus, RefundStatus, RegistrationStatus } from '~/lib/generated/enums';
 import { trpc } from '~/lib/trpc-client';
 import { formatAmount } from '~/lib/currency';
+import { formatDate } from '~/lib/format-date';
+import { serializeCharge, type AdminChargeSerialized } from '~/lib/serialize';
 import RefundDialog from './RefundDialog';
 import ForfeitDialog from './ForfeitDialog';
 import { useToast } from '~/components/ui/Toast';
@@ -44,6 +46,8 @@ export interface AdminChargeRow {
     refundedBy: { id: string; name: string };
   }>;
 }
+
+export type { AdminChargeSerialized };
 
 interface EventLite {
   id: string;
@@ -153,28 +157,7 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
       return;
     }
     if (result.data) {
-      setCharges(
-        result.data.map((c) => ({
-          ...c,
-          createdAt: c.createdAt.toISOString(),
-          updatedAt: c.updatedAt.toISOString(),
-          receiptSentAt: c.receiptSentAt?.toISOString() ?? null,
-          registration: {
-            ...c.registration,
-            createdAt: c.registration.createdAt.toISOString(),
-            updatedAt: c.registration.updatedAt.toISOString(),
-            event: {
-              ...c.registration.event,
-              date: c.registration.event.date.toISOString(),
-            },
-          },
-          refunds: c.refunds.map((r) => ({
-            ...r,
-            createdAt: r.createdAt.toISOString(),
-            updatedAt: r.updatedAt.toISOString(),
-          })),
-        })),
-      );
+      setCharges(result.data.map(serializeCharge) as AdminChargeRow[]);
     }
   }
 
@@ -195,9 +178,7 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
         enableSorting: true,
         sortFn: 'datetime',
         cell: ({ value }) => (
-          <span className="text-muted-foreground whitespace-nowrap">
-            {new Date(String(value)).toLocaleString()}
-          </span>
+          <span className="text-muted-foreground whitespace-nowrap">{formatDate(value)}</span>
         ),
       },
       {
@@ -210,7 +191,7 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
           <div>
             <div className="text-foreground font-medium">{row.registration.event.name}</div>
             <div className="text-muted-foreground text-xs">
-              {new Date(row.registration.event.date).toLocaleDateString()}
+              {formatDate(row.registration.event.date, 'date')}
             </div>
           </div>
         ),
@@ -277,7 +258,7 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
                   {row.refunds.map((r) => (
                     <li key={r.id}>
                       {formatAmount(r.amountCents, r.currency)} · {r.status} · {r.refundedBy.name} ·{' '}
-                      {new Date(r.createdAt).toLocaleDateString()}
+                      {formatDate(r.createdAt, 'date')}
                     </li>
                   ))}
                 </ul>

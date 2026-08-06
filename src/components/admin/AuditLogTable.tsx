@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AdminAuditLog, User, Event } from '~/lib/generated/client';
+import { trpc } from '~/lib/trpc-client';
 import DataTable, { type DataTableColumn } from '~/components/ui/DataTable';
 import { useToast } from '~/components/ui/Toast';
+import { formatDate } from '~/lib/format-date';
 
 type AuditLogWithRelations = AdminAuditLog & {
   user: Pick<User, 'id' | 'name' | 'email'>;
@@ -18,33 +20,38 @@ interface AuditLogTableProps {
 
 export default function AuditLogTable({ initialLogs, events, users }: AuditLogTableProps) {
   const toast = useToast();
-  const [logs, setLogs] = useState(initialLogs);
   const [eventId, setEventId] = useState('');
   const [userId, setUserId] = useState('');
   const [action, setAction] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  async function handleFilter() {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (eventId) params.set('eventId', eventId);
-      if (userId) params.set('userId', userId);
-      if (action) params.set('action', action);
+  // tRPC handles in-flight cancellation via react-query under the hood: a
+  // new query auto-aborts the previous one, so a hung server cannot leave
+  // the user blocked on a stale request. See docs/agents/CONVENTIONS.md
+  // for the tRPC-for-all-client-server rule this replaces.
+  const logsQuery = trpc.admin.auditLog.useQuery(
+    {
+      ...(eventId ? { eventId } : {}),
+      ...(userId ? { userId } : {}),
+      ...(action ? { action } : {}),
+    },
+    { initialData: initialLogs },
+  );
 
-      const res = await fetch(`/api/admin/audit-log?${params.toString()}`);
-      if (!res.ok) {
-        toast.addToast('error', `Failed to load audit logs (${res.status})`);
-        return;
+  // Toast once per error so a stale query doesn't spam the toast queue.
+  // `lastErrorRef` tracks the error identity (message) so identical retries
+  // surface only one toast until a new error arrives.
+  const lastErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (logsQuery.error && !logsQuery.isFetching) {
+      const message = logsQuery.error.message;
+      if (lastErrorRef.current !== message) {
+        lastErrorRef.current = message;
+        toast.addToast('error', message);
       }
-      const data = await res.json();
-      setLogs(data);
-    } catch (error) {
-      toast.addToast('error', error instanceof Error ? error.message : 'Failed to load audit logs');
-    } finally {
-      setLoading(false);
+    } else if (!logsQuery.error) {
+      lastErrorRef.current = null;
     }
-  }
+  }, [logsQuery.error, logsQuery.isFetching, toast]);
 
   function formatJson(value: unknown): string {
     if (value === null || value === undefined) return '-';
@@ -59,9 +66,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
       enableSorting: true,
       sortFn: 'datetime',
       cell: ({ value }) => (
-        <span className="text-muted-foreground whitespace-nowrap">
-          {new Date(String(value)).toLocaleString()}
-        </span>
+        <span className="text-muted-foreground whitespace-nowrap">{formatDate(value)}</span>
       ),
     },
     {
@@ -88,11 +93,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
       id: 'event',
       header: 'Event',
       accessorKey: 'event',
-      cell: ({ value }) => (
-        <span className="text-muted-foreground">
-          {(value as AuditLogWithRelations['event'])?.name || '-'}
-        </span>
-      ),
+      cell: ({ row }) => <span className="text-muted-foreground">{row.event?.name || '-'}</span>,
     },
     {
       id: 'details',
@@ -125,9 +126,9 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
   return (
     <DataTable
       columns={columns}
-      data={logs}
+      data={logsQuery.data ?? initialLogs}
       rowKey="id"
-      loading={loading}
+      loading={logsQuery.isFetching}
       pageSize={50}
       syncWithUrl
       paramPrefix="audit_"
@@ -179,11 +180,12 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
             />
           </div>
           <button
-            onClick={handleFilter}
-            disabled={loading}
+            type="button"
+            onClick={() => logsQuery.refetch()}
+            disabled={logsQuery.isFetching}
             className="bg-terracotta hover:bg-terracotta self-end rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
-            {loading ? 'Loading...' : 'Filter'}
+            {logsQuery.isFetching ? 'Loading...' : 'Filter'}
           </button>
         </>
       }
