@@ -209,6 +209,32 @@ describe('DataTable', () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it('clamps the page index to 0 when the data shrinks below the current page', () => {
+    const largeData: Person[] = Array.from({ length: 30 }, (_, i) => ({
+      id: `p${i}`,
+      name: `Person ${i}`,
+      age: 20 + i,
+      email: `p${i}@example.com`,
+    }));
+
+    const { rerender } = render(
+      <DataTable columns={baseColumns} data={largeData} rowKey="id" pageSize={10} />,
+    );
+
+    // Navigate to page 3 of 3.
+    const nextBtn = screen.getByRole('button', { name: /next page/i });
+    fireEvent.click(nextBtn);
+    fireEvent.click(nextBtn);
+    expect(screen.getByTestId('pagination-summary')).toHaveTextContent(/page 3 of 3/i);
+
+    // Data shrinks to 15 rows (2 pages) — page 3 no longer exists.
+    const smallData: Person[] = largeData.slice(0, 15);
+    rerender(<DataTable columns={baseColumns} data={smallData} rowKey="id" pageSize={10} />);
+
+    // The user should land on page 1, not stuck on a blank page 3.
+    expect(screen.getByTestId('pagination-summary')).toHaveTextContent(/page 1 of 2/i);
+  });
+
   it('toggles column visibility from the column toggle menu', () => {
     const cols: DataTableColumn<Person>[] = [
       { id: 'name', header: 'Name', accessorKey: 'name' },

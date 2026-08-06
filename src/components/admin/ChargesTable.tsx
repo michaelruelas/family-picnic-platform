@@ -62,6 +62,49 @@ function balanceCents(row: AdminChargeRow): number {
   return row.amountCents - refundedCents(row);
 }
 
+interface ActionsCellProps {
+  row: AdminChargeRow;
+  isPending: boolean;
+  onRefund: (row: AdminChargeRow) => void;
+  onForfeit: (row: AdminChargeRow) => void;
+  onResend: (input: { chargeId: string }) => void;
+}
+
+function ActionsCell({ row, isPending, onRefund, onForfeit, onResend }: ActionsCellProps) {
+  return (
+    <div className="flex justify-end gap-2">
+      {row.status === 'SUCCEEDED' && balanceCents(row) > 0 ? (
+        <button
+          type="button"
+          onClick={() => onRefund(row)}
+          className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-1.5 text-xs font-medium text-white"
+        >
+          Refund
+        </button>
+      ) : null}
+      {row.status === 'SUCCEEDED' && row.registration.status === 'PAID' ? (
+        <button
+          type="button"
+          onClick={() => onForfeit(row)}
+          className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium"
+        >
+          Forfeit
+        </button>
+      ) : null}
+      {row.status === 'SUCCEEDED' && !row.receiptSentAt ? (
+        <button
+          type="button"
+          onClick={() => onResend({ chargeId: row.id })}
+          disabled={isPending}
+          className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+        >
+          {isPending ? 'Sending…' : 'Resend receipt'}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 interface ChargesTableProps {
   initialCharges: AdminChargeRow[];
   events: EventLite[];
@@ -87,6 +130,7 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
     onError: (err) => toast.addToast('error', err.message),
   });
   const resendReceiptPending = resendReceipt.isPending;
+  const resendReceiptMutate = resendReceipt.mutate;
 
   const listCharges = trpc.admin.listCharges.useQuery(
     {
@@ -97,7 +141,17 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
   );
 
   async function refresh() {
-    const result = await listCharges.refetch();
+    let result;
+    try {
+      result = await listCharges.refetch();
+    } catch (err) {
+      toast.addToast('error', err instanceof Error ? err.message : 'Failed to refresh charges');
+      return;
+    }
+    if (result.error) {
+      toast.addToast('error', result.error.message);
+      return;
+    }
     if (result.data) {
       setCharges(
         result.data.map((c) => ({
@@ -149,8 +203,9 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
       {
         id: 'event',
         header: 'Event',
-        accessorKey: 'registration',
+        accessorFn: (row) => row.registration.event.name,
         enableSorting: true,
+        sortFn: 'alphanumeric',
         cell: ({ row }) => (
           <div>
             <div className="text-foreground font-medium">{row.registration.event.name}</div>
@@ -237,41 +292,17 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
         align: 'right',
         enableHiding: false,
         cell: ({ row }) => (
-          <div className="flex justify-end gap-2">
-            {row.status === 'SUCCEEDED' && balanceCents(row) > 0 ? (
-              <button
-                type="button"
-                onClick={() => setRefundTarget(row)}
-                className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-1.5 text-xs font-medium text-white"
-              >
-                Refund
-              </button>
-            ) : null}
-            {row.status === 'SUCCEEDED' && row.registration.status === 'PAID' ? (
-              <button
-                type="button"
-                onClick={() => setForfeitTarget(row)}
-                className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium"
-              >
-                Forfeit
-              </button>
-            ) : null}
-            {row.status === 'SUCCEEDED' && !row.receiptSentAt ? (
-              <button
-                type="button"
-                onClick={() => resendReceipt.mutate({ chargeId: row.id })}
-                disabled={resendReceiptPending}
-                className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-              >
-                {resendReceiptPending ? 'Sending…' : 'Resend receipt'}
-              </button>
-            ) : null}
-          </div>
+          <ActionsCell
+            row={row}
+            isPending={resendReceiptPending}
+            onRefund={setRefundTarget}
+            onForfeit={setForfeitTarget}
+            onResend={resendReceiptMutate}
+          />
         ),
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [resendReceiptPending],
+    [resendReceiptPending, resendReceiptMutate],
   );
 
   return (

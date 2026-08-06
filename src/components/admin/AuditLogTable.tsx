@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { AdminAuditLog, User, Event } from '~/lib/generated/client';
 import DataTable, { type DataTableColumn } from '~/components/ui/DataTable';
+import { useToast } from '~/components/ui/Toast';
 
 type AuditLogWithRelations = AdminAuditLog & {
   user: Pick<User, 'id' | 'name' | 'email'>;
@@ -16,6 +17,7 @@ interface AuditLogTableProps {
 }
 
 export default function AuditLogTable({ initialLogs, events, users }: AuditLogTableProps) {
+  const toast = useToast();
   const [logs, setLogs] = useState(initialLogs);
   const [eventId, setEventId] = useState('');
   const [userId, setUserId] = useState('');
@@ -31,12 +33,14 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
       if (action) params.set('action', action);
 
       const res = await fetch(`/api/admin/audit-log?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLogs(data);
+      if (!res.ok) {
+        toast.addToast('error', `Failed to load audit logs (${res.status})`);
+        return;
       }
+      const data = await res.json();
+      setLogs(data);
     } catch (error) {
-      console.error('Failed to fetch audit logs:', error);
+      toast.addToast('error', error instanceof Error ? error.message : 'Failed to load audit logs');
     } finally {
       setLoading(false);
     }

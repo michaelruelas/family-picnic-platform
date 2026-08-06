@@ -8,7 +8,12 @@ import {
   useLegacyTable,
 } from '@tanstack/react-table/legacy';
 import type { ColumnDef, RowData, StockFeatures } from '@tanstack/table-core';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+// TODO(tanstack-v10): migrate off useLegacyTable. The v9 `legacy` entry point
+// is a v7 compat shim; new v10 code should use the explicit
+// `tableFeatures({ ... })` + `useTable()` pattern. The `StockFeatures` generic
+// below is tied to that legacy shim and will go away with it.
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Spinner from './Spinner';
 import EmptyState from './EmptyState';
@@ -24,12 +29,12 @@ export type DataTableSortFn =
   | 'text'
   | 'textCaseSensitive';
 
-export interface DataTableColumn<TData> {
+export interface DataTableColumn<TData, TValue = unknown> {
   id: string;
   header: string;
   accessorKey?: keyof TData & string;
-  accessorFn?: (row: TData) => unknown;
-  cell?: (info: { value: unknown; row: TData; rowIndex: number }) => React.ReactNode;
+  accessorFn?: (row: TData) => TValue;
+  cell?: (ctx: { value: TValue; row: TData; rowIndex: number }) => React.ReactNode;
   enableSorting?: boolean;
   enableHiding?: boolean;
   sortFn?: DataTableSortFn;
@@ -72,14 +77,14 @@ const alignClass: Record<DataTableAlign, string> = {
   center: 'text-center',
 };
 
-function buildColumnDefs<TData extends RowData>(
-  columns: DataTableColumn<TData>[],
+function buildColumnDefs<TData extends RowData, TValue = unknown>(
+  columns: DataTableColumn<TData, TValue>[],
 ): {
-  defs: ColumnDef<StockFeatures, TData, unknown>[];
+  defs: ColumnDef<StockFeatures, TData, TValue>[];
   metaById: Map<string, ColumnDisplayMeta>;
 } {
   const metaById = new Map<string, ColumnDisplayMeta>();
-  const defs: ColumnDef<StockFeatures, TData, unknown>[] = columns.map((col) => {
+  const defs: ColumnDef<StockFeatures, TData, TValue>[] = columns.map((col) => {
     const def: Record<string, unknown> = {
       id: col.id,
       header: col.header,
@@ -98,7 +103,7 @@ function buildColumnDefs<TData extends RowData>(
       const cellFn = col.cell;
       def.cell = (ctx: { getValue: () => unknown; row: { original: TData; index: number } }) =>
         cellFn({
-          value: ctx.getValue(),
+          value: ctx.getValue() as TValue,
           row: ctx.row.original,
           rowIndex: ctx.row.index,
         });
@@ -109,7 +114,7 @@ function buildColumnDefs<TData extends RowData>(
       header: col.header,
       canHide: col.enableHiding ?? true,
     });
-    return def as unknown as ColumnDef<StockFeatures, TData, unknown>;
+    return def as unknown as ColumnDef<StockFeatures, TData, TValue>;
   });
   return { defs, metaById };
 }
@@ -125,16 +130,18 @@ export default function DataTable<TData extends RowData>({
   loading = false,
   emptyState,
   syncWithUrl = false,
-  paramPrefix = '',
+  paramPrefix,
   className = '',
 }: DataTableProps<TData>) {
+  const instanceId = useId().replace(/[^a-zA-Z0-9]/g, '_');
+  const effectivePrefix = paramPrefix ?? `dt_${instanceId}_`;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const sortKey = `${paramPrefix}sort`;
-  const sortDirKey = `${paramPrefix}sortDir`;
-  const pageKey = `${paramPrefix}page`;
+  const sortKey = `${effectivePrefix}sort`;
+  const sortDirKey = `${effectivePrefix}sortDir`;
+  const pageKey = `${effectivePrefix}page`;
 
   const { defs: columnDefs, metaById } = useMemo(() => buildColumnDefs(columns), [columns]);
 
@@ -218,6 +225,16 @@ export default function DataTable<TData extends RowData>({
     pageKey,
   ]);
 
+  // Clamp the page index when data shrinks (filter applied, deep-link to a
+  // page that no longer exists). Without this, the user lands on a blank
+  // <tbody> with the footer reading "Page 4 of 1".
+  useEffect(() => {
+    const pageCount = table.getPageCount();
+    if (currentPageIndex >= pageCount && pageCount > 0) {
+      table.setPageIndex(0);
+    }
+  }, [table, currentPageIndex, data.length]);
+
   const isEmpty = !loading && data.length === 0;
   const showPagination = !loading && !isEmpty && data.length > pageSize;
 
@@ -264,9 +281,7 @@ export default function DataTable<TData extends RowData>({
           </div>
         ) : (
           <table className="min-w-full divide-y divide-stone-200">
-            <thead
-              className={stickyHeader ? 'bg-secondary/60 sticky top-0 z-10' : 'bg-secondary/60'}
-            >
+            <thead className={`bg-secondary/60${stickyHeader ? 'sticky top-0 z-10' : ''}`}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
@@ -310,9 +325,7 @@ export default function DataTable<TData extends RowData>({
                 return (
                   <tr
                     key={row.id}
-                    className={
-                      clickable ? 'hover:bg-secondary/40 cursor-pointer' : 'hover:bg-secondary/40'
-                    }
+                    className={`hover:bg-secondary/40${clickable ? 'cursor-pointer' : ''}`}
                     onClick={clickable ? () => onRowClick!(row.original) : undefined}
                     tabIndex={clickable ? 0 : undefined}
                     onKeyDown={
