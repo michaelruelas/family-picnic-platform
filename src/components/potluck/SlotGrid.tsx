@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SlotForm from './SlotForm';
-import { POTLUCK_CATEGORY_LABELS, slotDisplayName } from '~/lib/constants';
+import { POTLUCK_CATEGORY_LABELS, POTLUCK_CATEGORY_EMOJIS, slotDisplayName } from '~/lib/constants';
 
 interface PotluckSlot {
   id: string;
@@ -24,16 +24,6 @@ interface SlotGridProps {
   eventId: string;
   slots: PotluckSlot[];
 }
-
-const categoryLabels: Record<string, string> = POTLUCK_CATEGORY_LABELS;
-
-const categoryEmojis: Record<string, string> = {
-  MAIN: '🍖',
-  SIDE: '🥗',
-  DESSERT: '🍰',
-  DRINK: '🥤',
-  OTHER: '📦',
-};
 
 export default function SlotGrid({ eventId, slots }: SlotGridProps) {
   const router = useRouter();
@@ -134,8 +124,8 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
       {Object.entries(slotsByCategory).map(([category, categorySlots]) => (
         <div key={category} className="rounded-xl bg-white p-6 shadow-sm">
           <h3 className="text-foreground flex items-center gap-2 text-lg font-semibold">
-            <span className="text-2xl">{categoryEmojis[category] || '📦'}</span>
-            {categoryLabels[category] || category}
+            <span className="text-2xl">{POTLUCK_CATEGORY_EMOJIS[category] || '📦'}</span>
+            {POTLUCK_CATEGORY_LABELS[category] || category}
           </h3>
 
           <div className="mt-4 space-y-3">
@@ -158,6 +148,9 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                       placeholder="Slot name (optional)"
                     />
                     {slot.slotType === 'LIMITED' && (
+                      // FPP-54 (Q1): reads slot.name from props, not the locally-edited value.
+                      // If the name input above changed, this PATCH sends the stale props name.
+                      // Fix: hoist editing state to local useState for both fields; fire PATCH on blur or Done.
                       <input
                         type="number"
                         value={slot.maxSignups ?? 1}

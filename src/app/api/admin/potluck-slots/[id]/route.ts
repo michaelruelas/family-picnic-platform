@@ -21,7 +21,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     const updateData: { name?: string | null; maxSignups?: number | null } = {};
     if (name !== undefined) {
-      const trimmed = typeof name === 'string' ? name.trim() : '';
+      if (typeof name !== 'string') {
+        return NextResponse.json(
+          { error: 'name must be a string if provided' },
+          { status: 400 },
+        );
+      }
+      const trimmed = name.trim();
       updateData.name = trimmed === '' ? null : trimmed;
     }
     if (maxSignups !== undefined) {

@@ -9,7 +9,7 @@ import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 import { RsvpLastUpdated } from '~/components/event/RsvpLastUpdated';
 import { FeeTotalBlock } from '~/components/event/FeeTotalBlock';
-import { POTLUCK_CATEGORY_LABELS, slotDisplayName } from '~/lib/constants';
+import { slotDisplayName } from '~/lib/constants';
 
 export const dynamic = 'force-dynamic';
 

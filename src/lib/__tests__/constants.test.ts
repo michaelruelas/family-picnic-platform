@@ -69,4 +69,34 @@ describe('constants', () => {
       expect(POTLUCK_CATEGORY_LABELS.OTHER).toBe('Other Items');
     });
   });
+
+  describe('slotDisplayName', () => {
+    it('returns the slot name when set', async () => {
+      const { slotDisplayName } = await import('../constants');
+      expect(slotDisplayName({ name: 'Mac and cheese', category: 'MAIN' })).toBe('Mac and cheese');
+    });
+
+    it('trims whitespace and treats empty as absent', async () => {
+      const { slotDisplayName } = await import('../constants');
+      expect(slotDisplayName({ name: '   ', category: 'DESSERT' })).toBe('A dessert (any)');
+    });
+
+    it('returns category article for null name', async () => {
+      const { slotDisplayName } = await import('../constants');
+      expect(slotDisplayName({ name: null, category: 'DESSERT' })).toBe('A dessert (any)');
+    });
+
+    it('uses the correct article per category', async () => {
+      const { slotDisplayName } = await import('../constants');
+      expect(slotDisplayName({ name: null, category: 'MAIN' })).toBe('A main (any)');
+      expect(slotDisplayName({ name: null, category: 'SIDE' })).toBe('A side (any)');
+      expect(slotDisplayName({ name: null, category: 'DRINK' })).toBe('A drink (any)');
+      expect(slotDisplayName({ name: null, category: 'OTHER' })).toBe('An item (any)');
+    });
+
+    it('falls back to generic text for unknown category', async () => {
+      const { slotDisplayName } = await import('../constants');
+      expect(slotDisplayName({ name: null, category: 'UNKNOWN' })).toBe('An open slot (any)');
+    });
+  });
 });
