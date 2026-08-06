@@ -14,7 +14,7 @@ interface SlotFormProps {
   eventId: string;
   initialData?: {
     id: string;
-    name: string;
+    name: string | null;
     category: string;
     slotType: string;
     maxSignups: number | null;
@@ -117,7 +117,8 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
 
         <div>
           <label htmlFor="name" className="text-foreground/85 block text-sm font-medium">
-            Slot Name *
+            Slot Name
+            <span className="text-muted-foreground ml-1 text-xs font-normal">(optional)</span>
           </label>
           <input
             type="text"
@@ -125,8 +126,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
             name="name"
             value={formData.name}
             onChange={handleChange}
-            required
-            placeholder="e.g., Salad, Brownies, Lemonade"
+            placeholder='e.g., "A dessert" — leave blank to open a category slot'
             className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           />
         </div>

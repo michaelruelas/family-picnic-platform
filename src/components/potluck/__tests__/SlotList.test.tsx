@@ -8,7 +8,7 @@ const mockMySignups: Array<{
   servings: number;
   dietaryLabels: string[];
   claimedAt: Date;
-  slot: { id: string; name: string; category: string; slotType: string };
+  slot: { id: string; name: string | null; category: string; slotType: string };
 }> = [];
 
 const mockSignup = { mutateAsync: vi.fn(), isPending: false };
@@ -267,5 +267,44 @@ describe('SlotList', () => {
       <SlotList eventId="evt-1" slots={[]} userId="u-1" hasRsvp={true} isRsvpConfirmed={true} />,
     );
     expect(screen.getByText(/The menu is still being planned/i)).toBeInTheDocument();
+  });
+
+  describe('FPP-54 — optional slot name', () => {
+    const unnamedSlot = {
+      id: 's-unnamed',
+      name: null,
+      category: 'DESSERT',
+      slotType: 'LIMITED' as const,
+      maxSignups: 2,
+      currentSignups: 0,
+      signups: [],
+    };
+
+    it('renders a category-derived placeholder when the slot has no name', () => {
+      render(
+        <SlotList eventId="evt-1" slots={[unnamedSlot]} userId="u-1" hasRsvp isRsvpConfirmed />,
+      );
+      const card = screen.getByTestId('potluck-slot-s-unnamed');
+      expect(card.textContent).toMatch(/A dessert/i);
+      expect(card.textContent).toMatch(/any/i);
+    });
+
+    it('still allows claiming a slot with no name', async () => {
+      render(
+        <SlotList eventId="evt-1" slots={[unnamedSlot]} userId="u-1" hasRsvp isRsvpConfirmed />,
+      );
+      fireEvent.click(screen.getByTestId('potluck-claim-s-unnamed'));
+      const input = await screen.findByTestId('potluck-claim-dish-input');
+      fireEvent.change(input, { target: { value: 'Carrot cake' } });
+      fireEvent.click(screen.getByTestId('potluck-claim-submit'));
+      await waitFor(() => {
+        expect(mockSignup.mutateAsync).toHaveBeenCalledWith({
+          slotId: 's-unnamed',
+          dishName: 'Carrot cake',
+          servings: 1,
+          dietaryLabels: [],
+        });
+      });
+    });
   });
 });

@@ -314,7 +314,10 @@ model PotluckSlot {
   id             String         @id @default(cuid())
   eventId        String
   category       PotluckCategory
-  name           String
+  // FPP-54: slot name is optional. Admins may leave it blank to create
+  // an open slot in a category (e.g. "A dessert" with no specific dish).
+  // The specific dish lives on the user's claim (PotluckSignup.dishName).
+  name           String?
   slotType       SlotType
   maxSignups     Int?
   currentSignups Int            @default(0)

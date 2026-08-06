@@ -8,7 +8,7 @@ const mockMySignups: Array<{
   servings: number;
   dietaryLabels: string[];
   claimedAt: Date;
-  slot: { id: string; name: string; category: string; slotType: string };
+  slot: { id: string; name: string | null; category: string; slotType: string };
 }> = [];
 
 const mockSignup = { mutateAsync: vi.fn(), isPending: false };

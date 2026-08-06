@@ -3,12 +3,15 @@
 import { useMemo, useState } from 'react';
 import { Button, Input, Modal, Spinner } from '~/components/ui';
 import { useMyPotluckSignups, usePotluckSignupMutation, type MyPotluckSignup } from '~/hooks';
-import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS } from '~/lib/constants';
+import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS, slotDisplayName } from '~/lib/constants';
 import { SlotType } from '~/lib/generated/enums';
 
 export interface EventSlot {
   id: string;
-  name: string;
+  // FPP-54: name is optional. A null/empty name renders as a
+  // category-only slot (e.g. "A dessert (any)") so users know the
+  // category without seeing a pre-baked dish name.
+  name: string | null;
   category: keyof typeof POTLUCK_CATEGORY_LABELS | string;
   slotType: keyof typeof SlotType | string;
   maxSignups: number | null;
@@ -231,7 +234,9 @@ export default function SlotList({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-foreground truncate font-semibold">{slot.name}</p>
+                        <p className="text-foreground truncate font-semibold">
+                          {slotDisplayName(slot)}
+                        </p>
                         <p className="text-muted-foreground mt-1 text-xs">
                           {slot.slotType === 'UNLIMITED'
                             ? `${slot.currentSignups} ${
@@ -324,7 +329,7 @@ export default function SlotList({
         {claimSlot ? (
           <div className="space-y-4">
             <div className="bg-secondary/60 rounded-2xl px-4 py-3">
-              <p className="text-foreground font-semibold">{claimSlot.name}</p>
+              <p className="text-foreground font-semibold">{slotDisplayName(claimSlot)}</p>
               <p className="text-muted-foreground text-xs">
                 {POTLUCK_CATEGORY_LABELS[claimSlot.category] ?? claimSlot.category}
                 {claimIsFull ? ' · full' : ''}

@@ -15,7 +15,16 @@ export const potluckRouter = router({
           PotluckCategory.DRINK,
           PotluckCategory.OTHER,
         ]),
-        name: z.string().min(1),
+        // FPP-54: slot name is optional. Admins may leave it blank to
+        // open a category slot with no specific dish. An empty / whitespace
+        // string is normalised to NULL by the resolver.
+        name: z
+          .string()
+          .trim()
+          .max(120)
+          .optional()
+          .nullable()
+          .transform((v) => (v == null || v === '' ? null : v)),
         slotType: z.enum([SlotType.LIMITED, SlotType.UNLIMITED]),
         maxSignups: z.number().int().positive().optional(),
       }),
@@ -36,7 +45,14 @@ export const potluckRouter = router({
     .input(
       z.object({
         id: z.string(),
-        name: z.string().min(1).optional(),
+        // FPP-54: empty / whitespace clears the name (NULL).
+        name: z
+          .string()
+          .trim()
+          .max(120)
+          .optional()
+          .nullable()
+          .transform((v) => (v === undefined ? undefined : v == null || v === '' ? null : v)),
         maxSignups: z.number().int().positive().optional(),
       }),
     )

@@ -2,11 +2,14 @@
 
 import { useState } from 'react';
 import { usePotluckSignupMutation } from '~/hooks';
+import { slotDisplayName } from '~/lib/constants';
 import { SlotType } from '~/lib/generated/enums';
 
 interface PotluckSlot {
   id: string;
-  name: string;
+  // FPP-54: name is optional on the slot.
+  name: string | null;
+  category: string;
   slotType: SlotType;
   maxSignups: number | null;
   currentSignups: number;
@@ -244,7 +247,7 @@ export default function PotluckSignupForm({
 
   return (
     <div className="border-border bg-secondary/60 mt-3 rounded-lg border p-3">
-      <h4 className="text-foreground text-sm font-medium">Sign Up for {slot.name}</h4>
+      <h4 className="text-foreground text-sm font-medium">Sign Up for {slotDisplayName(slot)}</h4>
       {error && (
         <div className="bg-destructive/10 text-destructive mt-2 rounded p-2 text-sm">{error}</div>
       )}

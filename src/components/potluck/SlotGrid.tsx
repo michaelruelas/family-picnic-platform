@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SlotForm from './SlotForm';
+import { POTLUCK_CATEGORY_LABELS, POTLUCK_CATEGORY_EMOJIS, slotDisplayName } from '~/lib/constants';
 
 interface PotluckSlot {
   id: string;
-  name: string;
+  name: string | null;
   category: string;
   slotType: string;
   maxSignups: number | null;
@@ -23,22 +24,6 @@ interface SlotGridProps {
   eventId: string;
   slots: PotluckSlot[];
 }
-
-const categoryLabels: Record<string, string> = {
-  MAIN: 'Main Dishes',
-  SIDE: 'Side Dishes',
-  DESSERT: 'Desserts',
-  DRINK: 'Drinks',
-  OTHER: 'Other Items',
-};
-
-const categoryEmojis: Record<string, string> = {
-  MAIN: '🍖',
-  SIDE: '🥗',
-  DESSERT: '🍰',
-  DRINK: '🥤',
-  OTHER: '📦',
-};
 
 export default function SlotGrid({ eventId, slots }: SlotGridProps) {
   const router = useRouter();
@@ -139,8 +124,8 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
       {Object.entries(slotsByCategory).map(([category, categorySlots]) => (
         <div key={category} className="rounded-xl bg-white p-6 shadow-sm">
           <h3 className="text-foreground flex items-center gap-2 text-lg font-semibold">
-            <span className="text-2xl">{categoryEmojis[category] || '📦'}</span>
-            {categoryLabels[category] || category}
+            <span className="text-2xl">{POTLUCK_CATEGORY_EMOJIS[category] || '📦'}</span>
+            {POTLUCK_CATEGORY_LABELS[category] || category}
           </h3>
 
           <div className="mt-4 space-y-3">
@@ -150,7 +135,7 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                   <div className="space-y-3">
                     <input
                       type="text"
-                      value={slot.name}
+                      value={slot.name ?? ''}
                       onChange={(e) => {
                         const newName = e.target.value;
                         handleUpdate(
@@ -160,15 +145,18 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                         );
                       }}
                       className="border-border focus:border-terracotta focus:ring-foreground/20 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-                      placeholder="Slot name"
+                      placeholder="Slot name (optional)"
                     />
                     {slot.slotType === 'LIMITED' && (
+                      // FPP-54 (Q1): reads slot.name from props, not the locally-edited value.
+                      // If the name input above changed, this PATCH sends the stale props name.
+                      // Fix: hoist editing state to local useState for both fields; fire PATCH on blur or Done.
                       <input
                         type="number"
                         value={slot.maxSignups ?? 1}
                         onChange={(e) => {
                           const newMax = Number(e.target.value);
-                          handleUpdate(slot.id, slot.name, newMax);
+                          handleUpdate(slot.id, slot.name ?? '', newMax);
                         }}
                         min="1"
                         max="100"
@@ -187,7 +175,8 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                 ) : deleteConfirm === slot.id ? (
                   <div className="space-y-2">
                     <p className="text-foreground/85 text-sm">
-                      Delete <strong>{slot.name}</strong>? This will also remove all signups.
+                      Delete <strong>{slotDisplayName(slot)}</strong>? This will also remove all
+                      signups.
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -208,7 +197,7 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
                 ) : (
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-foreground font-medium">{slot.name}</p>
+                      <p className="text-foreground font-medium">{slotDisplayName(slot)}</p>
                       <p className="text-muted-foreground text-sm">
                         {slot.slotType === 'UNLIMITED'
                           ? `${slot.currentSignups} signups`
