@@ -7,6 +7,7 @@ import { formatAmount } from '~/lib/currency';
 import RefundDialog from './RefundDialog';
 import ForfeitDialog from './ForfeitDialog';
 import { useToast } from '~/components/ui/Toast';
+import DataTable, { type DataTableColumn } from '~/components/ui/DataTable';
 
 type SerializedDate = string;
 
@@ -51,6 +52,16 @@ interface EventLite {
   registrationFeeCents: number | null;
 }
 
+function refundedCents(row: AdminChargeRow): number {
+  return row.refunds
+    .filter((r) => r.status === 'SUCCEEDED')
+    .reduce((sum, r) => sum + r.amountCents, 0);
+}
+
+function balanceCents(row: AdminChargeRow): number {
+  return row.amountCents - refundedCents(row);
+}
+
 interface ChargesTableProps {
   initialCharges: AdminChargeRow[];
   events: EventLite[];
@@ -75,6 +86,7 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
     },
     onError: (err) => toast.addToast('error', err.message),
   });
+  const resendReceiptPending = resendReceipt.isPending;
 
   const listCharges = trpc.admin.listCharges.useQuery(
     {
@@ -120,184 +132,211 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
     });
   }, [charges, eventId, statusFilter]);
 
-  const refundedCents = (row: AdminChargeRow) =>
-    row.refunds.filter((r) => r.status === 'SUCCEEDED').reduce((sum, r) => sum + r.amountCents, 0);
-  const balanceCents = (row: AdminChargeRow) => row.amountCents - refundedCents(row);
+  const columns = useMemo<DataTableColumn<AdminChargeRow>[]>(
+    () => [
+      {
+        id: 'when',
+        header: 'When',
+        accessorKey: 'createdAt',
+        enableSorting: true,
+        sortFn: 'datetime',
+        cell: ({ value }) => (
+          <span className="text-muted-foreground whitespace-nowrap">
+            {new Date(String(value)).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: 'event',
+        header: 'Event',
+        accessorKey: 'registration',
+        enableSorting: true,
+        cell: ({ row }) => (
+          <div>
+            <div className="text-foreground font-medium">{row.registration.event.name}</div>
+            <div className="text-muted-foreground text-xs">
+              {new Date(row.registration.event.date).toLocaleDateString()}
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'attendee',
+        header: 'Attendee',
+        accessorKey: 'registration',
+        cell: ({ row }) => (
+          <div>
+            <div className="text-foreground">{row.registration.user.name}</div>
+            <div className="text-muted-foreground text-xs">{row.registration.user.email}</div>
+          </div>
+        ),
+      },
+      {
+        id: 'amount',
+        header: 'Amount',
+        accessorKey: 'amountCents',
+        enableSorting: true,
+        sortFn: 'basic',
+        align: 'right',
+        cell: ({ row }) => (
+          <div>
+            <div className="text-foreground font-semibold">
+              {formatAmount(row.amountCents, row.currency)}
+            </div>
+            {refundedCents(row) > 0 ? (
+              <div className="text-muted-foreground text-xs">
+                Refunded {formatAmount(refundedCents(row), row.currency)} · Balance{' '}
+                {formatAmount(balanceCents(row), row.currency)}
+              </div>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        id: 'chargeStatus',
+        header: 'Charge status',
+        accessorKey: 'status',
+        enableSorting: true,
+        cell: ({ row }) => (
+          <div>
+            <ChargeStatusBadge status={row.status} />
+            {row.lastErrorMessage ? (
+              <div className="text-destructive mt-1 text-xs">{row.lastErrorMessage}</div>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        id: 'registration',
+        header: 'Registration',
+        accessorKey: 'registration',
+        cell: ({ row }) => (
+          <div>
+            <RegistrationStatusBadge status={row.registration.status} />
+            {row.refunds.length > 0 ? (
+              <details className="mt-1 text-xs">
+                <summary className="text-terracotta cursor-pointer">
+                  {row.refunds.length} refund{row.refunds.length === 1 ? '' : 's'}
+                </summary>
+                <ul className="text-muted-foreground mt-1 space-y-1">
+                  {row.refunds.map((r) => (
+                    <li key={r.id}>
+                      {formatAmount(r.amountCents, r.currency)} · {r.status} · {r.refundedBy.name} ·{' '}
+                      {new Date(r.createdAt).toLocaleDateString()}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        align: 'right',
+        enableHiding: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            {row.status === 'SUCCEEDED' && balanceCents(row) > 0 ? (
+              <button
+                type="button"
+                onClick={() => setRefundTarget(row)}
+                className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-1.5 text-xs font-medium text-white"
+              >
+                Refund
+              </button>
+            ) : null}
+            {row.status === 'SUCCEEDED' && row.registration.status === 'PAID' ? (
+              <button
+                type="button"
+                onClick={() => setForfeitTarget(row)}
+                className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium"
+              >
+                Forfeit
+              </button>
+            ) : null}
+            {row.status === 'SUCCEEDED' && !row.receiptSentAt ? (
+              <button
+                type="button"
+                onClick={() => resendReceipt.mutate({ chargeId: row.id })}
+                disabled={resendReceiptPending}
+                className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+              >
+                {resendReceiptPending ? 'Sending…' : 'Resend receipt'}
+              </button>
+            ) : null}
+          </div>
+        ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [resendReceiptPending],
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-4 rounded-lg bg-white p-4 shadow-sm">
-        <div>
-          <label className="text-muted-foreground block text-sm font-medium">Event</label>
-          <select
-            value={eventId}
-            onChange={(e) => setEventId(e.target.value)}
-            className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
-          >
-            <option value="">All events</option>
-            {events.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-muted-foreground block text-sm font-medium">Status</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as ChargeStatus | '')}
-            className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
-          >
-            <option value="">All</option>
-            <option value="SUCCEEDED">Succeeded</option>
-            <option value="PENDING">Pending</option>
-            <option value="FAILED">Failed</option>
-            <option value="CANCELED">Canceled</option>
-            <option value="REQUIRES_PAYMENT_METHOD">Awaiting card</option>
-            <option value="REQUIRES_ACTION">Needs action</option>
-            <option value="PROCESSING">Processing</option>
-          </select>
-        </div>
-        <div className="flex items-end">
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={listCharges.isFetching}
-            className="bg-secondary text-foreground/85 rounded-lg px-4 py-2 text-sm font-medium"
-          >
-            {listCharges.isFetching ? 'Loading…' : 'Apply filter'}
-          </button>
-        </div>
-        <div className="ml-auto text-sm">
-          <span className="text-muted-foreground">Total rows: </span>
-          <span className="text-foreground font-semibold">{filtered.length}</span>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-stone-200">
-          <thead className="bg-secondary/60">
-            <tr>
-              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
-                When
-              </th>
-              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
-                Event
-              </th>
-              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
-                Attendee
-              </th>
-              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
-                Amount
-              </th>
-              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
-                Charge status
-              </th>
-              <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
-                Registration
-              </th>
-              <th className="text-muted-foreground px-4 py-3 text-right text-xs font-medium tracking-wider uppercase">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-200">
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-muted-foreground px-4 py-12 text-center text-sm">
-                  No charges match the current filters.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-secondary/40">
-                  <td className="text-muted-foreground px-4 py-3 text-sm whitespace-nowrap">
-                    {new Date(c.createdAt).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <div className="text-foreground font-medium">{c.registration.event.name}</div>
-                    <div className="text-muted-foreground text-xs">
-                      {new Date(c.registration.event.date).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <div className="text-foreground">{c.registration.user.name}</div>
-                    <div className="text-muted-foreground text-xs">{c.registration.user.email}</div>
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <div className="text-foreground font-semibold">
-                      {formatAmount(c.amountCents, c.currency)}
-                    </div>
-                    {refundedCents(c) > 0 ? (
-                      <div className="text-muted-foreground text-xs">
-                        Refunded {formatAmount(refundedCents(c), c.currency)} · Balance{' '}
-                        {formatAmount(balanceCents(c), c.currency)}
-                      </div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <ChargeStatusBadge status={c.status} />
-                    {c.lastErrorMessage ? (
-                      <div className="text-destructive mt-1 text-xs">{c.lastErrorMessage}</div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <RegistrationStatusBadge status={c.registration.status} />
-                    {c.refunds.length > 0 ? (
-                      <details className="mt-1 text-xs">
-                        <summary className="text-terracotta cursor-pointer">
-                          {c.refunds.length} refund{c.refunds.length === 1 ? '' : 's'}
-                        </summary>
-                        <ul className="text-muted-foreground mt-1 space-y-1">
-                          {c.refunds.map((r) => (
-                            <li key={r.id}>
-                              {formatAmount(r.amountCents, r.currency)} · {r.status} ·{' '}
-                              {r.refundedBy.name} · {new Date(r.createdAt).toLocaleDateString()}
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm">
-                    <div className="flex justify-end gap-2">
-                      {c.status === 'SUCCEEDED' && balanceCents(c) > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => setRefundTarget(c)}
-                          className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-1.5 text-xs font-medium text-white"
-                        >
-                          Refund
-                        </button>
-                      ) : null}
-                      {c.status === 'SUCCEEDED' && c.registration.status === 'PAID' ? (
-                        <button
-                          type="button"
-                          onClick={() => setForfeitTarget(c)}
-                          className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium"
-                        >
-                          Forfeit
-                        </button>
-                      ) : null}
-                      {c.status === 'SUCCEEDED' && !c.receiptSentAt ? (
-                        <button
-                          type="button"
-                          onClick={() => resendReceipt.mutate({ chargeId: c.id })}
-                          disabled={resendReceipt.isPending}
-                          className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-                        >
-                          {resendReceipt.isPending ? 'Sending…' : 'Resend receipt'}
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={filtered}
+        rowKey="id"
+        pageSize={50}
+        emptyState={{
+          title: 'No charges match the current filters.',
+          description: 'Try changing the event or status filter.',
+          icon: 'search',
+        }}
+        toolbar={
+          <>
+            <div>
+              <label className="text-muted-foreground block text-sm font-medium">Event</label>
+              <select
+                value={eventId}
+                onChange={(e) => setEventId(e.target.value)}
+                className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+              >
+                <option value="">All events</option>
+                {events.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-muted-foreground block text-sm font-medium">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as ChargeStatus | '')}
+                className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+              >
+                <option value="">All</option>
+                <option value="SUCCEEDED">Succeeded</option>
+                <option value="PENDING">Pending</option>
+                <option value="FAILED">Failed</option>
+                <option value="CANCELED">Canceled</option>
+                <option value="REQUIRES_PAYMENT_METHOD">Awaiting card</option>
+                <option value="REQUIRES_ACTION">Needs action</option>
+                <option value="PROCESSING">Processing</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={listCharges.isFetching}
+              className="bg-secondary text-foreground/85 self-end rounded-lg px-4 py-2 text-sm font-medium"
+            >
+              {listCharges.isFetching ? 'Loading…' : 'Apply filter'}
+            </button>
+            <div className="ml-auto self-end text-sm">
+              <span className="text-muted-foreground">Total rows: </span>
+              <span className="text-foreground font-semibold" data-testid="charges-total">
+                {filtered.length}
+              </span>
+            </div>
+          </>
+        }
+      />
 
       {refundTarget ? (
         <RefundDialog

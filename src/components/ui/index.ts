@@ -10,3 +10,5 @@ export { default as Spinner, LoadingOverlay } from './Spinner';
 export { BreatheSection } from './BreatheSection';
 export { ThemeToggle } from './ThemeToggle';
 export { PhotoCredit } from './PhotoCredit';
+export { default as DataTable } from './DataTable';
+export type { DataTableColumn, DataTableEmptyState, DataTableAlign } from './DataTable';

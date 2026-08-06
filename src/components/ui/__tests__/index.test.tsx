@@ -64,4 +64,8 @@ describe('UI index exports', () => {
   it('exports LoadingOverlay', () => {
     expect(ui.LoadingOverlay).toBeDefined();
   });
+
+  it('exports DataTable', () => {
+    expect(ui.DataTable).toBeDefined();
+  });
 });
