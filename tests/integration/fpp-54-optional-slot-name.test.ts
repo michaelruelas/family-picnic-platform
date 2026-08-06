@@ -34,35 +34,28 @@ describe('FPP-54 — slot name is optional (category is required)', () => {
 
   it('allows the admin POST route to create a slot without a name', async () => {
     const route = await fs.readFile(adminRoutePath, 'utf-8');
-    // The "name is required" branch is gone: the missing-fields guard
-    // no longer mentions `name`.
     expect(route).not.toMatch(/name\s+and\s+slotType\s+are\s+required/i);
     expect(route).not.toMatch(/eventId,\s*category,\s*name,\s*and\s*slotType/);
-    // Empty / whitespace-only names are normalised to null.
-    expect(route).toMatch(/trimmedName\s*===\s*['"]['"]\s*\?\s*null/);
+    expect(route).toMatch(/trimmedName\s*===\s*''\s*\?\s*null/);
   });
 
   it('allows the admin PATCH route to clear a slot name by sending an empty string', async () => {
     const patch = await fs.readFile(adminPatchPath, 'utf-8');
     expect(patch).toMatch(/name\?:\s*string\s*\|\s*null/);
-    expect(patch).toMatch(/trimmed\s*===\s*['"]['"]\s*\?\s*null/);
+    expect(patch).toMatch(/trimmed\s*===\s*''\s*\?\s*null/);
   });
 
   it('allows the tRPC potluck router to create a slot without a name', async () => {
     const router = await fs.readFile(potluckRouterPath, 'utf-8');
-    // The zod schema for `name` is optional and transforms empty / whitespace to null.
     expect(router).toMatch(/createSlot[\s\S]*?name:[\s\S]*?z\.string\(\)[\s\S]*?\.optional\(\)/);
-    expect(router).toMatch(/v\s*==\s*null\s*\|\|\s*v\s*===\s*['"]['"]\s*\?\s*null\s*:\s*v/);
+    expect(router).toMatch(/v\s*==\s*null\s*\|\|\s*v\s*===\s*''\s*\?\s*null\s*:\s*v/);
   });
 });
 
 describe('FPP-54 — UI shows category + capacity for unnamed slots', () => {
   it('SlotForm no longer requires the name field', async () => {
     const form = await fs.readFile(slotFormPath, 'utf-8');
-    // The label no longer carries a `*` (which marked required) and adds (optional).
     expect(form).toMatch(/Slot Name[\s\S]*?\(optional\)/);
-    // The input element for `name` no longer has the `required` attribute
-    // (the category select below it does, so we check the right input).
     const nameInputMatch = form.match(/<input[\s\S]*?name="name"[\s\S]*?\/>/);
     expect(nameInputMatch).not.toBeNull();
     expect(nameInputMatch![0]).not.toMatch(/\brequired\b/);
@@ -70,8 +63,6 @@ describe('FPP-54 — UI shows category + capacity for unnamed slots', () => {
 
   it('SlotGrid falls back to a category-derived label when name is null', async () => {
     const grid = await fs.readFile(slotGridPath, 'utf-8');
-    // The placeholder helper is centralised in ~/lib/constants; both the
-    // admin grid and the public list import it instead of redefining it.
     expect(grid).toMatch(/import[\s\S]*?slotDisplayName[\s\S]*?from\s+['"]~\/lib\/constants['"]/);
   });
 
@@ -98,8 +89,6 @@ describe('FPP-54 — UI shows category + capacity for unnamed slots', () => {
   it('keeps the existing category labels and exposes a shared slotDisplayName helper', async () => {
     const constants = await fs.readFile(constantsPath, 'utf-8');
     expect(constants).toMatch(/POTLUCK_CATEGORY_LABELS[\s\S]*?DESSERT:\s*'Desserts'/);
-    // FPP-54: the placeholder helper is centralised so the public list,
-    // admin grid, and any future call site stay in lockstep.
     expect(constants).toMatch(/POTLUCK_CATEGORY_INDEFINITE_ARTICLE/);
     expect(constants).toMatch(/export\s+function\s+slotDisplayName/);
   });

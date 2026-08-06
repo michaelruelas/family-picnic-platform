@@ -30,15 +30,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const nameInput = typeof name === 'string' ? name.trim() : null;
-    if (name !== undefined && nameInput === null) {
+    const trimmedName = typeof name === 'string' ? name.trim() : null;
+    if (name !== undefined && trimmedName === null) {
       return NextResponse.json({ error: 'name must be a string if provided' }, { status: 400 });
     }
     const slot = await prisma.potluckSlot.create({
       data: {
         eventId,
         category,
-        name: nameInput,
+        name: trimmedName === '' ? null : trimmedName,
         slotType,
         maxSignups: slotType === 'LIMITED' ? maxSignups : null,
         currentSignups: 0,
