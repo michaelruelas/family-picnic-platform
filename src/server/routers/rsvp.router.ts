@@ -2,7 +2,15 @@ import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus, InvitationStatus, EventStatus, RsvpAttending } from '~/lib/generated/enums';
+import {
+  RSVPStatus,
+  InvitationStatus,
+  EventStatus,
+  RsvpAttending,
+  AdminPermission,
+  CommunicationStatus,
+  CommunicationChannel,
+} from '~/lib/generated/enums';
 import { writeAuditLog, diff } from '~/lib/audit';
 import {
   rsvpConfirmSchema,
@@ -569,6 +577,9 @@ export const rsvpRouter = router({
   decline: protectedProcedure.input(rsvpDeclineSchema).mutation(async ({ ctx, input }) => {
     const caller = await loadCallerHousehold(ctx.session.user.id);
     const householdId = caller.householdId;
+    // FPP-88: trim and treat empty strings as "no note" so the UI
+    // can submit an empty field without a separate branch.
+    const declineMessage = input.declineMessage?.trim() || null;
 
     const existingRsvp = await prisma.rSVP.findUnique({
       where: {
@@ -612,6 +623,7 @@ export const rsvpRouter = router({
           headcount: 0,
           respondedAt: new Date(),
           waitlistPosition: null,
+          declineMessage,
         },
         create: {
           eventId: input.eventId,
@@ -620,6 +632,7 @@ export const rsvpRouter = router({
           status: RSVPStatus.DECLINED,
           headcount: 0,
           respondedAt: new Date(),
+          declineMessage,
         },
       });
 
@@ -675,6 +688,7 @@ export const rsvpRouter = router({
                 memberAge: a.memberAgeSnapshot,
                 attending: RsvpAttending.NO,
               })),
+              declineMessage,
             },
           },
           tx,
@@ -739,6 +753,35 @@ export const rsvpRouter = router({
 
       return updated;
     });
+
+    // FPP-88: forward the decline note to the event owner so the
+    // host actually receives it. We write one CommunicationLog row
+    // per owner with the message in `body`. Done outside the
+    // RSVP transaction because the recipients live on a separate
+    // table and the send pipeline (TODO: FPP-89) reads its own
+    // queue.
+    if (declineMessage) {
+      const owners = await prisma.eventAdmin.findMany({
+        where: {
+          eventId: input.eventId,
+          role: AdminPermission.OWNER,
+        },
+        select: { userId: true },
+      });
+
+      if (owners.length > 0) {
+        await prisma.communicationLog.createMany({
+          data: owners.map((owner) => ({
+            eventId: input.eventId,
+            sentByUserId: ctx.session.user.id,
+            recipientUserId: owner.userId,
+            channel: CommunicationChannel.EMAIL,
+            status: CommunicationStatus.QUEUED,
+            body: declineMessage,
+          })),
+        });
+      }
+    }
 
     triggerWorkflow(input.eventId, ctx.session.user.id, 'decline');
 

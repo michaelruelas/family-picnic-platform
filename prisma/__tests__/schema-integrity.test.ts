@@ -113,4 +113,16 @@ describe('Prisma schema integrity vs SPEC', () => {
   it('User model has eventAdmins relation', () => {
     expect(schema).toMatch(/model User \{[\s\S]*?eventAdmins\s+EventAdmin\[\]/);
   });
+
+  it('FPP-88: RSVP model has a nullable declineMessage column', () => {
+    const block = schema.match(/model RSVP \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toMatch(/declineMessage\s+String\?/);
+  });
+
+  it('FPP-88: CommunicationLog model has a nullable body column', () => {
+    const block = schema.match(/model CommunicationLog \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toMatch(/body\s+String\?/);
+  });
 });

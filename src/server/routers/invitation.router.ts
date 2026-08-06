@@ -3,7 +3,11 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { InvitationStatus, CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
-import { generateInvitationToken, getInvitationExpiry } from '~/lib/invitation-token';
+import {
+  generateInvitationToken,
+  getInvitationExpiry,
+  buildInvitationUrl,
+} from '~/lib/invitation-token';
 import {
   checkAdminBroadcastRateLimit,
   checkRecipientGroupRateLimit,
@@ -84,6 +88,12 @@ export const invitationRouter = router({
               recipientUserId,
               channel: input.channel as CommunicationChannel,
               status: CommunicationStatus.QUEUED,
+              // FPP-88: stash the wizard landing page URL on the log
+              // row so the email/SMS send pipeline (and any future
+              // "view invitations" page) can read it. The actual
+              // send happens in the communications pipeline; this
+              // is just the canonical link.
+              body: buildInvitationUrl(token),
             },
           }),
         ),
@@ -139,6 +149,57 @@ export const invitationRouter = router({
         },
         orderBy: { createdAt: 'desc' },
       });
+    }),
+
+  /**
+   * FPP-88: read-only counterpart to `consume`. The RSVP wizard
+   * landing page (`/events/invitation/[token]`) needs to surface
+   * the invitation before the user has finished the wizard
+   * steps, so we cannot burn the token there. `validate` mirrors
+   * the same pre-flight checks (existence, not USED, not
+   * EXPIRED, not past `expiresAt`) but does NOT mutate the row.
+   * Token consumption is deferred to `consume`, which the wizard
+   * calls once Step 5 (confirm) commits.
+   *
+   * @todo FPP-89: swap to a guest-token procedure (a new
+   *   `publicProcedure` variant or `protectedProcedure` keyed on
+   *   a signed token) before the public landing page route ships.
+   *   This procedure currently uses `auditedAdminProcedure` for
+   *   parity with `consume`; unauthenticated callers cannot
+   *   reach it yet.
+   */
+  validate: auditedAdminProcedure
+    .input(z.object({ token: z.string() }))
+    .query(async ({ input }) => {
+      const invitation = await prisma.invitation.findUnique({
+        where: { token: input.token },
+        include: {
+          event: true,
+          household: true,
+          user: true,
+        },
+      });
+
+      if (!invitation) {
+        throw new Error('Invitation not found');
+      }
+
+      if (invitation.status === InvitationStatus.USED) {
+        throw new Error('This invitation has already been used');
+      }
+
+      if (invitation.status === InvitationStatus.EXPIRED) {
+        throw new Error('This invitation has expired');
+      }
+
+      if (invitation.expiresAt && new Date(invitation.expiresAt) < new Date()) {
+        // Do NOT persist EXPIRED here. `validate` is read-only; if
+        // the row is past its `expiresAt` we just refuse it. The
+        // sweeper (TODO) or `consume` writes the EXPIRED status.
+        throw new Error('This invitation has expired');
+      }
+
+      return invitation;
     }),
 
   consume: auditedAdminProcedure

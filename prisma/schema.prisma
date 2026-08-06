@@ -296,6 +296,10 @@ model RSVP {
   respondedAt      DateTime?
   modifiedAt       DateTime   @updatedAt
   waitlistPosition Int?
+  // FPP-88: optional note the guest attaches when declining. Persisted
+  // to the column and forwarded to the event owner via a
+  // CommunicationLog row so the note actually reaches them.
+  declineMessage   String?    @db.Text
 
   event          Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -360,6 +364,12 @@ model CommunicationLog {
   errorMessage     String?
   attemptedAt      DateTime             @default(now())
   deliveredAt      DateTime?
+  // FPP-88: payload body. For invitations this holds the URL the
+  // recipient clicks to open the RSVP wizard landing page
+  // (`<baseUrl>/events/invitation/<token>`). The send pipeline is
+  // expected to read this when formatting the email/SMS. Nullable
+  // for pre-FPP-88 rows that pre-date the field.
+  body             String?              @db.Text
 
   event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   sentBy    User    @relation("SentByUser", fields: [sentByUserId], references: [id], onDelete: Cascade)

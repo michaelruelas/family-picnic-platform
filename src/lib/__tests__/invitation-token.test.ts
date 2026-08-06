@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 
 describe('invitation-token', () => {
   describe('generateInvitationToken', () => {
@@ -78,6 +78,39 @@ describe('invitation-token', () => {
       const expectedMax = after + 365 * 24 * 60 * 60 * 1000;
       expect(result.getTime()).toBeGreaterThanOrEqual(expectedMin - 100);
       expect(result.getTime()).toBeLessThanOrEqual(expectedMax + 100);
+    });
+  });
+
+  describe('FPP-88: buildInvitationUrl', () => {
+    const originalBase = process.env.NEXTAUTH_URL;
+
+    afterEach(() => {
+      if (originalBase === undefined) {
+        delete process.env.NEXTAUTH_URL;
+      } else {
+        process.env.NEXTAUTH_URL = originalBase;
+      }
+    });
+
+    it('joins NEXTAUTH_URL with /events/invitation/<token>', async () => {
+      process.env.NEXTAUTH_URL = 'https://example.com';
+      const { buildInvitationUrl } = await import('../invitation-token');
+      const url = buildInvitationUrl('ABC-123');
+      expect(url).toBe('https://example.com/events/invitation/ABC-123');
+    });
+
+    it('strips a trailing slash from NEXTAUTH_URL', async () => {
+      process.env.NEXTAUTH_URL = 'https://example.com/';
+      const { buildInvitationUrl } = await import('../invitation-token');
+      const url = buildInvitationUrl('ABC-123');
+      expect(url).toBe('https://example.com/events/invitation/ABC-123');
+    });
+
+    it('falls back to localhost when NEXTAUTH_URL is unset', async () => {
+      delete process.env.NEXTAUTH_URL;
+      const { buildInvitationUrl } = await import('../invitation-token');
+      const url = buildInvitationUrl('ABC-123');
+      expect(url).toBe('http://localhost:3000/events/invitation/ABC-123');
     });
   });
 });

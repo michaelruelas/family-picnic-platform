@@ -546,6 +546,44 @@ describe('rsvpDeclineSchema', () => {
     const result = rsvpDeclineSchema.safeParse({});
     expect(result.success).toBe(false);
   });
+
+  it('FPP-88: passes when declineMessage is provided', () => {
+    const result = rsvpDeclineSchema.safeParse({
+      eventId: 'evt-1',
+      declineMessage: 'Sorry, out of town this weekend.',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.declineMessage).toBe('Sorry, out of town this weekend.');
+    }
+  });
+
+  it('FPP-88: passes when declineMessage is omitted', () => {
+    const result = rsvpDeclineSchema.safeParse({ eventId: 'evt-1' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.declineMessage).toBeUndefined();
+    }
+  });
+
+  it('FPP-88: rejects a declineMessage longer than 1000 chars', () => {
+    const result = rsvpDeclineSchema.safeParse({
+      eventId: 'evt-1',
+      declineMessage: 'a'.repeat(1001),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('FPP-88: trims surrounding whitespace from declineMessage', () => {
+    const result = rsvpDeclineSchema.safeParse({
+      eventId: 'evt-1',
+      declineMessage: '   have a great time!   ',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.declineMessage).toBe('have a great time!');
+    }
+  });
 });
 
 describe('rsvpUpdateSchema', () => {
