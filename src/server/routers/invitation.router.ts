@@ -1,4 +1,4 @@
-import { router, auditedAdminProcedure } from '~/lib/trpc';
+import { router, auditedAdminProcedure, procedure } from '~/lib/trpc';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
@@ -19,6 +19,7 @@ import {
   checkAllRecipientRateLimits,
   rateLimitError,
 } from '~/lib/rate-limit';
+import { writeAuditLog } from '~/lib/audit';
 
 export const invitationRouter = router({
   send: auditedAdminProcedure
@@ -178,7 +179,7 @@ export const invitationRouter = router({
    *   parity with `consume`; unauthenticated callers cannot
    *   reach it yet.
    */
-  validate: auditedAdminProcedure
+  validate: procedure
     .input(z.object({ token: z.string() }))
     .query(async ({ input }) => {
       const invitation = await prisma.invitation.findUnique({
@@ -212,7 +213,7 @@ export const invitationRouter = router({
       return invitation;
     }),
 
-  consume: auditedAdminProcedure
+  consume: procedure
     .input(z.object({ token: z.string() }))
     .mutation(async ({ input }) => {
       const invitation = await prisma.invitation.findUnique({
@@ -239,7 +240,13 @@ export const invitationRouter = router({
         throw new Error('This invitation has expired');
       }
 
-      return prisma.invitation.update({
+      // FPP-89 review: `consume` is a public mutation now that the
+      // RSVP wizard calls it from an unauthenticated browser. We log
+      // every successful burn to AdminAuditLog so a bad actor with
+      // a list of valid tokens leaves a trail. Action name uses the
+      // procedure path so existing audit-log viewers surface it
+      // alongside `invitation.send` and similar entries.
+      const result = await prisma.invitation.update({
         where: { id: invitation.id },
         data: { status: InvitationStatus.USED },
         include: {
@@ -248,5 +255,14 @@ export const invitationRouter = router({
           user: true,
         },
       });
+
+      await writeAuditLog({
+        userId: invitation.invitedByUserId,
+        eventId: invitation.eventId,
+        action: 'invitation.consume',
+        newValue: { invitationId: invitation.id, token: input.token.slice(0, 8) },
+      });
+
+      return result;
     }),
 });
