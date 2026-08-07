@@ -27,6 +27,7 @@
     "db:seed": "prisma db seed",
     "db:backfill-rsvp-duplicates": "bun run prisma/backfill-rsvp-duplicates.ts",
     "db:backfill-registration-fees": "bun run prisma/backfill-registration-fees.ts",
+    "db:backfill-audit-log": "bun run prisma/backfill-audit-log.ts",
     "postinstall": "prisma generate",
     "prepare": "husky",
     "release:dry": "release-please --dry-run",
