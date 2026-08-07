@@ -6,7 +6,16 @@ vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 const prismaMock = vi.hoisted(() => ({
   invitation: { create: vi.fn(), update: vi.fn() },
   user: { findMany: vi.fn() },
-  communicationLog: { create: vi.fn() },
+  // FPP-88: the send route now applies rate-limit gates that read
+  // communicationLog.count and .groupBy before any invitation rows
+  // exist. The mock returns the "well below limit" shape so the
+  // rate-limit checks pass and the test exercises the invitation
+  // create path.
+  communicationLog: {
+    create: vi.fn(),
+    count: vi.fn(() => Promise.resolve(0)),
+    groupBy: vi.fn(() => Promise.resolve([])),
+  },
 }));
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
 

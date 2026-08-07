@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { ThemeProvider } from '~/components/theme-provider';
 import TRPCProvider from './TRPCProvider';
 import OfflineBanner from './ui/OfflineBanner';
+import { ToastProvider } from './ui/Toast';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -25,8 +26,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         themes={['light', 'dark']}
       >
         <TRPCProvider>
-          <OfflineBanner />
-          {children}
+          <ToastProvider>
+            <OfflineBanner />
+            {children}
+          </ToastProvider>
         </TRPCProvider>
       </ThemeProvider>
     </SessionProvider>

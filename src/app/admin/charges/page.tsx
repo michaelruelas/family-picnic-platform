@@ -1,6 +1,7 @@
 import { requireAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
-import ChargesTable from '~/components/admin/ChargesTable';
+import { serializeCharge } from '~/lib/serialize';
+import ChargesTable, { type AdminChargeRow } from '~/components/admin/ChargesTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,28 +47,7 @@ export default async function AdminChargesPage() {
       </div>
 
       <ChargesTable
-        initialCharges={charges.map((c) => ({
-          ...c,
-          amountCents: c.amountCents,
-          createdAt: c.createdAt.toISOString(),
-          updatedAt: c.updatedAt.toISOString(),
-          receiptSentAt: c.receiptSentAt?.toISOString() ?? null,
-          registration: {
-            ...c.registration,
-            createdAt: c.registration.createdAt.toISOString(),
-            updatedAt: c.registration.updatedAt.toISOString(),
-            event: {
-              ...c.registration.event,
-              date: c.registration.event.date.toISOString(),
-            },
-          },
-          refunds: c.refunds.map((r) => ({
-            ...r,
-            amountCents: r.amountCents,
-            createdAt: r.createdAt.toISOString(),
-            updatedAt: r.updatedAt.toISOString(),
-          })),
-        }))}
+        initialCharges={charges.map(serializeCharge) as AdminChargeRow[]}
         events={events.map((e) => ({
           ...e,
           date: e.date.toISOString(),
