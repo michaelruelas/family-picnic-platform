@@ -179,90 +179,86 @@ export const invitationRouter = router({
    *   parity with `consume`; unauthenticated callers cannot
    *   reach it yet.
    */
-  validate: procedure
-    .input(z.object({ token: z.string() }))
-    .query(async ({ input }) => {
-      const invitation = await prisma.invitation.findUnique({
-        where: { token: input.token },
-        include: {
-          event: true,
-          household: true,
-          user: true,
-        },
-      });
+  validate: procedure.input(z.object({ token: z.string() })).query(async ({ input }) => {
+    const invitation = await prisma.invitation.findUnique({
+      where: { token: input.token },
+      include: {
+        event: true,
+        household: true,
+        user: true,
+      },
+    });
 
-      if (!invitation) {
-        throw new Error('Invitation not found');
-      }
+    if (!invitation) {
+      throw new Error('Invitation not found');
+    }
 
-      if (invitation.status === InvitationStatus.USED) {
-        throw new Error('This invitation has already been used');
-      }
+    if (invitation.status === InvitationStatus.USED) {
+      throw new Error('This invitation has already been used');
+    }
 
-      if (invitation.status === InvitationStatus.EXPIRED) {
-        throw new Error('This invitation has expired');
-      }
+    if (invitation.status === InvitationStatus.EXPIRED) {
+      throw new Error('This invitation has expired');
+    }
 
-      if (invitation.expiresAt && new Date(invitation.expiresAt) < new Date()) {
-        // Do NOT persist EXPIRED here. `validate` is read-only; if
-        // the row is past its `expiresAt` we just refuse it. The
-        // sweeper (TODO) or `consume` writes the EXPIRED status.
-        throw new Error('This invitation has expired');
-      }
+    if (invitation.expiresAt && new Date(invitation.expiresAt) < new Date()) {
+      // Do NOT persist EXPIRED here. `validate` is read-only; if
+      // the row is past its `expiresAt` we just refuse it. The
+      // sweeper (TODO) or `consume` writes the EXPIRED status.
+      throw new Error('This invitation has expired');
+    }
 
-      return invitation;
-    }),
+    return invitation;
+  }),
 
-  consume: procedure
-    .input(z.object({ token: z.string() }))
-    .mutation(async ({ input }) => {
-      const invitation = await prisma.invitation.findUnique({
-        where: { token: input.token },
-      });
+  consume: procedure.input(z.object({ token: z.string() })).mutation(async ({ input }) => {
+    const invitation = await prisma.invitation.findUnique({
+      where: { token: input.token },
+    });
 
-      if (!invitation) {
-        throw new Error('Invitation not found');
-      }
+    if (!invitation) {
+      throw new Error('Invitation not found');
+    }
 
-      if (invitation.status === InvitationStatus.USED) {
-        throw new Error('This invitation has already been used');
-      }
+    if (invitation.status === InvitationStatus.USED) {
+      throw new Error('This invitation has already been used');
+    }
 
-      if (invitation.status === InvitationStatus.EXPIRED) {
-        throw new Error('This invitation has expired');
-      }
+    if (invitation.status === InvitationStatus.EXPIRED) {
+      throw new Error('This invitation has expired');
+    }
 
-      if (invitation.expiresAt && new Date(invitation.expiresAt) < new Date()) {
-        await prisma.invitation.update({
-          where: { id: invitation.id },
-          data: { status: InvitationStatus.EXPIRED },
-        });
-        throw new Error('This invitation has expired');
-      }
-
-      // FPP-89 review: `consume` is a public mutation now that the
-      // RSVP wizard calls it from an unauthenticated browser. We log
-      // every successful burn to AdminAuditLog so a bad actor with
-      // a list of valid tokens leaves a trail. Action name uses the
-      // procedure path so existing audit-log viewers surface it
-      // alongside `invitation.send` and similar entries.
-      const result = await prisma.invitation.update({
+    if (invitation.expiresAt && new Date(invitation.expiresAt) < new Date()) {
+      await prisma.invitation.update({
         where: { id: invitation.id },
-        data: { status: InvitationStatus.USED },
-        include: {
-          event: true,
-          household: true,
-          user: true,
-        },
+        data: { status: InvitationStatus.EXPIRED },
       });
+      throw new Error('This invitation has expired');
+    }
 
-      await writeAuditLog({
-        userId: invitation.invitedByUserId,
-        eventId: invitation.eventId,
-        action: 'invitation.consume',
-        newValue: { invitationId: invitation.id, token: input.token.slice(0, 8) },
-      });
+    // FPP-89 review: `consume` is a public mutation now that the
+    // RSVP wizard calls it from an unauthenticated browser. We log
+    // every successful burn to AdminAuditLog so a bad actor with
+    // a list of valid tokens leaves a trail. Action name uses the
+    // procedure path so existing audit-log viewers surface it
+    // alongside `invitation.send` and similar entries.
+    const result = await prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { status: InvitationStatus.USED },
+      include: {
+        event: true,
+        household: true,
+        user: true,
+      },
+    });
 
-      return result;
-    }),
+    await writeAuditLog({
+      userId: invitation.invitedByUserId,
+      eventId: invitation.eventId,
+      action: 'invitation.consume',
+      newValue: { invitationId: invitation.id, token: input.token.slice(0, 8) },
+    });
+
+    return result;
+  }),
 });

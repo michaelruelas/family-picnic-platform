@@ -32,7 +32,10 @@ function MessagePage({
           </a>
         ) : null}
         {eventId ? (
-          <Link className="bg-terracotta rounded-pill mt-6 block px-6 py-3 font-semibold text-white" href={`/events/${eventId}`}>
+          <Link
+            className="bg-terracotta rounded-pill mt-6 block px-6 py-3 font-semibold text-white"
+            href={`/events/${eventId}`}
+          >
             View event
           </Link>
         ) : null}
@@ -62,7 +65,12 @@ export default async function InvitationPage({ params }: Props) {
   });
 
   if (!invitation) {
-    return <MessagePage title="Invitation unavailable" message="This invitation link is not valid. Ask the host for a new link." />;
+    return (
+      <MessagePage
+        title="Invitation unavailable"
+        message="This invitation link is not valid. Ask the host for a new link."
+      />
+    );
   }
 
   const hostPhone = invitation.invitedBy.phoneNumber;
@@ -88,12 +96,27 @@ export default async function InvitationPage({ params }: Props) {
     );
   }
 
-  if (invitation.status === 'EXPIRED' || (invitation.expiresAt && invitation.expiresAt < new Date())) {
-    return <MessagePage title="Invitation expired" message="Ask the host to send you a new invitation." hostPhone={hostPhone} />;
+  if (
+    invitation.status === 'EXPIRED' ||
+    (invitation.expiresAt && invitation.expiresAt < new Date())
+  ) {
+    return (
+      <MessagePage
+        title="Invitation expired"
+        message="Ask the host to send you a new invitation."
+        hostPhone={hostPhone}
+      />
+    );
   }
 
   if (invitation.user?.deletedAt) {
-    return <MessagePage title="Account unavailable" message="This account is no longer available." hostPhone={hostPhone} />;
+    return (
+      <MessagePage
+        title="Account unavailable"
+        message="This account is no longer available."
+        hostPhone={hostPhone}
+      />
+    );
   }
 
   if (invitation.event.date < new Date()) {

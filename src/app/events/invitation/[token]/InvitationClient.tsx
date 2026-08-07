@@ -33,12 +33,21 @@ type Props = {
 
 const labels = ['Invite', 'Sign in', 'Attend', 'Members', 'Dishes', 'Confirm'];
 
-export default function InvitationClient({ token, signedIn, event, host, household, stripePublishableKey, paymentReturnUrl }: Props) {
+export default function InvitationClient({
+  token,
+  signedIn,
+  event,
+  host,
+  household,
+  stripePublishableKey,
+  paymentReturnUrl,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const requestedStep = Number(searchParams.get('step') ?? '0');
-  const step = Number.isInteger(requestedStep) && requestedStep >= 0 && requestedStep <= 5 ? requestedStep : 0;
+  const step =
+    Number.isInteger(requestedStep) && requestedStep >= 0 && requestedStep <= 5 ? requestedStep : 0;
   const [completedStep, setCompletedStep] = useState(step);
   const [attending, setAttending] = useState<boolean | null>(null);
   const [declineMessage, setDeclineMessage] = useState('');
@@ -124,7 +133,10 @@ export default function InvitationClient({ token, signedIn, event, host, househo
   }
 
   async function sendDecline() {
-    await declineRsvp.mutateAsync({ eventId: event.id, declineMessage: declineMessage || undefined });
+    await declineRsvp.mutateAsync({
+      eventId: event.id,
+      declineMessage: declineMessage || undefined,
+    });
     setRsvpConfirmed(true);
     goTo(5);
   }
@@ -158,7 +170,9 @@ export default function InvitationClient({ token, signedIn, event, host, househo
               className="disabled:cursor-not-allowed"
               aria-current={index === step ? 'step' : undefined}
             >
-              <span className={`block h-2 rounded-full ${index <= step ? 'bg-terracotta' : 'bg-secondary'}`} />
+              <span
+                className={`block h-2 rounded-full ${index <= step ? 'bg-terracotta' : 'bg-secondary'}`}
+              />
               <span className="text-muted-foreground mt-1 hidden text-xs sm:block">{label}</span>
             </button>
           ))}
@@ -170,13 +184,31 @@ export default function InvitationClient({ token, signedIn, event, host, househo
           <Card className="overflow-hidden">
             <div className="from-sunlight/50 via-sage/20 to-terracotta/20 h-44 bg-gradient-to-br" />
             <CardContent className="space-y-5 p-7">
-              <p className="text-terracotta text-sm font-semibold tracking-wide uppercase">You’re invited</p>
+              <p className="text-terracotta text-sm font-semibold tracking-wide uppercase">
+                You’re invited
+              </p>
               <h1 className="font-display text-foreground text-4xl font-semibold">{event.name}</h1>
               <dl className="text-foreground grid gap-3 sm:grid-cols-2">
-                <div><dt className="text-muted-foreground text-sm">Date</dt><dd>{date.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</dd></div>
-                <div><dt className="text-muted-foreground text-sm">Host</dt><dd>{host.name}</dd></div>
-                <div><dt className="text-muted-foreground text-sm">Location</dt><dd>{event.location}</dd></div>
-                <div><dt className="text-muted-foreground text-sm">RSVP by</dt><dd>{deadline ? deadline.toLocaleDateString('en-US', { dateStyle: 'long' }) : 'No deadline'}</dd></div>
+                <div>
+                  <dt className="text-muted-foreground text-sm">Date</dt>
+                  <dd>{date.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-sm">Host</dt>
+                  <dd>{host.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-sm">Location</dt>
+                  <dd>{event.location}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-sm">RSVP by</dt>
+                  <dd>
+                    {deadline
+                      ? deadline.toLocaleDateString('en-US', { dateStyle: 'long' })
+                      : 'No deadline'}
+                  </dd>
+                </div>
               </dl>
             </CardContent>
           </Card>
@@ -184,28 +216,100 @@ export default function InvitationClient({ token, signedIn, event, host, househo
 
         {step === 1 ? (
           <section className="space-y-5">
-            <h1 className="font-display text-foreground text-3xl font-semibold">{signedIn ? 'Set up your household' : 'Sign in to RSVP'}</h1>
+            <h1 className="font-display text-foreground text-3xl font-semibold">
+              {signedIn ? 'Set up your household' : 'Sign in to RSVP'}
+            </h1>
             {!signedIn ? (
               <div className="space-y-3">
-                <Button className="w-full" size="lg" onClick={() => void signIn('google', { callbackUrl })}>Continue with Google</Button>
-                <Button className="w-full" size="lg" variant="outline" disabled title="Apple sign-in is not configured">Continue with Apple</Button>
-                <p className="text-muted-foreground text-center text-sm">Apple sign-in is not available yet.</p>
-                <Button className="w-full" size="lg" variant="outline" disabled title="Facebook sign-in is not configured">Continue with Facebook</Button>
-                <p className="text-muted-foreground text-center text-sm">Facebook sign-in is not available yet.</p>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={() => void signIn('google', { callbackUrl })}
+                >
+                  Continue with Google
+                </Button>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  variant="outline"
+                  disabled
+                  title="Apple sign-in is not configured"
+                >
+                  Continue with Apple
+                </Button>
+                <p className="text-muted-foreground text-center text-sm">
+                  Apple sign-in is not available yet.
+                </p>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  variant="outline"
+                  disabled
+                  title="Facebook sign-in is not configured"
+                >
+                  Continue with Facebook
+                </Button>
+                <p className="text-muted-foreground text-center text-sm">
+                  Facebook sign-in is not available yet.
+                </p>
               </div>
             ) : household ? (
-              <Card><CardContent className="p-6"><p className="text-muted-foreground text-sm">Household</p><p className="text-foreground text-xl font-semibold">{household.name}</p><p className="text-muted-foreground mt-2">{household.members.length} member{household.members.length === 1 ? '' : 's'}</p></CardContent></Card>
+              <Card>
+                <CardContent className="p-6">
+                  <p className="text-muted-foreground text-sm">Household</p>
+                  <p className="text-foreground text-xl font-semibold">{household.name}</p>
+                  <p className="text-muted-foreground mt-2">
+                    {household.members.length} member{household.members.length === 1 ? '' : 's'}
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
               <div className="space-y-4">
-                <Input label="Household name" value={householdName} onChange={(event) => setHouseholdName(event.target.value)} />
+                <Input
+                  label="Household name"
+                  value={householdName}
+                  onChange={(event) => setHouseholdName(event.target.value)}
+                />
                 {newMembers.map((member, index) => (
                   <div className="grid grid-cols-[1fr_7rem] gap-3" key={index}>
-                    <Input aria-label={`Member ${index + 1} name`} placeholder="Member name" value={member.name} onChange={(event) => setNewMembers((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, name: event.target.value } : row))} />
-                    <Input aria-label={`Member ${index + 1} age`} placeholder="Age" inputMode="numeric" value={member.age} onChange={(event) => setNewMembers((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, age: event.target.value } : row))} />
+                    <Input
+                      aria-label={`Member ${index + 1} name`}
+                      placeholder="Member name"
+                      value={member.name}
+                      onChange={(event) =>
+                        setNewMembers((rows) =>
+                          rows.map((row, rowIndex) =>
+                            rowIndex === index ? { ...row, name: event.target.value } : row,
+                          ),
+                        )
+                      }
+                    />
+                    <Input
+                      aria-label={`Member ${index + 1} age`}
+                      placeholder="Age"
+                      inputMode="numeric"
+                      value={member.age}
+                      onChange={(event) =>
+                        setNewMembers((rows) =>
+                          rows.map((row, rowIndex) =>
+                            rowIndex === index ? { ...row, age: event.target.value } : row,
+                          ),
+                        )
+                      }
+                    />
                   </div>
                 ))}
-                <Button variant="outline" onClick={() => setNewMembers((rows) => [...rows, { name: '', age: '' }])}>Add member</Button>
-                {setupError ? <p role="alert" className="text-destructive text-sm">{setupError}</p> : null}
+                <Button
+                  variant="outline"
+                  onClick={() => setNewMembers((rows) => [...rows, { name: '', age: '' }])}
+                >
+                  Add member
+                </Button>
+                {setupError ? (
+                  <p role="alert" className="text-destructive text-sm">
+                    {setupError}
+                  </p>
+                ) : null}
               </div>
             )}
           </section>
@@ -213,13 +317,31 @@ export default function InvitationClient({ token, signedIn, event, host, househo
 
         {step === 2 ? (
           <section className="space-y-5">
-            <h1 className="font-display text-foreground text-3xl font-semibold">Can your household make it?</h1>
+            <h1 className="font-display text-foreground text-3xl font-semibold">
+              Can your household make it?
+            </h1>
             <div className="grid gap-4 sm:grid-cols-2">
-              {[{ value: true, label: 'Yes, we’ll be there' }, { value: false, label: 'Can’t make it' }].map((option) => (
-                <button key={option.label} type="button" onClick={() => setAttending(option.value)} className={`rounded-3xl border p-7 text-left text-xl font-semibold ${attending === option.value ? 'border-terracotta bg-terracotta/10' : 'border-border bg-card'}`}>{option.label}</button>
+              {[
+                { value: true, label: 'Yes, we’ll be there' },
+                { value: false, label: 'Can’t make it' },
+              ].map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={() => setAttending(option.value)}
+                  className={`rounded-3xl border p-7 text-left text-xl font-semibold ${attending === option.value ? 'border-terracotta bg-terracotta/10' : 'border-border bg-card'}`}
+                >
+                  {option.label}
+                </button>
               ))}
             </div>
-            {attending === false ? <Textarea label="Note to the host (optional)" value={declineMessage} onChange={(event) => setDeclineMessage(event.target.value)} /> : null}
+            {attending === false ? (
+              <Textarea
+                label="Note to the host (optional)"
+                value={declineMessage}
+                onChange={(event) => setDeclineMessage(event.target.value)}
+              />
+            ) : null}
           </section>
         ) : null}
 
@@ -227,48 +349,189 @@ export default function InvitationClient({ token, signedIn, event, host, househo
           <section className="space-y-5">
             <h1 className="font-display text-foreground text-3xl font-semibold">Who’s coming?</h1>
             {(household?.members ?? []).map((member) => (
-              <Card key={member.id}><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">{member.name}</p>{member.age !== null ? <p className="text-muted-foreground text-sm">Age {member.age}</p> : null}</div><div className="bg-secondary grid grid-cols-3 rounded-xl p-1">{(['YES', 'MAYBE', 'NO'] as const).map((value) => <button key={value} type="button" onClick={() => setMemberAttendances((current) => ({ ...current, [member.id]: value }))} className={`rounded-lg px-3 py-2 text-sm ${memberAttendances[member.id] === value ? 'bg-card shadow-sm' : ''}`}>{value === 'YES' ? 'Going' : value === 'MAYBE' ? 'Maybe' : 'Not going'}</button>)}</div></CardContent></Card>
+              <Card key={member.id}>
+                <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold">{member.name}</p>
+                    {member.age !== null ? (
+                      <p className="text-muted-foreground text-sm">Age {member.age}</p>
+                    ) : null}
+                  </div>
+                  <div className="bg-secondary grid grid-cols-3 rounded-xl p-1">
+                    {(['YES', 'MAYBE', 'NO'] as const).map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() =>
+                          setMemberAttendances((current) => ({ ...current, [member.id]: value }))
+                        }
+                        className={`rounded-lg px-3 py-2 text-sm ${memberAttendances[member.id] === value ? 'bg-card shadow-sm' : ''}`}
+                      >
+                        {value === 'YES' ? 'Going' : value === 'MAYBE' ? 'Maybe' : 'Not going'}
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </section>
         ) : null}
 
         {step === 4 ? (
-          <section className="space-y-5"><h1 className="font-display text-foreground text-3xl font-semibold">Bring a dish</h1><p className="text-muted-foreground">Claim a potluck item, or skip this optional step.</p><PotluckEditor eventId={event.id} hasRsvp isRsvpConfirmed readOnly={false} /></section>
+          <section className="space-y-5">
+            <h1 className="font-display text-foreground text-3xl font-semibold">Bring a dish</h1>
+            <p className="text-muted-foreground">
+              Claim a potluck item, or skip this optional step.
+            </p>
+            <PotluckEditor eventId={event.id} hasRsvp isRsvpConfirmed readOnly={false} />
+          </section>
         ) : null}
 
         {step === 5 ? (
           <section className="space-y-5">
             <h1 className="font-display text-foreground text-3xl font-semibold">Your RSVP</h1>
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card><CardContent className="p-5"><p className="text-muted-foreground text-sm">RSVP</p><p className="mt-2 font-semibold">{attending === false ? 'Not attending' : `${selectedMembers.length} attending`}</p></CardContent></Card>
-              <Card><CardContent className="p-5"><p className="text-muted-foreground text-sm">Dishes</p><p className="mt-2 font-semibold">Saved with your RSVP</p></CardContent></Card>
-              <Card><CardContent className="p-5"><p className="text-muted-foreground text-sm">Payment</p><p className="mt-2 font-semibold">{amountCents > 0 ? `${event.currency.toUpperCase()} ${(amountCents / 100).toFixed(2)}` : 'No payment due'}</p></CardContent></Card>
+              <Card>
+                <CardContent className="p-5">
+                  <p className="text-muted-foreground text-sm">RSVP</p>
+                  <p className="mt-2 font-semibold">
+                    {attending === false ? 'Not attending' : `${selectedMembers.length} attending`}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-5">
+                  <p className="text-muted-foreground text-sm">Dishes</p>
+                  <p className="mt-2 font-semibold">Saved with your RSVP</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-5">
+                  <p className="text-muted-foreground text-sm">Payment</p>
+                  <p className="mt-2 font-semibold">
+                    {amountCents > 0
+                      ? `${event.currency.toUpperCase()} ${(amountCents / 100).toFixed(2)}`
+                      : 'No payment due'}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
             {consume.isError ? (
               <div className="space-y-3">
-                <p role="alert" className="text-destructive">{consume.error.message}</p>
-                <Button variant="outline" onClick={() => { consume.reset(); consume.mutate({ token }); }}>Retry confirmation</Button>
+                <p role="alert" className="text-destructive">
+                  {consume.error.message}
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    consume.reset();
+                    consume.mutate({ token });
+                  }}
+                >
+                  Retry confirmation
+                </Button>
               </div>
             ) : null}
-            {amountCents > 0 && stripePublishableKey && rsvpConfirmed ? <PaymentForm eventId={event.id} eventName={event.name} amountCents={amountCents} currency={event.currency} publishableKey={stripePublishableKey} returnUrl={paymentReturnUrl} /> : null}
+            {amountCents > 0 && stripePublishableKey && rsvpConfirmed ? (
+              <PaymentForm
+                eventId={event.id}
+                eventName={event.name}
+                amountCents={amountCents}
+                currency={event.currency}
+                publishableKey={stripePublishableKey}
+                returnUrl={paymentReturnUrl}
+              />
+            ) : null}
           </section>
         ) : null}
       </div>
 
-      {host.phone ? <a href={`sms:${host.phone}`} className="bg-card/95 border-border fixed right-0 bottom-20 left-0 z-20 border-t px-4 py-3 text-center text-sm font-medium backdrop-blur">Stuck? Text the host at {host.phone}.</a> : null}
+      {host.phone ? (
+        <a
+          href={`sms:${host.phone}`}
+          className="bg-card/95 border-border fixed right-0 bottom-20 left-0 z-20 border-t px-4 py-3 text-center text-sm font-medium backdrop-blur"
+        >
+          Stuck? Text the host at {host.phone}.
+        </a>
+      ) : null}
       <footer className="bg-background/95 border-border fixed right-0 bottom-0 left-0 z-30 border-t p-4 backdrop-blur">
         <div className="mx-auto flex max-w-3xl justify-end gap-3">
-          {step === 0 ? <Button size="lg" onClick={() => goTo(1)}>RSVP now</Button> : null}
-          {step === 1 && signedIn && !household ? <Button size="lg" disabled={!householdName.trim()} isLoading={settingUp} title={!householdName.trim() ? 'Enter a household name' : undefined} onClick={() => void setupHousehold()}>Save household</Button> : null}
-          {step === 1 && signedIn && household ? <Button size="lg" onClick={() => goTo(2)}>Continue</Button> : null}
-          {step === 2 && attending === true ? <Button size="lg" onClick={() => goTo(3)}>Continue</Button> : null}
-          {step === 2 && attending === false ? <Button size="lg" isLoading={declineRsvp.isPending} onClick={() => void sendDecline()}>Send my decline</Button> : null}
-          {step === 2 && attending === null ? <Button size="lg" disabled title="Choose yes or can’t make it">Continue</Button> : null}
-          {step === 3 ? <Button size="lg" disabled={!household?.members.length || selectedMembers.length === 0} isLoading={confirmRsvp.isPending} title={!household?.members.length ? 'Add household members first' : selectedMembers.length === 0 ? 'Select at least one person' : undefined} onClick={() => void saveMembers()}>Save attendance</Button> : null}
-          {step === 4 ? <Button size="lg" onClick={() => goTo(5)}>Skip or continue</Button> : null}
-          {step === 5 && consume.isError ? <Button size="lg" variant="outline" onClick={() => router.push(`/events/${event.id}`)}>View event</Button> : null}
-          {step === 5 && !rsvpConfirmed ? <Button size="lg" variant="outline" onClick={() => goTo(2)}>Start over</Button> : null}
-          {step === 5 && !consume.isError && rsvpConfirmed ? <Link href={`/events/${event.id}`} className="bg-terracotta text-white inline-flex min-h-12 items-center justify-center rounded-pill px-6 py-3 text-lg font-semibold">Done — view event</Link> : null}
+          {step === 0 ? (
+            <Button size="lg" onClick={() => goTo(1)}>
+              RSVP now
+            </Button>
+          ) : null}
+          {step === 1 && signedIn && !household ? (
+            <Button
+              size="lg"
+              disabled={!householdName.trim()}
+              isLoading={settingUp}
+              title={!householdName.trim() ? 'Enter a household name' : undefined}
+              onClick={() => void setupHousehold()}
+            >
+              Save household
+            </Button>
+          ) : null}
+          {step === 1 && signedIn && household ? (
+            <Button size="lg" onClick={() => goTo(2)}>
+              Continue
+            </Button>
+          ) : null}
+          {step === 2 && attending === true ? (
+            <Button size="lg" onClick={() => goTo(3)}>
+              Continue
+            </Button>
+          ) : null}
+          {step === 2 && attending === false ? (
+            <Button size="lg" isLoading={declineRsvp.isPending} onClick={() => void sendDecline()}>
+              Send my decline
+            </Button>
+          ) : null}
+          {step === 2 && attending === null ? (
+            <Button size="lg" disabled title="Choose yes or can’t make it">
+              Continue
+            </Button>
+          ) : null}
+          {step === 3 ? (
+            <Button
+              size="lg"
+              disabled={!household?.members.length || selectedMembers.length === 0}
+              isLoading={confirmRsvp.isPending}
+              title={
+                !household?.members.length
+                  ? 'Add household members first'
+                  : selectedMembers.length === 0
+                    ? 'Select at least one person'
+                    : undefined
+              }
+              onClick={() => void saveMembers()}
+            >
+              Save attendance
+            </Button>
+          ) : null}
+          {step === 4 ? (
+            <Button size="lg" onClick={() => goTo(5)}>
+              Skip or continue
+            </Button>
+          ) : null}
+          {step === 5 && consume.isError ? (
+            <Button size="lg" variant="outline" onClick={() => router.push(`/events/${event.id}`)}>
+              View event
+            </Button>
+          ) : null}
+          {step === 5 && !rsvpConfirmed ? (
+            <Button size="lg" variant="outline" onClick={() => goTo(2)}>
+              Start over
+            </Button>
+          ) : null}
+          {step === 5 && !consume.isError && rsvpConfirmed ? (
+            <Link
+              href={`/events/${event.id}`}
+              className="bg-terracotta rounded-pill inline-flex min-h-12 items-center justify-center px-6 py-3 text-lg font-semibold text-white"
+            >
+              Done — view event
+            </Link>
+          ) : null}
         </div>
       </footer>
     </main>

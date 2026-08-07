@@ -4,7 +4,10 @@ import path from 'path';
 
 describe('FPP-89: /events/invitation/[token] RSVP wizard', () => {
   const pagePath = path.join(process.cwd(), 'src/app/events/invitation/[token]/page.tsx');
-  const clientPath = path.join(process.cwd(), 'src/app/events/invitation/[token]/InvitationClient.tsx');
+  const clientPath = path.join(
+    process.cwd(),
+    'src/app/events/invitation/[token]/InvitationClient.tsx',
+  );
   const invitationRouterPath = path.join(process.cwd(), 'src/server/routers/invitation.router.ts');
 
   it('serves a server component at the wizard route', async () => {
