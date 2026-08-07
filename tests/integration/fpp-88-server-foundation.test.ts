@@ -160,25 +160,29 @@ describe('FPP-88: server foundation (declineMessage, validate/commit, invitation
   describe('3. invitation.consume split into validate + commit', () => {
     it('exposes both validate (query) and consume (mutation)', async () => {
       const router = await fs.readFile(invitationRouterPath, 'utf-8');
-      expect(router).toMatch(/validate:\s*auditedAdminProcedure/);
-      expect(router).toMatch(/consume:\s*auditedAdminProcedure/);
+      // FPP-89: validate and consume are reachable from the public
+      // invitation landing page, so they use the bare `procedure`
+      // and the bearer token in the input. They are no longer
+      // `auditedAdminProcedure`.
+      expect(router).toMatch(/validate:\s*procedure\b/);
+      expect(router).toMatch(/consume:\s*procedure\b/);
       // The validate procedure is followed by a `.query` call,
       // not `.mutation`, so the landing page cannot burn the
       // token by pre-flighting the invitation. Bound the slice
       // to the validate body only (everything before the next
       // procedure definition `consume:`).
-      const validateSlice = router.split(/validate:\s*auditedAdminProcedure/)[1] ?? '';
+      const validateSlice = router.split(/validate:\s*procedure/)[1] ?? '';
       const validateEnd = validateSlice.indexOf('consume:');
       const validateBlock = validateEnd >= 0 ? validateSlice.slice(0, validateEnd) : validateSlice;
       expect(validateBlock).toMatch(/\.query\(/);
       expect(validateBlock).not.toMatch(/\.mutation\(/);
-      const consumeSlice = router.split(/consume:\s*auditedAdminProcedure/)[1] ?? '';
+      const consumeSlice = router.split(/consume:\s*procedure/)[1] ?? '';
       expect(consumeSlice).toMatch(/\.mutation\(/);
     });
 
     it('validate performs all the same pre-flight checks as consume', async () => {
       const router = await fs.readFile(invitationRouterPath, 'utf-8');
-      const validateSlice = router.split(/validate:\s*auditedAdminProcedure/)[1] ?? '';
+      const validateSlice = router.split(/validate:\s*procedure/)[1] ?? '';
       const validateEnd = validateSlice.indexOf('consume:');
       const validateBlock = validateEnd >= 0 ? validateSlice.slice(0, validateEnd) : validateSlice;
       expect(validateBlock).toMatch(/Invitation not found/);
@@ -191,7 +195,7 @@ describe('FPP-88: server foundation (declineMessage, validate/commit, invitation
 
     it('validate does NOT persist status mutations (read-only)', async () => {
       const router = await fs.readFile(invitationRouterPath, 'utf-8');
-      const validateSlice = router.split(/validate:\s*auditedAdminProcedure/)[1] ?? '';
+      const validateSlice = router.split(/validate:\s*procedure/)[1] ?? '';
       const validateEnd = validateSlice.indexOf('consume:');
       const validateBlock = validateEnd >= 0 ? validateSlice.slice(0, validateEnd) : validateSlice;
       // The read-only body must not call update() at all and
@@ -203,7 +207,7 @@ describe('FPP-88: server foundation (declineMessage, validate/commit, invitation
 
     it('consume still marks the invitation USED on commit', async () => {
       const router = await fs.readFile(invitationRouterPath, 'utf-8');
-      const consumeBlock = router.split(/consume:\s*auditedAdminProcedure/)[1] ?? '';
+      const consumeBlock = router.split(/consume:\s*procedure/)[1] ?? '';
       expect(consumeBlock).toMatch(/status:\s*InvitationStatus\.USED/);
       // The mutation must include the joined event/household/user
       // so the wizard can render the confirmation page.

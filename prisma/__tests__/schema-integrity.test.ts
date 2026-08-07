@@ -137,9 +137,7 @@ describe('Prisma schema integrity vs SPEC', () => {
   it('FPP-88 review: CommunicationLog has a `kind` column with BROADCAST default', () => {
     const block = schema.match(/model CommunicationLog \{([\s\S]*?)^\}/m);
     expect(block).not.toBeNull();
-    expect(block![1]!).toMatch(
-      /kind\s+CommunicationLogKind\s+@default\(BROADCAST\)/,
-    );
+    expect(block![1]!).toMatch(/kind\s+CommunicationLogKind\s+@default\(BROADCAST\)/);
     // The kind column should be indexed so the send pipeline
     // can filter by it without a full scan.
     expect(block![1]!).toMatch(/@@index\(\[kind\]\)/);

@@ -76,12 +76,16 @@ describe('Invitation Single-Use Token', () => {
   describe('FPP-88: validate/commit split + URL body', () => {
     it('invitation router exposes a read-only validate procedure', async () => {
       const routerContent = await fs.readFile(invitationRouterPath, 'utf-8');
-      expect(routerContent).toMatch(/validate:\s*auditedAdminProcedure/);
+      // FPP-89: validate is reachable from the public landing
+      // page, so it uses the bare `procedure` (not
+      // `auditedAdminProcedure`). The token in the input is the
+      // auth.
+      expect(routerContent).toMatch(/validate:\s*procedure\b/);
       // The validate procedure is a `.query`, not a `.mutation`,
       // so callers cannot accidentally burn the token by
       // pre-flighting the invitation. Bound the slice to the
       // validate body only (everything before `consume:`).
-      const validateSlice = routerContent.split(/validate:\s*auditedAdminProcedure/)[1] ?? '';
+      const validateSlice = routerContent.split(/validate:\s*procedure/)[1] ?? '';
       const validateEnd = validateSlice.indexOf('consume:');
       const validateBlock = validateEnd >= 0 ? validateSlice.slice(0, validateEnd) : validateSlice;
       expect(validateBlock).toMatch(/\.query\(/);
@@ -93,7 +97,7 @@ describe('Invitation Single-Use Token', () => {
       // Extract the validate body and assert it never calls
       // prisma.invitation.update. The read-only landing page
       // must not burn the token.
-      const validateBody = routerContent.split(/validate:\s*auditedAdminProcedure/)[1] ?? '';
+      const validateBody = routerContent.split(/validate:\s*procedure/)[1] ?? '';
       const validateEnd = validateBody.indexOf('consume:');
       const validateBlock = validateEnd >= 0 ? validateBody.slice(0, validateEnd) : validateBody;
       expect(validateBlock).not.toMatch(/prisma\.invitation\.update/);
@@ -104,7 +108,7 @@ describe('Invitation Single-Use Token', () => {
 
     it('consume procedure still marks the invitation as USED (post-validate commit)', async () => {
       const routerContent = await fs.readFile(invitationRouterPath, 'utf-8');
-      const consumeBlock = routerContent.split(/consume:\s*auditedAdminProcedure/)[1] ?? '';
+      const consumeBlock = routerContent.split(/consume:\s*procedure/)[1] ?? '';
       expect(consumeBlock).toMatch(/status:\s*InvitationStatus\.USED/);
       // The commit path is still a mutation.
       expect(consumeBlock).toMatch(/\.mutation\(/);
