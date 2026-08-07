@@ -313,7 +313,7 @@ export default function DataTable<TData extends RowData>({
           </div>
         ) : (
           <table className="min-w-full divide-y divide-stone-200">
-            <thead className={`bg-secondary/60${stickyHeader ? ' sticky top-0 z-10' : ''}`}>
+            <thead className={`bg-secondary/60 ${stickyHeader ? 'sticky top-0 z-10' : ''}`}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
@@ -357,7 +357,7 @@ export default function DataTable<TData extends RowData>({
                 return (
                   <tr
                     key={row.id}
-                    className={`hover:bg-secondary/40${clickable ? ' cursor-pointer' : ''}`}
+                    className={`hover:bg-secondary/40 ${clickable ? 'cursor-pointer' : ''}`}
                     onClick={clickable ? () => onRowClick!(row.original) : undefined}
                     tabIndex={clickable ? 0 : undefined}
                     onKeyDown={
