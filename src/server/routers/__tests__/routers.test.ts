@@ -130,6 +130,10 @@ vi.mock('~/lib/auth', () => ({
 vi.mock('~/lib/invitation-token', () => ({
   generateInvitationToken: vi.fn(() => 'MOCK-TOKEN-123'),
   getInvitationExpiry: vi.fn(() => new Date('2099-01-01T00:00:00.000Z')),
+  // FPP-88: the invitation.send router now stamps the wizard
+  // landing-page URL on the CommunicationLog row. Mirror the helper
+  // here so the mock matches the real module surface.
+  buildInvitationUrl: vi.fn((token: string) => `http://localhost:3000/events/invitation/${token}`),
 }));
 
 vi.mock('~/lib/generated/enums', () => ({
@@ -157,6 +161,15 @@ vi.mock('~/lib/generated/enums', () => ({
     UNSUBSCRIBED: 'UNSUBSCRIBED',
   },
   CommunicationPreference: { EMAIL: 'EMAIL', SMS: 'SMS', BOTH: 'BOTH', NONE: 'NONE' },
+  // FPP-88: invitation sends now stamp a `kind` on the
+  // CommunicationLog row. The test mock has to expose it or the
+  // invitation.send / send-by-household tests throw on the missing
+  // export.
+  CommunicationLogKind: {
+    BROADCAST: 'BROADCAST',
+    INVITATION: 'INVITATION',
+    DECLINE_NOTE: 'DECLINE_NOTE',
+  },
   AdminPermission: { OWNER: 'OWNER', COADMIN: 'COADMIN', INVITER: 'INVITER' },
   PotluckCategory: {
     MAIN: 'MAIN',
