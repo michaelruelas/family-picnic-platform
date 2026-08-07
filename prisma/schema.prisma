@@ -199,6 +199,7 @@ model User {
   scheduledBroadcasts  ScheduledBroadcast[] @relation("ScheduledByUser")
   photoReactions     PhotoReaction[]
   adminAuditLogs     AdminAuditLog[]
+  auditLogs          AuditLog[]
   eventAdmins        EventAdmin[]
   registrations      Registration[]
   refundsIssued      Refund[]          @relation("RefundIssuer")
@@ -460,6 +461,27 @@ model AdminAuditLog {
   @@index([eventId])
   @@index([createdAt])
   @@index([action])
+}
+
+// FPP-50: domain-event audit log. Captures who did what to which subject
+// (RSVP, PotluckSignup, EventAdmin, Registration, Charge, ...), with a
+// free-form payload for the diff and the time it happened. Append-only
+// at the DB level (see migration trigger).
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String?
+  action      String
+  subjectType String
+  subjectId   String
+  payload     Json?
+  occurredAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([subjectType, subjectId])
+  @@index([actorId, occurredAt])
+  @@index([action])
+  @@index([occurredAt])
 }
 
 enum AdminPermission {
