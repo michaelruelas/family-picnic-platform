@@ -2,6 +2,7 @@ import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { PotluckCategory, SlotType, RSVPStatus, EventStatus } from '~/lib/generated/enums';
+import { writeDomainAuditLog } from '~/lib/audit';
 
 export const potluckRouter = router({
   createSlot: auditedAdminProcedure
@@ -207,6 +208,11 @@ export const potluckRouter = router({
             }
 
             if (existingSignup) {
+              const before = {
+                dishName: existingSignup.dishName,
+                servings: existingSignup.servings,
+                dietaryLabels: existingSignup.dietaryLabels,
+              };
               const updated = await tx.potluckSignup.update({
                 where: { id: existingSignup.id },
                 data: {
@@ -215,6 +221,27 @@ export const potluckRouter = router({
                   dietaryLabels: input.dietaryLabels,
                 },
               });
+              // FPP-50: surface signup edits on the audit log so the
+              // dish list is traceable per household.
+              await writeDomainAuditLog(
+                {
+                  actorId: ctx.session.user.id,
+                  action: 'potluck.signup.update',
+                  subjectType: 'PotluckSignup',
+                  subjectId: updated.id,
+                  payload: {
+                    slotId: input.slotId,
+                    eventId: slot.eventId,
+                    before,
+                    after: {
+                      dishName: input.dishName,
+                      servings: input.servings,
+                      dietaryLabels: input.dietaryLabels,
+                    },
+                  },
+                },
+                tx,
+              );
               return updated;
             }
 
@@ -233,6 +260,23 @@ export const potluckRouter = router({
               data: { currentSignups: { increment: 1 } },
             });
 
+            await writeDomainAuditLog(
+              {
+                actorId: ctx.session.user.id,
+                action: 'potluck.signup.create',
+                subjectType: 'PotluckSignup',
+                subjectId: created.id,
+                payload: {
+                  slotId: input.slotId,
+                  eventId: slot.eventId,
+                  dishName: input.dishName,
+                  servings: input.servings,
+                  dietaryLabels: input.dietaryLabels,
+                },
+              },
+              tx,
+            );
+
             return created;
           },
           { isolationLevel: 'Serializable' },
@@ -240,24 +284,78 @@ export const potluckRouter = router({
       }
 
       if (existingSignup) {
-        return prisma.potluckSignup.update({
-          where: { id: existingSignup.id },
+        // FPP-50 review: wrap the UNLIMITED update path in a
+        // transaction so the audit log row is atomic with the signup
+        // write. No Serializable isolation needed because UNLIMITED
+        // slots have no capacity race; the default isolation level
+        // is fine.
+        return prisma.$transaction(async (tx) => {
+          const before = {
+            dishName: existingSignup.dishName,
+            servings: existingSignup.servings,
+            dietaryLabels: existingSignup.dietaryLabels,
+          };
+          const updated = await tx.potluckSignup.update({
+            where: { id: existingSignup.id },
+            data: {
+              dishName: input.dishName,
+              servings: input.servings,
+              dietaryLabels: input.dietaryLabels,
+            },
+          });
+          await writeDomainAuditLog(
+            {
+              actorId: ctx.session.user.id,
+              action: 'potluck.signup.update',
+              subjectType: 'PotluckSignup',
+              subjectId: updated.id,
+              payload: {
+                slotId: input.slotId,
+                eventId: slot.eventId,
+                before,
+                after: {
+                  dishName: input.dishName,
+                  servings: input.servings,
+                  dietaryLabels: input.dietaryLabels,
+                },
+              },
+            },
+            tx,
+          );
+          return updated;
+        });
+      }
+
+      // FPP-50 review: wrap the UNLIMITED create path in a
+      // transaction so the audit log row is atomic with the signup
+      // write.
+      return prisma.$transaction(async (tx) => {
+        const created = await tx.potluckSignup.create({
           data: {
+            slotId: input.slotId,
+            rsvpId: rsvp.id,
             dishName: input.dishName,
             servings: input.servings,
             dietaryLabels: input.dietaryLabels,
           },
         });
-      }
-
-      return prisma.potluckSignup.create({
-        data: {
-          slotId: input.slotId,
-          rsvpId: rsvp.id,
-          dishName: input.dishName,
-          servings: input.servings,
-          dietaryLabels: input.dietaryLabels,
-        },
+        await writeDomainAuditLog(
+          {
+            actorId: ctx.session.user.id,
+            action: 'potluck.signup.create',
+            subjectType: 'PotluckSignup',
+            subjectId: created.id,
+            payload: {
+              slotId: input.slotId,
+              eventId: slot.eventId,
+              dishName: input.dishName,
+              servings: input.servings,
+              dietaryLabels: input.dietaryLabels,
+            },
+          },
+          tx,
+        );
+        return created;
       });
     }),
 
@@ -271,11 +369,14 @@ export const potluckRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const slot = await prisma.potluckSlot.findUnique({ where: { id: input.slotId } });
+      if (!slot) {
+        throw new Error('Slot not found');
+      }
       const rsvp = await prisma.rSVP.findUnique({
         where: {
           eventId_userId: {
-            eventId:
-              (await prisma.potluckSlot.findUnique({ where: { id: input.slotId } }))?.eventId || '',
+            eventId: slot.eventId,
             userId: ctx.session.user.id,
           },
         },
@@ -285,18 +386,60 @@ export const potluckRouter = router({
         throw new Error('RSVP not found');
       }
 
-      return prisma.potluckSignup.update({
-        where: {
-          slotId_rsvpId: {
-            slotId: input.slotId,
-            rsvpId: rsvp.id,
+      // FPP-50 review: wrap the update + audit write in a transaction
+      // so the audit log row is atomic with the signup write.
+      return prisma.$transaction(async (tx) => {
+        const before = await tx.potluckSignup.findUnique({
+          where: {
+            slotId_rsvpId: {
+              slotId: input.slotId,
+              rsvpId: rsvp.id,
+            },
           },
-        },
-        data: {
-          dishName: input.dishName,
-          servings: input.servings,
-          dietaryLabels: input.dietaryLabels,
-        },
+        });
+
+        const updated = await tx.potluckSignup.update({
+          where: {
+            slotId_rsvpId: {
+              slotId: input.slotId,
+              rsvpId: rsvp.id,
+            },
+          },
+          data: {
+            dishName: input.dishName,
+            servings: input.servings,
+            dietaryLabels: input.dietaryLabels,
+          },
+        });
+
+        // FPP-50: log the dish edit so changes show up on the audit log.
+        await writeDomainAuditLog(
+          {
+            actorId: ctx.session.user.id,
+            action: 'potluck.signup.update',
+            subjectType: 'PotluckSignup',
+            subjectId: updated.id,
+            payload: {
+              slotId: input.slotId,
+              eventId: slot.eventId,
+              before: before
+                ? {
+                    dishName: before.dishName,
+                    servings: before.servings,
+                    dietaryLabels: before.dietaryLabels,
+                  }
+                : null,
+              after: {
+                dishName: input.dishName,
+                servings: input.servings,
+                dietaryLabels: input.dietaryLabels,
+              },
+            },
+          },
+          tx,
+        );
+
+        return updated;
       });
     }),
 
@@ -337,13 +480,36 @@ export const potluckRouter = router({
         throw new Error('Signup not found');
       }
 
-      await prisma.potluckSignup.delete({
-        where: { id: signup.id },
-      });
+      // FPP-50 review: wrap the delete + counter decrement + audit
+      // write in a transaction so the audit log row is atomic with
+      // the signup removal.
+      await prisma.$transaction(async (tx) => {
+        await tx.potluckSignup.delete({
+          where: { id: signup.id },
+        });
 
-      await prisma.potluckSlot.update({
-        where: { id: input.slotId },
-        data: { currentSignups: { decrement: 1 } },
+        await tx.potluckSlot.update({
+          where: { id: input.slotId },
+          data: { currentSignups: { decrement: 1 } },
+        });
+
+        // FPP-50: log the cancellation so dropped dishes are visible on
+        // the audit log alongside the create/update entries.
+        await writeDomainAuditLog(
+          {
+            actorId: ctx.session.user.id,
+            action: 'potluck.signup.cancel',
+            subjectType: 'PotluckSignup',
+            subjectId: signup.id,
+            payload: {
+              slotId: input.slotId,
+              eventId: slot.eventId,
+              dishName: signup.dishName,
+              servings: signup.servings,
+            },
+          },
+          tx,
+        );
       });
 
       return { success: true };

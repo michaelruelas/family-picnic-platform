@@ -64,26 +64,23 @@ const bumpAuditLog = () =>
   (globalThis as unknown as { __bumpAuditLog?: () => void }).__bumpAuditLog?.();
 
 const { default: AuditLogTable } = await import('../AuditLogTable');
-import type { AdminAuditLog, Event, User } from '~/lib/generated/client';
+import type { AuditLogEntryView } from '~/lib/schemas/audit';
 
-type Log = AdminAuditLog & {
-  user: Pick<User, 'id' | 'name' | 'email'>;
-  event: Pick<Event, 'id' | 'name'> | null;
-};
-
-function makeLog(overrides: Partial<Log> = {}): Log {
+// FPP-50 review: the merged audit-log table now consumes
+// `AuditLogEntryView[]` (which tags each row with `source: 'admin' |
+// 'domain'` and may carry `subjectType`/`subjectId`/`payload`
+// instead of `oldValue`/`newValue`). These tests only assert shell
+// behaviour (mount, error toast, filter button), so a minimal
+// admin entry is enough.
+function makeLog(overrides: Partial<AuditLogEntryView> = {}): AuditLogEntryView {
   return {
     id: 'l1',
+    source: 'admin',
     action: 'event.create',
-    oldValue: null,
-    newValue: null,
-    eventId: null,
-    userId: 'u1',
-    createdAt: new Date('2026-08-01T10:00:00Z'),
-    user: { id: 'u1', name: 'Admin', email: 'admin@example.com' },
-    event: null,
+    occurredAt: new Date('2026-08-01T10:00:00Z').toISOString(),
+    actor: { id: 'u1', name: 'Admin', email: 'admin@example.com' },
     ...overrides,
-  } as unknown as Log;
+  };
 }
 
 function renderWithToast(ui: React.ReactNode) {
