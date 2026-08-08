@@ -2,8 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import InvitationTable from '~/components/invitation/InvitationTable';
+import { useToast } from '~/components/ui/Toast';
+import InvitationsTable, { type AdminInvitationRow } from '~/components/admin/InvitationsTable';
 import CsvUploader from '~/components/admin/CsvUploader';
+import { formatDate } from '~/lib/format-date';
 
 type Event = {
   id: string;
@@ -16,7 +18,21 @@ type Household = {
   name: string;
 };
 
-type InvitationWithRelations = {
+type SerializedInvitation = {
+  id: string;
+  eventId: string;
+  householdId: string | null;
+  userId: string | null;
+  status: AdminInvitationRow['status'];
+  token: string | null;
+  expiresAt: string | null;
+  sentAt: string | null;
+  createdAt: string;
+  household: { id: string; name: string } | null;
+  user: { id: string; name: string; email: string } | null;
+};
+
+function serialize(row: {
   id: string;
   eventId: string;
   householdId: string | null;
@@ -28,7 +44,26 @@ type InvitationWithRelations = {
   createdAt: Date | string;
   household: { id: string; name: string } | null;
   user: { id: string; name: string; email: string } | null;
-};
+}): AdminInvitationRow {
+  return {
+    id: row.id,
+    status: row.status as AdminInvitationRow['status'],
+    token: row.token,
+    expiresAt: row.expiresAt
+      ? typeof row.expiresAt === 'string'
+        ? row.expiresAt
+        : row.expiresAt.toISOString()
+      : null,
+    sentAt: row.sentAt
+      ? typeof row.sentAt === 'string'
+        ? row.sentAt
+        : row.sentAt.toISOString()
+      : null,
+    createdAt: typeof row.createdAt === 'string' ? row.createdAt : row.createdAt.toISOString(),
+    household: row.household,
+    user: row.user,
+  };
+}
 
 export default function AdminInvitationsClient({
   events,
@@ -38,12 +73,15 @@ export default function AdminInvitationsClient({
 }: {
   events: Event[];
   households: Household[];
-  initialInvitations: InvitationWithRelations[];
+  initialInvitations: SerializedInvitation[];
   selectedEventId: string | null;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [selectedEvent, setSelectedEvent] = useState<string>(selectedEventId || '');
-  const [invitations, setInvitations] = useState<InvitationWithRelations[]>(initialInvitations);
+  const [invitations, setInvitations] = useState<AdminInvitationRow[]>(
+    initialInvitations.map(serialize),
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedHousehold, setSelectedHousehold] = useState<string>('');
   const [sending, setSending] = useState(false);
@@ -56,55 +94,45 @@ export default function AdminInvitationsClient({
     [searchQuery, households],
   );
 
-  const handleEventChange = (eventId: string) => {
+  function handleEventChange(eventId: string) {
     setSelectedEvent(eventId);
     router.push(`/admin/invitations?event=${eventId}`);
-  };
+  }
 
-  const handleResend = async (id: string) => {
-    await fetch('/api/admin/invitations/resend', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    if (selectedEvent) {
-      const res = await fetch(`/api/admin/invitations?event=${selectedEvent}`);
-      const data = await res.json();
-      setInvitations(data);
-    }
-  };
-
-  const handleTrackDelivery = async (id: string, status: 'PENDING' | 'SENT' | 'DELIVERED') => {
-    await fetch('/api/admin/invitations/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status }),
-    });
-    if (selectedEvent) {
-      const res = await fetch(`/api/admin/invitations?event=${selectedEvent}`);
-      const data = await res.json();
-      setInvitations(data);
-    }
-  };
-
-  const handleSendInvitation = async () => {
+  async function handleSendInvitation() {
     if (!selectedEvent || !selectedHousehold) return;
     setSending(true);
     try {
-      await fetch('/api/admin/invitations/send', {
+      const res = await fetch('/api/admin/invitations/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventId: selectedEvent, householdId: selectedHousehold }),
       });
-      const res = await fetch(`/api/admin/invitations?event=${selectedEvent}`);
-      const data = await res.json();
-      setInvitations(data);
+      if (!res.ok) {
+        const text = await res.text();
+        toast.addToast('error', text || 'Failed to send invitation');
+        return;
+      }
+      toast.addToast('success', 'Invitation sent');
+      // Refresh invitations list
+      const listRes = await fetch(`/api/admin/invitations?event=${selectedEvent}`);
+      if (listRes.ok) {
+        const data = await listRes.json();
+        setInvitations(data.map(serialize));
+      }
       setSelectedHousehold('');
       setSearchQuery('');
     } finally {
       setSending(false);
     }
-  };
+  }
+
+  async function refreshInvitations(eventId: string) {
+    const res = await fetch(`/api/admin/invitations?event=${eventId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setInvitations(data.map(serialize));
+  }
 
   return (
     <div className="space-y-6">
@@ -119,22 +147,16 @@ export default function AdminInvitationsClient({
             onChange={(e) => handleEventChange(e.target.value)}
             className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg shadow-sm"
           >
-            <option value="">Select an event...</option>
+            <option value="">Select an event…</option>
             {events.map((event) => (
               <option key={event.id} value={event.id}>
-                {event.name} (
-                {new Date(event.date).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-                )
+                {event.name} ({formatDate(event.date, 'date')})
               </option>
             ))}
           </select>
         </div>
 
-        {selectedEvent && (
+        {selectedEvent ? (
           <div>
             <label
               htmlFor="household-search"
@@ -147,14 +169,14 @@ export default function AdminInvitationsClient({
               id="household-search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by household name..."
+              placeholder="Search by household name…"
               className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg shadow-sm"
             />
           </div>
-        )}
+        ) : null}
       </div>
 
-      {selectedEvent && searchQuery && (
+      {selectedEvent && searchQuery ? (
         <div className="border-border rounded-xl border bg-white p-4">
           <h3 className="text-foreground/85 mb-3 text-sm font-medium">
             Matching Households ({filteredHouseholds.length})
@@ -171,6 +193,7 @@ export default function AdminInvitationsClient({
               >
                 <span className="text-foreground font-medium">{household.name}</span>
                 <button
+                  type="button"
                   onClick={() => setSelectedHousehold(household.id)}
                   disabled={selectedHousehold === household.id}
                   className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-1 text-sm font-medium text-white disabled:bg-stone-300"
@@ -179,44 +202,44 @@ export default function AdminInvitationsClient({
                 </button>
               </div>
             ))}
-            {filteredHouseholds.length === 0 && (
+            {filteredHouseholds.length === 0 ? (
               <p className="text-muted-foreground text-center">No households found</p>
-            )}
+            ) : null}
           </div>
-          {selectedHousehold && (
+          {selectedHousehold ? (
             <div className="mt-4 flex justify-end">
               <button
-                onClick={handleSendInvitation}
+                type="button"
+                onClick={() => void handleSendInvitation()}
                 disabled={sending}
                 className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white disabled:bg-stone-300"
               >
-                {sending ? 'Sending...' : 'Send Invitation'}
+                {sending ? 'Sending…' : 'Send Invitation'}
               </button>
             </div>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
 
-      {selectedEvent && (
-        <div>
-          <h2 className="text-foreground mb-4 text-lg font-semibold">Sent Invitations</h2>
-          <InvitationTable
-            invitations={invitations}
-            onResend={handleResend}
-            onTrackDelivery={handleTrackDelivery}
+      {selectedEvent ? (
+        <div className="space-y-6">
+          <h2 className="text-foreground text-lg font-semibold">Sent Invitations</h2>
+          <InvitationsTable initialInvitations={invitations} />
+          <CsvUploader
+            eventId={selectedEvent}
+            onImportComplete={async () => {
+              await refreshInvitations(selectedEvent);
+            }}
           />
         </div>
-      )}
-
-      {selectedEvent && (
-        <CsvUploader
-          eventId={selectedEvent}
-          onImportComplete={async () => {
-            const res = await fetch(`/api/admin/invitations?event=${selectedEvent}`);
-            const data = await res.json();
-            setInvitations(data);
-          }}
-        />
+      ) : (
+        <div className="bg-secondary rounded-xl p-12 text-center">
+          <div className="text-5xl">📨</div>
+          <h2 className="text-foreground mt-4 text-xl font-semibold">Select an event</h2>
+          <p className="text-muted-foreground mt-2">
+            Pick an event from the dropdown above to view and manage its invitations.
+          </p>
+        </div>
       )}
     </div>
   );

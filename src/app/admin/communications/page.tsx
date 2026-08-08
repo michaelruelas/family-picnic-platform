@@ -1,8 +1,8 @@
-import Link from 'next/link';
 import { requireAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import AdminCommunicationsClient from './CommunicationsClient';
 import EventSelect from '~/components/admin/EventSelect';
+import AdminShell from '~/components/admin/AdminShell';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +63,7 @@ export default async function AdminCommunicationsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const session = await requireAdminPage();
+  await requireAdminPage();
 
   const params = await searchParams;
   const selectedEventId = params.event || null;
@@ -75,45 +75,7 @@ export default async function AdminCommunicationsPage({
   const effectiveEventId = selectedEventId || events[0]?.id || '';
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12">
-      <div className="mb-8">
-        <h1 className="text-foreground text-3xl font-bold">Admin: Communications</h1>
-        <p className="text-muted-foreground mt-2">Send broadcast messages to families</p>
-      </div>
-
-      <div className="mb-6 flex flex-wrap gap-3">
-        <Link
-          href="/admin/dashboard"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Dashboard
-        </Link>
-        <Link
-          href="/admin/events"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Events
-        </Link>
-        <Link
-          href="/admin/invitations"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Invitations
-        </Link>
-        <Link
-          href="/admin/communications"
-          className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Communications
-        </Link>
-        <Link
-          href="/admin/audit-log"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Audit Log
-        </Link>
-      </div>
-
+    <AdminShell title="Communications" description="Send broadcast messages to families">
       <div className="mb-6">
         <label htmlFor="event-select" className="text-foreground/85 block text-sm font-medium">
           Event
@@ -137,6 +99,6 @@ export default async function AdminCommunicationsPage({
           </p>
         </div>
       )}
-    </main>
+    </AdminShell>
   );
 }

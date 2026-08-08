@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { requireAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import EventAdminsClient from './EventAdminsClient';
+import AdminShell from '~/components/admin/AdminShell';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,22 +49,24 @@ export default async function EventAdminsPage({ params }: PageProps) {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
-      <div className="mb-8">
+    <AdminShell
+      title={`${event.name} — Admins`}
+      description="Manage who can administer this event"
+      actions={
         <a
           href={`/admin/events/${id}/edit`}
-          className="text-muted-foreground hover:text-foreground/85 text-sm"
+          className="border-border bg-card text-foreground hover:bg-secondary rounded-lg border px-4 py-2 text-sm font-medium"
         >
-          ← Back to Event Edit
+          ← Back to Event
         </a>
-      </div>
-
+      }
+    >
       <EventAdminsClient
         eventId={event.id}
         eventName={event.name}
         initialAdmins={event.admins}
         currentUserId={session.user.id}
       />
-    </main>
+    </AdminShell>
   );
 }

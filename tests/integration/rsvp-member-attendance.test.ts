@@ -21,6 +21,8 @@ describe('Per-member RSVP attendance (FPP-30, FPP-29)', () => {
     process.cwd(),
     'src/app/admin/events/[id]/members/page.tsx',
   );
+  // FPP-91: the per-member rendering moved into a sub-component.
+  const adminMembersTablePath = path.join(process.cwd(), 'src/components/admin/MembersTable.tsx');
   const rsvpSchemaPath = path.join(process.cwd(), 'src/lib/schemas/rsvp.ts');
   const migrationPath = path.join(
     process.cwd(),
@@ -216,10 +218,16 @@ describe('Per-member RSVP attendance (FPP-30, FPP-29)', () => {
 
   describe('Admin members view', () => {
     it('shows per-member attendance per household', async () => {
-      const content = await fs.readFile(adminMembersPagePath, 'utf-8');
-      expect(content).toContain('memberAttendances');
-      expect(content).toContain('attendingLabel(att.attending)');
-      expect(content).toMatch(/Going[\s\S]*?Maybe[\s\S]*?Not going/);
+      const pageContent = await fs.readFile(adminMembersPagePath, 'utf-8');
+      // FPP-91: the page wires `memberAttendances` from Prisma; the
+      // per-member render with attending labels lives in the
+      // MembersTable sub-component.
+      expect(pageContent).toContain('memberAttendances');
+      const tableContent = await fs.readFile(adminMembersTablePath, 'utf-8');
+      expect(tableContent).toContain('attendingLabel(row.attending)');
+      // The three status labels are surfaced via the EmptyState tile
+      // row above the table — also from MembersTable.
+      expect(tableContent).toMatch(/Going[\s\S]*?Maybe[\s\S]*?Not going/);
     });
   });
 

@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import { requireAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import AdminInvitationsClient from './InvitationsClient';
+import AdminShell from '~/components/admin/AdminShell';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +28,7 @@ async function getHouseholds() {
 }
 
 async function getInvitationsByEvent(eventId: string) {
-  return prisma.invitation.findMany({
+  const rows = await prisma.invitation.findMany({
     where: { eventId },
     orderBy: { createdAt: 'desc' },
     include: {
@@ -40,6 +40,19 @@ async function getInvitationsByEvent(eventId: string) {
       },
     },
   });
+  return rows.map((r) => ({
+    id: r.id,
+    eventId: r.eventId,
+    householdId: r.householdId,
+    userId: r.userId,
+    status: r.status,
+    token: r.token,
+    expiresAt: r.expiresAt ? r.expiresAt.toISOString() : null,
+    sentAt: r.sentAt ? r.sentAt.toISOString() : null,
+    createdAt: r.createdAt.toISOString(),
+    household: r.household,
+    user: r.user,
+  }));
 }
 
 export default async function AdminInvitationsPage({
@@ -47,7 +60,7 @@ export default async function AdminInvitationsPage({
 }: {
   searchParams: Promise<{ event?: string }>;
 }) {
-  const session = await requireAdminPage();
+  await requireAdminPage();
 
   const params = await searchParams;
   const selectedEventId = params.event || null;
@@ -59,51 +72,13 @@ export default async function AdminInvitationsPage({
   ]);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12">
-      <div className="mb-8">
-        <h1 className="text-foreground text-3xl font-bold">Admin: Invitations</h1>
-        <p className="text-muted-foreground mt-2">Send and manage event invitations</p>
-      </div>
-
-      <div className="mb-6 flex flex-wrap gap-3">
-        <Link
-          href="/admin/dashboard"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Dashboard
-        </Link>
-        <Link
-          href="/admin/events"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Events
-        </Link>
-        <Link
-          href="/admin/invitations"
-          className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Invitations
-        </Link>
-        <Link
-          href="/admin/communications"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Communications
-        </Link>
-        <Link
-          href="/admin/audit-log"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Audit Log
-        </Link>
-      </div>
-
+    <AdminShell title="Invitations" description="Send and manage event invitations">
       <AdminInvitationsClient
         events={events}
         households={households}
         initialInvitations={invitations}
         selectedEventId={selectedEventId}
       />
-    </main>
+    </AdminShell>
   );
 }
