@@ -77,6 +77,14 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
       const data = await response.json();
 
       if (!response.ok) {
+        if (data?.code === 'USER_HAS_NO_HOUSEHOLD') {
+          // FPP-103: the user's household was missing or soft-deleted;
+          // the API rejects rather than blowing up on a FK violation.
+          // Send them through onboarding so they can re-create or
+          // rejoin a household before retrying.
+          router.push('/onboarding');
+          return;
+        }
         setDependentError(data.error || 'Failed to add dependent');
         return;
       }
@@ -118,6 +126,10 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
       const data = await response.json();
 
       if (!response.ok) {
+        if (data?.code === 'USER_HAS_NO_HOUSEHOLD') {
+          router.push('/onboarding');
+          return;
+        }
         setDependentError(data.error || 'Failed to update dependent');
         return;
       }

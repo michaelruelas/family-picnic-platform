@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import { z } from 'zod';
+import { generateRequestId, createRequestLogger } from '~/lib/logger';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -31,7 +32,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const requestId = generateRequestId();
   const session = await getServerSession(authOptions);
+
+  const log = createRequestLogger({
+    requestId,
+    userId: session?.user?.id,
+    route: '/api/dependents',
+  });
 
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
@@ -61,14 +69,37 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, householdId: true },
+      select: {
+        id: true,
+        householdId: true,
+        household: { select: { id: true, deletedAt: true } },
+      },
     });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found', code: 'NOT_FOUND' }, { status: 404 });
     }
 
-    const householdId = user.householdId || user.id;
+    // The householdId must reference a live Household row. A user
+    // with no household (skipped onboarding) or whose household was
+    // soft-deleted cannot create Dependents here; route them back
+    // through onboarding instead. FPP-103.
+    if (!user.household || user.household.deletedAt !== null) {
+      log.warn(
+        {
+          householdId: user.householdId,
+          householdDeletedAt: user.household?.deletedAt ?? null,
+        },
+        'POST /api/dependents rejected: USER_HAS_NO_HOUSEHOLD',
+      );
+      return NextResponse.json(
+        {
+          error: 'Complete onboarding before adding family members.',
+          code: 'USER_HAS_NO_HOUSEHOLD',
+        },
+        { status: 409 },
+      );
+    }
 
     const dependent = await prisma.dependent.create({
       data: {
@@ -77,14 +108,14 @@ export async function POST(request: Request) {
         age: age !== undefined && age !== null ? Number(age) : null,
         dietaryLabels: Array.isArray(dietaryLabels) ? dietaryLabels : [],
         isChild: Boolean(isChild),
-        householdId,
+        householdId: user.household.id,
         managedByUserId: session.user.id,
       },
     });
 
     return NextResponse.json(dependent, { status: 201 });
   } catch (error) {
-    console.error('Create dependent error:', error);
+    log.error({ err: error }, 'Create dependent error');
     return NextResponse.json(
       { error: 'Internal server error', code: 'INTERNAL_SERVER_ERROR' },
       { status: 500 },
