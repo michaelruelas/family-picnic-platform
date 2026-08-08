@@ -1,37 +1,44 @@
 import { prisma } from '~/lib/prisma';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
-import PhotoCard from '~/components/PhotoCard';
-import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS } from '~/lib/constants';
-import { EventRsvpCard } from '~/components/event/EventRsvpCard';
 import { EventStickyBar } from '~/components/event/EventStickyBar';
 import EventSubNav from '~/components/event/EventSubNav';
-import { SignInPrompt } from '~/components/event/SignInPrompt';
 import { BreatheSection } from '~/components/ui/BreatheSection';
+import { EventTabs, EVENT_TAB_KEYS, type EventTabKey } from '~/components/event/EventTabs';
+import { EventHeaderSection } from '~/components/event/EventHeaderSection';
 import type { RSVPStatus } from '~/lib/generated/enums';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string | string[] }>;
 }
 
-type PublicPotluckSignup = {
-  id: string;
-  dishName: string;
-  servings: number;
-};
+function resolveInitialTab(tabParam: string | string[] | undefined): EventTabKey {
+  const raw = Array.isArray(tabParam) ? tabParam[0] : tabParam;
+  return EVENT_TAB_KEYS.includes(raw as EventTabKey) ? (raw as EventTabKey) : 'header';
+}
 
-type PrivatePotluckSignup = PublicPotluckSignup & {
-  rsvp: {
-    user: { name: string | null; household: { name: string } | null } | null;
-  };
-};
-
-export default async function EventDetailPage({ params }: Props) {
+/**
+ * FPP-46: tabbed event overview page.
+ *
+ * Renders the hero, route-level sub-nav (Overview / Potluck / Photos),
+ * then delegates the within-page sections to `<EventTabs>`. The tabbed
+ * shell swaps between `Tabs` (desktop, with keyboard nav and URL deep
+ * links) and `EventAnchorNav` (mobile, scroll anchors) under the hood.
+ *
+ * The desktop sticky RSVP card aside from earlier iterations has been
+ * folded into the Header tab — see `EventHeaderSection` — to avoid
+ * showing two competing RSVP affordances. The mobile sticky bar still
+ * renders below the content.
+ */
+export default async function EventDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { tab: tabParam } = await searchParams;
+  const initialTab = resolveInitialTab(tabParam);
+
   const session = await getServerSession(authOptions);
   const isLoggedIn = !!session?.user?.id;
   const userId = session?.user?.id ?? null;
@@ -63,7 +70,7 @@ export default async function EventDetailPage({ params }: Props) {
       photos: {
         where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
-        take: 12,
+        take: 24,
         include: {
           reactions: {
             select: { reaction: true, userId: true },
@@ -135,11 +142,11 @@ export default async function EventDetailPage({ params }: Props) {
         ? prisma.user
             .findUnique({ where: { id: userId }, select: { role: true } })
             .then((u) => u?.role)
-        : Promise.resolve(undefined),
+        : Promise.resolve(null),
     ]);
 
-  // Load the caller's Registration row in parallel so the card can
-  // show the fee total alongside the RSVP summary. Free events have
+  // Load the caller's Registration row in parallel so the RSVP card
+  // can show the fee total alongside the summary. Free events have
   // no row; we pass 0 so the card stays uncluttered.
   const userRegistration = userId
     ? await prisma.registration.findUnique({
@@ -151,18 +158,6 @@ export default async function EventDetailPage({ params }: Props) {
   const registrationFeeCurrency = userRegistration?.currency ?? event.currency;
 
   const totalAttending = confirmedHeadcount;
-
-  const slotsByCategory = event.potluckSlots.reduce(
-    (acc, slot) => {
-      if (!acc[slot.category]) {
-        acc[slot.category] = [];
-      }
-      acc[slot.category]!.push(slot);
-      return acc;
-    },
-    {} as Record<string, (typeof event.potluckSlots)[number][]>,
-  );
-
   const totalPotluckDishes = event.potluckSlots.reduce((sum, slot) => sum + slot.signups.length, 0);
   const totalPhotos = event.photos.length;
 
@@ -236,309 +231,38 @@ export default async function EventDetailPage({ params }: Props) {
       </div>
 
       <div className="mx-auto max-w-6xl px-5 pt-6 md:pt-10">
-        <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
-          <div className="space-y-12">
-            <BreatheSection>
-              <div className="text-muted-foreground flex flex-wrap items-center gap-x-5 gap-y-2">
-                <span className="flex items-center gap-2 text-base">
-                  <span className="text-sage">📍</span>
-                  <span className="text-foreground font-medium">{event.location}</span>
-                </span>
-                <span className="text-border hidden sm:inline">·</span>
-                <span className="flex items-center gap-2 text-base">
-                  <span className="text-terracotta">🕒</span>
-                  {eventDate.toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
-                </span>
-                <span className="text-border hidden sm:inline">·</span>
-                <span className="flex items-center gap-2 text-base">
-                  <span className="text-sage">👥</span>
-                  {totalAttending} attending
-                </span>
-                {totalPotluckDishes > 0 && (
-                  <>
-                    <span className="text-border hidden sm:inline">·</span>
-                    <span className="flex items-center gap-2 text-base">
-                      <span className="text-terracotta">🍴</span>
-                      {totalPotluckDishes} {totalPotluckDishes === 1 ? 'dish' : 'dishes'} claimed
-                    </span>
-                  </>
-                )}
-              </div>
-            </BreatheSection>
-
-            <BreatheSection>
-              <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
-                <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-                  The welcome
-                </p>
-                <h2 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
-                  A note from the host
-                </h2>
-                <p className="text-foreground/80 mt-5 text-lg leading-relaxed">
-                  {event.description}
-                </p>
-                {event.maxCapacity && (
-                  <div className="bg-sunlight/20 text-foreground ring-sunlight/40 mt-6 rounded-2xl px-5 py-4 text-sm ring-1">
-                    <span className="font-semibold">Heads up:</span> We can host up to{' '}
-                    {event.maxCapacity} people. Reserve your spot early.
-                  </div>
-                )}
-                {event.rsvpDeadline && new Date(event.rsvpDeadline) > now && (
-                  <p className="text-muted-foreground mt-3 text-sm">
-                    Please RSVP by{' '}
-                    <span className="text-foreground font-semibold">
-                      {new Date(event.rsvpDeadline).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </span>
-                    .
-                  </p>
-                )}
-              </div>
-            </BreatheSection>
-
-            {isLoggedIn && pendingInvitations.length > 0 && (
-              <BreatheSection>
-                <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
-                  <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-                    Awaiting replies
-                  </p>
-                  <h2 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight">
-                    Pending invitations
-                  </h2>
-                  <p className="text-muted-foreground mt-2">
-                    These guests have been invited but haven&apos;t responded yet
-                  </p>
-                  <ul className="mt-5 grid gap-2 sm:grid-cols-2">
-                    {pendingInvitations.map((inv) => (
-                      <li
-                        key={inv.id}
-                        className="bg-secondary flex items-center gap-3 rounded-2xl px-4 py-3 text-sm"
-                      >
-                        <span className="text-sunlight">⏳</span>
-                        <span className="text-foreground font-medium">
-                          {inv.household?.name || inv.user?.name || 'Unknown'}
-                        </span>
-                        {inv.status === 'SENT' && (
-                          <span className="text-muted-foreground ml-auto text-xs">sent</span>
-                        )}
-                        {inv.status === 'DELIVERED' && (
-                          <span className="text-muted-foreground ml-auto text-xs">delivered</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </BreatheSection>
-            )}
-
-            {!isLoggedIn && pendingInvitationCount > 0 && (
-              <BreatheSection>
-                <SignInPrompt
-                  title={`${pendingInvitationCount} ${
-                    pendingInvitationCount === 1 ? 'household is' : 'households are'
-                  } still deciding`}
-                  description="Sign in to see who has been invited and which families are still working out their plans."
-                />
-              </BreatheSection>
-            )}
-
-            <BreatheSection>
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-                    The menu
-                  </p>
-                  <h2 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
-                    The Potluck
-                  </h2>
-                </div>
-                <p className="text-sage text-sm font-semibold">
-                  {totalPotluckDishes} {totalPotluckDishes === 1 ? 'dish' : 'dishes'} claimed
-                </p>
-              </div>
-
-              {event.potluckSlots.length === 0 ? (
-                <div className="bg-sunlight/20 ring-sunlight/40 mt-6 rounded-3xl p-12 text-center ring-1">
-                  <div className="text-5xl">🍽️</div>
-                  <h3 className="font-display text-foreground mt-4 text-2xl font-semibold">
-                    The menu is still being planned
-                  </h3>
-                  <p className="text-muted-foreground mt-2">
-                    The organizer hasn&apos;t set up potluck categories for this event yet. Check
-                    back soon!
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-6 flex flex-col gap-4">
-                  <div className="no-scrollbar -mx-5 overflow-x-auto px-5 pb-2">
-                    <div className="flex gap-4">
-                      {isLoggedIn &&
-                        userRsvp?.status === 'CONFIRMED' &&
-                        (() => {
-                          const openSlots = event.potluckSlots.filter(
-                            (s) => s.signups.length === 0 || s.slotType === 'UNLIMITED',
-                          );
-                          if (openSlots.length === 0) return null;
-                          return (
-                            <AddDishCard
-                              eventId={event.id}
-                              existingCategories={Object.keys(slotsByCategory)}
-                            />
-                          );
-                        })()}
-                      {Object.entries(slotsByCategory).map(([category, slots]) => {
-                        const dishes = slots.flatMap((slot) => slot.signups).slice(0, 4);
-                        return (
-                          <PotluckCategoryCard
-                            key={category}
-                            category={category}
-                            dishes={dishes}
-                            totalSlots={slots.length}
-                            isLoggedIn={isLoggedIn}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <Link
-                    href={`/events/${event.id}/potluck`}
-                    className="rounded-pill bg-foreground text-background press hover:bg-foreground/90 inline-flex w-fit items-center gap-2 px-5 py-2.5 text-sm font-semibold transition-all"
-                    data-testid="event-detail-potluck-cta"
-                  >
-                    {isLoggedIn && userRsvp?.status === 'CONFIRMED'
-                      ? 'Manage your dishes'
-                      : 'Browse the potluck menu'}
-                  </Link>
-                </div>
-              )}
-            </BreatheSection>
-
-            <BreatheSection>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-                    The day
-                  </p>
-                  <h2 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
-                    Itinerary
-                  </h2>
-                </div>
-              </div>
-              <div className="mt-6 space-y-3">
-                {[
-                  {
-                    time: '10:00 AM',
-                    title: 'Setup & Early Arrival',
-                    desc: 'Unloading coolers and firing up the grill.',
-                  },
-                  {
-                    time: '12:30 PM',
-                    title: 'The Big Feast',
-                    desc: 'Potluck lines open. Elders served first.',
-                  },
-                  {
-                    time: '2:00 PM',
-                    title: 'Family Games',
-                    desc: 'Annual relay races and water balloons.',
-                  },
-                  {
-                    time: '4:00 PM',
-                    title: 'Golden Hour Photos',
-                    desc: 'Find the cousins. Find the shade. Smile.',
-                  },
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-card shadow-card ring-border/60 flex items-center gap-5 rounded-2xl p-5 ring-1"
-                  >
-                    <div className="bg-sage/15 flex shrink-0 flex-col items-center justify-center rounded-2xl px-4 py-3 text-center">
-                      <span className="font-display text-foreground text-lg font-semibold">
-                        {item.time.split(' ')[0]}
-                      </span>
-                      <span className="text-muted-foreground text-xs font-semibold">
-                        {item.time.split(' ')[1]}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="font-display text-foreground text-lg font-semibold">
-                        {item.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </BreatheSection>
-
-            <BreatheSection>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-                    Captured moments
-                  </p>
-                  <h2 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
-                    Photos
-                  </h2>
-                </div>
-              </div>
-              {event.photos.length === 0 ? (
-                <div className="bg-secondary mt-6 rounded-3xl p-12 text-center">
-                  <div className="text-5xl">📷</div>
-                  <h3 className="font-display text-foreground mt-4 text-2xl font-semibold">
-                    No photos yet
-                  </h3>
-                  <p className="text-muted-foreground mt-2">
-                    Photos from this event will appear here once shared.
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
-                  {event.photos.map((photo) => (
-                    <PhotoCard
-                      key={photo.id}
-                      photo={photo}
-                      eventName={event.name}
-                      userId={userId ?? undefined}
-                      userRole={userRole}
-                    />
-                  ))}
-                </div>
-              )}
-            </BreatheSection>
-          </div>
-
-          <aside className="hidden lg:block">
-            <div className="sticky top-24">
-              <EventRsvpCard
-                eventId={event.id}
-                eventName={event.name}
-                eventDate={eventDate}
-                location={event.location}
-                isPast={isPast}
-                isLoggedIn={isLoggedIn}
-                rsvpDeadline={event.rsvpDeadline?.toISOString() ?? null}
-                maxCapacity={event.maxCapacity ?? null}
-                currentAttending={totalAttending}
-                registrationFeeConfig={
-                  event.registrationFeeCents && event.registrationFeeCents > 0
-                    ? {
-                        amountCents: event.registrationFeeCents,
-                        minAge: event.registrationFeeMinAge,
-                        currency: event.currency,
-                      }
-                    : null
-                }
-                existingRsvp={existingRsvpForCard}
-              />
-            </div>
-          </aside>
-        </div>
+        <EventTabs
+          eventId={event.id}
+          initialTab={initialTab}
+          headerPanel={
+            <EventHeaderSection
+              eventId={event.id}
+              eventName={event.name}
+              eventDescription={event.description}
+              eventDate={eventDate}
+              eventLocation={event.location}
+              isPast={isPast}
+              isLoggedIn={isLoggedIn}
+              rsvpDeadline={event.rsvpDeadline}
+              maxCapacity={event.maxCapacity}
+              currentAttending={totalAttending}
+              registrationFeeCents={event.registrationFeeCents}
+              registrationFeeMinAge={event.registrationFeeMinAge}
+              currency={event.currency}
+              potluckSlots={event.potluckSlots}
+              pendingInvitations={pendingInvitations}
+              pendingInvitationCount={pendingInvitationCount}
+              existingRsvp={existingRsvpForCard}
+              userRsvpStatus={existingRsvpForCard?.status ?? null}
+            />
+          }
+          itineraryItems={PLACEHOLDER_ITINERARY}
+          additionalInfo={null}
+          photos={event.photos}
+          eventName={event.name}
+          userId={userId}
+          userRole={userRole ?? null}
+        />
       </div>
 
       {!isPast && (
@@ -567,92 +291,36 @@ export default async function EventDetailPage({ params }: Props) {
   );
 }
 
-function PotluckCategoryCard({
-  category,
-  dishes,
-  totalSlots,
-  isLoggedIn,
-}: {
-  category: string;
-  dishes: PrivatePotluckSignup[];
-  totalSlots: number;
-  isLoggedIn: boolean;
-}) {
-  const colorByCategory: Record<string, string> = {
-    MAIN: 'bg-terracotta/15 text-terracotta',
-    SIDE: 'bg-sage/20 text-sage',
-    DESSERT: 'bg-sunlight/30 text-[#a07c2f]',
-    DRINK: 'bg-secondary text-foreground',
-    OTHER: 'bg-secondary text-muted-foreground',
-  };
-  const chipColor = colorByCategory[category] ?? 'bg-secondary text-foreground';
-
-  const visibleDishes = isLoggedIn ? dishes : dishes.slice(0, 2);
-  const hiddenDishesCount = dishes.length - visibleDishes.length;
-
-  return (
-    <div className="bg-card shadow-card ring-border/60 w-[260px] shrink-0 rounded-3xl p-6 ring-1 md:w-[280px]">
-      <span
-        className={`rounded-pill inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold tracking-wider uppercase ${chipColor}`}
-      >
-        <span>{POTLUCK_CATEGORY_EMOJIS[category] || '📦'}</span>
-        {POTLUCK_CATEGORY_LABELS[category] || category}
-      </span>
-      {dishes.length > 0 ? (
-        <ul className="mt-4 space-y-3">
-          {visibleDishes.map((dish) => (
-            <li key={dish.id}>
-              <p className="font-display text-foreground text-lg leading-tight font-medium">
-                {dish.dishName}
-              </p>
-              {isLoggedIn && (
-                <p className="text-muted-foreground mt-1 text-xs">
-                  {dish.servings > 1 ? `${dish.servings} servings · ` : ''}Brought by{' '}
-                  {dish.rsvp.user?.household?.name || dish.rsvp.user?.name || 'A friend'}
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-muted-foreground mt-4 text-sm italic">
-          We could use a hand here — want to bring something?
-        </p>
-      )}
-      {totalSlots > 0 && (
-        <p className="text-muted-foreground mt-4 text-xs">
-          {totalSlots} {totalSlots === 1 ? 'slot' : 'slots'} total
-        </p>
-      )}
-      {!isLoggedIn && hiddenDishesCount > 0 && (
-        <p className="text-terracotta mt-3 text-xs italic">
-          + {hiddenDishesCount} more {hiddenDishesCount === 1 ? 'dish' : 'dishes'} — sign in to see
-          who&apos;s bringing what
-        </p>
-      )}
-    </div>
-  );
-}
-
-function AddDishCard({
-  eventId,
-  existingCategories: _existingCategories,
-}: {
-  eventId: string;
-  existingCategories: string[];
-}) {
-  return (
-    <Link
-      href={`/events/${eventId}/potluck`}
-      className="border-sage/40 hover:bg-sage/5 flex w-[260px] shrink-0 flex-col items-center justify-center rounded-3xl border-2 border-dashed bg-transparent p-6 text-center transition-colors md:w-[280px]"
-    >
-      <div className="bg-sage/15 flex h-12 w-12 items-center justify-center rounded-full text-2xl">
-        🍴
-      </div>
-      <h4 className="font-display text-foreground mt-3 text-lg font-semibold">Bring a dish</h4>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Pick an open slot and tell us what you are bringing.
-      </p>
-    </Link>
-  );
-}
+/**
+ * FPP-9 placeholder: until QUB-31 ships the `ItineraryItem` model +
+ * admin CRUD, the event page renders this static outline so the
+ * Itinerary tab is never blank. Replace with a real query against
+ * `prisma.itineraryItem.findMany({ where: { eventId }, orderBy: [{ order: 'asc' }, { time: 'asc' }] })`
+ * once the schema lands.
+ */
+const PLACEHOLDER_ITINERARY = [
+  {
+    id: 'placeholder-setup',
+    time: '10:00 AM',
+    title: 'Setup & Early Arrival',
+    description: 'Unloading coolers and firing up the grill.',
+  },
+  {
+    id: 'placeholder-feast',
+    time: '12:30 PM',
+    title: 'The Big Feast',
+    description: 'Potluck lines open. Elders served first.',
+  },
+  {
+    id: 'placeholder-games',
+    time: '2:00 PM',
+    title: 'Family Games',
+    description: 'Annual relay races and water balloons.',
+  },
+  {
+    id: 'placeholder-photos',
+    time: '4:00 PM',
+    title: 'Golden Hour Photos',
+    description: 'Find the cousins. Find the shade. Smile.',
+  },
+];

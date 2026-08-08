@@ -5,7 +5,10 @@ import path from 'path';
 const potluckPagePath = path.join(process.cwd(), 'src/app/events/[id]/potluck/page.tsx');
 const slotListPath = path.join(process.cwd(), 'src/components/potluck/SlotList.tsx');
 const mySlotsPath = path.join(process.cwd(), 'src/components/potluck/MySlotsSummary.tsx');
-const eventDetailPath = path.join(process.cwd(), 'src/app/events/[id]/page.tsx');
+const eventHeaderSectionPath = path.join(
+  process.cwd(),
+  'src/components/event/EventHeaderSection.tsx',
+);
 const rsvpCardPath = path.join(process.cwd(), 'src/components/event/EventRsvpCard.tsx');
 const rsvpSheetPath = path.join(process.cwd(), 'src/components/event/RsvpBottomSheet.tsx');
 const potluckRouterPath = path.join(process.cwd(), 'src/server/routers/potluck.router.ts');
@@ -134,11 +137,15 @@ describe('FPP-21 — Potluck editing moved into the RSVP bottom sheet (Dishes ta
     expect(editorContent).toContain('MySlotsSummary');
   });
 
-  it('reaches the potluck page from the event detail menu section', async () => {
-    const content = await fs.readFile(eventDetailPath, 'utf-8');
-    expect(content).toContain('/potluck');
-    expect(content).toContain('Manage your dishes');
-    expect(content).toContain('Browse the potluck menu');
+  it('reaches the potluck page from the event detail header section', async () => {
+    // FPP-46: the potluck preview moved from `page.tsx` into the
+    // dedicated `EventHeaderSection` component. The link copy and
+    // CTA labels still need to surface from the overview surface
+    // so guests can jump to the standalone potluck page.
+    const headerContent = await fs.readFile(eventHeaderSectionPath, 'utf-8');
+    expect(headerContent).toContain('/potluck');
+    expect(headerContent).toContain('Manage your dishes');
+    expect(headerContent).toContain('Browse the potluck menu');
   });
 });
 
