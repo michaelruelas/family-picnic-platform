@@ -287,7 +287,28 @@ async function main() {
     },
   });
 
-  console.log('Created pending invitation for Patel family');
+  // FPP-89: a second, non-expired invitation so the Playwright
+  // e2e suite can drive the wizard happy path without depending
+  // on Date.now() relative to the static 2026-08-01 deadline.
+  // The original token above exercises the "Invitation expired"
+  // pre-flight page; this one exercises Step 0 onwards.
+  await prisma.invitation.upsert({
+    where: { token: 'seed-invitation-token-patels-fresh' },
+    update: {},
+    create: {
+      eventId: event.id,
+      householdId: patelHousehold.id,
+      invitedByUserId: admin.id,
+      status: 'PENDING',
+      token: 'seed-invitation-token-patels-fresh',
+      // Far-future expiry so the wizard never trips the EXPIRED
+      // pre-flight page during e2e runs. The rsvpDeadline on the
+      // event itself still gates the RSVP flow server-side.
+      expiresAt: new Date('2099-12-31T23:59:59Z'),
+    },
+  });
+
+  console.log('Created pending invitations for Patel family (expired + fresh)');
 
   console.log('');
   console.log('Seed complete!');

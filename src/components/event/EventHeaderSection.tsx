@@ -52,6 +52,15 @@ export interface EventHeaderSectionProps {
     household: { name: string } | null;
   }[];
   pendingInvitationCount: number;
+  /**
+   * FPP-89: whether the logged-in caller has at least one
+   * pending invitation for this event. Drives the
+   * `EventRsvpCard`'s no-RSVP variant — pending invitation gets
+   * a "Open my invitations" CTA, no invitation gets a passive
+   * "waiting on your invitation" notice. The bottom sheet is no
+   * longer the primary RSVP entry on this page.
+   */
+  hasPendingInvitation: boolean;
   existingRsvp: {
     id: string;
     status: RSVPStatus;
@@ -101,6 +110,7 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
     potluckSlots,
     pendingInvitations,
     pendingInvitationCount,
+    hasPendingInvitation,
     existingRsvp,
     userRsvpStatus,
   } = props;
@@ -148,6 +158,7 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
         registrationFeeConfig={registrationFeeConfig}
+        hasPendingInvitation={hasPendingInvitation}
         existingRsvp={existingRsvp}
       />
 
