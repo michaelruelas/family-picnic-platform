@@ -7,8 +7,11 @@ import {
   EventStatus,
   InvitationStatus,
   CommunicationLogKind,
+  CommunicationPreference,
 } from '~/lib/generated/enums';
 import { sendEmail } from '~/lib/sendgrid';
+import { sendSMS, isValidE164, isConfigured as twilioConfigured } from '~/lib/twilio';
+import { writeAuditLog } from '~/lib/audit';
 import { logger } from '~/lib/logger';
 
 // ─── Scheduled Broadcast ─────────────────────────────────────────────
@@ -30,12 +33,27 @@ interface ScheduledBroadcastOutput {
 async function resolveRecipients(
   eventId: string,
   recipientType: string,
+  channel: 'EMAIL' | 'SMS',
   recipientIds?: string[],
 ): Promise<string[]> {
+  const consentFilter =
+    channel === 'SMS'
+      ? {
+          communicationPreference: {
+            in: [CommunicationPreference.SMS, CommunicationPreference.BOTH],
+          },
+          smsConsent: true,
+        }
+      : {
+          communicationPreference: {
+            in: [CommunicationPreference.EMAIL, CommunicationPreference.BOTH],
+          },
+        };
+
   switch (recipientType) {
     case 'ALL': {
       const users = await prisma.user.findMany({
-        where: { householdId: { not: null } },
+        where: { householdId: { not: null }, ...consentFilter },
         select: { id: true },
       });
       return users.map((u) => u.id);
@@ -44,6 +62,7 @@ async function resolveRecipients(
       const users = await prisma.user.findMany({
         where: {
           householdId: { not: null },
+          ...consentFilter,
           rsvps: {
             none: {
               eventId,
@@ -58,7 +77,7 @@ async function resolveRecipients(
     case 'HOUSEHOLD': {
       const householdIds = recipientIds ?? [];
       const users = await prisma.user.findMany({
-        where: { householdId: { in: householdIds } },
+        where: { householdId: { in: householdIds }, ...consentFilter },
         select: { id: true },
       });
       return users.map((u) => u.id);
@@ -97,7 +116,7 @@ export const scheduledBroadcastDelivery = defineWorkflow<
   ScheduledBroadcastOutput
 >({ name: 'scheduled-broadcast-delivery' }, async ({ input, step }) => {
   const recipientUserIds = await step.run({ name: 'resolve-recipients' }, () =>
-    resolveRecipients(input.eventId, input.recipientType, input.recipientIds),
+    resolveRecipients(input.eventId, input.recipientType, input.channel, input.recipientIds),
   );
 
   if (recipientUserIds.length === 0) {
@@ -385,6 +404,7 @@ interface DeliverLogRow {
   kind: CommunicationLogKind;
   recipientUserId: string | null;
   eventId: string;
+  sentByUserId: string;
 }
 
 interface DeliverOutcome {
@@ -394,22 +414,21 @@ interface DeliverOutcome {
 export type { DeliverLogRow, DeliverOutcome };
 
 /**
- * FPP-101: skip the SMS branch entirely. Twilio is not provisioned
- * for the 2026-08-09 launch so queued SMS rows would burn
- * `sms_disabled_for_launch` credits if the worker ever flipped them
- * to SENT. Leaving the branch inert (still routed, still written) so
- * a follow-up ticket can re-enable it without changing the queue
- * reader.
+ * FPP-86: SMS dispatch is gated behind TWILIO_ENABLED=true. When unset
+ * or false, queued SMS rows are marked FAILED with reason
+ * `sms_disabled_for_launch` (the FPP-101 inert behavior). When true,
+ * the branch honors user.smsConsent, validates the recipient phone
+ * number, and dispatches via the existing src/lib/twilio.ts wrapper.
  *
- * FPP-101 intentionally does NOT write AdminAuditLog rows here.
- * Audit writes would generate one row per queued log (a per-event
- * broadcast can fan out to 50+ addresses), which is the wrong
- * granularity for the admin audit trail. The follow-up is a single
- * "broadcast delivery" entry per broadcast/scheduled-broadcast
- * rather than one per recipient. The per-event and ad-hoc admin
- * SMS paths (`dispatchAdminSms` in src/lib/sms-dispatch.ts) DO
- * write audit entries because they are single-shot admin actions,
- * not queue drains.
+ * FPP-86 writes per-recipient AdminAuditLog entries for SMS sends
+ * (both success and failure). SMS is a regulated channel (TCPA), so
+ * each admin-initiated send must be individually traceable. The
+ * ad-hoc admin SMS path (`dispatchAdminSms` in src/lib/sms-dispatch.ts)
+ * also writes per-recipient audit entries for the same reason. Email
+ * broadcasts do not write per-recipient audit entries; the
+ * `auditedAdminProcedure` on `sendBroadcast` captures the admin action
+ * at creation time, and the CommunicationLog itself is the per-recipient
+ * record.
  */
 function subjectForKind(kind: CommunicationLogKind): string {
   switch (kind) {
@@ -423,8 +442,8 @@ function subjectForKind(kind: CommunicationLogKind): string {
   }
 }
 
-export async function deliverOne(log: DeliverLogRow): Promise<DeliverOutcome> {
-  if (log.channel === 'SMS') {
+async function deliverSms(log: DeliverLogRow): Promise<DeliverOutcome> {
+  if (process.env.TWILIO_ENABLED !== 'true') {
     logger.warn(
       { logId: log.id, recipientUserId: log.recipientUserId, eventId: log.eventId },
       'SMS delivery inert: sms_disabled_for_launch',
@@ -438,6 +457,151 @@ export async function deliverOne(log: DeliverLogRow): Promise<DeliverOutcome> {
       },
     });
     return { status: 'FAILED' };
+  }
+
+  if (!twilioConfigured()) {
+    logger.error(
+      { logId: log.id, eventId: log.eventId },
+      'TWILIO_ENABLED=true but Twilio credentials are missing',
+    );
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.FAILED,
+        errorCode: 'TWILIO_NOT_CONFIGURED',
+        errorMessage: 'TWILIO_ENABLED is true but Twilio credentials are missing',
+      },
+    });
+    await writeAuditLog({
+      userId: log.sentByUserId,
+      eventId: log.eventId,
+      action: 'communication.workerSmsDeliver',
+      oldValue: { logId: log.id, recipientUserId: log.recipientUserId },
+      newValue: { status: 'FAILED', error: 'TWILIO_NOT_CONFIGURED' },
+    });
+    return { status: 'FAILED' };
+  }
+
+  if (!log.recipientUserId) {
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.SKIPPED,
+        errorCode: 'NO_RECIPIENT',
+        errorMessage: 'CommunicationLog has no recipientUserId',
+      },
+    });
+    return { status: 'SKIPPED' };
+  }
+
+  const recipient = await prisma.user.findUnique({
+    where: { id: log.recipientUserId },
+    select: { phoneNumber: true, smsConsent: true },
+  });
+
+  if (!recipient) {
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.SKIPPED,
+        errorCode: 'NO_RECIPIENT',
+        errorMessage: 'Recipient user not found',
+      },
+    });
+    return { status: 'SKIPPED' };
+  }
+
+  if (!recipient.smsConsent) {
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.SKIPPED,
+        errorCode: 'NO_CONSENT',
+        errorMessage: 'Recipient has not granted SMS consent',
+      },
+    });
+    await writeAuditLog({
+      userId: log.sentByUserId,
+      eventId: log.eventId,
+      action: 'communication.workerSmsDeliver',
+      oldValue: { logId: log.id, recipientUserId: log.recipientUserId },
+      newValue: { status: 'SKIPPED', error: 'NO_CONSENT' },
+    });
+    return { status: 'SKIPPED' };
+  }
+
+  if (!recipient.phoneNumber || !isValidE164(recipient.phoneNumber)) {
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.SKIPPED,
+        errorCode: 'NO_PHONE',
+        errorMessage: 'Recipient has no valid E.164 phone number on file',
+      },
+    });
+    await writeAuditLog({
+      userId: log.sentByUserId,
+      eventId: log.eventId,
+      action: 'communication.workerSmsDeliver',
+      oldValue: { logId: log.id, recipientUserId: log.recipientUserId },
+      newValue: { status: 'SKIPPED', error: 'NO_PHONE' },
+    });
+    return { status: 'SKIPPED' };
+  }
+
+  const result = await sendSMS({ to: recipient.phoneNumber, body: log.body ?? '' });
+
+  if (result.success) {
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.SENT,
+        messageId: result.messageId,
+        toPhoneNumber: recipient.phoneNumber,
+        deliveredAt: new Date(),
+        errorCode: null,
+        errorMessage: null,
+      },
+    });
+    await writeAuditLog({
+      userId: log.sentByUserId,
+      eventId: log.eventId,
+      action: 'communication.workerSmsDeliver',
+      oldValue: { logId: log.id, recipientUserId: log.recipientUserId },
+      newValue: {
+        status: 'SENT',
+        ...(result.messageId ? { messageId: result.messageId } : {}),
+      },
+    });
+    return { status: 'SENT' };
+  }
+
+  await prisma.communicationLog.update({
+    where: { id: log.id },
+    data: {
+      status: CommunicationStatus.FAILED,
+      toPhoneNumber: recipient.phoneNumber,
+      errorCode: result.errorCode?.toString() ?? 'TWILIO_ERROR',
+      errorMessage: result.error ?? 'Twilio send failed',
+    },
+  });
+  await writeAuditLog({
+    userId: log.sentByUserId,
+    eventId: log.eventId,
+    action: 'communication.workerSmsDeliver',
+    oldValue: { logId: log.id, recipientUserId: log.recipientUserId },
+    newValue: {
+      status: 'FAILED',
+      ...(result.error ? { error: result.error } : {}),
+      ...(result.errorCode ? { errorCode: String(result.errorCode) } : {}),
+    },
+  });
+  return { status: 'FAILED' };
+}
+
+export async function deliverOne(log: DeliverLogRow): Promise<DeliverOutcome> {
+  if (log.channel === 'SMS') {
+    return deliverSms(log);
   }
 
   // EMAIL path
@@ -528,6 +692,7 @@ export const deliverCommunications = defineWorkflow<void, DeliverCommunicationsO
           kind: true,
           recipientUserId: true,
           eventId: true,
+          sentByUserId: true,
         },
       }),
     );

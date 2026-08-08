@@ -58,21 +58,22 @@ export const communicationRouter = router({
               ? [CommunicationPreference.SMS, CommunicationPreference.BOTH]
               : [CommunicationPreference.EMAIL, CommunicationPreference.BOTH],
         },
+        ...(input.channel === CommunicationChannel.SMS ? { smsConsent: true } : {}),
       };
 
-      // Phone presence and SMS consent are NOT checked at any point in the
-      // broadcast path today. FPP-101 wired the worker `deliverOne` in
-      // src/lib/ow-workflows.ts:426 to dispatch EMAIL via SendGrid
-      // (skipping rows with NONE preference, missing email, or no
-      // recipient), so EMAIL broadcasts now reach the gate. The SMS
-      // branch is still inert under `sms_disabled_for_launch`; wiring
-      // the same dispatch + the `dispatchAdminSms` consent / phone
-      // checks into the worker SMS path is the remaining follow-up
-      // (blocked on Twilio provisioning for the 2026-08-09 launch).
+      // FPP-86: SMS consent and phone validation are now wired into the
+      // worker SMS path (deliverSms in src/lib/ow-workflows.ts). The
+      // broadcast path filters by smsConsent === true at creation time
+      // so queued SMS rows are only created for users who have opted in.
+      // The worker also checks smsConsent at delivery time as a safety
+      // net, and writes per-recipient AdminAuditLog entries for every
+      // SMS send (success, failure, and skip) because SMS is a regulated
+      // channel (TCPA) that requires individual traceability.
       //
-      // FPP-101 also intentionally does NOT write AdminAuditLog rows
-      // from the worker; an audit follow-up will land one entry per
-      // broadcast/scheduled-broadcast rather than per recipient.
+      // Email broadcasts do not write per-recipient audit entries from
+      // the worker; the auditedAdminProcedure on this mutation captures
+      // the admin action at creation time, and the CommunicationLog row
+      // is the per-recipient record.
 
       switch (input.recipientType) {
         case 'ALL':
