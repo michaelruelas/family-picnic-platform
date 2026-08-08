@@ -23,24 +23,24 @@ beforeEach(() => {
 
 describe('LoginForm', () => {
   it('renders welcome message and Google sign-in', () => {
-    render(<LoginForm devAuthEnabled={false} />);
+    render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} />);
     expect(screen.getByText('Welcome back')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /continue with google/i })).toBeInTheDocument();
   });
 
   it('does not render dev form when devAuthEnabled is false', () => {
-    render(<LoginForm devAuthEnabled={false} />);
+    render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} />);
     expect(screen.queryByLabelText('Username')).not.toBeInTheDocument();
   });
 
   it('renders dev form when devAuthEnabled is true', () => {
-    render(<LoginForm devAuthEnabled={true} />);
+    render(<LoginForm devAuthEnabled={true} enabledProviders={[]} />);
     expect(screen.getByLabelText('Username')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
 
   it('updates username and password fields', () => {
-    render(<LoginForm devAuthEnabled={true} />);
+    render(<LoginForm devAuthEnabled={true} enabledProviders={[]} />);
     const usernameInput = screen.getByLabelText('Username') as HTMLInputElement;
     const passwordInput = screen.getByLabelText('Password') as HTMLInputElement;
     fireEvent.change(usernameInput, { target: { value: 'admin' } });
@@ -51,7 +51,7 @@ describe('LoginForm', () => {
 
   it('submits dev login form and calls signIn', async () => {
     mockedSignIn.mockResolvedValue({} as never);
-    render(<LoginForm devAuthEnabled={true} />);
+    render(<LoginForm devAuthEnabled={true} enabledProviders={[]} />);
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'admin' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pass' } });
     fireEvent.click(screen.getByRole('button', { name: /sign in \(dev\)/i }));
@@ -67,7 +67,7 @@ describe('LoginForm', () => {
 
   it('shows the "Invalid credentials" message on any signIn error', async () => {
     mockedSignIn.mockResolvedValue({ error: 'Invalid credentials' } as never);
-    render(<LoginForm devAuthEnabled={true} />);
+    render(<LoginForm devAuthEnabled={true} enabledProviders={[]} />);
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'admin' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong' } });
     fireEvent.click(screen.getByRole('button', { name: /sign in \(dev\)/i }));
@@ -84,13 +84,35 @@ describe('LoginForm', () => {
 
   it('triggers Google sign in', async () => {
     mockedSignIn.mockResolvedValue({} as never);
-    render(<LoginForm devAuthEnabled={false} />);
+    render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} />);
     fireEvent.click(screen.getByRole('button', { name: /continue with google/i }));
     expect(mockedSignIn).toHaveBeenCalledWith('google', { callbackUrl: '/' });
   });
 
+  it('triggers Apple sign in when enabled', async () => {
+    mockedSignIn.mockResolvedValue({} as never);
+    render(<LoginForm devAuthEnabled={false} enabledProviders={['apple']} />);
+    fireEvent.click(screen.getByRole('button', { name: /continue with apple/i }));
+    expect(mockedSignIn).toHaveBeenCalledWith('apple', { callbackUrl: '/' });
+  });
+
+  it('triggers Facebook sign in when enabled', async () => {
+    mockedSignIn.mockResolvedValue({} as never);
+    render(<LoginForm devAuthEnabled={false} enabledProviders={['facebook']} />);
+    fireEvent.click(screen.getByRole('button', { name: /continue with facebook/i }));
+    expect(mockedSignIn).toHaveBeenCalledWith('facebook', { callbackUrl: '/' });
+  });
+
+  it('hides provider buttons for non-enabled providers', () => {
+    render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} />);
+    expect(screen.queryByRole('button', { name: /continue with apple/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /continue with facebook/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it('renders back to home link', () => {
-    render(<LoginForm devAuthEnabled={false} />);
+    render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} />);
     const link = screen.getByRole('link', { name: /back to home/i });
     expect(link).toHaveAttribute('href', '/');
   });
