@@ -26,6 +26,7 @@ export default async function HouseholdPage() {
         select: {
           id: true,
           name: true,
+          deletedAt: true,
           users: {
             where: { deletedAt: null },
             select: {
@@ -77,7 +78,7 @@ export default async function HouseholdPage() {
     redirect('/login');
   }
 
-  if (!user.household) {
+  if (!user.household || user.household.deletedAt !== null) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-12">
         <h1 className="text-foreground text-3xl font-bold">My Household</h1>

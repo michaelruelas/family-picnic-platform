@@ -9,6 +9,26 @@ const prismaMock = vi.hoisted(() => ({
 }));
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
 
+// FPP-103: the POST handler now logs the USER_HAS_NO_HOUSEHOLD
+// rejection with the request id and household state. Mock the
+// logger so the test is hermetic and stops emitting real pino
+// output during runs.
+vi.mock('~/lib/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+  generateRequestId: vi.fn(() => 'test-req-id'),
+  createRequestLogger: vi.fn(() => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  })),
+}));
+
 vi.mock('next/server', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next/server')>();
   return {
@@ -72,23 +92,47 @@ describe('POST /api/dependents', () => {
 
   it('creates a dependent', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-1',
+      household: { id: 'h-1', deletedAt: null },
+    } as never);
     prismaMock.dependent.create.mockResolvedValue({ id: 'd-1', name: 'Kid' } as never);
     const res = await POST(makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD' }));
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.id).toBe('d-1');
+    expect(prismaMock.dependent.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ householdId: 'h-1' }) }),
+    );
   });
 
-  it('falls back to user.id when householdId is null', async () => {
+  it('returns 409 USER_HAS_NO_HOUSEHOLD when user has no household (FPP-103)', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: null } as never);
-    prismaMock.dependent.create.mockResolvedValue({ id: 'd-1' } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: null,
+      household: null,
+    } as never);
     const res = await POST(makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD' }));
-    expect(res.status).toBe(201);
-    expect(prismaMock.dependent.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ householdId: 'u-1' }) }),
-    );
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('USER_HAS_NO_HOUSEHOLD');
+    expect(prismaMock.dependent.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 USER_HAS_NO_HOUSEHOLD when user householdId points to a soft-deleted Household (FPP-103)', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'u-1',
+      householdId: 'h-deleted',
+      household: { id: 'h-deleted', deletedAt: new Date('2026-08-01T00:00:00.000Z') },
+    } as never);
+    const res = await POST(makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD' }));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('USER_HAS_NO_HOUSEHOLD');
+    expect(prismaMock.dependent.create).not.toHaveBeenCalled();
   });
 
   it('returns 500 on error', async () => {

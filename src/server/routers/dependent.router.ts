@@ -1,6 +1,8 @@
 import { router, protectedProcedure } from '~/lib/trpc';
+import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
+import { logger } from '~/lib/logger';
 
 export const dependentRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -26,24 +28,61 @@ export const dependentRouter = router({
     .mutation(async ({ ctx, input }) => {
       const user = await prisma.user.findUnique({
         where: { id: ctx.session.user.id },
-        select: { id: true, householdId: true },
+        select: {
+          id: true,
+          householdId: true,
+          household: { select: { id: true, deletedAt: true } },
+        },
       });
 
       if (!user) {
-        throw new Error('User not found');
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
       }
 
-      return prisma.dependent.create({
-        data: {
-          name: input.name,
-          relationship: input.relationship,
-          age: input.age,
-          dietaryLabels: input.dietaryLabels,
-          isChild: input.isChild,
-          householdId: user.householdId || user.id,
-          managedByUserId: ctx.session.user.id,
-        },
-      });
+      // The householdId must reference a live Household row. A
+      // user with no household (skipped onboarding) or whose
+      // household was soft-deleted cannot create Dependents here;
+      // route them back through onboarding instead. FPP-103.
+      if (!user.household || user.household.deletedAt !== null) {
+        logger.warn(
+          {
+            userId: user.id,
+            householdId: user.householdId,
+            householdDeletedAt: user.household?.deletedAt ?? null,
+          },
+          'dependent.create rejected: USER_HAS_NO_HOUSEHOLD',
+        );
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'USER_HAS_NO_HOUSEHOLD',
+        });
+      }
+
+      try {
+        return await prisma.dependent.create({
+          data: {
+            name: input.name,
+            relationship: input.relationship,
+            age: input.age,
+            dietaryLabels: input.dietaryLabels,
+            isChild: input.isChild,
+            householdId: user.household.id,
+            managedByUserId: ctx.session.user.id,
+          },
+        });
+      } catch (error) {
+        logger.error(
+          {
+            err: error,
+            userId: ctx.session.user.id,
+            householdId: user.household.id,
+            name: input.name,
+            relationship: input.relationship,
+          },
+          'dependent.create failed',
+        );
+        throw error;
+      }
     }),
 
   update: protectedProcedure

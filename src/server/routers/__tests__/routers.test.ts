@@ -130,6 +130,26 @@ vi.mock('~/lib/audit', () => ({
   diff: vi.fn(),
 }));
 
+// FPP-103: the dependent router now logs the USER_HAS_NO_HOUSEHOLD
+// rejection and any Prisma write failure with structured fields. Mock
+// the logger so the test is hermetic and so the new test cases can
+// assert on the warn call.
+vi.mock('~/lib/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+  generateRequestId: vi.fn(() => 'test-req-id'),
+  createRequestLogger: vi.fn(() => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  })),
+}));
+
 vi.mock('next-auth', () => ({
   getServerSession: vi.fn(),
   default: vi.fn(),
@@ -897,7 +917,11 @@ describe('dependent.router', () => {
   });
 
   it('create creates dependent with correct household data from user', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      householdId: 'h-1',
+      household: { id: 'h-1', deletedAt: null },
+    });
     mockPrisma.dependent.create.mockResolvedValue({
       id: 'dep-1',
       name: 'Alice',
@@ -923,7 +947,11 @@ describe('dependent.router', () => {
   });
 
   it('create passes optional fields (age, dietaryLabels, isChild)', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      householdId: 'h-1',
+      household: { id: 'h-1', deletedAt: null },
+    });
     mockPrisma.dependent.create.mockResolvedValue({ id: 'dep-1' });
 
     const { dependentRouter } = await import('~/server/routers/dependent.router');
@@ -961,20 +989,78 @@ describe('dependent.router', () => {
     );
   });
 
-  it('create uses user.id as fallback householdId when user has no householdId', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: null });
-    mockPrisma.dependent.create.mockResolvedValue({ id: 'dep-1' });
+  it('create rejects with PRECONDITION_FAILED when user has no household (FPP-103)', async () => {
+    const { logger } = await import('~/lib/logger');
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      householdId: null,
+      household: null,
+    });
 
     const { dependentRouter } = await import('~/server/routers/dependent.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(dependentRouter)({ session: userSession });
-    await caller.create({ name: 'Alice', relationship: 'CHILD' });
 
-    expect(mockPrisma.dependent.create).toHaveBeenCalledWith(
+    await expect(caller.create({ name: 'Alice', relationship: 'CHILD' })).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+      message: 'USER_HAS_NO_HOUSEHOLD',
+    });
+    expect(mockPrisma.dependent.create).not.toHaveBeenCalled();
+    // The structured warn is the audit trail for the next incident —
+    // assert on the user/household fields the ticket comment asked for.
+    expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ householdId: 'user-1' }),
+        userId: 'user-1',
+        householdId: null,
+        householdDeletedAt: null,
       }),
+      'dependent.create rejected: USER_HAS_NO_HOUSEHOLD',
     );
+  });
+
+  it('create rejects with PRECONDITION_FAILED when user householdId points to a soft-deleted Household (FPP-103)', async () => {
+    const { logger } = await import('~/lib/logger');
+    const deletedAt = new Date('2026-08-01T00:00:00.000Z');
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      householdId: 'h-deleted',
+      household: { id: 'h-deleted', deletedAt },
+    });
+
+    const { dependentRouter } = await import('~/server/routers/dependent.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(dependentRouter)({ session: userSession });
+
+    await expect(caller.create({ name: 'Alice', relationship: 'CHILD' })).rejects.toMatchObject({
+      code: 'PRECONDITION_FAILED',
+      message: 'USER_HAS_NO_HOUSEHOLD',
+    });
+    expect(mockPrisma.dependent.create).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        householdId: 'h-deleted',
+        householdDeletedAt: deletedAt,
+      }),
+      'dependent.create rejected: USER_HAS_NO_HOUSEHOLD',
+    );
+  });
+
+  it('create does not fall back to user.id when user has no householdId (FPP-103)', async () => {
+    // Regression: prior code set householdId = user.householdId || user.id
+    // which used a User PK where a Household FK was required.
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      householdId: null,
+      household: null,
+    });
+
+    const { dependentRouter } = await import('~/server/routers/dependent.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(dependentRouter)({ session: userSession });
+
+    await expect(caller.create({ name: 'Alice', relationship: 'CHILD' })).rejects.toBeDefined();
+    expect(mockPrisma.dependent.create).not.toHaveBeenCalled();
   });
 
   it('update updates dependent fields', async () => {
