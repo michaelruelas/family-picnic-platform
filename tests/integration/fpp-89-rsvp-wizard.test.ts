@@ -143,9 +143,59 @@ describe('FPP-89: /events/invitation/[token] RSVP wizard', () => {
     // The CTA bar is fixed to the bottom of the viewport.
     expect(client).toMatch(/fixed\s+right-0\s+bottom-0/);
     // Every disabled CTA in the footer carries a `title` so the
-    // user can hover (or focus, on mobile) to learn why.
-    const disabledCtas = client.match(/disabled\s+title=/g) ?? [];
-    expect(disabledCtas.length).toBeGreaterThanOrEqual(3);
+    // user can hover (or focus, on mobile) to learn why. Count
+    // distinct <Button ...> elements that carry BOTH a
+    // `disabled` attribute and a `title` attribute — this
+    // covers the inline form (`disabled title=...`) and the
+    // multi-line form (`disabled={...}\n  title={...}`) without
+    // accidentally matching attributes that belong to different
+    // JSX elements.
+    const buttonTag = /<Button\b[^>]*(?:\n[^>]*)*?>/g;
+    const buttons = client.match(buttonTag) ?? [];
+    const disabledWithTitle = buttons.filter(
+      (tag) => /\bdisabled\b/.test(tag) && /\btitle\b/.test(tag),
+    );
+    expect(disabledWithTitle.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('FPP-89 review: sign-in providers mirror getEnabledOAuthProviders() (no hardcoded disable)', async () => {
+    // The wizard accepts an `enabledProviders` prop from the server
+    // page and renders Google / Apple / Facebook only when the
+    // corresponding env credentials are configured. The previous
+    // implementation hardcoded Apple and Facebook as disabled with
+    // a "not available yet" note, which contradicted the ticket.
+    const page = await fs.readFile(pagePath, 'utf-8');
+    expect(page).toMatch(/getEnabledOAuthProviders\(\)/);
+    const client = await fs.readFile(clientPath, 'utf-8');
+    // Each provider gates on the enabledProviders prop.
+    expect(client).toMatch(/enabledProviders\.includes\('google'\)/);
+    expect(client).toMatch(/enabledProviders\.includes\('apple'\)/);
+    expect(client).toMatch(/enabledProviders\.includes\('facebook'\)/);
+    // The misleading "not available yet" copy is gone.
+    expect(client).not.toMatch(/not available yet/i);
+  });
+
+  it('FPP-89 review: event page no longer shows the bottom sheet as the primary RSVP entry', async () => {
+    // The wizard is the primary RSVP entry point. The event page
+    // bottom sheet becomes a read-only / edit surface for users
+    // who already have an RSVP. For users with no RSVP, the card
+    // now branches on whether they have a pending invitation.
+    const cardPath = path.join(process.cwd(), 'src/components/event/EventRsvpCard.tsx');
+    const headerPath = path.join(process.cwd(), 'src/components/event/EventHeaderSection.tsx');
+    const eventPagePath = path.join(process.cwd(), 'src/app/events/[id]/page.tsx');
+    const card = await fs.readFile(cardPath, 'utf-8');
+    const header = await fs.readFile(headerPath, 'utf-8');
+    const eventPage = await fs.readFile(eventPagePath, 'utf-8');
+    // The card accepts a hasPendingInvitation prop.
+    expect(card).toMatch(/hasPendingInvitation/);
+    // The no-RSVP branch now points users at the wizard / my-events
+    // instead of launching the bottom sheet as the primary CTA.
+    expect(card).toMatch(/RSVP via your invitation|Waiting on your invitation/);
+    expect(card).toMatch(/Open my invitations/);
+    // The header section threads the prop down to the card.
+    expect(header).toMatch(/hasPendingInvitation/);
+    // The event page computes and passes hasPendingInvitation.
+    expect(eventPage).toMatch(/hasPendingInvitation=\{pendingInvitations\.length > 0\}/);
   });
 
   it('progress bar is clickable for completed steps', async () => {

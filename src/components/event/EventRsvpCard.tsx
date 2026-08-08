@@ -34,6 +34,14 @@ interface EventRsvpCardProps {
    * card.
    */
   registrationFeeConfig?: { amountCents: number; minAge: number; currency: string } | null;
+  /**
+   * FPP-89: when the logged-in caller has a pending invitation
+   * for this event, the no-RSVP card swaps the primary "RSVP Now"
+   * CTA (which launches the bottom sheet) for a pointer to their
+   * invitation. The bottom sheet is no longer the primary RSVP
+   * entry point on the event page; the invitation wizard is.
+   */
+  hasPendingInvitation: boolean;
   existingRsvp: {
     id: string;
     status: RSVPStatus;
@@ -57,6 +65,7 @@ export function EventRsvpCard({
   maxCapacity,
   currentAttending,
   registrationFeeConfig,
+  hasPendingInvitation,
   existingRsvp,
 }: EventRsvpCardProps) {
   const { confirm, decline } = useRsvpMutation();
@@ -257,6 +266,56 @@ export function EventRsvpCard({
           currentAttending={currentAttending}
           registrationFeeConfig={registrationFeeConfig}
         />
+      </>
+    );
+  }
+
+  // FPP-89: the bottom sheet is no longer the primary RSVP entry
+  // point on the event page. The invitation wizard is. For a
+  // logged-in user with no RSVP we surface two informational
+  // variants:
+  //   - has a pending invitation → point them at their invitation
+  //     email (the PendingInvitationsCard above already lists it)
+  //   - no invitation → "wait for the host to send one"
+  // The "Can't make it" decline path stays because it writes a
+  // DECLINED RSVP without an invitation, mirroring the prior
+  // behavior so users without a household can still opt out.
+  if (!existingRsvp && !isPast) {
+    return (
+      <>
+        <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1">
+          <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
+            {formattedDate} · {location.split(',')[0]}
+          </p>
+          <h3 className="font-display text-foreground mt-2 text-2xl font-semibold">
+            {hasPendingInvitation ? 'RSVP via your invitation' : 'Waiting on your invitation'}
+          </h3>
+          <p className="text-muted-foreground mt-2 text-sm">
+            {hasPendingInvitation
+              ? 'The host has invited you — open the invitation link from your email or text to RSVP.'
+              : 'The host will send you a personal invitation link when RSVPs open. We do not accept RSVPs from this page.'}
+          </p>
+          {hasPendingInvitation && (
+            <Link
+              href="/my-events"
+              className="rounded-pill border-border bg-card text-foreground press hover:border-foreground mt-5 block w-full border px-5 py-3 text-center text-sm font-semibold transition-all"
+              data-testid="rsvp-card-open-invitations"
+            >
+              Open my invitations
+            </Link>
+          )}
+          {error && <p className="text-destructive mt-3 text-sm">{error}</p>}
+          {isRsvpOpen && (
+            <button
+              onClick={handleDecline}
+              disabled={isSubmitting}
+              className="rounded-pill text-muted-foreground hover:text-destructive mt-3 w-full px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+              data-testid="rsvp-card-decline-link"
+            >
+              {isSubmitting ? 'Updating...' : "Can't make it"}
+            </button>
+          )}
+        </div>
       </>
     );
   }

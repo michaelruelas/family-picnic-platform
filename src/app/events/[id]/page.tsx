@@ -252,6 +252,12 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
               potluckSlots={event.potluckSlots}
               pendingInvitations={pendingInvitations}
               pendingInvitationCount={pendingInvitationCount}
+              // FPP-89: at least one pending invitation for this
+              // user drives the EventRsvpCard's "RSVP via your
+              // invitation" CTA. The PendingInvitationsCard above
+              // already lists them; the RSVP card points users to
+              // /my-events so they can open the wizard.
+              hasPendingInvitation={pendingInvitations.length > 0}
               existingRsvp={existingRsvpForCard}
               userRsvpStatus={existingRsvpForCard?.status ?? null}
             />

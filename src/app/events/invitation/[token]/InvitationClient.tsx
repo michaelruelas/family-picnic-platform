@@ -15,6 +15,15 @@ type Attendance = 'YES' | 'MAYBE' | 'NO';
 type Props = {
   token: string;
   signedIn: boolean;
+  /**
+   * FPP-89 review: the wizard mirrors the LoginForm provider list
+   * so Apple/Facebook appear whenever they are configured in env.
+   * Previously the buttons were hardcoded disabled with a stale
+   * "not yet wired" note, which contradicted the ticket's
+   * Step 1 spec and made the wizard feel out of sync with the
+   * login page when Apple/Facebook were deployed.
+   */
+  enabledProviders: Array<'google' | 'apple' | 'facebook'>;
   event: {
     id: string;
     name: string;
@@ -36,6 +45,7 @@ const labels = ['Invite', 'Sign in', 'Attend', 'Members', 'Dishes', 'Confirm'];
 export default function InvitationClient({
   token,
   signedIn,
+  enabledProviders,
   event,
   host,
   household,
@@ -221,37 +231,43 @@ export default function InvitationClient({
             </h1>
             {!signedIn ? (
               <div className="space-y-3">
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={() => void signIn('google', { callbackUrl })}
-                >
-                  Continue with Google
-                </Button>
-                <Button
-                  className="w-full"
-                  size="lg"
-                  variant="outline"
-                  disabled
-                  title="Apple sign-in is not configured"
-                >
-                  Continue with Apple
-                </Button>
-                <p className="text-muted-foreground text-center text-sm">
-                  Apple sign-in is not available yet.
-                </p>
-                <Button
-                  className="w-full"
-                  size="lg"
-                  variant="outline"
-                  disabled
-                  title="Facebook sign-in is not configured"
-                >
-                  Continue with Facebook
-                </Button>
-                <p className="text-muted-foreground text-center text-sm">
-                  Facebook sign-in is not available yet.
-                </p>
+                {enabledProviders.includes('google') && (
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={() => void signIn('google', { callbackUrl })}
+                    data-testid="wizard-signin-google"
+                  >
+                    Continue with Google
+                  </Button>
+                )}
+                {enabledProviders.includes('apple') && (
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    variant="outline"
+                    onClick={() => void signIn('apple', { callbackUrl })}
+                    data-testid="wizard-signin-apple"
+                  >
+                    Continue with Apple
+                  </Button>
+                )}
+                {enabledProviders.includes('facebook') && (
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    variant="outline"
+                    onClick={() => void signIn('facebook', { callbackUrl })}
+                    data-testid="wizard-signin-facebook"
+                  >
+                    Continue with Facebook
+                  </Button>
+                )}
+                {enabledProviders.length === 0 && (
+                  <p className="text-muted-foreground text-center text-sm">
+                    No sign-in providers are configured for this environment.
+                  </p>
+                )}
               </div>
             ) : household ? (
               <Card>
@@ -465,15 +481,25 @@ export default function InvitationClient({
             <Button
               size="lg"
               disabled={!householdName.trim()}
-              isLoading={settingUp}
               title={!householdName.trim() ? 'Enter a household name' : undefined}
+              isLoading={settingUp}
               onClick={() => void setupHousehold()}
+              data-testid="wizard-cta-save-household"
             >
               Save household
             </Button>
           ) : null}
           {step === 1 && signedIn && household ? (
             <Button size="lg" onClick={() => goTo(2)}>
+              Continue
+            </Button>
+          ) : null}
+          {step === 1 && !signedIn && enabledProviders.length === 0 ? (
+            <Button
+              size="lg"
+              disabled
+              title="No sign-in providers are configured. Ask the host for help."
+            >
               Continue
             </Button>
           ) : null}
@@ -505,6 +531,7 @@ export default function InvitationClient({
                     : undefined
               }
               onClick={() => void saveMembers()}
+              data-testid="wizard-cta-save-attendance"
             >
               Save attendance
             </Button>
