@@ -60,6 +60,10 @@ const baseProps = {
   rsvpDeadline: null,
   maxCapacity: 100,
   currentAttending: 10,
+  // FPP-89: defaults to no pending invitation so the no-RSVP
+  // tests exercise the "waiting on your invitation" branch.
+  // Override in tests that exercise the wizard-CTA variant.
+  hasPendingInvitation: false,
 };
 
 const memberAttendances = [
@@ -252,11 +256,11 @@ describe('EventRsvpCard', () => {
     });
   });
 
-  // FPP-35: a user who has not yet RSVPed must still have a way to
-  // decline without going through the attendance form. The card
-  // already showed the primary RSVP / waitlist CTA; this branch
-  // exercises the secondary "Can't make it" link that lives next
-  // to it.
+  // FPP-35: a user who has not yet RSVPed can still decline
+  // without going through the attendance form. FPP-89 changed the
+  // no-RSVP branch from a primary "RSVP Now" CTA to an invitation-
+  // only entry, but the "Can't make it" link survives — a user
+  // without an invitation can still opt out without one.
   describe('no-RSVP decline path (FPP-35)', () => {
     it('shows a "Can\'t make it" link when no RSVP exists yet', () => {
       render(<EventRsvpCard {...baseProps} existingRsvp={null} />);
@@ -276,20 +280,58 @@ describe('EventRsvpCard', () => {
     it('hides the decline link when the RSVP deadline has passed', () => {
       const pastDeadline = '2020-01-01T00:00:00Z';
       render(<EventRsvpCard {...baseProps} rsvpDeadline={pastDeadline} existingRsvp={null} />);
-      // The primary CTA flips to "RSVP closed" and the secondary
-      // decline link disappears with it.
+      // FPP-89: the primary "RSVP Now" / "RSVP closed" CTA is
+      // gone. The decline link only renders while RSVPs are open;
+      // once the deadline passes it disappears alongside the
+      // invitation notice.
       expect(screen.queryByTestId('rsvp-card-decline-link')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /rsvp closed/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /rsvp closed/i })).not.toBeInTheDocument();
     });
 
-    it('still shows the decline link when the event is full (waitlist CTA)', () => {
+    it('still shows the decline link even when the event is full', () => {
       render(
         <EventRsvpCard {...baseProps} maxCapacity={10} currentAttending={10} existingRsvp={null} />,
       );
-      // The primary CTA becomes "Join the waitlist" but the
-      // decline link is still visible — full does not mean the
-      // user cannot opt out.
-      expect(screen.getByRole('button', { name: /join the waitlist/i })).toBeInTheDocument();
+      // FPP-89: the primary "Join the waitlist" CTA is gone — a
+      // full event without an invitation simply keeps the
+      // "waiting on your invitation" notice. The decline link is
+      // still visible because full does not mean the user cannot
+      // opt out.
+      expect(screen.queryByRole('button', { name: /join the waitlist/i })).not.toBeInTheDocument();
+      expect(screen.getByTestId('rsvp-card-decline-link')).toBeInTheDocument();
+    });
+  });
+
+  // FPP-89: the no-RSVP card now branches on whether the caller
+  // has a pending invitation. Without one, the card is purely
+  // informational. With one, it points the user at their
+  // invitation via the "Open my invitations" CTA.
+  describe('no-RSVP, no invitation (FPP-89)', () => {
+    it('renders a passive "waiting on your invitation" notice', () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={null} hasPendingInvitation={false} />);
+      expect(screen.getByText(/waiting on your invitation/i)).toBeInTheDocument();
+      expect(screen.queryByTestId('rsvp-card-open-invitations')).not.toBeInTheDocument();
+    });
+
+    it('does not launch the bottom sheet', () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={null} hasPendingInvitation={false} />);
+      // The bottom sheet primary CTA (RSVP Now / Join the waitlist)
+      // is gone. No button on the card should mutate RSVPs.
+      expect(screen.queryByRole('button', { name: /^rsvp now$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /join the waitlist/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('no-RSVP, with pending invitation (FPP-89)', () => {
+    it('points the user at their invitation via /my-events', () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={null} hasPendingInvitation={true} />);
+      expect(screen.getByText(/rsvp via your invitation/i)).toBeInTheDocument();
+      const link = screen.getByTestId('rsvp-card-open-invitations');
+      expect(link).toHaveAttribute('href', '/my-events');
+    });
+
+    it('still surfaces the decline link so opt-out works without an invitation', () => {
+      render(<EventRsvpCard {...baseProps} existingRsvp={null} hasPendingInvitation={true} />);
       expect(screen.getByTestId('rsvp-card-decline-link')).toBeInTheDocument();
     });
   });

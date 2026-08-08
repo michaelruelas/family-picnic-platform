@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '~/lib/auth';
+import { authOptions, getEnabledOAuthProviders } from '~/lib/auth';
 import { prisma } from '~/lib/prisma';
 import InvitationClient from './InvitationClient';
 
@@ -165,6 +165,7 @@ export default async function InvitationPage({ params }: Props) {
     <InvitationClient
       token={token}
       signedIn={!!sessionUser}
+      enabledProviders={getEnabledOAuthProviders()}
       event={{
         id: invitation.event.id,
         name: invitation.event.name,
