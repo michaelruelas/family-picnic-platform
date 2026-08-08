@@ -190,7 +190,10 @@ describe('FPP-89: /events/invitation/[token] RSVP wizard', () => {
     expect(card).toMatch(/hasPendingInvitation/);
     // The no-RSVP branch now points users at the wizard / my-events
     // instead of launching the bottom sheet as the primary CTA.
-    expect(card).toMatch(/RSVP via your invitation|Waiting on your invitation/);
+    // Split into two assertions so a swap or copy-paste error in
+    // either branch fail the test instead of satisfying the regex.
+    expect(card).toMatch(/RSVP via your invitation/);
+    expect(card).toMatch(/Waiting on your invitation/);
     expect(card).toMatch(/Open my invitations/);
     // The header section threads the prop down to the card.
     expect(header).toMatch(/hasPendingInvitation/);

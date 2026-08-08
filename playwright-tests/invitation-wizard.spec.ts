@@ -26,14 +26,17 @@ test.describe('RSVP wizard — pre-flight error pages', () => {
     await expect(page.getByText(/Ask the host to send you a new invitation/i)).toBeVisible();
   });
 
-  test('renders the "This event has passed" page when the date is past', async ({ page }) => {
-    // The expired seed token would surface the "Invitation
-    // expired" page before the past-event check runs. We
-    // exercise the past-event branch separately by hitting an
-    // arbitrary valid-format token that no row exists for. The
-    // unknown-token path returns "Invitation unavailable"
-    // before past-event checks, so we assert the unknown path
-    // here as the contract for what shows up first.
+  test('renders the "Invitation unavailable" page when an unknown token is requested on a past event', async ({
+    page,
+  }) => {
+    // The server page resolves pre-flight errors in a fixed order
+    // (not found → expired → account unavailable → past event),
+    // so an unknown token surfaces "Invitation unavailable"
+    // before the past-event check runs. Assert the contract that
+    // unknown-token takes precedence here. Exercising the bare
+    // past-event branch would require a seed fixture whose event
+    // date is in the past while the invitation row is still
+    // valid — see src/app/events/invitation/[token]/page.tsx:122.
     await page.goto('/events/invitation/no-such-token-12345');
     await expect(page.getByRole('heading', { name: 'Invitation unavailable' })).toBeVisible();
   });
