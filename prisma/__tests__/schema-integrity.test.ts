@@ -27,6 +27,18 @@ describe('Prisma schema integrity vs SPEC', () => {
     expect(match![1]!.trim()).toContain('UNSUBSCRIBED');
   });
 
+  it('FPP-101: CommunicationStatus enum includes SKIPPED', () => {
+    const match = schema.match(/enum CommunicationStatus \{([^}]+)\}/);
+    expect(match).not.toBeNull();
+    expect(match![1]!.trim()).toContain('SKIPPED');
+  });
+
+  it('FPP-101: CommunicationLog model has retryCount column with default 0', () => {
+    const block = schema.match(/model CommunicationLog \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toMatch(/retryCount\s+Int\s+@default\(0\)/);
+  });
+
   it('RSVP model has householdId', () => {
     expect(schema).toContain('householdId');
   });

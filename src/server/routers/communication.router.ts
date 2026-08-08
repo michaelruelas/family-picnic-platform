@@ -61,13 +61,18 @@ export const communicationRouter = router({
       };
 
       // Phone presence and SMS consent are NOT checked at any point in the
-      // broadcast path today. The worker (`deliverCommunications` /
-      // `deliverOne` in src/lib/ow-workflows.ts:381) just flips QUEUED logs
-      // to SENT without dispatching, so a BOTH user with no phone will
-      // still be queued. The per-event and ad-hoc admin endpoints use
-      // `dispatchAdminSms` (src/lib/sms-dispatch.ts) which DOES check
-      // consent and phone. Wiring the same dispatch into the worker is a
-      // tracked follow-up.
+      // broadcast path today. FPP-101 wired the worker `deliverOne` in
+      // src/lib/ow-workflows.ts:426 to dispatch EMAIL via SendGrid
+      // (skipping rows with NONE preference, missing email, or no
+      // recipient), so EMAIL broadcasts now reach the gate. The SMS
+      // branch is still inert under `sms_disabled_for_launch`; wiring
+      // the same dispatch + the `dispatchAdminSms` consent / phone
+      // checks into the worker SMS path is the remaining follow-up
+      // (blocked on Twilio provisioning for the 2026-08-09 launch).
+      //
+      // FPP-101 also intentionally does NOT write AdminAuditLog rows
+      // from the worker; an audit follow-up will land one entry per
+      // broadcast/scheduled-broadcast rather than per recipient.
 
       switch (input.recipientType) {
         case 'ALL':
