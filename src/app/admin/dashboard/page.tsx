@@ -1,156 +1,137 @@
 import Link from 'next/link';
 import { requireAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus } from '~/lib/generated/enums';
-import DashboardCard from '~/components/admin/DashboardCard';
+import { RSVPStatus, ChargeStatus } from '~/lib/generated/enums';
+import DashboardTable, { type AdminDashboardRow } from '~/components/admin/DashboardTable';
+import AdminShell from '~/components/admin/AdminShell';
 
 export const dynamic = 'force-dynamic';
 
-async function getEventsWithDashboard() {
-  const events = await prisma.event.findMany({
-    orderBy: { date: 'desc' },
-  });
-
-  const eventsWithDashboard = await Promise.all(
-    events.map(async (event) => {
-      const rsvps = await prisma.rSVP.findMany({
-        where: { eventId: event.id },
-        include: {
-          user: {
-            include: {
-              household: true,
-            },
-          },
-        },
-      });
-
-      const confirmedRsvps = rsvps.filter((r) => r.status === RSVPStatus.CONFIRMED);
-      const declinedRsvps = rsvps.filter((r) => r.status === RSVPStatus.DECLINED);
-      const pendingRsvps = rsvps.filter(
-        (r) => r.status === RSVPStatus.PENDING || r.status === RSVPStatus.INVITED,
-      );
-      const totalHeadcount = confirmedRsvps.reduce((sum, r) => sum + r.headcount, 0);
-
-      const potluckSlots = await prisma.potluckSlot.findMany({
-        where: { eventId: event.id },
-        include: {
-          signups: {
-            include: {
-              rsvp: true,
-            },
-          },
-        },
-      });
-
-      const foodSummary: Record<string, { category: string; items: string[] }> = {};
-      for (const slot of potluckSlots) {
-        const categoryEntry = foodSummary[slot.category] ?? {
-          category: slot.category,
-          items: [],
-        };
-        foodSummary[slot.category] = categoryEntry;
-        for (const signup of slot.signups) {
-          if (signup.rsvp.status === RSVPStatus.CONFIRMED) {
-            categoryEntry.items.push(`${signup.dishName} (${signup.servings} servings)`);
-          }
-        }
-      }
-
-      const recentAuditLogs = await prisma.adminAuditLog.findMany({
-        where: { eventId: event.id },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-        include: {
-          user: {
-            select: { name: true, email: true },
-          },
-        },
-      });
-
-      return {
-        event,
-        rsvpSummary: {
-          total: rsvps.length,
-          confirmed: confirmedRsvps.length,
-          declined: declinedRsvps.length,
-          pending: pendingRsvps.length,
-          headcount: totalHeadcount,
-        },
-        foodSummary: Object.values(foodSummary),
-        recentAuditLogs,
-      };
+/**
+ * Dashboard data is gathered in one round-trip per relation instead of one
+ * per event. The previous implementation ran N+1 queries (rsvps, potluck
+ * slots, audit logs nested inside `events.map(...)`); this version fans out
+ * to four parallel queries that are bounded by the table size, not the event
+ * count.
+ */
+async function getDashboardRows(): Promise<AdminDashboardRow[]> {
+  const [events, rsvps, slots, charges, auditLogs] = await Promise.all([
+    prisma.event.findMany({ orderBy: { date: 'desc' } }),
+    prisma.rSVP.findMany({
+      select: { eventId: true, status: true, headcount: true },
     }),
-  );
+    prisma.potluckSlot.findMany({
+      select: {
+        eventId: true,
+        _count: { select: { signups: true } },
+      },
+    }),
+    prisma.charge.findMany({
+      where: { status: ChargeStatus.SUCCEEDED },
+      select: {
+        registration: { select: { eventId: true } },
+        amountCents: true,
+      },
+    }),
+    prisma.adminAuditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        eventId: true,
+        createdAt: true,
+        user: { select: { name: true, email: true } },
+      },
+    }),
+  ]);
 
-  return eventsWithDashboard;
+  const rsvpsByEvent = new Map<
+    string,
+    { total: number; confirmed: number; declined: number; pending: number; headcount: number }
+  >();
+  for (const r of rsvps) {
+    const cur = rsvpsByEvent.get(r.eventId) ?? {
+      total: 0,
+      confirmed: 0,
+      declined: 0,
+      pending: 0,
+      headcount: 0,
+    };
+    cur.total += 1;
+    if (r.status === RSVPStatus.CONFIRMED) {
+      cur.confirmed += 1;
+      cur.headcount += r.headcount;
+    } else if (r.status === RSVPStatus.DECLINED) {
+      cur.declined += 1;
+    } else if (r.status === RSVPStatus.PENDING || r.status === RSVPStatus.INVITED) {
+      cur.pending += 1;
+    }
+    rsvpsByEvent.set(r.eventId, cur);
+  }
+
+  const slotsByEvent = new Map<string, { slotCount: number; signupCount: number }>();
+  for (const s of slots) {
+    const cur = slotsByEvent.get(s.eventId) ?? { slotCount: 0, signupCount: 0 };
+    cur.slotCount += 1;
+    cur.signupCount += s._count.signups;
+    slotsByEvent.set(s.eventId, cur);
+  }
+
+  const chargesByEvent = new Map<string, number>();
+  for (const c of charges) {
+    if (!c.registration?.eventId) continue;
+    chargesByEvent.set(
+      c.registration.eventId,
+      (chargesByEvent.get(c.registration.eventId) ?? 0) + c.amountCents,
+    );
+  }
+
+  // Most recent audit per event. The findMany above is sorted desc, so the
+  // first hit wins per eventId.
+  const lastAuditByEvent = new Map<string, { at: Date; by: string }>();
+  for (const a of auditLogs) {
+    if (!a.eventId || lastAuditByEvent.has(a.eventId)) continue;
+    const name = a.user?.name ?? a.user?.email ?? null;
+    lastAuditByEvent.set(a.eventId, { at: a.createdAt, by: name ?? '' });
+  }
+
+  return events.map((e): AdminDashboardRow => {
+    const r = rsvpsByEvent.get(e.id) ?? {
+      total: 0,
+      confirmed: 0,
+      declined: 0,
+      pending: 0,
+      headcount: 0,
+    };
+    const s = slotsByEvent.get(e.id) ?? { slotCount: 0, signupCount: 0 };
+    const charges = chargesByEvent.get(e.id) ?? 0;
+    const last = lastAuditByEvent.get(e.id) ?? null;
+    return {
+      id: e.id,
+      name: e.name,
+      date: e.date.toISOString(),
+      status: e.status,
+      location: e.location,
+      maxCapacity: e.maxCapacity ?? null,
+      rsvpTotal: r.total,
+      rsvpConfirmed: r.confirmed,
+      rsvpDeclined: r.declined,
+      rsvpPending: r.pending,
+      headcount: r.headcount,
+      potluckSlotCount: s.slotCount,
+      potluckSignupCount: s.signupCount,
+      chargesTotalCents: charges,
+      lastActionAt: last ? last.at.toISOString() : null,
+      lastActionBy: last?.by ?? null,
+    };
+  });
 }
 
 export default async function AdminDashboardPage() {
-  const session = await requireAdminPage();
-
-  const eventsWithDashboard = await getEventsWithDashboard();
-
-  const totalConfirmed = eventsWithDashboard.reduce((sum, e) => sum + e.rsvpSummary.confirmed, 0);
-  const totalHeadcount = eventsWithDashboard.reduce((sum, e) => sum + e.rsvpSummary.headcount, 0);
+  await requireAdminPage();
+  const rows = await getDashboardRows();
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12">
-      <div className="mb-8">
-        <h1 className="text-foreground text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-2">Overview of all family picnic events</p>
-      </div>
-
-      <div className="mb-6 flex flex-wrap gap-3">
-        <Link
-          href="/admin/events"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Events
-        </Link>
-        <Link
-          href="/admin/invitations"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Invitations
-        </Link>
-        <Link
-          href="/admin/communications"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Communications
-        </Link>
-        <Link
-          href="/admin/charges"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Charges
-        </Link>
-        <Link
-          href="/admin/audit-log"
-          className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 text-sm font-medium"
-        >
-          Audit Log
-        </Link>
-      </div>
-
-      <div className="mb-8 grid grid-cols-3 gap-4">
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <p className="text-muted-foreground text-sm">Total RSVPs</p>
-          <p className="text-foreground mt-1 text-3xl font-semibold">
-            {eventsWithDashboard.reduce((sum, e) => sum + e.rsvpSummary.total, 0)}
-          </p>
-        </div>
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <p className="text-muted-foreground text-sm">Total Confirmed</p>
-          <p className="text-sage mt-1 text-3xl font-semibold">{totalConfirmed}</p>
-        </div>
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <p className="text-muted-foreground text-sm">Total Headcount</p>
-          <p className="text-foreground mt-1 text-3xl font-semibold">{totalHeadcount}</p>
-        </div>
-      </div>
-
-      {eventsWithDashboard.length === 0 ? (
+    <AdminShell title="Admin Dashboard" description="Overview of all family picnic events">
+      {rows.length === 0 ? (
         <div className="bg-secondary rounded-2xl p-12 text-center">
           <div className="text-5xl">📊</div>
           <h2 className="text-foreground mt-4 text-xl font-semibold">No Events Yet</h2>
@@ -165,26 +146,8 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2">
-          {eventsWithDashboard.map(({ event, rsvpSummary, foodSummary }) => (
-            <DashboardCard
-              key={event.id}
-              eventId={event.id}
-              eventName={event.name}
-              eventDate={new Date(event.date).toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-              eventStatus={event.status}
-              rsvpSummary={rsvpSummary}
-              foodSummary={foodSummary}
-              maxCapacity={event.maxCapacity}
-            />
-          ))}
-        </div>
+        <DashboardTable rows={rows} />
       )}
-    </main>
+    </AdminShell>
   );
 }

@@ -3,7 +3,6 @@ import { Fraunces, Inter } from 'next/font/google';
 import './globals.css';
 import Providers from '~/components/Providers';
 import NavBarClient from '~/components/NavBarClient';
-import AdminNavBar from '~/components/AdminNavBar';
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -40,7 +39,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         <Providers>
           <NavBarClient />
-          <AdminNavBar />
           {children}
         </Providers>
       </body>

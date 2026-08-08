@@ -8,28 +8,50 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const email = searchParams.get('email');
+  const q = searchParams.get('q')?.trim();
 
-  if (!email) {
-    return NextResponse.json({ error: 'Email is required' }, { status: 400 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      household: {
-        select: {
-          name: true,
-        },
+  // Legacy contract: `?email=...` returns a single user or 404. The
+  // ⌘K command palette uses `?q=...` to do a fuzzy substring match
+  // across name + email.
+  if (email) {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        household: { select: { name: true } },
       },
-    },
-  });
+    });
 
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    return NextResponse.json(user);
   }
 
-  return NextResponse.json(user);
+  if (q && q.length >= 2) {
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          { email: { contains: q, mode: 'insensitive' } },
+          { name: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        household: { select: { name: true } },
+      },
+      orderBy: [{ name: 'asc' }, { email: 'asc' }],
+      take: 8,
+    });
+    return NextResponse.json({ users });
+  }
+
+  // Legacy contract: no `email` and no `q` -> 400. The original
+  // /admin/users/search endpoint required an exact email match; the
+  // /admin command palette uses the `q` param for fuzzy matching.
+  return NextResponse.json({ error: 'Email or query is required' }, { status: 400 });
 }

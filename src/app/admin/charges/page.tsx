@@ -2,6 +2,7 @@ import { requireAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { serializeCharge } from '~/lib/serialize';
 import ChargesTable, { type AdminChargeRow } from '~/components/admin/ChargesTable';
+import AdminShell from '~/components/admin/AdminShell';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,15 +38,10 @@ export default async function AdminChargesPage() {
   const [charges, events] = await Promise.all([getCharges(), getEvents()]);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12">
-      <div className="mb-8">
-        <h1 className="text-foreground text-3xl font-bold">Admin: Charges</h1>
-        <p className="text-muted-foreground mt-2">
-          Payments, refunds, and forfeits for every event. Card data goes directly to Stripe; we
-          only see payment intent ids and amounts.
-        </p>
-      </div>
-
+    <AdminShell
+      title="Charges"
+      description="Payments, refunds, and forfeits for every event. Card data goes directly to Stripe; we only see payment intent ids and amounts."
+    >
       <ChargesTable
         initialCharges={charges.map(serializeCharge) as AdminChargeRow[]}
         events={events.map((e) => ({
@@ -53,6 +49,6 @@ export default async function AdminChargesPage() {
           date: e.date.toISOString(),
         }))}
       />
-    </main>
+    </AdminShell>
   );
 }

@@ -4,6 +4,7 @@ import { prisma } from '~/lib/prisma';
 import EventForm from '~/components/event/EventForm';
 import EventStatusBadge from '~/components/event/EventStatusBadge';
 import SlotGrid from '~/components/potluck/SlotGrid';
+import AdminShell from '~/components/admin/AdminShell';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,15 +61,15 @@ export default async function EditEventPage({ params }: PageProps) {
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
-      <div className="mb-8">
-        <div className="flex items-center gap-3">
-          <h1 className="text-foreground text-3xl font-bold">Edit Event</h1>
+    <AdminShell
+      title={
+        <span className="flex items-center gap-3">
+          Edit Event
           <EventStatusBadge status={event.status} />
-        </div>
-        <p className="text-muted-foreground mt-2">Update the details for your family picnic</p>
-      </div>
-
+        </span>
+      }
+      description="Update the details for your family picnic"
+    >
       <EventForm initialData={initialData} mode="edit" />
 
       <div className="mt-12">
@@ -112,6 +113,6 @@ export default async function EditEventPage({ params }: PageProps) {
           </a>
         </div>
       </div>
-    </main>
+    </AdminShell>
   );
 }
