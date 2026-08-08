@@ -80,6 +80,7 @@ enum CommunicationStatus {
   SENT
   DELIVERED
   FAILED
+  SKIPPED
   UNSUBSCRIBED
 }
 
@@ -395,6 +396,11 @@ model CommunicationLog {
   //   - BROADCAST:     whatever the broadcast writer stored
   // Nullable for pre-FPP-88 rows.
   body             String?              @db.Text
+  // FPP-101: number of times this row has been re-queued by the
+  // retry-failed-comms script. Starts at 0 on creation; incremented
+  // on every retry. The worker does not auto-retry; the admin runs
+  // `bun run comms:retry-failed` to bump it.
+  retryCount       Int                  @default(0)
 
   event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   sentBy    User    @relation("SentByUser", fields: [sentByUserId], references: [id], onDelete: Cascade)

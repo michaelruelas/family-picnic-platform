@@ -6,7 +6,10 @@ import {
   RSVPStatus,
   EventStatus,
   InvitationStatus,
+  CommunicationLogKind,
 } from '~/lib/generated/enums';
+import { sendEmail } from '~/lib/sendgrid';
+import { logger } from '~/lib/logger';
 
 // ─── Scheduled Broadcast ─────────────────────────────────────────────
 
@@ -372,22 +375,143 @@ export const rsvpDecline = defineWorkflow<RsvpDeclineInput, RsvpDeclineOutput>(
 interface DeliverCommunicationsOutput {
   delivered: number;
   failed: number;
+  skipped: number;
 }
 
-async function deliverOne(log: { id: string; channel: string }): Promise<boolean> {
-  try {
-    await prisma.communicationLog.update({
-      where: { id: log.id },
-      data: { status: CommunicationStatus.SENT, deliveredAt: new Date() },
-    });
-    return true;
-  } catch {
-    await prisma.communicationLog.update({
-      where: { id: log.id },
-      data: { status: CommunicationStatus.FAILED },
-    });
-    return false;
+interface DeliverLogRow {
+  id: string;
+  channel: 'EMAIL' | 'SMS';
+  body: string | null;
+  kind: CommunicationLogKind;
+  recipientUserId: string | null;
+  eventId: string;
+}
+
+interface DeliverOutcome {
+  status: 'SENT' | 'FAILED' | 'SKIPPED';
+}
+
+export type { DeliverLogRow, DeliverOutcome };
+
+/**
+ * FPP-101: skip the SMS branch entirely. Twilio is not provisioned
+ * for the 2026-08-09 launch so queued SMS rows would burn
+ * `sms_disabled_for_launch` credits if the worker ever flipped them
+ * to SENT. Leaving the branch inert (still routed, still written) so
+ * a follow-up ticket can re-enable it without changing the queue
+ * reader.
+ *
+ * FPP-101 intentionally does NOT write AdminAuditLog rows here.
+ * Audit writes would generate one row per queued log (a per-event
+ * broadcast can fan out to 50+ addresses), which is the wrong
+ * granularity for the admin audit trail. The follow-up is a single
+ * "broadcast delivery" entry per broadcast/scheduled-broadcast
+ * rather than one per recipient. The per-event and ad-hoc admin
+ * SMS paths (`dispatchAdminSms` in src/lib/sms-dispatch.ts) DO
+ * write audit entries because they are single-shot admin actions,
+ * not queue drains.
+ */
+function subjectForKind(kind: CommunicationLogKind): string {
+  switch (kind) {
+    case CommunicationLogKind.INVITATION:
+      return 'You are invited to the Family Picnic';
+    case CommunicationLogKind.DECLINE_NOTE:
+      return 'Decline note forwarded';
+    case CommunicationLogKind.BROADCAST:
+    default:
+      return 'Family Picnic update';
   }
+}
+
+export async function deliverOne(log: DeliverLogRow): Promise<DeliverOutcome> {
+  if (log.channel === 'SMS') {
+    logger.warn(
+      { logId: log.id, recipientUserId: log.recipientUserId, eventId: log.eventId },
+      'SMS delivery inert: sms_disabled_for_launch',
+    );
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.FAILED,
+        errorCode: 'SMS_DISABLED_FOR_LAUNCH',
+        errorMessage: 'sms_disabled_for_launch',
+      },
+    });
+    return { status: 'FAILED' };
+  }
+
+  // EMAIL path
+  if (!log.recipientUserId) {
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.SKIPPED,
+        errorCode: 'NO_RECIPIENT',
+        errorMessage: 'CommunicationLog has no recipientUserId',
+      },
+    });
+    return { status: 'SKIPPED' };
+  }
+
+  const recipient = await prisma.user.findUnique({
+    where: { id: log.recipientUserId },
+    select: { email: true, communicationPreference: true },
+  });
+
+  if (!recipient?.email) {
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.SKIPPED,
+        errorCode: 'NO_EMAIL',
+        errorMessage: 'Recipient has no email on file',
+      },
+    });
+    return { status: 'SKIPPED' };
+  }
+
+  if (recipient.communicationPreference === 'NONE') {
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.SKIPPED,
+        errorCode: 'OPTED_OUT',
+        errorMessage: 'Recipient opted out of communications',
+      },
+    });
+    return { status: 'SKIPPED' };
+  }
+
+  const result = await sendEmail({
+    to: recipient.email,
+    subject: subjectForKind(log.kind),
+    html: log.body ?? '',
+    text: log.body ?? '',
+  });
+
+  if (result.success) {
+    await prisma.communicationLog.update({
+      where: { id: log.id },
+      data: {
+        status: CommunicationStatus.SENT,
+        messageId: result.messageId,
+        deliveredAt: new Date(),
+        errorCode: null,
+        errorMessage: null,
+      },
+    });
+    return { status: 'SENT' };
+  }
+
+  await prisma.communicationLog.update({
+    where: { id: log.id },
+    data: {
+      status: CommunicationStatus.FAILED,
+      errorCode: 'SENDGRID_ERROR',
+      errorMessage: result.error ?? 'SendGrid send failed',
+    },
+  });
+  return { status: 'FAILED' };
 }
 
 export const deliverCommunications = defineWorkflow<void, DeliverCommunicationsOutput>(
@@ -397,17 +521,26 @@ export const deliverCommunications = defineWorkflow<void, DeliverCommunicationsO
       prisma.communicationLog.findMany({
         where: { status: CommunicationStatus.QUEUED },
         take: 20,
-        select: { id: true, channel: true },
+        select: {
+          id: true,
+          channel: true,
+          body: true,
+          kind: true,
+          recipientUserId: true,
+          eventId: true,
+        },
       }),
     );
 
-    if (queued.length === 0) return { delivered: 0, failed: 0 };
+    if (queued.length === 0) return { delivered: 0, failed: 0, skipped: 0 };
 
     const results = await Promise.all(
       queued.map((log) => step.run({ name: `deliver-${log.id}` }, () => deliverOne(log))),
     );
 
-    const delivered = results.filter(Boolean).length;
-    return { delivered, failed: queued.length - delivered };
+    const delivered = results.filter((r) => r.status === 'SENT').length;
+    const failed = results.filter((r) => r.status === 'FAILED').length;
+    const skipped = results.filter((r) => r.status === 'SKIPPED').length;
+    return { delivered, failed, skipped };
   },
 );
