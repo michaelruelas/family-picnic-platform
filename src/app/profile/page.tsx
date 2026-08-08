@@ -1,8 +1,9 @@
 import { prisma } from '~/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '~/lib/auth';
+import { authOptions, getEnabledOAuthProviders } from '~/lib/auth';
 import { redirect } from 'next/navigation';
 import ProfileClient from '~/components/ProfileClient';
+import LinkedAccounts from '~/components/LinkedAccounts';
 import { ThemeToggle } from '~/components/ui/ThemeToggle';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 
@@ -60,6 +61,10 @@ export default async function ProfilePage() {
         <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
           <ProfileClient user={user} initialDependents={user.managedDependents} />
         </div>
+      </BreatheSection>
+
+      <BreatheSection className="mt-8">
+        <LinkedAccounts enabledProviders={getEnabledOAuthProviders()} sessionEmail={user.email} />
       </BreatheSection>
 
       <BreatheSection className="mt-8">

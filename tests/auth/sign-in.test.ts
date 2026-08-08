@@ -4,41 +4,57 @@ import path from 'path';
 
 describe('signIn callback', () => {
   const authPath = path.join(process.cwd(), 'src/lib/auth.ts');
+  const userIdentityPath = path.join(process.cwd(), 'src/lib/user-identity.ts');
 
-  it('only creates user for Google provider', async () => {
+  it('only creates user for OAuth providers via the identity helper', async () => {
     const authContent = await fs.readFile(authPath, 'utf-8');
-    expect(authContent).toContain("account?.provider === 'google'");
+    const identityContent = await fs.readFile(userIdentityPath, 'utf-8');
+    // auth.ts delegates to the helper
+    expect(authContent).toContain('findOrCreateUserByIdentity');
+    // helper handles all three providers
+    expect(identityContent).toContain("'google'");
+    expect(identityContent).toContain("'apple'");
+    expect(identityContent).toContain("'facebook'");
   });
 
-  it('checks for existing user by email before creating', async () => {
-    const authContent = await fs.readFile(authPath, 'utf-8');
-    expect(authContent).toContain('prisma.user.findUnique');
-    expect(authContent).toContain('where: { email:');
+  it('checks for existing linked identity before creating', async () => {
+    const identityContent = await fs.readFile(userIdentityPath, 'utf-8');
+    expect(identityContent).toContain('prisma.linkedIdentity.findUnique');
+    expect(identityContent).toContain('provider_providerAccountId');
   });
 
   it('only creates user if no soft-deleted tombstone exists', async () => {
-    const authContent = await fs.readFile(authPath, 'utf-8');
-    expect(authContent).toContain('tombstone?.deletedAt');
-    expect(authContent).toContain('prisma.user.create');
+    const identityContent = await fs.readFile(userIdentityPath, 'utf-8');
+    expect(identityContent).toContain('deletedAt: null');
+    expect(identityContent).toContain('user_tombstoned');
+    expect(identityContent).toContain('email_tombstoned');
   });
 
   it('creates user with ADMIN_ADULT role as default', async () => {
-    const authContent = await fs.readFile(authPath, 'utf-8');
-    expect(authContent).toContain("role: 'ADMIN_ADULT'");
+    const identityContent = await fs.readFile(userIdentityPath, 'utf-8');
+    expect(identityContent).toContain("role: 'ADMIN_ADULT'");
   });
 
-  it('sets name from profile.name or falls back to email', async () => {
-    const authContent = await fs.readFile(authPath, 'utf-8');
-    expect(authContent).toContain('name: profile.name ?? profile.email');
+  it('falls back to email when profile name is missing', async () => {
+    const identityContent = await fs.readFile(userIdentityPath, 'utf-8');
+    expect(identityContent).toContain('name: email');
   });
 
   it('returns true on successful sign-in', async () => {
     const authContent = await fs.readFile(authPath, 'utf-8');
-    expect(authContent).toContain('return true');
+    expect(authContent).toContain('return resolved !== null');
   });
 
-  it('returns false for non-Google providers', async () => {
+  it('returns false for non-OAuth providers and unknown providers', async () => {
     const authContent = await fs.readFile(authPath, 'utf-8');
     expect(authContent).toContain('return false');
+    expect(authContent).toContain('isOAuthProvider');
+  });
+
+  it('writes an audit entry for each sign-in decision', async () => {
+    const identityContent = await fs.readFile(userIdentityPath, 'utf-8');
+    expect(identityContent).toContain('auth.signIn.succeeded');
+    expect(identityContent).toContain('auth.signIn.refused');
+    expect(identityContent).toContain('auth.identity.linked');
   });
 });

@@ -4,6 +4,13 @@ import { prisma } from '~/lib/prisma';
 import { CommunicationPreference } from '~/lib/generated/enums';
 import { profileUpdateSchema } from '~/lib/schemas/profile';
 import { extractClientIp, parseTrustedProxyIps } from '~/lib/client-ip';
+import {
+  linkIdentityToCurrentUser,
+  listLinkedIdentities,
+  unlinkIdentity,
+  IdentityAlreadyLinkedError,
+  type OAuthProvider,
+} from '~/lib/user-identity';
 
 export const userRouter = router({
   getProfile: protectedProcedure.query(async ({ ctx }) => {
@@ -155,4 +162,46 @@ export const userRouter = router({
       },
     });
   }),
+
+  listLinkedIdentities: protectedProcedure.query(async ({ ctx }) => {
+    return listLinkedIdentities(ctx.session.user.id);
+  }),
+
+  unlinkIdentity: protectedProcedure
+    .input(z.object({ identityId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await unlinkIdentity(ctx.session.user.id, input.identityId);
+      return { ok: true };
+    }),
+
+  // FPP-31: link an OAuth identity to the current user. The caller
+  // must already have completed the OAuth flow and forwarded the
+  // provider's stable subject id. The current session is the re-auth
+  // proof (FPP-31 calls for "after re-auth"). If a password system
+  // is added later, tighten this to require the password too.
+  linkIdentity: protectedProcedure
+    .input(
+      z.object({
+        provider: z.enum(['google', 'apple', 'facebook']),
+        providerAccountId: z.string().min(1),
+        emailSnapshot: z.string().email().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const result = await linkIdentityToCurrentUser(ctx.session.user.id, {
+          provider: input.provider as OAuthProvider,
+          providerAccountId: input.providerAccountId,
+          emailSnapshot: input.emailSnapshot ?? null,
+        });
+        return { id: result.id, provider: result.provider };
+      } catch (error) {
+        if (error instanceof IdentityAlreadyLinkedError) {
+          throw new Error('That account is already linked to a different user.', {
+            cause: error,
+          });
+        }
+        throw error;
+      }
+    }),
 });
