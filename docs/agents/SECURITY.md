@@ -2,16 +2,54 @@
 
 ## Authentication
 
-Users authenticate via Google OAuth or dev credentials (for local development).
+Users authenticate via Google, Apple, or Facebook OAuth, or dev credentials (for local development).
+Providers without configured env vars are hidden on the login page — a missing credential cannot
+produce a half-configured button. The same OAuth provider is reused on the profile page to link
+additional accounts to the current user.
 
-### Google OAuth Flow
+### OAuth Provider Matrix
 
-1. User clicks "Sign in with Google"
-2. NextAuth redirects to Google OAuth
-3. User grants permission
-4. Google redirects back with auth code
-5. NextAuth exchanges code for session
-6. User is logged in with Google email and name
+| Provider | User-visible fields                                                            | Setup notes                                                                                                                  |
+| -------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Google   | `email`, `name`, `sub`                                                         | Standard Google Cloud OAuth client; `sub` is the stable user id                                                              |
+| Apple    | `email` (often hidden after first sign-in), `name` (first sign-in only), `sub` | Requires Apple Developer Team ID, Services ID, Key ID, and ES256 `.p8` private key. Apple rotates emails on `Hide My Email`. |
+| Facebook | `email`, `name`, `id`                                                          | Requires Facebook App ID + secret. Business verification may be required for production scopes; track FPP-32.                |
+
+### OAuth Flow (all providers)
+
+1. User clicks "Continue with …" on `/login` (or "Link …" on `/profile` for an already-signed-in user).
+2. NextAuth redirects to the provider's OAuth authorize endpoint with a CSRF state.
+3. User grants permission; provider redirects back to `/api/auth/callback/<provider>`.
+4. NextAuth exchanges the code for tokens and invokes the `signIn` callback.
+5. The `signIn` callback delegates to `findOrCreateUserByIdentity` in `src/lib/user-identity.ts`, which resolves the OAuth identity to a local `User` row.
+6. The `jwt` callback stamps `token.sub` with the local user id; the `session` callback enriches it with `role` and `householdId`.
+
+### Apple Client Secret
+
+Apple does not accept a static client secret — it must be a short-lived JWT signed with the
+Apple-issued ES256 private key (`.p8`). `src/lib/apple-client-secret.ts` builds the JWT with a
+5-minute expiry; the auth module caches it and refreshes every 4 minutes via `setTimeout`. The
+first build runs at module load via top-level await, so the cache is always populated before
+the first OAuth callback.
+
+```typescript
+// Conceptual shape
+new SignJWT({})
+  .setProtectedHeader({ alg: 'ES256', kid: keyId })
+  .setIssuer(teamId)
+  .setExpirationTime(issuedAt + 5 * 60)
+  .setAudience('https://appleid.apple.com')
+  .setSubject(clientId)
+  .sign(privateKey);
+```
+
+### Apple Private Relay
+
+Apple's "Hide My Email" relays return an Apple-issued alias (`@privaterelay.appleid.com`) on the
+first sign-in and **omit email on subsequent sign-ins**. The lookup cascade refuses sign-in when
+no `LinkedIdentity` row exists for the Apple `sub` and no email is returned. The login page
+surfaces "Invalid credentials" in that case. Users who rely on private relay should keep their
+initial sign-in session active (the `LinkedIdentity` row is what links future silent sign-ins).
 
 ### Dev Credentials (Local Only)
 
@@ -86,6 +124,60 @@ Invitations use single-use tokens for security:
 
 Tokens expire after `expiresAt` date.
 
+## Linked Identity & Account Linking (FPP-31)
+
+Each user can sign in through more than one OAuth provider. The `LinkedIdentity` table stores
+the `(provider, providerAccountId)` pair per linked provider, with `userId` pointing to the
+local user.
+
+### Lookup Cascade
+
+`findOrCreateUserByIdentity` (in `src/lib/user-identity.ts`) runs the following steps for every
+OAuth callback:
+
+1. **Existing `LinkedIdentity`** for `(provider, providerAccountId)` → return that user. If the
+   user is soft-deleted (`deletedAt` set), refuse and audit `auth.signIn.refused` with
+   `reason: 'user_tombstoned'`.
+2. **Email missing** from the OAuth profile (Apple private relay on subsequent sign-ins) →
+   refuse and audit `reason: 'email_missing'`. No row is created; the user must sign in with
+   a provider that already has a `LinkedIdentity` row.
+3. **Active user by email** → attach a new `LinkedIdentity` to the existing user and audit
+   `auth.identity.linked` with `matchedBy: 'email'`. This is the implicit-linking path.
+4. **Tombstoned user by email** → refuse and audit `reason: 'email_tombstoned'`.
+5. **No row** → create a new `User` (`role: 'ADMIN_ADULT'`) and the `LinkedIdentity` in one
+   `$transaction`. Audit `auth.signIn.succeeded` with `userCreated: true`.
+
+Every decision writes a row to `AdminAuditLog` with the provider, identity id, and outcome.
+
+### Explicit Linking From the Profile Page
+
+The profile page exposes three tRPC procedures:
+
+- `user.listLinkedIdentities` — renders the connected accounts card.
+- `user.unlinkIdentity` — removes a `LinkedIdentity` row. The UI blocks the action when only
+  one identity is linked so the user always retains at least one sign-in method.
+- `user.linkIdentity` — manual link, used after the OAuth callback hands off the
+  `providerAccountId`. Currently treated as "after re-auth" — the active session is the
+  re-auth proof because the platform has no password system (FPP-31 acceptance). When a real
+  password column is added to `User`, tighten `linkIdentityToCurrentUser` to require it.
+
+### Session Preservation on Link Flows
+
+When a signed-in user clicks "Link Apple" / "Link Facebook" from the profile page, the OAuth
+callback runs through the same `signIn` callback. If the OAuth provider's email matches the
+current user, the implicit link fires and the user stays signed in. If the email does not
+match, `findOrCreateUserByIdentity` either creates a brand-new `User` or links to a different
+existing user. The `jwt` callback guards against session replacement: it only resolves a new
+user id when `token.sub` is unset, so an active session is preserved through any link attempt.
+The worst case is a stray `LinkedIdentity` row on the wrong user — recoverable via the audit
+log and never produces a takeover of the active session.
+
+### Tombstoned Users
+
+A `User` with `deletedAt` set is a tombstone. No OAuth sign-in creates a new user with that
+email and no `LinkedIdentity` is followed to a tombstoned user. The audit log captures every
+refusal under `auth.signIn.refused`.
+
 ## RSVP Validation
 
 - RSVP deadline must be before event date
@@ -137,10 +229,17 @@ Set `TRUSTED_PROXY_IPS` to your edge proxy's egress IPs (e.g. the ALB's internal
 
 ## External Services Security
 
-| Service      | Credentials             | Access Level      |
-| ------------ | ----------------------- | ----------------- |
-| Google OAuth | `AUTH_GOOGLE_ID/SECRET` | User email, name  |
-| Twilio       | `TWILIO_*`              | Send SMS only     |
-| SendGrid     | `SENDGRID_*`            | Send email only   |
-| S3           | `S3_*`                  | Read/write photos |
-| PhotoPrism   | `PHOTOPRISM_*`          | Photo processing  |
+| Service        | Credentials               | Access Level      |
+| -------------- | ------------------------- | ----------------- |
+| Google OAuth   | `AUTH_GOOGLE_ID/SECRET`   | User email, name  |
+| Apple OAuth    | `AUTH_APPLE_*`            | User email, name  |
+| Facebook OAuth | `AUTH_FACEBOOK_ID/SECRET` | User email, name  |
+| Twilio         | `TWILIO_*`                | Send SMS only     |
+| SendGrid       | `SENDGRID_*`              | Send email only   |
+| S3             | `S3_*`                    | Read/write photos |
+| PhotoPrism     | `PHOTOPRISM_*`            | Photo processing  |
+
+All OAuth client secrets are sourced from the OpenBao-backed Kubernetes secret `nextjs-secrets`;
+see `kubernetes/overlays/pugquilt-dev/external-secrets.yaml` and
+`scripts/populate-openbao-secrets.sh`. Real values must be provisioned out-of-band and never
+committed.
