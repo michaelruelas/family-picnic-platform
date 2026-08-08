@@ -1,6 +1,6 @@
 {
   "name": "family-picnic-platform",
-  "version": "0.1.0",
+  "version": "0.1.13",
   "private": true,
   "description": "A private family engagement hub for an annual picnic — RSVP, potluck, photos, and communication.",
   "scripts": {
