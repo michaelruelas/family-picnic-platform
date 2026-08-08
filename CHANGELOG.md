@@ -2,6 +2,94 @@
 
 All notable changes to this project are documented here.
 
+## [0.1.13](https://github.com/michaelruelas/family-picnic-platform/compare/family-picnic-platform-v0.1.12...family-picnic-platform-v0.1.13) (2026-08-08)
+
+
+### Features
+
+* Add comprehensive event management with RSVP, potluck signups, and photo galleries ([#2](https://github.com/michaelruelas/family-picnic-platform/issues/2)) ([e1220e8](https://github.com/michaelruelas/family-picnic-platform/commit/e1220e84f20be4b1d473d3aa7deb186fd67298b8))
+* add Docker build for tag-based releases ([c3f5f52](https://github.com/michaelruelas/family-picnic-platform/commit/c3f5f524dfe84c2e373682ce545561a290910ba0))
+* **admin:** redesign admin UI to table-first (FPP-91) ([#56](https://github.com/michaelruelas/family-picnic-platform/issues/56)) ([4c9ebf9](https://github.com/michaelruelas/family-picnic-platform/commit/4c9ebf956aee376a5e4862cd789bc096d012b446))
+* **audit-log:** surface event registrations on the audit log (FPP-50) ([#55](https://github.com/michaelruelas/family-picnic-platform/issues/55)) ([69b7543](https://github.com/michaelruelas/family-picnic-platform/commit/69b7543f36634140ff575bc9a9278438e0e09204))
+* **auth:** add Apple and Facebook OAuth with LinkedIdentity lookup ([#57](https://github.com/michaelruelas/family-picnic-platform/issues/57)) ([009a173](https://github.com/michaelruelas/family-picnic-platform/commit/009a1739bd561f1b8e51628d8a62705bc3c42f70))
+* Complete MVP implementation of Family Picnic Platform ([#3](https://github.com/michaelruelas/family-picnic-platform/issues/3)) ([790dfc4](https://github.com/michaelruelas/family-picnic-platform/commit/790dfc4e3c1917c72ff6f7cdecf4b7e9d49a2f0a))
+* **events:** add sub-nav and per-event photos route ([e93c5ad](https://github.com/michaelruelas/family-picnic-platform/commit/e93c5ad6bf517b1e7f84be37b70d30cfce4ca477))
+* **events:** add sub-nav and per-event photos route ([1a52637](https://github.com/michaelruelas/family-picnic-platform/commit/1a5263768b8983222a2560902d95adce8f69b0e1))
+* **events:** convert overview page to tabbed layout per FPP-46 ([#54](https://github.com/michaelruelas/family-picnic-platform/issues/54)) ([7207bc2](https://github.com/michaelruelas/family-picnic-platform/commit/7207bc2063340e48069bdae1caa0e8906680b8db))
+* **household:** add household member CRUD for name and age ([#22](https://github.com/michaelruelas/family-picnic-platform/issues/22)) ([d0dce05](https://github.com/michaelruelas/family-picnic-platform/commit/d0dce052b7c8654d7e162ad40c3959fb401759b7))
+* **kubernetes:** restructure manifests for argocd deployment ([a5a5ade](https://github.com/michaelruelas/family-picnic-platform/commit/a5a5adedb032e0eb70d02000c4b976b3f2f82760))
+* **payments:** integrate stripe credit card processing (FPP-47) ([#26](https://github.com/michaelruelas/family-picnic-platform/issues/26)) ([2ff13a5](https://github.com/michaelruelas/family-picnic-platform/commit/2ff13a5b55e3eae402296a91ec166d93d10bbf4f))
+* **potluck:** add multi-slot signup with my-slots view (FPP-52) ([#33](https://github.com/michaelruelas/family-picnic-platform/issues/33)) ([3372105](https://github.com/michaelruelas/family-picnic-platform/commit/33721054509232fe5fe0e8d2221ae2d3b02a86ab))
+* **potluck:** make slot name optional per FPP-54 ([#48](https://github.com/michaelruelas/family-picnic-platform/issues/48)) ([4afd206](https://github.com/michaelruelas/family-picnic-platform/commit/4afd206992443ca3fe1ff24bdd30e405f18b84b9))
+* **routes:** 301 legacy /potluck to event-scoped url ([9607378](https://github.com/michaelruelas/family-picnic-platform/commit/9607378ea341c36c6502403f80c1ba71e1a02927))
+* **rsvp:** add dishes tab to rsvp sheet for potluck edits ([389c5f0](https://github.com/michaelruelas/family-picnic-platform/commit/389c5f09726bfdd2d78e32fdac80abcb8c6cab44))
+* **rsvp:** add dishes tab to rsvp sheet for potluck edits ([9497373](https://github.com/michaelruelas/family-picnic-platform/commit/949737354edb832a9009e55ca801eaaaf714645b))
+* **rsvp:** add household name edit to registration form (FPP-80) ([#30](https://github.com/michaelruelas/family-picnic-platform/issues/30)) ([983591d](https://github.com/michaelruelas/family-picnic-platform/commit/983591dd2b9f5715be56862b0b4c0ef04d3f2f46))
+* **rsvp:** add idempotent backfill script for duplicate rsvps (FPP-28) ([#25](https://github.com/michaelruelas/family-picnic-platform/issues/25)) ([7d059a1](https://github.com/michaelruelas/family-picnic-platform/commit/7d059a176f0ca396166fa4bd91d27c8afe98a7a2))
+* **rsvp:** add invitation-token RSVP wizard ([#52](https://github.com/michaelruelas/family-picnic-platform/issues/52)) ([1773604](https://github.com/michaelruelas/family-picnic-platform/commit/1773604db228bed6534c0779ffb3b01d1b6d8d17))
+* **rsvp:** add names, decline path, and phone capture to rsvp ([#45](https://github.com/michaelruelas/family-picnic-platform/issues/45)) ([b018d27](https://github.com/michaelruelas/family-picnic-platform/commit/b018d27c831150d6318bd1f86b2ce2f86f731727))
+* **rsvp:** add per-attendee registration fee with admin backfill (FPP-48) ([#28](https://github.com/michaelruelas/family-picnic-platform/issues/28)) ([bcda9dc](https://github.com/michaelruelas/family-picnic-platform/commit/bcda9dcda7007cae888ab659b1a8fabe192e8806))
+* **rsvp:** add per-member attendance and registration confirmation (FPP-56) ([#27](https://github.com/michaelruelas/family-picnic-platform/issues/27)) ([bde0f80](https://github.com/michaelruelas/family-picnic-platform/commit/bde0f80f1346dc41fe720f915ff4c7e6e2c53737))
+* **rsvp:** assign names to adult and child slots ([#39](https://github.com/michaelruelas/family-picnic-platform/issues/39)) ([fae5f1f](https://github.com/michaelruelas/family-picnic-platform/commit/fae5f1f88384f6da34d2e7deccdf270643f729eb))
+* **rsvp:** audit in-place rsvp updates with diff ([#20](https://github.com/michaelruelas/family-picnic-platform/issues/20)) ([bf48fb4](https://github.com/michaelruelas/family-picnic-platform/commit/bf48fb4d27605992176297d3019dc610c4b4721f))
+* **rsvp:** pre-fill form from existing RSVP ([#21](https://github.com/michaelruelas/family-picnic-platform/issues/21)) ([e6d7ebc](https://github.com/michaelruelas/family-picnic-platform/commit/e6d7ebc5b8b763210f230f4040deafb59fe199ab))
+* **rsvp:** remove dietary_notes field per FPP-55 ([#47](https://github.com/michaelruelas/family-picnic-platform/issues/47)) ([15aad1e](https://github.com/michaelruelas/family-picnic-platform/commit/15aad1eaae473d31a400617ea22041ee66ebba90))
+* **rsvp:** show fee total on confirmation screen (FPP-77) ([#32](https://github.com/michaelruelas/family-picnic-platform/issues/32)) ([fc68317](https://github.com/michaelruelas/family-picnic-platform/commit/fc683172aceb2bf0e7de0e6243d80d688bf92e4c))
+* **rsvp:** show last updated on registration confirmation (FPP-53) ([#29](https://github.com/michaelruelas/family-picnic-platform/issues/29)) ([5c8af19](https://github.com/michaelruelas/family-picnic-platform/commit/5c8af198b73affafbfd7e5bd75d6ee7967e261e9))
+* **scripts:** add openbao secret population script ([76f5631](https://github.com/michaelruelas/family-picnic-platform/commit/76f563185133f5e3a4a1a3f882e7ebd23227046b))
+* **server:** add declineMessage, validate/consume split, invitation URL body ([#51](https://github.com/michaelruelas/family-picnic-platform/issues/51)) ([8e941f1](https://github.com/michaelruelas/family-picnic-platform/commit/8e941f11dbb33a94ef9aabad560d15584d75ceb1))
+* **sms:** wire twilio account for transactional sms ([#24](https://github.com/michaelruelas/family-picnic-platform/issues/24)) ([2e7bf32](https://github.com/michaelruelas/family-picnic-platform/commit/2e7bf3204b2d0b63a6217020f9bf237e072f8ec8))
+* **ui:** add DataTable primitive on TanStack Table (FPP-92) ([#50](https://github.com/michaelruelas/family-picnic-platform/issues/50)) ([e1d3c36](https://github.com/michaelruelas/family-picnic-platform/commit/e1d3c3698c9e09bb10cdbee3bdc031b46311407e))
+
+
+### Bug Fixes
+
+* **auth:** accept admin_adult role in admin gates ([#16](https://github.com/michaelruelas/family-picnic-platform/issues/16)) ([477a763](https://github.com/michaelruelas/family-picnic-platform/commit/477a76367cffed4f0b6fecbedb41181bb7d1fe77))
+* **auth:** filter soft-deleted users from google oauth signin ([#18](https://github.com/michaelruelas/family-picnic-platform/issues/18)) ([ba81f7a](https://github.com/michaelruelas/family-picnic-platform/commit/ba81f7a4185bdcb35978c0a84b4c15f2d4b9b8d9))
+* build only linux/arm64 ([b0e8ec1](https://github.com/michaelruelas/family-picnic-platform/commit/b0e8ec175dcd8de52a282442436c4af7403d0bcb))
+* **ci:** add .prettierignore to skip phantom failure on schema-integrity test ([#53](https://github.com/michaelruelas/family-picnic-platform/issues/53)) ([652ddc1](https://github.com/michaelruelas/family-picnic-platform/commit/652ddc1b9c904b57c19bfd58d0de08406655260e))
+* **ci:** correct buildah action names ([dec7d97](https://github.com/michaelruelas/family-picnic-platform/commit/dec7d9719d1fe9171516fb907c98196e5ff423e3))
+* **ci:** correct runner label to forgejo-pugquilt-runner ([7aa6e4f](https://github.com/michaelruelas/family-picnic-platform/commit/7aa6e4faac985eaf6bd28b999d9a5a13037d0cab))
+* **ci:** drop unsupported --config-file flag from renovate step ([3dd9b5c](https://github.com/michaelruelas/family-picnic-platform/commit/3dd9b5c4de7c9afea279ebc3db24024aa116875c))
+* **ci:** drop vitest coverage from pipeline ([8f2dc87](https://github.com/michaelruelas/family-picnic-platform/commit/8f2dc870305940839355d2bc7ae19552f7b53e42))
+* **ci:** drop vitest coverage thresholds ([0d05298](https://github.com/michaelruelas/family-picnic-platform/commit/0d052981055003e6ab4996cd5c3fec6f15bd63c9))
+* **ci:** exclude .next from vitest to prevent stale build artifacts ([a9dee3a](https://github.com/michaelruelas/family-picnic-platform/commit/a9dee3ab02123f635a8f7c22241daf4557496329))
+* **ci:** remove invalid buildkitd-config inline block ([9d04fa2](https://github.com/michaelruelas/family-picnic-platform/commit/9d04fa23de0b620ac1245e691f10254cb9ca328f))
+* **ci:** remove invalid bunVersion option from renovate config ([c5ef572](https://github.com/michaelruelas/family-picnic-platform/commit/c5ef5725349216f40167a2719e7261e28716e495))
+* **ci:** remove invalid name driver-opt from buildx setup ([7631897](https://github.com/michaelruelas/family-picnic-platform/commit/7631897ab516505cd12e49d3984ae00404059d48))
+* **ci:** revert to pugquilt-runner-set ([14c4555](https://github.com/michaelruelas/family-picnic-platform/commit/14c4555c5aebbcf73525f7f0bfc725cf28a7a510))
+* **ci:** run renovate via npx on self-hosted runner without docker ([eb5d7bc](https://github.com/michaelruelas/family-picnic-platform/commit/eb5d7bcc6c05f0c3f74b8d80fb2e481f9c63f260))
+* **ci:** run vitest via node to avoid bun zod bug ([3abeb0f](https://github.com/michaelruelas/family-picnic-platform/commit/3abeb0f59c72253167872c2667c5a8b1d742c918))
+* **ci:** update runner label to family-picnic-runner-set ([9691b50](https://github.com/michaelruelas/family-picnic-platform/commit/9691b5033fabc00f883666e1ac9bd1ef2824b560))
+* **ci:** upgrade node to 24 and pass repo arg to renovate ([7f3cb7e](https://github.com/michaelruelas/family-picnic-platform/commit/7f3cb7ed93efc47e5c8e8a8649424607dfc48d13))
+* **ci:** upgrade setup-buildx-action to v4 for node 24 support ([addb679](https://github.com/michaelruelas/family-picnic-platform/commit/addb67936415246598de53f86ad0ec6593d32c2a))
+* **ci:** use docker/build-push-action for build ([50341f3](https://github.com/michaelruelas/family-picnic-platform/commit/50341f3725a9f2c4c3f1ea34c602876c4646804c))
+* **ci:** use sticky loadbalance for buildx k8s driver ([569dc06](https://github.com/michaelruelas/family-picnic-platform/commit/569dc0610bc589ae802028f5dc8ceec5144a5ca0))
+* **deps:** force patched versions of vulnerable transitive packages ([2a75818](https://github.com/michaelruelas/family-picnic-platform/commit/2a758189a0390ca09ca1253a814201ba290f1e03))
+* docker workflow yaml parsing ([36dc6a6](https://github.com/michaelruelas/family-picnic-platform/commit/36dc6a6a31c93446fd1d959ab4fe3a3270ea88eb))
+* **docker:** enable local build testing and self-hosted runner ([53b8304](https://github.com/michaelruelas/family-picnic-platform/commit/53b830452dddc4a3f7134323f4d0fa938f18df08))
+* include bun.lockb in docker build context ([b938971](https://github.com/michaelruelas/family-picnic-platform/commit/b938971370059c71cd6e57fc97131dd8690af05c))
+* **kubernetes:** bump nextjs dev memory limit to 1Gi ([8a24859](https://github.com/michaelruelas/family-picnic-platform/commit/8a248593c4963fa8fc18030f78bc2e5ff45b06c0))
+* **kubernetes:** correct ghcr image name to michaelruelas/family-picnic-platform ([baf6ed9](https://github.com/michaelruelas/family-picnic-platform/commit/baf6ed90b8a51534c16157f11a800b95f610aae4))
+* **kubernetes:** drop topology spread + reduce es refresh in dev ([bb0efac](https://github.com/michaelruelas/family-picnic-platform/commit/bb0efac2c790a40fde512b69f649dcea3c5fb1a7))
+* **kubernetes:** photoprism /run mount + nextjs probe path override ([599302b](https://github.com/michaelruelas/family-picnic-platform/commit/599302b496be749351a081a8f30578eb381da96d))
+* **kubernetes:** photoprism image tag 260601, gentler nextjs probes ([e064255](https://github.com/michaelruelas/family-picnic-platform/commit/e06425502c345fd6b7ad7384d4d98bb72023c27d))
+* **kubernetes:** reference openbao-backend ClusterSecretStore ([7afa1ce](https://github.com/michaelruelas/family-picnic-platform/commit/7afa1ce8471f52f9f1723b2526a2042e0d6ee90a))
+* **kubernetes:** use actual ghcr tag 0.1.10 (no v prefix) ([d8c6c12](https://github.com/michaelruelas/family-picnic-platform/commit/d8c6c1218c9dfd03f3ac2349c7a925f40b0eab7f))
+* **kubernetes:** use existing ghcr tag v0.1.10 in dev overlay ([956c95f](https://github.com/michaelruelas/family-picnic-platform/commit/956c95ff3627c7b7cc57d9373e4fd2d54fad876a))
+* move CI env vars to job level so postinstall can resolve DATABASE_URL ([0ea8e56](https://github.com/michaelruelas/family-picnic-platform/commit/0ea8e56beca2a0fdb19c65ff100e9a0a7eb41630))
+* repair lint-staged precommit hook, bump all deps to latest ([ec42ce9](https://github.com/michaelruelas/family-picnic-platform/commit/ec42ce90b4fb94a5aefb53716c1ef3dc4d10314a))
+* simplify docker metadata tags ([df76819](https://github.com/michaelruelas/family-picnic-platform/commit/df768196842278c933e8ab1c22314d1e0f0efd1f))
+* skip postinstall scripts during deps install ([cab8296](https://github.com/michaelruelas/family-picnic-platform/commit/cab829663c6ce531a86648b5fc4eadf4f9ce51c5))
+* use bun.lock instead of bun.lockb ([bd17b1f](https://github.com/michaelruelas/family-picnic-platform/commit/bd17b1fa745a1aaa7b0786d7ee83f858db37ae94))
+* use bunx prisma generate ([85ac49e](https://github.com/michaelruelas/family-picnic-platform/commit/85ac49e6d2f4f5d9f0b1501c39e7ec621674dc3f))
+* use bunx prisma generate ([c51a217](https://github.com/michaelruelas/family-picnic-platform/commit/c51a21711dd53ab84d973837e405e882b62e7371))
+
+
+### Performance Improvements
+
+* **ci:** add bun cache mount, registry cache, shared builder ([23e6874](https://github.com/michaelruelas/family-picnic-platform/commit/23e68749dc290b434574a12bddbbb25d8aee6754))
+
 ## [Unreleased]
 
 ### Added
