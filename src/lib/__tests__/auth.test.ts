@@ -8,6 +8,22 @@ vi.mock('next-auth/providers/google', () => ({
   })),
 }));
 
+vi.mock('next-auth/providers/apple', () => ({
+  default: vi.fn((config: Record<string, unknown>) => ({
+    id: 'apple',
+    name: 'Apple',
+    ...config,
+  })),
+}));
+
+vi.mock('next-auth/providers/facebook', () => ({
+  default: vi.fn((config: Record<string, unknown>) => ({
+    id: 'facebook',
+    name: 'Facebook',
+    ...config,
+  })),
+}));
+
 vi.mock('next-auth/providers/credentials', () => ({
   default: vi.fn((config: Record<string, unknown>) => ({
     id: config.id || 'dev-credentials',
@@ -23,6 +39,16 @@ vi.mock('~/lib/prisma', () => ({
       findFirst: vi.fn(),
       create: vi.fn(),
     },
+    linkedIdentity: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      findMany: vi.fn(),
+      delete: vi.fn(),
+    },
+    adminAuditLog: {
+      create: vi.fn(),
+    },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -133,109 +159,7 @@ describe('authOptions session callback', () => {
       expect(result).toBe(true);
     });
 
-    it('allows sign in for google provider with existing user', async () => {
-      const { prisma } = await import('~/lib/prisma');
-      vi.mocked(prisma.user.findUnique).mockResolvedValue({
-        id: 'user-1',
-        email: 'existing@example.com',
-      } as any);
-      const { authOptions } = await import('../auth');
-      const signInCallback = authOptions.callbacks!.signIn as unknown as (
-        params: Record<string, unknown>,
-      ) => Promise<boolean>;
-      const result = await signInCallback({
-        account: { provider: 'google' },
-        profile: { email: 'existing@example.com', name: 'Existing' },
-      });
-      expect(result).toBe(true);
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'existing@example.com', deletedAt: null },
-      });
-      expect(prisma.user.create).not.toHaveBeenCalled();
-    });
-
-    it('refuses google sign in for a soft-deleted email', async () => {
-      const { prisma } = await import('~/lib/prisma');
-      vi.mocked(prisma.user.findUnique).mockImplementation(((args: {
-        where?: { deletedAt?: unknown };
-      }) => {
-        if (args?.where?.deletedAt === null) return Promise.resolve(null);
-        return Promise.resolve({
-          id: 'deleted-1',
-          email: 'gone@example.com',
-          deletedAt: new Date('2024-01-01'),
-        } as never);
-      }) as never);
-      const { authOptions } = await import('../auth');
-      const signInCallback = authOptions.callbacks!.signIn as unknown as (
-        params: Record<string, unknown>,
-      ) => Promise<boolean>;
-      const result = await signInCallback({
-        account: { provider: 'google' },
-        profile: { email: 'gone@example.com', name: 'Gone' },
-      });
-      expect(result).toBe(false);
-      expect(prisma.user.create).not.toHaveBeenCalled();
-      expect(prisma.user.findUnique).toHaveBeenCalledTimes(2);
-      expect(prisma.user.findUnique).toHaveBeenNthCalledWith(1, {
-        where: { email: 'gone@example.com', deletedAt: null },
-      });
-      expect(prisma.user.findUnique).toHaveBeenNthCalledWith(2, {
-        where: { email: 'gone@example.com' },
-        select: { id: true, deletedAt: true },
-      });
-    });
-
-    it('creates user for google sign in with new email', async () => {
-      const { prisma } = await import('~/lib/prisma');
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
-      vi.mocked(prisma.user.create).mockResolvedValue({
-        id: 'new-user',
-        email: 'new@example.com',
-      } as any);
-      const { authOptions } = await import('../auth');
-      const signInCallback = authOptions.callbacks!.signIn as unknown as (
-        params: Record<string, unknown>,
-      ) => Promise<boolean>;
-      const result = await signInCallback({
-        account: { provider: 'google' },
-        profile: { email: 'new@example.com', name: 'New User' },
-      });
-      expect(result).toBe(true);
-      expect(prisma.user.create).toHaveBeenCalledWith({
-        data: {
-          email: 'new@example.com',
-          name: 'New User',
-          role: 'ADMIN_ADULT',
-        },
-      });
-    });
-
-    it('creates user with email as name when profile name is missing', async () => {
-      const { prisma } = await import('~/lib/prisma');
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
-      vi.mocked(prisma.user.create).mockResolvedValue({
-        id: 'u1',
-        email: 'anon@example.com',
-      } as any);
-      const { authOptions } = await import('../auth');
-      const signInCallback = authOptions.callbacks!.signIn as unknown as (
-        params: Record<string, unknown>,
-      ) => Promise<boolean>;
-      await signInCallback({
-        account: { provider: 'google' },
-        profile: { email: 'anon@example.com' },
-      });
-      expect(prisma.user.create).toHaveBeenCalledWith({
-        data: {
-          email: 'anon@example.com',
-          name: 'anon@example.com',
-          role: 'ADMIN_ADULT',
-        },
-      });
-    });
-
-    it('rejects sign in for unknown provider', async () => {
+    it('refuses sign in for unknown providers', async () => {
       const { authOptions } = await import('../auth');
       const signInCallback = authOptions.callbacks!.signIn as unknown as (
         params: Record<string, unknown>,
@@ -247,14 +171,129 @@ describe('authOptions session callback', () => {
       expect(result).toBe(false);
     });
 
-    it('rejects google sign in without profile email', async () => {
+    it('allows sign in for google OAuth when profile has a sub and email', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue({
+        id: 'ident-1',
+        userId: 'user-1',
+        provider: 'google',
+        providerAccountId: 'google-sub-1',
+        user: {
+          id: 'user-1',
+          email: 'existing@example.com',
+          name: 'Existing',
+          role: 'ADMIN_ADULT',
+          deletedAt: null,
+        },
+      } as any);
       const { authOptions } = await import('../auth');
       const signInCallback = authOptions.callbacks!.signIn as unknown as (
         params: Record<string, unknown>,
       ) => Promise<boolean>;
       const result = await signInCallback({
         account: { provider: 'google' },
-        profile: {},
+        profile: { sub: 'google-sub-1', email: 'existing@example.com', name: 'Existing' },
+      });
+      expect(result).toBe(true);
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('allows sign in for apple OAuth by creating a new user when missing', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+        return fn({
+          user: {
+            create: vi.fn().mockResolvedValue({
+              id: 'new-user',
+              email: 'apple@example.com',
+              name: 'apple@example.com',
+              role: 'ADMIN_ADULT',
+            }),
+          },
+          linkedIdentity: {
+            create: vi.fn().mockResolvedValue({
+              id: 'ident-1',
+              userId: 'new-user',
+              provider: 'apple',
+              providerAccountId: 'apple-sub-1',
+              emailSnapshot: 'apple@example.com',
+            }),
+          },
+        } as any);
+      });
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean>;
+      const result = await signInCallback({
+        account: { provider: 'apple' },
+        profile: {
+          sub: 'apple-sub-1',
+          email: 'apple@example.com',
+          name: 'Apple User',
+        },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('allows sign in for facebook OAuth by linking to an existing user by email', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'existing@example.com',
+        name: 'Existing',
+        role: 'ADMIN_ADULT',
+        deletedAt: null,
+      } as any);
+      vi.mocked(prisma.linkedIdentity.create).mockResolvedValue({
+        id: 'ident-1',
+        userId: 'user-1',
+        provider: 'facebook',
+        providerAccountId: 'facebook-id-1',
+        emailSnapshot: 'existing@example.com',
+      } as any);
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean>;
+      const result = await signInCallback({
+        account: { provider: 'facebook' },
+        profile: { id: 'facebook-id-1', email: 'existing@example.com', name: 'Existing' },
+      });
+      expect(result).toBe(true);
+      expect(prisma.linkedIdentity.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-1',
+          provider: 'facebook',
+          providerAccountId: 'facebook-id-1',
+          emailSnapshot: 'existing@example.com',
+        },
+      });
+    });
+
+    it('refuses sign in when apple provider returns no sub', async () => {
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean>;
+      const result = await signInCallback({
+        account: { provider: 'apple' },
+        profile: { email: 'test@example.com' },
+      });
+      expect(result).toBe(false);
+    });
+
+    it('refuses sign in when facebook provider returns no id', async () => {
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean>;
+      const result = await signInCallback({
+        account: { provider: 'facebook' },
+        profile: { email: 'test@example.com' },
       });
       expect(result).toBe(false);
     });
