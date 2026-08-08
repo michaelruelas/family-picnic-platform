@@ -1,7 +1,9 @@
 import { prisma } from '~/lib/prisma';
-import type { PrismaClient } from '~/lib/generated/client';
+import type { Prisma, PrismaClient } from '~/lib/generated/client';
 
-type AuditLogWriter = Pick<PrismaClient, 'adminAuditLog'>;
+type AdminAuditLogWriter = Pick<PrismaClient, 'adminAuditLog'>;
+type AuditLogWriter = Pick<PrismaClient, 'auditLog'>;
+type TransactionOrClient = PrismaClient | Prisma.TransactionClient;
 
 export function diff(
   oldVal: unknown,
@@ -37,7 +39,7 @@ export interface AuditLogEntry {
   newValue?: unknown;
 }
 
-export async function writeAuditLog(entry: AuditLogEntry, tx?: AuditLogWriter): Promise<void> {
+export async function writeAuditLog(entry: AuditLogEntry, tx?: AdminAuditLogWriter): Promise<void> {
   const client = tx ?? prisma;
   await client.adminAuditLog.create({
     data: {
@@ -46,6 +48,36 @@ export async function writeAuditLog(entry: AuditLogEntry, tx?: AuditLogWriter): 
       action: entry.action,
       oldValue: entry.oldValue ?? undefined,
       newValue: entry.newValue ?? undefined,
+    },
+  });
+}
+
+export interface DomainAuditLogEntry {
+  actorId?: string | null;
+  action: string;
+  subjectType: string;
+  subjectId: string;
+  payload?: unknown;
+  occurredAt?: Date;
+}
+
+// FPP-50: domain-event audit log writer. Records who performed what
+// against which subject (RSVP, PotluckSignup, EventAdmin, Registration,
+// Charge, ...). Backed by the append-only `AuditLog` table; entries
+// cannot be UPDATEd or DELETEd at the DB level.
+export async function writeDomainAuditLog(
+  entry: DomainAuditLogEntry,
+  tx?: AuditLogWriter,
+): Promise<void> {
+  const client = (tx ?? prisma) as TransactionOrClient;
+  await (client as PrismaClient).auditLog.create({
+    data: {
+      actorId: entry.actorId ?? null,
+      action: entry.action,
+      subjectType: entry.subjectType,
+      subjectId: entry.subjectId,
+      payload: entry.payload === undefined ? undefined : (entry.payload as Prisma.InputJsonValue),
+      occurredAt: entry.occurredAt,
     },
   });
 }

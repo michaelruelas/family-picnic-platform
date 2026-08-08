@@ -2,6 +2,7 @@ import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { EventStatus, AdminPermission } from '~/lib/generated/enums';
+import { writeDomainAuditLog } from '~/lib/audit';
 
 export const eventRouter = router({
   create: auditedAdminProcedure
@@ -170,14 +171,32 @@ export const eventRouter = router({
           .default(AdminPermission.COADMIN),
       }),
     )
-    .mutation(async ({ input }) => {
-      return prisma.eventAdmin.create({
+    .mutation(async ({ ctx, input }) => {
+      const created = await prisma.eventAdmin.create({
         data: {
           eventId: input.eventId,
           userId: input.userId,
           role: input.role as AdminPermission,
         },
       });
+
+      // FPP-50: the auditedAdminProcedure middleware records the path
+      // against AdminAuditLog, but without the eventId or subject. Emit
+      // a domain entry keyed by event so the host assignment is
+      // filterable by event, target user, and time.
+      await writeDomainAuditLog({
+        actorId: ctx.session.user.id,
+        action: 'event.admin.add',
+        subjectType: 'EventAdmin',
+        subjectId: `${input.eventId}:${input.userId}`,
+        payload: {
+          eventId: input.eventId,
+          userId: input.userId,
+          role: input.role,
+        },
+      });
+
+      return created;
     }),
 
   removeAdmin: auditedAdminProcedure
@@ -187,8 +206,8 @@ export const eventRouter = router({
         userId: z.string(),
       }),
     )
-    .mutation(async ({ input }) => {
-      return prisma.eventAdmin.delete({
+    .mutation(async ({ ctx, input }) => {
+      const removed = await prisma.eventAdmin.delete({
         where: {
           eventId_userId: {
             eventId: input.eventId,
@@ -196,5 +215,19 @@ export const eventRouter = router({
           },
         },
       });
+
+      await writeDomainAuditLog({
+        actorId: ctx.session.user.id,
+        action: 'event.admin.remove',
+        subjectType: 'EventAdmin',
+        subjectId: `${input.eventId}:${input.userId}`,
+        payload: {
+          eventId: input.eventId,
+          userId: input.userId,
+          role: removed.role,
+        },
+      });
+
+      return removed;
     }),
 });

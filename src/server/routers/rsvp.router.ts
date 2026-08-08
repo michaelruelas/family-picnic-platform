@@ -12,7 +12,7 @@ import {
   CommunicationChannel,
   CommunicationLogKind,
 } from '~/lib/generated/enums';
-import { writeAuditLog, diff } from '~/lib/audit';
+import { writeAuditLog, writeDomainAuditLog, diff } from '~/lib/audit';
 import {
   rsvpConfirmSchema,
   rsvpDeclineSchema,
@@ -174,6 +174,25 @@ export const rsvpRouter = router({
             })),
           ),
         });
+        // FPP-50 review: write the domain audit entry inside the
+        // transaction so the audit row is atomic with the RSVP
+        // write. If the audit insert fails the RSVP rolls back too,
+        // matching the AdminAuditLog guarantees on the admin path.
+        await writeDomainAuditLog(
+          {
+            actorId: ctx.session.user.id,
+            action: 'rsvp.signup',
+            subjectType: 'RSVP',
+            subjectId: upserted.id,
+            payload: {
+              eventId: input.eventId,
+              status: upserted.status,
+              headcount,
+              memberAttendances: attendances,
+            },
+          },
+          tx,
+        );
         return { ...upserted, headcount };
       });
 
@@ -326,6 +345,29 @@ export const rsvpRouter = router({
               })),
             },
             newValue: {
+              headcount: after.headcount,
+              memberAttendances: finalAttendances.map((a) => ({
+                householdMemberId: a.householdMemberId,
+                memberName: a.memberNameSnapshot,
+                memberAge: a.memberAgeSnapshot,
+                attending: a.attending,
+              })),
+              attendanceFingerprintChanged: beforeFp !== afterFp,
+            },
+          },
+          tx,
+        );
+        // FPP-50 review: also write to the domain audit log so the
+        // RSVP change is captured against the subject RSVP for the
+        // unified audit view.
+        await writeDomainAuditLog(
+          {
+            actorId: ctx.session.user.id,
+            action: 'rsvp.update',
+            subjectType: 'RSVP',
+            subjectId: after.id,
+            payload: {
+              eventId: input.eventId,
               headcount: after.headcount,
               memberAttendances: finalAttendances.map((a) => ({
                 householdMemberId: a.householdMemberId,
@@ -553,7 +595,58 @@ export const rsvpRouter = router({
             },
             tx,
           );
+          // FPP-50 review: mirror the update on the domain audit log
+          // so admins filtering by subject_type / subject_id / event
+          // see re-confirms alongside first-time confirms.
+          await writeDomainAuditLog(
+            {
+              actorId: ctx.session.user.id,
+              action: 'rsvp.confirm.update',
+              subjectType: 'RSVP',
+              subjectId: upserted.id,
+              payload: {
+                eventId: input.eventId,
+                status: upserted.status,
+                headcount: upserted.headcount,
+                waitlistPosition: upserted.waitlistPosition,
+                memberAttendances: finalAttendances.map((a) => ({
+                  householdMemberId: a.householdMemberId,
+                  memberName: a.memberNameSnapshot,
+                  memberAge: a.memberAgeSnapshot,
+                  attending: a.attending,
+                })),
+                attendanceFingerprintChanged: beforeFp !== afterFp,
+              },
+            },
+            tx,
+          );
         }
+      } else {
+        // FPP-50: first-time confirmation was previously invisible to the
+        // audit log (the diff branch above only fires when `before` exists).
+        // Emit a domain entry so the event registration is captured.
+        await writeDomainAuditLog(
+          {
+            actorId: ctx.session.user.id,
+            action: 'rsvp.confirm',
+            subjectType: 'RSVP',
+            subjectId: upserted.id,
+            payload: {
+              eventId: input.eventId,
+              status: upserted.status,
+              headcount: upserted.headcount,
+              waitlistPosition: upserted.waitlistPosition,
+              isWaitlisted,
+              memberAttendances: finalAttendanceRows.map((a) => ({
+                householdMemberId: a.householdMemberId,
+                memberName: a.memberNameSnapshot,
+                memberAge: a.memberAgeSnapshot,
+                attending: a.attending,
+              })),
+            },
+          },
+          tx,
+        );
       }
 
       return upserted;
@@ -694,6 +787,52 @@ export const rsvpRouter = router({
           },
           tx,
         );
+        // FPP-50 review: mirror the decline on the domain audit log so
+        // the unified view shows RSVP state transitions for the
+        // subject RSVP. Without this, declines would only surface
+        // under the AdminAuditLog source tag with no `subject_type`
+        // to filter by.
+        await writeDomainAuditLog(
+          {
+            actorId: ctx.session.user.id,
+            action: 'rsvp.decline',
+            subjectType: 'RSVP',
+            subjectId: updated.id,
+            payload: {
+              eventId: input.eventId,
+              status: updated.status,
+              slotsReleased: existingRsvp.potluckSignups.length,
+              memberAttendances: (existingRsvp.memberAttendances ?? []).map((a) => ({
+                householdMemberId: a.householdMemberId,
+                memberName: a.memberNameSnapshot,
+                memberAge: a.memberAgeSnapshot,
+                attending: RsvpAttending.NO,
+              })),
+              declineMessage,
+            },
+          },
+          tx,
+        );
+      } else {
+        // FPP-50 review: first-time decline is a registration event
+        // (the user registers their decision not to attend). Capture
+        // it on the domain log so the subject RSVP surfaces in the
+        // unified view.
+        await writeDomainAuditLog(
+          {
+            actorId: ctx.session.user.id,
+            action: 'rsvp.decline',
+            subjectType: 'RSVP',
+            subjectId: updated.id,
+            payload: {
+              eventId: input.eventId,
+              status: updated.status,
+              slotsReleased: 0,
+              declineMessage,
+            },
+          },
+          tx,
+        );
       }
 
       if (wasConfirmed) {
@@ -796,7 +935,7 @@ export const rsvpRouter = router({
 
   adminOverride: auditedAdminProcedure
     .input(rsvpAdminOverrideSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const targetUser = await prisma.user.findUnique({
         where: { id: input.userId },
         select: { id: true, householdId: true },
@@ -907,6 +1046,33 @@ export const rsvpRouter = router({
             })),
           ),
         });
+
+        // FPP-50: surface admin RSVP overrides on the audit log so the
+        // action is filterable by actor, subject, and time. The generic
+        // `auditedAdminProcedure` middleware records the path against
+        // AdminAuditLog; this entry captures the diff against the
+        // subject RSVP for the domain log.
+        await writeDomainAuditLog(
+          {
+            actorId: ctx.session.user.id,
+            action: before ? 'rsvp.adminOverride.update' : 'rsvp.adminOverride.create',
+            subjectType: 'RSVP',
+            subjectId: upserted.id,
+            payload: {
+              eventId: input.eventId,
+              targetUserId: input.userId,
+              before: before ? { status: before.status, headcount: before.headcount } : null,
+              after: { status: upserted.status, headcount: upserted.headcount },
+              memberAttendances: finalAttendanceRows.map((a) => ({
+                householdMemberId: a.householdMemberId,
+                memberName: a.memberNameSnapshot,
+                memberAge: a.memberAgeSnapshot,
+                attending: a.attending,
+              })),
+            },
+          },
+          tx,
+        );
 
         return upserted;
       });

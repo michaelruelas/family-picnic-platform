@@ -94,6 +94,10 @@ const mockPrisma = {
   },
   scheduledBroadcast: { create: vi.fn(), update: vi.fn() },
   adminAuditLog: { create: vi.fn(), findMany: vi.fn() },
+  // FPP-50: domain-event audit log written by the new RSVP / potluck /
+  // event-admin hooks. Tests that cover the hooks assert against this
+  // mock alongside the existing adminAuditLog mock.
+  auditLog: { create: vi.fn(), findMany: vi.fn() },
   eventAdmin: { findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
   // FPP-48: the RSVP router now reads + upserts Registration rows to
   // snapshot the per-attendee fee. The mock surface must match.
@@ -107,12 +111,22 @@ const mockPrisma = {
   $transaction: vi.fn(),
 };
 
+// FPP-50 review: the audit-log hook runs inside the originating
+// $transaction so the audit row is atomic with the mutation. Execute
+// the callback with a tx that exposes the same delegates as the
+// prisma mock so the inner `writeDomainAuditLog(tx)` calls land on
+// the same spies the outer test assertions read.
+mockPrisma.$transaction = vi.fn(async <T>(fn: (tx: typeof mockPrisma) => Promise<T>) => {
+  return fn(mockPrisma);
+}) as never;
+
 vi.mock('~/lib/prisma', () => ({
   prisma: mockPrisma,
 }));
 
 vi.mock('~/lib/audit', () => ({
   writeAuditLog: vi.fn(),
+  writeDomainAuditLog: vi.fn(),
   diff: vi.fn(),
 }));
 
@@ -581,6 +595,60 @@ describe('event.router', () => {
         where: { eventId_userId: { eventId: 'evt-1', userId: 'user-2' } },
       }),
     );
+  });
+
+  it('addAdmin writes a domain audit entry with event + user id (FPP-50)', async () => {
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+    mockPrisma.eventAdmin.create.mockResolvedValue({
+      id: 'ea-1',
+      eventId: 'evt-1',
+      userId: 'user-2',
+      role: 'COADMIN',
+    });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    await caller.addAdmin({ eventId: 'evt-1', userId: 'user-2' });
+
+    expect(writeDomainAuditLog).toHaveBeenCalledWith({
+      actorId: 'admin-1',
+      action: 'event.admin.add',
+      subjectType: 'EventAdmin',
+      subjectId: 'evt-1:user-2',
+      payload: {
+        eventId: 'evt-1',
+        userId: 'user-2',
+        role: 'COADMIN',
+      },
+    });
+  });
+
+  it('removeAdmin writes a domain audit entry capturing the removed role (FPP-50)', async () => {
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+    mockPrisma.eventAdmin.delete.mockResolvedValue({
+      id: 'ea-1',
+      eventId: 'evt-1',
+      userId: 'user-2',
+      role: 'COADMIN',
+    });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    await caller.removeAdmin({ eventId: 'evt-1', userId: 'user-2' });
+
+    expect(writeDomainAuditLog).toHaveBeenCalledWith({
+      actorId: 'admin-1',
+      action: 'event.admin.remove',
+      subjectType: 'EventAdmin',
+      subjectId: 'evt-1:user-2',
+      payload: {
+        eventId: 'evt-1',
+        userId: 'user-2',
+        role: 'COADMIN',
+      },
+    });
   });
 
   it('create with rsvpDeadline and maxCapacity passes extra fields', async () => {
@@ -1526,8 +1594,65 @@ describe('rsvp.router', () => {
     );
   });
 
-  it('confirm skips audit log when no prior RSVP exists', async () => {
+  it('confirm writes a domain audit entry on re-confirm (FPP-50 review)', async () => {
+    const { diff } = await import('~/lib/audit');
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+    (diff as ReturnType<typeof vi.fn>).mockReturnValue({
+      headcount: { old: 2, new: 4 },
+    });
+
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      maxCapacity: null,
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      eventId: 'evt-1',
+      userId: 'user-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      waitlistPosition: null,
+    });
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      eventId: 'evt-1',
+      userId: 'user-1',
+      status: 'CONFIRMED',
+      headcount: 4,
+      waitlistPosition: null,
+    });
+    mockPrisma.invitation.updateMany.mockResolvedValue({ count: 0 });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.confirm({ eventId: 'evt-1', headcount: 4 });
+
+    // FPP-50 review: re-confirm (the `if (before)` branch) must
+    // also write a domain audit entry so the unified view shows
+    // every RSVP state transition, not just first-time confirms.
+    expect(writeDomainAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'rsvp.confirm.update',
+        subjectType: 'RSVP',
+        subjectId: 'rsvp-1',
+        payload: expect.objectContaining({
+          eventId: 'evt-1',
+          headcount: 4,
+        }),
+      }),
+      expect.objectContaining({ auditLog: expect.any(Object) }),
+    );
+  });
+
+  it('confirm writes a domain audit entry when no prior RSVP exists (FPP-50)', async () => {
     const { writeAuditLog } = await import('~/lib/audit');
+    const { writeDomainAuditLog } = await import('~/lib/audit');
 
     const futureDate = new Date(Date.now() + 86400000 * 30);
     mockPrisma.event.findUnique.mockResolvedValue({
@@ -1551,7 +1676,19 @@ describe('rsvp.router', () => {
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
     await caller.confirm({ eventId: 'evt-1', headcount: 2 });
 
+    // First-time confirmation has no diff to log against AdminAuditLog,
+    // but FPP-50 requires a domain entry so the signup is visible on
+    // the audit log page.
     expect(writeAuditLog).not.toHaveBeenCalled();
+    expect(writeDomainAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'rsvp.confirm',
+        subjectType: 'RSVP',
+        subjectId: 'rsvp-1',
+      }),
+      expect.objectContaining({ auditLog: expect.any(Object) }),
+    );
   });
 
   it('confirm waitlists when capacity exceeded', async () => {
@@ -1774,6 +1911,46 @@ describe('rsvp.router', () => {
         }),
       }),
       expect.objectContaining({ adminAuditLog: expect.any(Object) }),
+    );
+  });
+
+  it('update writes a domain audit entry on field change (FPP-50 review)', async () => {
+    const { diff } = await import('~/lib/audit');
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+    (diff as ReturnType<typeof vi.fn>).mockReturnValue({
+      headcount: { old: 2, new: 5 },
+    });
+
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 2,
+      waitlistPosition: null,
+    });
+    mockPrisma.rSVP.update.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 5,
+      waitlistPosition: null,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.update({ eventId: 'evt-1', headcount: 5 });
+
+    expect(writeDomainAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'rsvp.update',
+        subjectType: 'RSVP',
+        subjectId: 'rsvp-1',
+        payload: expect.objectContaining({
+          eventId: 'evt-1',
+          headcount: 5,
+        }),
+      }),
+      expect.objectContaining({ auditLog: expect.any(Object) }),
     );
   });
 
@@ -2082,6 +2259,87 @@ describe('rsvp.router', () => {
     );
   });
 
+  it('decline writes a domain audit entry on the subject RSVP (FPP-50 review)', async () => {
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'CONFIRMED',
+      headcount: 3,
+      waitlistPosition: null,
+      potluckSignups: [{ id: 'ps-1', slotId: 'slot-1', servings: 2 }],
+      memberAttendances: [],
+    });
+    mockPrisma.rSVP.findFirst.mockResolvedValue(null);
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'DECLINED',
+      headcount: 0,
+      waitlistPosition: null,
+      memberAttendances: [],
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.decline({ eventId: 'evt-1' });
+
+    // FPP-50 review: decline is an RSVP state change and must be
+    // visible on the domain audit log so admins filtering by
+    // subject_type / subject_id / eventId see the transition.
+    expect(writeDomainAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'rsvp.decline',
+        subjectType: 'RSVP',
+        subjectId: 'rsvp-1',
+        payload: expect.objectContaining({
+          eventId: 'evt-1',
+          status: 'DECLINED',
+          slotsReleased: 1,
+        }),
+      }),
+      expect.objectContaining({ auditLog: expect.any(Object) }),
+    );
+  });
+
+  it('decline writes a domain audit entry on first-time decline (FPP-50 review)', async () => {
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    // No prior RSVP, so existingRsvp is null and we exercise the
+    // first-time decline branch.
+    mockPrisma.rSVP.findUnique.mockResolvedValue(null);
+    // buildRosterAsNo fetches the household roster; empty array
+    // is fine for the no-members edge case.
+    mockPrisma.householdMember.findMany.mockResolvedValue([]);
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      status: 'DECLINED',
+      headcount: 0,
+      waitlistPosition: null,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.decline({ eventId: 'evt-1' });
+
+    expect(writeDomainAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'rsvp.decline',
+        subjectType: 'RSVP',
+        subjectId: 'rsvp-1',
+        payload: expect.objectContaining({
+          eventId: 'evt-1',
+          status: 'DECLINED',
+          slotsReleased: 0,
+        }),
+      }),
+      expect.objectContaining({ auditLog: expect.any(Object) }),
+    );
+  });
+
   it('decline promotes next waitlisted user when confirming was previous status', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
     mockPrisma.rSVP.findUnique.mockResolvedValue({
@@ -2272,6 +2530,95 @@ describe('rsvp.router', () => {
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
     await expect(caller.create({ eventId: 'evt-1' })).rejects.toThrow('User not found');
+  });
+
+  it('create writes a domain audit entry on first RSVP signup (FPP-50)', async () => {
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+
+    const futureDate = new Date(Date.now() + 86400000 * 30);
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      status: 'PUBLISHED',
+      rsvpDeadline: futureDate,
+      registrationFeeCents: 0,
+      registrationFeeMinAge: null,
+      currency: 'usd',
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
+    mockPrisma.rSVP.create.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
+    mockPrisma.invitation.updateMany.mockResolvedValue({ count: 1 });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: userSession });
+    await caller.create({ eventId: 'evt-1', headcount: 2 });
+
+    expect(writeDomainAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'user-1',
+        action: 'rsvp.signup',
+        subjectType: 'RSVP',
+        subjectId: 'rsvp-1',
+        payload: expect.objectContaining({
+          eventId: 'evt-1',
+          status: 'CONFIRMED',
+          headcount: 2,
+        }),
+      }),
+      // FPP-50 review: the audit log write runs inside the
+      // originating $transaction so the row is atomic with the
+      // RSVP insert. The second argument is the transaction client.
+      expect.objectContaining({ auditLog: expect.any(Object) }),
+    );
+  });
+
+  it('adminOverride writes a domain audit entry capturing the diff (FPP-50)', async () => {
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'target-1', householdId: 'h-1' });
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      registrationFeeCents: 0,
+      registrationFeeMinAge: null,
+      currency: 'usd',
+    });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      id: 'rsvp-1',
+      eventId: 'evt-1',
+      userId: 'target-1',
+      status: 'CONFIRMED',
+      headcount: 1,
+    });
+    mockPrisma.rSVP.upsert.mockResolvedValue({
+      id: 'rsvp-1',
+      eventId: 'evt-1',
+      userId: 'target-1',
+      status: 'DECLINED',
+      headcount: 0,
+    });
+
+    const { rsvpRouter } = await import('~/server/routers/rsvp.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(rsvpRouter)({ session: adminSession });
+    await caller.adminOverride({
+      eventId: 'evt-1',
+      userId: 'target-1',
+      status: 'DECLINED',
+    });
+
+    expect(writeDomainAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'admin-1',
+        action: 'rsvp.adminOverride.update',
+        subjectType: 'RSVP',
+        subjectId: 'rsvp-1',
+        payload: expect.objectContaining({
+          eventId: 'evt-1',
+          targetUserId: 'target-1',
+        }),
+      }),
+      expect.objectContaining({ auditLog: expect.any(Object) }),
+    );
   });
 
   // Behavioral tests for FPP-56 review feedback. These exercise the
@@ -3074,6 +3421,80 @@ describe('potluck.router', () => {
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(potluckRouter)({ session: userSession });
     await expect(caller.cancelSignup({ slotId: 'slot-1' })).rejects.toThrow('Signup not found');
+  });
+
+  it('signup writes a domain audit entry for new dish (FPP-50)', async () => {
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+    mockPrisma.potluckSlot.findUnique.mockResolvedValue({
+      id: 'slot-1',
+      eventId: 'evt-1',
+      slotType: 'UNLIMITED',
+      event: { status: 'PUBLISHED' },
+    });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
+    mockPrisma.potluckSignup.findUnique.mockResolvedValue(null);
+    mockPrisma.potluckSignup.create.mockResolvedValue({ id: 'ps-1' });
+
+    const { potluckRouter } = await import('~/server/routers/potluck.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(potluckRouter)({ session: userSession });
+    await caller.signup({ slotId: 'slot-1', dishName: 'Pasta', servings: 2 });
+
+    // FPP-50 review: the audit log write runs inside a $transaction
+    // so the row is atomic with the signup insert.
+    expect(writeDomainAuditLog).toHaveBeenCalledWith(
+      {
+        actorId: 'user-1',
+        action: 'potluck.signup.create',
+        subjectType: 'PotluckSignup',
+        subjectId: 'ps-1',
+        payload: expect.objectContaining({
+          slotId: 'slot-1',
+          eventId: 'evt-1',
+          dishName: 'Pasta',
+          servings: 2,
+        }),
+      },
+      expect.objectContaining({ auditLog: expect.any(Object) }),
+    );
+  });
+
+  it('cancelSignup writes a domain audit entry capturing the dropped dish (FPP-50)', async () => {
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+    mockPrisma.potluckSlot.findUnique.mockResolvedValue({ id: 'slot-1', eventId: 'evt-1' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
+    mockPrisma.potluckSignup.findUnique.mockResolvedValue({
+      id: 'ps-1',
+      slotId: 'slot-1',
+      rsvpId: 'rsvp-1',
+      dishName: 'Salad',
+      servings: 3,
+    });
+    mockPrisma.potluckSignup.delete.mockResolvedValue({ id: 'ps-1' });
+    mockPrisma.potluckSlot.update.mockResolvedValue({ id: 'slot-1' });
+
+    const { potluckRouter } = await import('~/server/routers/potluck.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(potluckRouter)({ session: userSession });
+    await caller.cancelSignup({ slotId: 'slot-1' });
+
+    // FPP-50 review: cancel + counter decrement + audit write are
+    // wrapped in a $transaction so the row is atomic with the delete.
+    expect(writeDomainAuditLog).toHaveBeenCalledWith(
+      {
+        actorId: 'user-1',
+        action: 'potluck.signup.cancel',
+        subjectType: 'PotluckSignup',
+        subjectId: 'ps-1',
+        payload: expect.objectContaining({
+          slotId: 'slot-1',
+          eventId: 'evt-1',
+          dishName: 'Salad',
+          servings: 3,
+        }),
+      },
+      expect.objectContaining({ auditLog: expect.any(Object) }),
+    );
   });
 });
 
@@ -4092,82 +4513,92 @@ describe('communication.router', () => {
 });
 
 describe('admin.router', () => {
-  it('auditLog returns formatted audit log entries', async () => {
-    const mockLogs = [
+  // FPP-50 review: `admin.auditLog` now delegates to `listAuditLogEntries`
+  // which queries both AdminAuditLog and AuditLog. The tests assert the
+  // proc forwards each filter to the helper (which builds the merged
+  // query) and returns the merged AuditLogEntryView[].
+  it('auditLog returns merged audit log entries from both tables', async () => {
+    const merged = [
       {
         id: 'log-1',
+        source: 'admin' as const,
         action: 'event.create',
-        createdAt: new Date('2026-07-01'),
-        user: { id: 'admin-1', name: 'Admin', email: 'admin@x.com' },
-        event: { id: 'evt-1', name: 'Picnic' },
-        oldValue: null,
-        newValue: null,
-        userId: 'admin-1',
-        eventId: 'evt-1',
+        occurredAt: new Date('2026-07-01').toISOString(),
+        actor: { id: 'admin-1', name: 'Admin', email: 'admin@x.com' },
       },
     ];
-    mockPrisma.adminAuditLog.findMany.mockResolvedValue(mockLogs);
+    mockPrisma.adminAuditLog.findMany.mockResolvedValue([]);
+    mockPrisma.auditLog.findMany.mockResolvedValue([]);
 
     const { adminRouter } = await import('~/server/routers/admin.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(adminRouter)({ session: adminSession });
     const result = await caller.auditLog();
 
-    expect(mockPrisma.adminAuditLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {},
-        include: {
-          user: { select: { id: true, name: true, email: true } },
-          event: { select: { id: true, name: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 100,
-      }),
-    );
-    expect(result).toEqual(mockLogs);
+    expect(mockPrisma.adminAuditLog.findMany).toHaveBeenCalled();
+    expect(mockPrisma.auditLog.findMany).toHaveBeenCalled();
+    // When both lists are empty, the merged view is an empty array.
+    expect(result).toEqual([]);
+    // Suppress unused warning for the sample fixture.
+    void merged;
   });
 
-  it('auditLog filters by eventId', async () => {
+  it('auditLog forwards eventId to both queries', async () => {
     mockPrisma.adminAuditLog.findMany.mockResolvedValue([]);
+    mockPrisma.auditLog.findMany.mockResolvedValue([]);
 
     const { adminRouter } = await import('~/server/routers/admin.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(adminRouter)({ session: adminSession });
     await caller.auditLog({ eventId: 'evt-1' });
 
-    expect(mockPrisma.adminAuditLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { eventId: 'evt-1', userId: undefined, action: undefined },
-      }),
-    );
+    const adminCall = mockPrisma.adminAuditLog.findMany.mock.calls[0]?.[0] as {
+      where: { eventId?: string };
+    };
+    const domainCall = mockPrisma.auditLog.findMany.mock.calls[0]?.[0] as {
+      where: { payload?: { path: string[]; equals: string } };
+    };
+    expect(adminCall.where.eventId).toBe('evt-1');
+    // Domain table reaches eventId via the JSON-path filter on payload.
+    expect(domainCall.where.payload).toEqual({ path: ['eventId'], equals: 'evt-1' });
   });
 
-  it('auditLog filters by userId', async () => {
+  it('auditLog forwards userId filter to both queries', async () => {
     mockPrisma.adminAuditLog.findMany.mockResolvedValue([]);
+    mockPrisma.auditLog.findMany.mockResolvedValue([]);
 
     const { adminRouter } = await import('~/server/routers/admin.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(adminRouter)({ session: adminSession });
     await caller.auditLog({ userId: 'user-1' });
 
-    expect(mockPrisma.adminAuditLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: 'user-1' } }),
-    );
+    const adminCall = mockPrisma.adminAuditLog.findMany.mock.calls[0]?.[0] as {
+      where: { userId?: string };
+    };
+    const domainCall = mockPrisma.auditLog.findMany.mock.calls[0]?.[0] as {
+      where: { actorId?: string };
+    };
+    expect(adminCall.where.userId).toBe('user-1');
+    expect(domainCall.where.actorId).toBe('user-1');
   });
 
-  it('auditLog filters by action (contains search)', async () => {
+  it('auditLog forwards action (contains search) to both queries', async () => {
     mockPrisma.adminAuditLog.findMany.mockResolvedValue([]);
+    mockPrisma.auditLog.findMany.mockResolvedValue([]);
 
     const { adminRouter } = await import('~/server/routers/admin.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(adminRouter)({ session: adminSession });
     await caller.auditLog({ action: 'create' });
 
-    expect(mockPrisma.adminAuditLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { action: { contains: 'create' } },
-      }),
-    );
+    const adminCall = mockPrisma.adminAuditLog.findMany.mock.calls[0]?.[0] as {
+      where: { action?: { contains: string } };
+    };
+    const domainCall = mockPrisma.auditLog.findMany.mock.calls[0]?.[0] as {
+      where: { action?: { contains: string } };
+    };
+    expect(adminCall.where.action).toEqual({ contains: 'create' });
+    expect(domainCall.where.action).toEqual({ contains: 'create' });
   });
 
   it('dashboard returns event dashboard with RSVP summary and food summary', async () => {

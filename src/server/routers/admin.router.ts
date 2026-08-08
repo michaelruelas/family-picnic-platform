@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { ChargeStatus, RefundStatus, RegistrationStatus, RSVPStatus } from '~/lib/generated/enums';
 import { writeAuditLog } from '~/lib/audit';
+import { listAuditLogEntries } from '~/server/audit-entries';
 import { createRefund, isConfigured as stripeConfigured } from '~/lib/stripe';
 import { formatAmount } from '~/lib/currency';
 import { sendRegistrationReceipt } from '~/lib/receipt';
@@ -15,41 +16,43 @@ import {
   refundInputSchema,
 } from '~/lib/schemas/payment';
 
+const isoDate = z
+  .string()
+  .trim()
+  .refine((value) => !Number.isNaN(Date.parse(value)), 'Invalid ISO date');
+
 export const adminRouter = router({
   auditLog: auditedAdminProcedure
+    // FPP-50 review: accept the four new filter fields
+    // (subjectType, subjectId, from, to) so the merged audit-log
+    // table can be queried through tRPC. The REST endpoint under
+    // /api/admin/audit-log uses the same schema.
     .input(
       z
         .object({
-          eventId: z.string().optional(),
-          userId: z.string().optional(),
-          action: z.string().optional(),
+          eventId: z.string().trim().min(1).optional(),
+          userId: z.string().trim().min(1).optional(),
+          action: z.string().trim().min(1).optional(),
+          subjectType: z.string().trim().min(1).optional(),
+          subjectId: z.string().trim().min(1).optional(),
+          from: isoDate.optional(),
+          to: isoDate.optional(),
         })
         .optional(),
     )
     .query(async ({ input }) => {
-      return prisma.adminAuditLog.findMany({
-        where: {
-          eventId: input?.eventId,
-          userId: input?.userId,
-          action: input?.action ? { contains: input.action } : undefined,
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          event: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 100,
+      // Delegate to the shared helper so the tRPC proc and the
+      // REST endpoint at /api/admin/audit-log stay in lockstep.
+      // The helper merges AdminAuditLog and AuditLog rows and
+      // stamps each entry with `source: 'admin' | 'domain'`.
+      return listAuditLogEntries({
+        eventId: input?.eventId,
+        userId: input?.userId,
+        action: input?.action,
+        subjectType: input?.subjectType,
+        subjectId: input?.subjectId,
+        from: input?.from ? new Date(input.from) : undefined,
+        to: input?.to ? new Date(input.to) : undefined,
       });
     }),
 

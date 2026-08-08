@@ -7,6 +7,8 @@ const prismaMock = vi.hoisted(() => ({
   user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
   event: { findUnique: vi.fn() },
   adminAuditLog: { findMany: vi.fn(), create: vi.fn() },
+  // FPP-50: domain-event audit log table queried alongside AdminAuditLog.
+  auditLog: { findMany: vi.fn() },
   household: { create: vi.fn() },
   rSVP: { create: vi.fn() },
 }));
@@ -85,6 +87,7 @@ describe('GET /api/admin/audit-log', () => {
   it('returns logs without filters', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
     prismaMock.adminAuditLog.findMany.mockResolvedValue([{ id: 'log-1' }] as never);
+    prismaMock.auditLog.findMany.mockResolvedValue([] as never);
     const res = await GETAudit(new NextRequest('http://x', { method: 'GET' }));
     expect(res.status).toBe(200);
   });
@@ -92,11 +95,38 @@ describe('GET /api/admin/audit-log', () => {
   it('passes through filter params', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
     prismaMock.adminAuditLog.findMany.mockResolvedValue([] as never);
+    prismaMock.auditLog.findMany.mockResolvedValue([] as never);
     const res = await GETAudit(
       new NextRequest('http://x?eventId=e-1&userId=u-1&action=CREATE', { method: 'GET' }),
     );
     expect(res.status).toBe(200);
     expect(prismaMock.adminAuditLog.findMany).toHaveBeenCalled();
+  });
+
+  it('returns 400 on invalid date filter', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    const res = await GETAudit(new NextRequest('http://x?from=not-a-date', { method: 'GET' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('queries AuditLog when subject filters are present', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    prismaMock.adminAuditLog.findMany.mockResolvedValue([] as never);
+    prismaMock.auditLog.findMany.mockResolvedValue([
+      {
+        id: 'al-1',
+        action: 'rsvp.signup',
+        subjectType: 'RSVP',
+        subjectId: 'rsvp-1',
+        occurredAt: new Date(),
+        actor: { id: 'u-1', name: 'Admin', email: 'a@b.com' },
+      },
+    ] as never);
+    const res = await GETAudit(
+      new NextRequest('http://x?subjectType=RSVP&subjectId=rsvp-1', { method: 'GET' }),
+    );
+    expect(res.status).toBe(200);
+    expect(prismaMock.auditLog.findMany).toHaveBeenCalled();
   });
 });
 
