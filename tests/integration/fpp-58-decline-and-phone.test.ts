@@ -29,27 +29,34 @@ describe('FPP-58: RSVP names + decline path + phone capture', () => {
   const smsDispatchPath = path.join(process.cwd(), 'src/lib/sms-dispatch.ts');
 
   describe('FPP-35: explicit decline path for users with no RSVP', () => {
+    // The no-RSVP branch is the early-return that handles
+    // `!existingRsvp && !isPast` (the "waiting on your invitation"
+    // card). It lives inside an `if` block, so split on the
+    // branch marker rather than the indentation of the JSX.
+    const noRsvpBranch = (content: string) =>
+      content.split('if (!existingRsvp && !isPast) {')[1] ?? '';
+
     it('renders a "Can\'t make it" button on the empty-state card', async () => {
       const content = await fs.readFile(rsvpCardPath, 'utf-8');
-      // The button must live in the no-RSVP branch (the bottom of
-      // the file), not just on the CONFIRMED branch.
-      const noRsvpBranch = content.split('return (\n    <>\n      <div')[1] ?? '';
-      expect(noRsvpBranch).toMatch(/Can.?t make it/);
+      const branch = noRsvpBranch(content);
+      // The button must live in the no-RSVP branch, not just on
+      // the CONFIRMED branch.
+      expect(branch).toMatch(/Can.?t make it/);
       // Test id lets the e2e and integration suites target the
       // button without scraping copy.
-      expect(noRsvpBranch).toMatch(/data-testid="rsvp-card-decline-link"/);
+      expect(branch).toMatch(/data-testid="rsvp-card-decline-link"/);
       // The decline link must trigger the same `decline.mutateAsync`
       // call the confirmed-state card uses, so a first-time decline
       // flows through the same router handler.
-      expect(noRsvpBranch).toMatch(/handleDecline/);
+      expect(branch).toMatch(/handleDecline/);
     });
 
     it('hides the decline link when RSVP is closed (no past-deadline surprises)', async () => {
       const content = await fs.readFile(rsvpCardPath, 'utf-8');
-      const noRsvpBranch = content.split('return (\n    <>\n      <div')[1] ?? '';
+      const branch = noRsvpBranch(content);
       // The button is gated on `isRsvpOpen` so a closed event does
       // not let a user write a DECLINED row past the deadline.
-      expect(noRsvpBranch).toMatch(/isRsvpOpen\s*&&\s*\(\s*<button\s+onClick=\{handleDecline\}/);
+      expect(branch).toMatch(/isRsvpOpen\s*&&\s*\(\s*<button\s+onClick=\{handleDecline\}/);
     });
 
     it('also surfaces the decline path on the mobile sticky bar', async () => {
