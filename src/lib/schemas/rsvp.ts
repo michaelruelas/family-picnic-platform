@@ -35,6 +35,13 @@ export const rsvpAdminOverrideSchema = z.object({
   eventId: z.string().min(1, 'Event ID is required'),
   userId: z.string().min(1, 'User ID is required'),
   status: z.enum([RSVPStatus.CONFIRMED, RSVPStatus.DECLINED]),
+  // FPP-102: optional decline note the admin can attach on the
+  // manual-entry modal. Mirrors `rsvpDeclineSchema`'s shape so the
+  // same trim + 1000-char cap rules apply on the admin path. The
+  // REST route and modal both read this field; the tRPC
+  // `adminOverride` proc accepts the value too (it is persisted
+  // to the RSVP row and forwarded to the event owners).
+  declineMessage: z.string().trim().max(1000, 'Decline note is too long').optional(),
   ...baseFields,
 });
 

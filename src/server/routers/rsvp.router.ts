@@ -958,6 +958,14 @@ export const rsvpRouter = router({
         throw new Error('Event not found');
       }
 
+      // FPP-102: optional decline note. The schema trims the
+      // value before we see it, so an empty string is the only
+      // "no note" sentinel. Map `""` to `null` so the column
+      // stays unset and the audit log can detect the difference
+      // between "no note" and "empty note typed in".
+      const declineMessage =
+        input.declineMessage && input.declineMessage.length > 0 ? input.declineMessage : null;
+
       const householdId = targetUser.householdId ?? targetUser.id;
       const attendances = input.memberAttendances;
       const headcount =
@@ -972,7 +980,7 @@ export const rsvpRouter = router({
         });
       }
 
-      return prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx) => {
         const before = await tx.rSVP.findUnique({
           where: {
             eventId_userId: {
@@ -994,6 +1002,10 @@ export const rsvpRouter = router({
             status: input.status,
             headcount,
             respondedAt: new Date(),
+            // FPP-102: only stamp declineMessage on decline. An
+            // admin re-confirming a previously-declined RSVP
+            // should clear the stale note.
+            declineMessage: input.status === RSVPStatus.DECLINED ? declineMessage : null,
           },
           create: {
             eventId: input.eventId,
@@ -1002,6 +1014,7 @@ export const rsvpRouter = router({
             status: input.status,
             headcount,
             respondedAt: new Date(),
+            declineMessage: input.status === RSVPStatus.DECLINED ? declineMessage : null,
           },
         });
 
@@ -1017,6 +1030,13 @@ export const rsvpRouter = router({
             householdId,
             attendances,
           });
+        } else if (input.status === RSVPStatus.DECLINED) {
+          // FPP-102: when the admin declines without sending a new
+          // attendance list (the modal hides the per-member grid on
+          // decline), flip any pre-existing YES/MAYBE rows to NO so
+          // the decline produces a consistent "no one is going"
+          // snapshot. Mirrors the user-facing decline proc.
+          await markAllAttendanceNo(tx, upserted.id);
         }
 
         // Reload the FULL attendance snapshot for the fee calculation.
@@ -1063,6 +1083,7 @@ export const rsvpRouter = router({
               targetUserId: input.userId,
               before: before ? { status: before.status, headcount: before.headcount } : null,
               after: { status: upserted.status, headcount: upserted.headcount },
+              declineMessage: input.status === RSVPStatus.DECLINED ? declineMessage : null,
               memberAttendances: finalAttendanceRows.map((a) => ({
                 householdMemberId: a.householdMemberId,
                 memberName: a.memberNameSnapshot,
@@ -1076,6 +1097,85 @@ export const rsvpRouter = router({
 
         return upserted;
       });
+
+      // FPP-102: forward a non-empty decline note from the admin
+      // path to the event owner. Mirrors the user-facing decline
+      // proc so a manual DECLINED entry from the admin MembersTable
+      // also delivers the note via the FPP-101 email worker.
+      if (input.status === RSVPStatus.DECLINED && declineMessage) {
+        const owners = await prisma.eventAdmin.findMany({
+          where: { eventId: input.eventId, role: AdminPermission.OWNER },
+          select: { userId: true },
+        });
+        if (owners.length > 0) {
+          await prisma.communicationLog.createMany({
+            data: owners.map((owner) => ({
+              eventId: input.eventId,
+              sentByUserId: ctx.session.user.id,
+              recipientUserId: owner.userId,
+              channel: CommunicationChannel.EMAIL,
+              status: CommunicationStatus.QUEUED,
+              kind: CommunicationLogKind.DECLINE_NOTE,
+              body: declineMessage,
+            })),
+          });
+        }
+      }
+
+      return result;
+    }),
+
+  /**
+   * FPP-102: admin-only RSVP detail fetch used by the manual entry
+   * modal. Returns the full RSVP with member attendances plus the
+   * household's current roster so the modal can prefill status,
+   * headcount, decline message, and per-member attendance. Returns
+   * `null` when no RSVP row exists for the supplied id (so the
+   * caller can branch on missing data).
+   */
+  getById: auditedAdminProcedure
+    .input(z.object({ rsvpId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const rsvp = await prisma.rSVP.findUnique({
+        where: { id: input.rsvpId },
+        include: {
+          // The user/household context (name, email) is already
+          // passed to the modal as the `targetUser` prop from the
+          // row the admin clicked. We only need the householdId
+          // to scope the roster lookup.
+          user: { select: { householdId: true } },
+          memberAttendances: { orderBy: { createdAt: 'asc' } },
+        },
+      });
+      if (!rsvp) return null;
+
+      const householdId = rsvp.user.householdId ?? rsvp.userId;
+      const members = await prisma.householdMember.findMany({
+        where: { householdId, deletedAt: null },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, name: true, age: true, relationship: true },
+      });
+
+      return {
+        rsvp: {
+          id: rsvp.id,
+          eventId: rsvp.eventId,
+          userId: rsvp.userId,
+          householdId: rsvp.householdId,
+          status: rsvp.status,
+          headcount: rsvp.headcount,
+          declineMessage: rsvp.declineMessage,
+          respondedAt: rsvp.respondedAt ? rsvp.respondedAt.toISOString() : null,
+          memberAttendances: rsvp.memberAttendances.map((a) => ({
+            id: a.id,
+            householdMemberId: a.householdMemberId,
+            memberNameSnapshot: a.memberNameSnapshot,
+            memberAgeSnapshot: a.memberAgeSnapshot,
+            attending: a.attending,
+          })),
+        },
+        members,
+      };
     }),
 
   getHeadcount: protectedProcedure
