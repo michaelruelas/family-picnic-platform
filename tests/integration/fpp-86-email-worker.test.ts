@@ -25,6 +25,20 @@ vi.mock('~/lib/sendgrid', () => ({
   sendEmail: (...args: unknown[]) => mockSendEmail(...args),
 }));
 
+const mockSendSMS = vi.hoisted(() => vi.fn());
+const mockTwilioConfigured = vi.hoisted(() => vi.fn());
+const mockIsValidE164 = vi.hoisted(() => vi.fn());
+vi.mock('~/lib/twilio', () => ({
+  sendSMS: (...args: unknown[]) => mockSendSMS(...args),
+  isConfigured: () => mockTwilioConfigured(),
+  isValidE164: (val: unknown) => mockIsValidE164(val),
+}));
+
+const mockWriteAuditLog = vi.hoisted(() => vi.fn());
+vi.mock('~/lib/audit', () => ({
+  writeAuditLog: (...args: unknown[]) => mockWriteAuditLog(...args),
+}));
+
 const mockLoggerWarn = vi.hoisted(() => vi.fn());
 const mockLoggerInfo = vi.hoisted(() => vi.fn());
 const mockLoggerError = vi.hoisted(() => vi.fn());
@@ -46,6 +60,7 @@ vi.mock('~/lib/generated/enums', () => ({
     UNSUBSCRIBED: 'UNSUBSCRIBED',
   },
   CommunicationChannel: { EMAIL: 'EMAIL', SMS: 'SMS' },
+  CommunicationPreference: { EMAIL: 'EMAIL', SMS: 'SMS', BOTH: 'BOTH', NONE: 'NONE' },
   CommunicationLogKind: {
     BROADCAST: 'BROADCAST',
     INVITATION: 'INVITATION',
@@ -84,9 +99,16 @@ beforeEach(() => {
   mockPrisma.communicationLog.update.mockReset();
   mockPrisma.user.findUnique.mockReset();
   mockSendEmail.mockReset();
+  mockSendSMS.mockReset();
+  mockTwilioConfigured.mockReset();
+  mockIsValidE164.mockReset();
+  mockWriteAuditLog.mockReset();
   mockLoggerWarn.mockReset();
   mockLoggerInfo.mockReset();
   mockLoggerError.mockReset();
+  vi.stubEnv('TWILIO_ENABLED', '');
+  mockTwilioConfigured.mockReturnValue(true);
+  mockIsValidE164.mockReturnValue(true);
 });
 
 // No-op step runner. The openworkflow worker would persist each
@@ -108,6 +130,7 @@ describe('FPP-101: deliverCommunications end-to-end', () => {
         kind: 'INVITATION',
         recipientUserId: 'user-1',
         eventId: 'event-1',
+        sentByUserId: 'admin-1',
       },
     ]);
     mockPrisma.user.findUnique.mockResolvedValue({
@@ -151,6 +174,7 @@ describe('FPP-101: deliverCommunications end-to-end', () => {
   });
 
   it('routes an SMS row to FAILED with sms_disabled_for_launch and never touches SendGrid', async () => {
+    vi.stubEnv('TWILIO_ENABLED', '');
     mockPrisma.communicationLog.findMany.mockResolvedValue([
       {
         id: 'log-sms-1',
@@ -159,6 +183,7 @@ describe('FPP-101: deliverCommunications end-to-end', () => {
         kind: 'INVITATION',
         recipientUserId: 'user-1',
         eventId: 'event-1',
+        sentByUserId: 'admin-1',
       },
     ]);
     mockPrisma.communicationLog.update.mockResolvedValue({ id: 'log-sms-1' });
@@ -182,6 +207,58 @@ describe('FPP-101: deliverCommunications end-to-end', () => {
     expect(result).toEqual({ delivered: 0, failed: 1, skipped: 0 });
   });
 
+  it('delivers an SMS row via Twilio when TWILIO_ENABLED=true and recipient has consented', async () => {
+    vi.stubEnv('TWILIO_ENABLED', 'true');
+    mockTwilioConfigured.mockReturnValue(true);
+    mockIsValidE164.mockReturnValue(true);
+    mockPrisma.communicationLog.findMany.mockResolvedValue([
+      {
+        id: 'log-sms-2',
+        channel: 'SMS',
+        body: 'Picnic tomorrow at 9am',
+        kind: 'BROADCAST',
+        recipientUserId: 'user-2',
+        eventId: 'event-1',
+        sentByUserId: 'admin-1',
+      },
+    ]);
+    mockPrisma.user.findUnique.mockResolvedValue({
+      phoneNumber: '+15551234567',
+      smsConsent: true,
+    });
+    mockPrisma.communicationLog.update.mockResolvedValue({ id: 'log-sms-2' });
+    mockSendSMS.mockResolvedValue({ success: true, messageId: 'SMxyz789' });
+    mockWriteAuditLog.mockResolvedValue(undefined);
+
+    const { deliverCommunications } = await import('../../src/lib/ow-workflows');
+    const innerFn = (
+      deliverCommunications as unknown as { fn: (ctx: { step: unknown }) => Promise<unknown> }
+    ).fn;
+    const result = await innerFn({ step: mockStep });
+
+    expect(mockSendSMS).toHaveBeenCalledTimes(1);
+    expect(mockSendSMS).toHaveBeenCalledWith({
+      to: '+15551234567',
+      body: 'Picnic tomorrow at 9am',
+    });
+    expect(mockPrisma.communicationLog.update).toHaveBeenCalledWith({
+      where: { id: 'log-sms-2' },
+      data: expect.objectContaining({
+        status: 'SENT',
+        messageId: 'SMxyz789',
+        toPhoneNumber: '+15551234567',
+      }),
+    });
+    expect(mockWriteAuditLog).toHaveBeenCalledWith({
+      userId: 'admin-1',
+      eventId: 'event-1',
+      action: 'communication.workerSmsDeliver',
+      oldValue: { logId: 'log-sms-2', recipientUserId: 'user-2' },
+      newValue: { status: 'SENT', messageId: 'SMxyz789' },
+    });
+    expect(result).toEqual({ delivered: 1, failed: 0, skipped: 0 });
+  });
+
   it('skips an email row when the recipient opted out and updates the row to SKIPPED', async () => {
     mockPrisma.communicationLog.findMany.mockResolvedValue([
       {
@@ -191,6 +268,7 @@ describe('FPP-101: deliverCommunications end-to-end', () => {
         kind: 'INVITATION',
         recipientUserId: 'user-1',
         eventId: 'event-1',
+        sentByUserId: 'admin-1',
       },
     ]);
     mockPrisma.user.findUnique.mockResolvedValue({
@@ -263,7 +341,7 @@ describe('FPP-101: schema + migration + script wiring', () => {
     );
   });
 
-  it('ow-workflows.ts wires deliverOne to email by channel and routes SMS to FAILED', async () => {
+  it('ow-workflows.ts wires deliverOne to email by channel and routes SMS to FAILED when disabled', async () => {
     const src = await fs.readFile(owWorkflowsPath, 'utf-8');
     expect(src).toMatch(/export async function deliverOne/);
     expect(src).toMatch(/sendEmail/);
@@ -272,13 +350,20 @@ describe('FPP-101: schema + migration + script wiring', () => {
     expect(src).toMatch(/CommunicationStatus\.SKIPPED/);
     expect(src).toMatch(/CommunicationStatus\.SENT/);
     expect(src).toMatch(/CommunicationStatus\.FAILED/);
+    // FPP-86: SMS dispatch gated behind TWILIO_ENABLED
+    expect(src).toMatch(/TWILIO_ENABLED/);
+    expect(src).toMatch(/sendSMS/);
+    expect(src).toMatch(/smsConsent/);
+    expect(src).toMatch(/writeAuditLog/);
+    expect(src).toMatch(/communication\.workerSmsDeliver/);
     // The fetch-queued projection must include the fields the worker
-    // needs to dispatch (body, kind, recipientUserId, channel).
+    // needs to dispatch (body, kind, recipientUserId, channel, sentByUserId).
     const fetchBlock = src.split(/step\.run\(\s*\{\s*name:\s*'fetch-queued'\s*\}/)[1] ?? '';
     expect(fetchBlock).toMatch(/body:\s*true/);
     expect(fetchBlock).toMatch(/kind:\s*true/);
     expect(fetchBlock).toMatch(/recipientUserId:\s*true/);
     expect(fetchBlock).toMatch(/channel:\s*true/);
+    expect(fetchBlock).toMatch(/sentByUserId:\s*true/);
   });
 
   it('retry-failed-comms script exists and re-queues FAILED rows', async () => {
@@ -294,6 +379,11 @@ describe('FPP-101: schema + migration + script wiring', () => {
       scripts: Record<string, string>;
     };
     expect(pkg.scripts['comms:retry-failed']).toBe('bun run scripts/retry-failed-comms.ts');
+  });
+
+  it('.env.example documents TWILIO_ENABLED', async () => {
+    const envExample = await fs.readFile(path.join(process.cwd(), '.env.example'), 'utf-8');
+    expect(envExample).toMatch(/TWILIO_ENABLED/);
   });
 });
 

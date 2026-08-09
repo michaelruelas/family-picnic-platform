@@ -12,6 +12,20 @@ vi.mock('~/lib/sendgrid', () => ({
   sendEmail: (...args: unknown[]) => mockSendEmail(...args),
 }));
 
+const mockSendSMS = vi.hoisted(() => vi.fn());
+const mockTwilioConfigured = vi.hoisted(() => vi.fn());
+const mockIsValidE164 = vi.hoisted(() => vi.fn());
+vi.mock('~/lib/twilio', () => ({
+  sendSMS: (...args: unknown[]) => mockSendSMS(...args),
+  isConfigured: () => mockTwilioConfigured(),
+  isValidE164: (val: unknown) => mockIsValidE164(val),
+}));
+
+const mockWriteAuditLog = vi.hoisted(() => vi.fn());
+vi.mock('~/lib/audit', () => ({
+  writeAuditLog: (...args: unknown[]) => mockWriteAuditLog(...args),
+}));
+
 const mockLoggerWarn = vi.hoisted(() => vi.fn());
 const mockLoggerError = vi.hoisted(() => vi.fn());
 const mockLoggerInfo = vi.hoisted(() => vi.fn());
@@ -33,6 +47,7 @@ vi.mock('~/lib/generated/enums', () => ({
     UNSUBSCRIBED: 'UNSUBSCRIBED',
   },
   CommunicationChannel: { EMAIL: 'EMAIL', SMS: 'SMS' },
+  CommunicationPreference: { EMAIL: 'EMAIL', SMS: 'SMS', BOTH: 'BOTH', NONE: 'NONE' },
   CommunicationLogKind: {
     BROADCAST: 'BROADCAST',
     INVITATION: 'INVITATION',
@@ -70,9 +85,16 @@ beforeEach(() => {
   mockPrisma.user.findUnique.mockReset();
   mockPrisma.communicationLog.update.mockReset();
   mockSendEmail.mockReset();
+  mockSendSMS.mockReset();
+  mockTwilioConfigured.mockReset();
+  mockIsValidE164.mockReset();
+  mockWriteAuditLog.mockReset();
   mockLoggerWarn.mockReset();
   mockLoggerError.mockReset();
   mockLoggerInfo.mockReset();
+  vi.stubEnv('TWILIO_ENABLED', '');
+  mockTwilioConfigured.mockReturnValue(true);
+  mockIsValidE164.mockReturnValue(true);
 });
 
 const emailLog = {
@@ -82,6 +104,7 @@ const emailLog = {
   kind: 'INVITATION' as const,
   recipientUserId: 'user-1',
   eventId: 'event-1',
+  sentByUserId: 'admin-1',
 };
 
 const smsLog = {
@@ -91,6 +114,7 @@ const smsLog = {
   kind: 'INVITATION' as const,
   recipientUserId: 'user-1',
   eventId: 'event-1',
+  sentByUserId: 'admin-1',
 };
 
 describe('deliverOne (FPP-101)', () => {
@@ -267,8 +291,9 @@ describe('deliverOne (FPP-101)', () => {
     });
   });
 
-  describe('SMS inert branch', () => {
+  describe('SMS branch (TWILIO_ENABLED=false)', () => {
     it('FAILS with sms_disabled_for_launch and never imports Twilio', async () => {
+      vi.stubEnv('TWILIO_ENABLED', '');
       const { deliverOne } = await import('../ow-workflows');
 
       const result = await deliverOne(smsLog);
@@ -282,12 +307,8 @@ describe('deliverOne (FPP-101)', () => {
           errorMessage: 'sms_disabled_for_launch',
         },
       });
-      // The SMS branch must never reach the recipient lookup.
       expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
-      // The SMS branch must never call SendGrid.
-      expect(mockSendEmail).not.toHaveBeenCalled();
-      // A warning lands in the logger so the admin can see the
-      // inert branch fired.
+      expect(mockSendSMS).not.toHaveBeenCalled();
       expect(mockLoggerWarn).toHaveBeenCalledTimes(1);
       const [context, message] = mockLoggerWarn.mock.calls[0]!;
       expect(message).toContain('sms_disabled_for_launch');
@@ -295,6 +316,181 @@ describe('deliverOne (FPP-101)', () => {
         logId: 'log-sms',
         recipientUserId: 'user-1',
         eventId: 'event-1',
+      });
+    });
+  });
+
+  describe('SMS branch (TWILIO_ENABLED=true)', () => {
+    beforeEach(() => {
+      vi.stubEnv('TWILIO_ENABLED', 'true');
+      mockTwilioConfigured.mockReturnValue(true);
+      mockIsValidE164.mockReturnValue(true);
+    });
+
+    it('marks SENT and calls sendSMS when recipient has consented and has a valid phone', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        phoneNumber: '+15551234567',
+        smsConsent: true,
+      });
+      mockSendSMS.mockResolvedValue({ success: true, messageId: 'SMabc123' });
+      const { deliverOne } = await import('../ow-workflows');
+
+      const result = await deliverOne(smsLog);
+
+      expect(result).toEqual({ status: 'SENT' });
+      expect(mockSendSMS).toHaveBeenCalledWith({
+        to: '+15551234567',
+        body: 'Hi there',
+      });
+      expect(mockPrisma.communicationLog.update).toHaveBeenCalledWith({
+        where: { id: 'log-sms' },
+        data: {
+          status: 'SENT',
+          messageId: 'SMabc123',
+          toPhoneNumber: '+15551234567',
+          deliveredAt: expect.any(Date),
+          errorCode: null,
+          errorMessage: null,
+        },
+      });
+      expect(mockWriteAuditLog).toHaveBeenCalledWith({
+        userId: 'admin-1',
+        eventId: 'event-1',
+        action: 'communication.workerSmsDeliver',
+        oldValue: { logId: 'log-sms', recipientUserId: 'user-1' },
+        newValue: { status: 'SENT', messageId: 'SMabc123' },
+      });
+    });
+
+    it('SKIPS with NO_CONSENT when smsConsent is false and writes audit log', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        phoneNumber: '+15551234567',
+        smsConsent: false,
+      });
+      const { deliverOne } = await import('../ow-workflows');
+
+      const result = await deliverOne(smsLog);
+
+      expect(result).toEqual({ status: 'SKIPPED' });
+      expect(mockSendSMS).not.toHaveBeenCalled();
+      expect(mockPrisma.communicationLog.update).toHaveBeenCalledWith({
+        where: { id: 'log-sms' },
+        data: {
+          status: 'SKIPPED',
+          errorCode: 'NO_CONSENT',
+          errorMessage: 'Recipient has not granted SMS consent',
+        },
+      });
+      expect(mockWriteAuditLog).toHaveBeenCalledWith({
+        userId: 'admin-1',
+        eventId: 'event-1',
+        action: 'communication.workerSmsDeliver',
+        oldValue: { logId: 'log-sms', recipientUserId: 'user-1' },
+        newValue: { status: 'SKIPPED', error: 'NO_CONSENT' },
+      });
+    });
+
+    it('SKIPS with NO_PHONE when phone is missing and writes audit log', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        phoneNumber: null,
+        smsConsent: true,
+      });
+      const { deliverOne } = await import('../ow-workflows');
+
+      const result = await deliverOne(smsLog);
+
+      expect(result).toEqual({ status: 'SKIPPED' });
+      expect(mockSendSMS).not.toHaveBeenCalled();
+      expect(mockPrisma.communicationLog.update).toHaveBeenCalledWith({
+        where: { id: 'log-sms' },
+        data: {
+          status: 'SKIPPED',
+          errorCode: 'NO_PHONE',
+          errorMessage: 'Recipient has no valid E.164 phone number on file',
+        },
+      });
+      expect(mockWriteAuditLog).toHaveBeenCalledWith({
+        userId: 'admin-1',
+        eventId: 'event-1',
+        action: 'communication.workerSmsDeliver',
+        oldValue: { logId: 'log-sms', recipientUserId: 'user-1' },
+        newValue: { status: 'SKIPPED', error: 'NO_PHONE' },
+      });
+    });
+
+    it('FAILS with TWILIO_ERROR when sendSMS returns failure and writes audit log', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        phoneNumber: '+15551234567',
+        smsConsent: true,
+      });
+      mockSendSMS.mockResolvedValue({
+        success: false,
+        error: 'Twilio rejected',
+        errorCode: 21211,
+      });
+      const { deliverOne } = await import('../ow-workflows');
+
+      const result = await deliverOne(smsLog);
+
+      expect(result).toEqual({ status: 'FAILED' });
+      expect(mockPrisma.communicationLog.update).toHaveBeenCalledWith({
+        where: { id: 'log-sms' },
+        data: {
+          status: 'FAILED',
+          toPhoneNumber: '+15551234567',
+          errorCode: '21211',
+          errorMessage: 'Twilio rejected',
+        },
+      });
+      expect(mockWriteAuditLog).toHaveBeenCalledWith({
+        userId: 'admin-1',
+        eventId: 'event-1',
+        action: 'communication.workerSmsDeliver',
+        oldValue: { logId: 'log-sms', recipientUserId: 'user-1' },
+        newValue: { status: 'FAILED', error: 'Twilio rejected', errorCode: '21211' },
+      });
+    });
+
+    it('FAILS with TWILIO_NOT_CONFIGURED when enabled but credentials missing', async () => {
+      mockTwilioConfigured.mockReturnValue(false);
+      const { deliverOne } = await import('../ow-workflows');
+
+      const result = await deliverOne(smsLog);
+
+      expect(result).toEqual({ status: 'FAILED' });
+      expect(mockSendSMS).not.toHaveBeenCalled();
+      expect(mockPrisma.communicationLog.update).toHaveBeenCalledWith({
+        where: { id: 'log-sms' },
+        data: {
+          status: 'FAILED',
+          errorCode: 'TWILIO_NOT_CONFIGURED',
+          errorMessage: 'TWILIO_ENABLED is true but Twilio credentials are missing',
+        },
+      });
+      expect(mockWriteAuditLog).toHaveBeenCalledWith({
+        userId: 'admin-1',
+        eventId: 'event-1',
+        action: 'communication.workerSmsDeliver',
+        oldValue: { logId: 'log-sms', recipientUserId: 'user-1' },
+        newValue: { status: 'FAILED', error: 'TWILIO_NOT_CONFIGURED' },
+      });
+    });
+
+    it('SKIPS with NO_RECIPIENT when recipientUserId is null', async () => {
+      const { deliverOne } = await import('../ow-workflows');
+
+      const result = await deliverOne({ ...smsLog, recipientUserId: null });
+
+      expect(result).toEqual({ status: 'SKIPPED' });
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+      expect(mockSendSMS).not.toHaveBeenCalled();
+      expect(mockPrisma.communicationLog.update).toHaveBeenCalledWith({
+        where: { id: 'log-sms' },
+        data: {
+          status: 'SKIPPED',
+          errorCode: 'NO_RECIPIENT',
+          errorMessage: 'CommunicationLog has no recipientUserId',
+        },
       });
     });
   });
