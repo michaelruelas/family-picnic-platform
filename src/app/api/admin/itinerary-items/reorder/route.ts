@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdminApi } from '~/lib/admin-auth';
+import { requireEventAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { itineraryItemReorderSchema } from '~/lib/schemas/itinerary';
 
@@ -11,19 +11,30 @@ import { itineraryItemReorderSchema } from '~/lib/schemas/itinerary';
 // than a delta) keeps the contract simple and lets the server
 // detect mismatches when an item was deleted in another tab.
 export async function POST(request: Request) {
-  const auth = await requireAdminApi();
+  // FPP-65 audit: per-event gate. A HOST with an EventAdmin row on
+  // the target event can reorder the itinerary for their own
+  // picnic; super-admins can reorder any event. The body is
+  // parsed once and reused so the request stream is not consumed
+  // twice.
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const probe = itineraryItemReorderSchema.safeParse(body);
+  if (!probe.success) {
+    const firstError = probe.error.issues[0];
+    return NextResponse.json({ error: firstError?.message ?? 'Invalid input' }, { status: 400 });
+  }
+
+  const auth = await requireEventAdminApi(probe.data.eventId);
   if (!auth.ok) return auth.response;
-  const { session } = auth;
-  void session;
+  void auth.session;
 
   try {
-    const body = await request.json();
-    const parseResult = itineraryItemReorderSchema.safeParse(body);
-    if (!parseResult.success) {
-      const firstError = parseResult.error.issues[0];
-      return NextResponse.json({ error: firstError?.message ?? 'Invalid input' }, { status: 400 });
-    }
-    const input = parseResult.data;
+    const input = probe.data;
 
     const event = await prisma.event.findUnique({
       where: { id: input.eventId },

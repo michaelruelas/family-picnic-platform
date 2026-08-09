@@ -11,14 +11,14 @@ async function main() {
 
   const TEST_PASSWORD = 'password123';
 
-  // Admin account
+  // Super-admin account (FPP-65: was ADMIN before the FPP-65 migration).
   const admin = await prisma.user.upsert({
     where: { email: 'admin@family-picnic.example.com' },
-    update: {},
+    update: { role: 'SUPER_ADMIN' },
     create: {
       email: 'admin@family-picnic.example.com',
       name: 'Admin',
-      role: 'ADMIN',
+      role: 'SUPER_ADMIN',
       devPassword: TEST_PASSWORD,
     },
   });

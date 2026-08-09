@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { requireAdminPage } from '~/lib/admin-auth';
+import { requireEventAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { RsvpAttending, RSVPStatus } from '~/lib/generated/enums';
 import AdminShell from '~/components/admin/AdminShell';
@@ -20,8 +20,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function EventMembersPage({ params }: PageProps) {
-  await requireAdminPage();
   const { id } = await params;
+  // FPP-65 / QUB-13.1: per-event guard. HOST users can view the
+  // RSVP member roster for events they have an EventAdmin row for.
+  await requireEventAdminPage(id);
 
   const event = await prisma.event.findUnique({
     where: { id },

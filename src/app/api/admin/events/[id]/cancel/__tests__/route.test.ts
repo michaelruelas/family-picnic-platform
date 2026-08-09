@@ -34,14 +34,14 @@ describe('POST /api/admin/events/[id]/cancel', () => {
   });
 
   it('returns 400 when event is CLOSED', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e-1', status: 'CLOSED' } as never);
     const res = await POST(makeJsonRequest('http://x', undefined, 'POST'), eventParams);
     expect(res.status).toBe(400);
   });
 
   it('cancels a DRAFT event', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e-1', status: 'DRAFT' } as never);
     prismaMock.event.update.mockResolvedValue({ id: 'e-1', status: 'CANCELLED' } as never);
     const res = await POST(makeJsonRequest('http://x', undefined, 'POST'), eventParams);
@@ -49,14 +49,14 @@ describe('POST /api/admin/events/[id]/cancel', () => {
   });
 
   it('returns 404 when event not found', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue(null);
     const res = await POST(makeJsonRequest('http://x', undefined, 'POST'), eventParams);
     expect(res.status).toBe(404);
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockRejectedValue(new Error('boom'));
     const res = await POST(makeJsonRequest('http://x', undefined, 'POST'), eventParams);
     expect(res.status).toBe(500);

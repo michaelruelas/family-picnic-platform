@@ -2,9 +2,11 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import { ZodError } from 'zod';
 import type { Session } from 'next-auth';
+import type { z } from 'zod';
 import { getServerSession } from 'next-auth';
 import { authOptions, isAdminRole } from './auth';
 import { writeAuditLog } from './audit';
+import { canAccessEvent } from './event-access';
 
 interface Ctx {
   session: Session | null;
@@ -74,6 +76,52 @@ export const protectedProcedure = t.procedure.use(isAuthenticated);
 export const adminProcedure = t.procedure.use(isAuthenticated).use(isAdmin);
 export const auditedAdminProcedure = t.procedure.use(isAuthenticated).use(isAdmin).use(auditLog);
 export const router = t.router;
+
+/**
+ * FPP-65 / QUB-13.1: per-event-scoped admin procedure builder.
+ *
+ * Replaces `auditedAdminProcedure` for procedures that act on a
+ * single event (event.update, event.publish, event.addAdmin, ...).
+ * Allows the caller through if EITHER:
+ *   - they pass `isAdminRole(...)` (platform-level super-admin or
+ *     adult-family user with the legacy pre-FPP-65 admin perks), OR
+ *   - they have an EventAdmin row for the event (host, co-admin, or
+ *     inviter — `canAccessEvent` short-circuits super-admins too).
+ *
+ * The HOST role is intentionally NOT in `ADMIN_ROLES` after the
+ * FPP-65 audit, so a host cannot reach this builder through the
+ * global admin gate. `canAccessEvent` is the only way they get in.
+ *
+ * `getEventId` extracts the event id from the parsed input. Most
+ * procedures use `input.eventId` (e.g. addAdmin, removeAdmin); the
+ * event-mutation procedures use `input.id` (e.g. update, publish).
+ *
+ * The `auditLog` middleware runs after the per-event check so a
+ * 403 never writes an audit row.
+ */
+export function eventAdminProcedure<TInput extends z.ZodTypeAny>(
+  inputSchema: TInput,
+  getEventId: (input: z.infer<TInput>) => string,
+) {
+  // NOTE: tRPC's `input` here is `inferParser<TInput>["out"]` which
+  // is structurally identical to `z.infer<TInput>` but TypeScript
+  // treats them as distinct. We cast inside the middleware to
+  // bridge the two so the caller can write a schema-typed
+  // extractor without seeing the mismatch.
+  return protectedProcedure
+    .input(inputSchema)
+    .use(async ({ ctx, input, next }) => {
+      const role = ctx.session.user.role;
+      const allowed =
+        isAdminRole(role) ||
+        (await canAccessEvent(ctx.session, getEventId(input as z.infer<TInput>)));
+      if (!allowed) {
+        throw new TRPCError({ code: 'FORBIDDEN' });
+      }
+      return next({ ctx: ctx as AuthedCtx });
+    })
+    .use(auditLog);
+}
 
 export async function createTRPCContext(opts?: { headers?: Headers }) {
   const session = await getServerSession(authOptions);

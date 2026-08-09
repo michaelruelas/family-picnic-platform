@@ -1,33 +1,50 @@
 import { NextResponse } from 'next/server';
-import { requireAdminApi } from '~/lib/admin-auth';
+import { requireEventAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { itineraryItemUpdateSchema } from '~/lib/schemas/itinerary';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-export async function PATCH(request: Request, { params }: RouteParams) {
-  const auth = await requireAdminApi();
-  if (!auth.ok) return auth.response;
-  const { session } = auth;
-  void session;
+/**
+ * Resolve the item id from the URL, look up its eventId, then run
+ * `requireEventAdminApi`. Doing the lookup first means a HOST
+ * without access to the event gets 403 / 404, not 401 (no
+ * session). The auth check is the same regardless of which
+ * mutation runs.
+ */
+async function authorizeRequest(id: string, request: Request) {
+  const existing = await prisma.itineraryItem.findUnique({
+    where: { id },
+    select: { id: true, eventId: true },
+  });
+  if (!existing) return { kind: 'not-found' as const };
+  const auth = await requireEventAdminApi(existing.eventId);
+  if (!auth.ok) return { kind: 'denied' as const, response: auth.response };
+  void request;
+  return { kind: 'ok' as const, existing };
+}
 
+export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
+    // FPP-65 audit: schema gate runs BEFORE the auth check so a
+    // malformed body returns 400 (not 401 / 403). The auth check
+    // needs the item's eventId, which lives in the DB, so we
+    // resolve the item first; the order is: schema validate →
+    // body parse → item lookup → auth.
     const body = await request.json();
-    const parseResult = itineraryItemUpdateSchema.safeParse({ ...body, id });
-    if (!parseResult.success) {
-      const firstError = parseResult.error.issues[0];
+    const schemaCheck = itineraryItemUpdateSchema.safeParse({ ...body, id });
+    if (!schemaCheck.success) {
+      const firstError = schemaCheck.error.issues[0];
       return NextResponse.json({ error: firstError?.message ?? 'Invalid input' }, { status: 400 });
     }
-    const input = parseResult.data;
+    const input = schemaCheck.data;
 
-    const existing = await prisma.itineraryItem.findUnique({
-      where: { id },
-      select: { id: true, eventId: true },
-    });
-    if (!existing) {
+    const auth = await authorizeRequest(id, request);
+    if (auth.kind === 'not-found') {
       return NextResponse.json({ error: 'Itinerary item not found' }, { status: 404 });
     }
+    if (auth.kind === 'denied') return auth.response;
 
     const data: { time?: string | null; title?: string; description?: string | null } = {};
     if (input.time !== undefined) {
@@ -49,18 +66,15 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(_request: Request, { params }: RouteParams) {
-  const auth = await requireAdminApi();
-  if (!auth.ok) return auth.response;
-  const { session } = auth;
-  void session;
-
   try {
     const { id } = await params;
+    const auth = await authorizeRequest(id, _request);
+    if (auth.kind === 'not-found') {
+      return NextResponse.json({ error: 'Itinerary item not found' }, { status: 404 });
+    }
+    if (auth.kind === 'denied') return auth.response;
 
-    const existing = await prisma.itineraryItem.findUnique({
-      where: { id },
-      select: { id: true, eventId: true, order: true },
-    });
+    const existing = auth.existing;
     if (!existing) {
       return NextResponse.json({ error: 'Itinerary item not found' }, { status: 404 });
     }

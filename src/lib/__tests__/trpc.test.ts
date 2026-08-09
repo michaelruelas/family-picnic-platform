@@ -65,7 +65,7 @@ describe('tRPC setup', () => {
     await expect(caller.adminOnly()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
-  it('allows ADMIN users through admin procedures', async () => {
+  it('allows SUPER_ADMIN users through admin procedures', async () => {
     const adminOnly = adminProcedure.query(() => 'admin-secret');
 
     const r = router({ adminOnly });
@@ -74,7 +74,7 @@ describe('tRPC setup', () => {
         id: '2',
         name: 'Admin',
         email: 'admin@x.com',
-        role: 'ADMIN' as Role,
+        role: 'SUPER_ADMIN' as Role,
         householdId: null,
       },
       expires: 'x',
@@ -82,6 +82,29 @@ describe('tRPC setup', () => {
     const caller = r.createCaller({ session: adminSession });
 
     await expect(caller.adminOnly()).resolves.toBe('admin-secret');
+  });
+
+  it('rejects HOST users through admin procedures (FPP-65 audit)', async () => {
+    // FPP-65 audit: HOST is a per-event scoped role. Removing it
+    // from ADMIN_ROLES means HOST users no longer unlock global
+    // admin procedures — they must go through the per-event
+    // `eventAdminProcedure` builder instead.
+    const adminOnly = adminProcedure.query(() => 'admin-secret');
+
+    const r = router({ adminOnly });
+    const hostSession = {
+      user: {
+        id: '4',
+        name: 'Host',
+        email: 'host@x.com',
+        role: 'HOST' as Role,
+        householdId: 'house-2',
+      },
+      expires: 'x',
+    };
+    const caller = r.createCaller({ session: hostSession });
+
+    await expect(caller.adminOnly()).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   it('allows ADMIN_ADULT users through admin procedures', async () => {

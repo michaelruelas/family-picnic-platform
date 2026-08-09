@@ -66,13 +66,13 @@ describe('POST /api/admin/communications/send', () => {
   });
 
   it('returns 400 when fields missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POSTSend(makeNextReq('http://x', { eventId: 'e-1' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 400 for invalid scheduledAt', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POSTSend(
       makeNextReq('http://x', {
         eventId: 'e-1',
@@ -86,7 +86,7 @@ describe('POST /api/admin/communications/send', () => {
   });
 
   it('schedules a broadcast with valid scheduledAt', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.scheduledBroadcast.create.mockResolvedValue({
       id: 'sb-1',
       scheduledAt: new Date('2026-12-01'),
@@ -106,7 +106,7 @@ describe('POST /api/admin/communications/send', () => {
   });
 
   it('sends to ALL recipients immediately', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findMany.mockResolvedValue([{ id: 'u-2' }, { id: 'u-3' }] as never);
     prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const res = await POSTSend(
@@ -130,7 +130,7 @@ describe('POST /api/admin/communications/send', () => {
   });
 
   it('applies SMS+BOTH preference filter for SMS channel', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findMany.mockResolvedValue([{ id: 'u-2' }] as never);
     prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const res = await POSTSend(
@@ -152,7 +152,7 @@ describe('POST /api/admin/communications/send', () => {
   });
 
   it('sends to NOT_RESPONDED recipients', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findMany.mockResolvedValue([{ id: 'u-2' }] as never);
     prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const res = await POSTSend(
@@ -167,7 +167,7 @@ describe('POST /api/admin/communications/send', () => {
   });
 
   it('returns 400 for HOUSEHOLD without recipientIds', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POSTSend(
       new NextRequest('http://x', {
         method: 'POST',
@@ -184,7 +184,7 @@ describe('POST /api/admin/communications/send', () => {
   });
 
   it('returns 400 for INDIVIDUAL without recipientIds', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POSTSend(
       new NextRequest('http://x', {
         method: 'POST',
@@ -201,7 +201,7 @@ describe('POST /api/admin/communications/send', () => {
   });
 
   it('sends to HOUSEHOLD recipients', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findMany.mockResolvedValue([{ id: 'u-2' }] as never);
     prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const res = await POSTSend(
@@ -221,7 +221,7 @@ describe('POST /api/admin/communications/send', () => {
   });
 
   it('sends to INDIVIDUAL recipients', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const res = await POSTSend(
       new NextRequest('http://x', {
@@ -242,7 +242,7 @@ describe('POST /api/admin/communications/send', () => {
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findMany.mockRejectedValue(new Error('boom'));
     const res = await POSTSend(
       makeNextReq('http://x', {
@@ -264,20 +264,20 @@ describe('GET /api/admin/communications/status', () => {
   });
 
   it('returns 400 when eventId missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await GETStatus(new NextRequest('http://x'));
     expect(res.status).toBe(400);
   });
 
   it('returns logs', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.communicationLog.findMany.mockResolvedValue([{ id: 'log-1' }] as never);
     const res = await GETStatus(new NextRequest('http://x?eventId=e-1'));
     expect(res.status).toBe(200);
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.communicationLog.findMany.mockRejectedValue(new Error('boom'));
     const res = await GETStatus(new NextRequest('http://x?eventId=e-1'));
     expect(res.status).toBe(500);

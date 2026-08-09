@@ -21,7 +21,7 @@ beforeEach(() => {
   mockPathname = '/admin/dashboard';
   mockUseSession.mockReset();
   mockUseSession.mockReturnValue({
-    data: { user: { id: 'u1', name: 'Admin', email: 'admin@example.com', role: 'ADMIN' } },
+    data: { user: { id: 'u1', name: 'Admin', email: 'admin@example.com', role: 'SUPER_ADMIN' } },
     status: 'authenticated',
   });
 });

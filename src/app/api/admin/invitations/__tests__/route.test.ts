@@ -46,13 +46,13 @@ describe('POST /api/admin/invitations/send', () => {
   });
 
   it('returns 400 when fields missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POSTSend(makeJsonRequest('http://x', {}));
     expect(res.status).toBe(400);
   });
 
   it('creates invitation for a user', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.invitation.create.mockResolvedValue({ id: 'inv-1' } as never);
     prismaMock.communicationLog.create.mockResolvedValue({} as never);
     const res = await POSTSend(makeJsonRequest('http://x', { eventId: 'e-1', userId: 'u-2' }));
@@ -61,7 +61,7 @@ describe('POST /api/admin/invitations/send', () => {
   });
 
   it('creates invitation for a household and queues communication for each member', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.invitation.create.mockResolvedValue({ id: 'inv-1' } as never);
     prismaMock.user.findMany.mockResolvedValue([{ id: 'u-2' }, { id: 'u-3' }] as never);
     prismaMock.communicationLog.create.mockResolvedValue({} as never);
@@ -73,7 +73,7 @@ describe('POST /api/admin/invitations/send', () => {
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.invitation.create.mockRejectedValue(new Error('boom'));
     const res = await POSTSend(makeJsonRequest('http://x', { eventId: 'e-1', userId: 'u-2' }));
     expect(res.status).toBe(500);
@@ -88,13 +88,13 @@ describe('POST /api/admin/invitations/resend', () => {
   });
 
   it('returns 400 when id missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POSTResend(makeJsonRequest('http://x', {}));
     expect(res.status).toBe(400);
   });
 
   it('resets invitation and re-queues communications to household members', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.invitation.update.mockResolvedValue({
       id: 'inv-1',
       eventId: 'e-1',
@@ -109,7 +109,7 @@ describe('POST /api/admin/invitations/resend', () => {
   });
 
   it('re-queues to a single user when invitation has userId', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.invitation.update.mockResolvedValue({
       id: 'inv-1',
       eventId: 'e-1',
@@ -123,7 +123,7 @@ describe('POST /api/admin/invitations/resend', () => {
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.invitation.update.mockRejectedValue(new Error('boom'));
     const res = await POSTResend(makeJsonRequest('http://x', { id: 'inv-1' }));
     expect(res.status).toBe(500);
@@ -138,19 +138,19 @@ describe('POST /api/admin/invitations/track', () => {
   });
 
   it('returns 400 when fields missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POSTTrack(makeJsonRequest('http://x', { id: 'inv-1' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 400 for invalid status', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POSTTrack(makeJsonRequest('http://x', { id: 'inv-1', status: 'INVALID' }));
     expect(res.status).toBe(400);
   });
 
   it('updates invitation status to PENDING without setting sentAt', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.invitation.update.mockResolvedValue({ id: 'inv-1', status: 'PENDING' } as never);
     const res = await POSTTrack(makeJsonRequest('http://x', { id: 'inv-1', status: 'PENDING' }));
     expect(res.status).toBe(200);
@@ -162,7 +162,7 @@ describe('POST /api/admin/invitations/track', () => {
   });
 
   it('updates invitation status to SENT with sentAt timestamp', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.invitation.update.mockResolvedValue({ id: 'inv-1', status: 'SENT' } as never);
     const res = await POSTTrack(makeJsonRequest('http://x', { id: 'inv-1', status: 'SENT' }));
     expect(res.status).toBe(200);
@@ -174,14 +174,14 @@ describe('POST /api/admin/invitations/track', () => {
   });
 
   it('updates invitation status to DELIVERED with sentAt timestamp', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.invitation.update.mockResolvedValue({ id: 'inv-1', status: 'DELIVERED' } as never);
     const res = await POSTTrack(makeJsonRequest('http://x', { id: 'inv-1', status: 'DELIVERED' }));
     expect(res.status).toBe(200);
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.invitation.update.mockRejectedValue(new Error('boom'));
     const res = await POSTTrack(makeJsonRequest('http://x', { id: 'inv-1', status: 'SENT' }));
     expect(res.status).toBe(500);

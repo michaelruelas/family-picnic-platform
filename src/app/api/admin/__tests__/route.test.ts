@@ -50,20 +50,20 @@ describe('GET /api/admin/users/search', () => {
   });
 
   it('returns 400 when email missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await GETSearch(new NextRequest('http://x', { method: 'GET' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when user not found', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findUnique.mockResolvedValue(null);
     const res = await GETSearch(new NextRequest('http://x?email=a@b.com', { method: 'GET' }));
     expect(res.status).toBe(404);
   });
 
   it('returns user with household', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findUnique.mockResolvedValue({
       id: 'u-2',
       name: 'Alice',
@@ -85,7 +85,7 @@ describe('GET /api/admin/audit-log', () => {
   });
 
   it('returns logs without filters', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.adminAuditLog.findMany.mockResolvedValue([{ id: 'log-1' }] as never);
     prismaMock.auditLog.findMany.mockResolvedValue([] as never);
     const res = await GETAudit(new NextRequest('http://x', { method: 'GET' }));
@@ -93,7 +93,7 @@ describe('GET /api/admin/audit-log', () => {
   });
 
   it('passes through filter params', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.adminAuditLog.findMany.mockResolvedValue([] as never);
     prismaMock.auditLog.findMany.mockResolvedValue([] as never);
     const res = await GETAudit(
@@ -104,13 +104,13 @@ describe('GET /api/admin/audit-log', () => {
   });
 
   it('returns 400 on invalid date filter', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await GETAudit(new NextRequest('http://x?from=not-a-date', { method: 'GET' }));
     expect(res.status).toBe(400);
   });
 
   it('queries AuditLog when subject filters are present', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.adminAuditLog.findMany.mockResolvedValue([] as never);
     prismaMock.auditLog.findMany.mockResolvedValue([
       {
@@ -138,13 +138,13 @@ describe('POST /api/admin/csv-import', () => {
   });
 
   it('returns 400 on invalid body', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POSTCsv(makeNextReq('http://x', { eventId: 123 }, 'POST'));
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when event not found', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue(null);
     const res = await POSTCsv(
       makeNextReq('http://x', { eventId: 'e-1', households: [], dryRun: true }, 'POST'),
@@ -153,7 +153,7 @@ describe('POST /api/admin/csv-import', () => {
   });
 
   it('returns dry run result without writing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e-1' } as never);
     const res = await POSTCsv(
       makeNextReq(
@@ -176,7 +176,7 @@ describe('POST /api/admin/csv-import', () => {
   });
 
   it('imports households with new and existing users', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e-1' } as never);
     prismaMock.household.create.mockResolvedValue({ id: 'h-1' } as never);
     prismaMock.user.findUnique
@@ -213,7 +213,7 @@ describe('POST /api/admin/csv-import', () => {
   });
 
   it('returns 500 on unexpected error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockRejectedValue(new Error('boom'));
     const res = await POSTCsv(
       makeNextReq('http://x', { eventId: 'e-1', households: [], dryRun: true }, 'POST'),

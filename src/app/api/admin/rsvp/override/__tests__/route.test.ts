@@ -49,7 +49,7 @@ import { POST } from '~/app/api/admin/rsvp/override/route';
 
 const mockedSession = vi.mocked(getServerSession);
 
-const ADMIN_SESSION = { user: { id: 'admin-1', role: 'ADMIN' } } as never;
+const ADMIN_SESSION = { user: { id: 'admin-1', role: 'SUPER_ADMIN' } } as never;
 // 'GUEST' is a sentinel value used only in tests to represent "not an admin" —
 // it is not a real value in the Role enum. The isAdminRole mock returns false
 // for any role string that is not in ADMIN_ROLES.
