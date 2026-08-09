@@ -154,4 +154,24 @@ describe('Prisma schema integrity vs SPEC', () => {
     // can filter by it without a full scan.
     expect(block![1]!).toMatch(/@@index\(\[kind\]\)/);
   });
+
+  it('FPP-45: ItineraryItem model has eventId, time, title, description, order', () => {
+    const block = schema.match(/model ItineraryItem \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toContain('eventId');
+    expect(block![1]!).toMatch(/time\s+String\?/);
+    expect(block![1]!).toMatch(/title\s+String/);
+    expect(block![1]!).toMatch(/description\s+String\?/);
+    expect(block![1]!).toMatch(/order\s+Int/);
+  });
+
+  it('FPP-45: ItineraryItem has a composite index on (eventId, order)', () => {
+    const block = schema.match(/model ItineraryItem \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toMatch(/@@index\(\[eventId,\s*order\]\)/);
+  });
+
+  it('FPP-45: Event model has an itineraryItems relation', () => {
+    expect(schema).toMatch(/model Event \{[\s\S]*?itineraryItems\s+ItineraryItem\[\]/);
+  });
 });

@@ -5,6 +5,7 @@ import EventForm from '~/components/event/EventForm';
 import EventStatusBadge from '~/components/event/EventStatusBadge';
 import SlotGrid from '~/components/potluck/SlotGrid';
 import AdminShell from '~/components/admin/AdminShell';
+import ItineraryEditor from '~/components/event/ItineraryEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,13 @@ async function getEvent(id: string) {
             },
           },
         },
+      },
+      // FPP-45 / QUB-31.2: itinerary rows for the drag-to-reorder
+      // editor. Order by `order` ascending so the editor's initial
+      // paint matches the stored order; the editor defends against
+      // a stale list by re-fetching on action.
+      itineraryItems: {
+        orderBy: { order: 'asc' },
       },
     },
   });
@@ -71,6 +79,16 @@ export default async function EditEventPage({ params }: PageProps) {
       description="Update the details for your family picnic"
     >
       <EventForm initialData={initialData} mode="edit" />
+
+      <div className="mt-12">
+        <h2 className="text-foreground text-2xl font-bold">Itinerary</h2>
+        <p className="text-muted-foreground mt-2">
+          Build the day-of schedule. Drag rows to reorder, or use the arrow buttons.
+        </p>
+        <div className="mt-6">
+          <ItineraryEditor eventId={event.id} initialItems={event.itineraryItems} />
+        </div>
+      </div>
 
       <div className="mt-12">
         <h2 className="text-foreground text-2xl font-bold">Potluck Slots</h2>

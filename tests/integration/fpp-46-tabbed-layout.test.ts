@@ -159,12 +159,16 @@ describe('FPP-46: event overview tabbed layout', () => {
       expect(content).toMatch(/items\.length === 0/);
     });
 
-    it('renders a placeholder set on the page until QUB-31 ships', async () => {
+    it('FPP-45: reads itinerary items from the database, ordered by (order, time)', async () => {
       const content = await fs.readFile(eventPagePath, 'utf-8');
-      // The placeholder is clearly marked so it is obvious to future
-      // maintainers that this is intentional until the ItineraryItem
-      // model lands.
-      expect(content).toContain('PLACEHOLDER_ITINERARY');
+      // The page must pull rows from the ItineraryItem table rather
+      // than rendering a static placeholder. The acceptance criterion
+      // is "Items shown in stored order", so the query must order
+      // by `order` ascending with a time tie-break.
+      expect(content).toContain('itineraryItems:');
+      expect(content).toMatch(/orderBy:\s*\[\{ order: 'asc' \}, \{ time: 'asc' \}\]/);
+      // The placeholder array is gone — FPP-45 ships the real model.
+      expect(content).not.toContain('PLACEHOLDER_ITINERARY');
     });
   });
 

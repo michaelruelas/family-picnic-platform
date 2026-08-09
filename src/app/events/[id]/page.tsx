@@ -7,6 +7,7 @@ import EventSubNav from '~/components/event/EventSubNav';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 import { EventTabs, EVENT_TAB_KEYS, type EventTabKey } from '~/components/event/EventTabs';
 import { EventHeaderSection } from '~/components/event/EventHeaderSection';
+import { formatItineraryTime } from '~/lib/itinerary-time';
 import type { RSVPStatus } from '~/lib/generated/enums';
 
 export const dynamic = 'force-dynamic';
@@ -76,6 +77,15 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
             select: { reaction: true, userId: true },
           },
         },
+      },
+      // FPP-45 / QUB-31.3: itinerary rows for the public Itinerary
+      // tab. Sorted by `order` ascending — the admin editor stores
+      // the stable display order, the public page reads it as-is.
+      // Tie-break on `time` so two rows with the same wall-clock
+      // time still surface in a deterministic order when the host
+      // hasn't customized `order`.
+      itineraryItems: {
+        orderBy: [{ order: 'asc' }, { time: 'asc' }],
       },
     },
   });
@@ -262,7 +272,12 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
               userRsvpStatus={existingRsvpForCard?.status ?? null}
             />
           }
-          itineraryItems={PLACEHOLDER_ITINERARY}
+          itineraryItems={event.itineraryItems.map((item) => ({
+            id: item.id,
+            time: item.time ? formatItineraryTime(item.time) : null,
+            title: item.title,
+            description: item.description,
+          }))}
           additionalInfo={null}
           photos={event.photos}
           eventName={event.name}
@@ -296,37 +311,3 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     </main>
   );
 }
-
-/**
- * FPP-9 placeholder: until QUB-31 ships the `ItineraryItem` model +
- * admin CRUD, the event page renders this static outline so the
- * Itinerary tab is never blank. Replace with a real query against
- * `prisma.itineraryItem.findMany({ where: { eventId }, orderBy: [{ order: 'asc' }, { time: 'asc' }] })`
- * once the schema lands.
- */
-const PLACEHOLDER_ITINERARY = [
-  {
-    id: 'placeholder-setup',
-    time: '10:00 AM',
-    title: 'Setup & Early Arrival',
-    description: 'Unloading coolers and firing up the grill.',
-  },
-  {
-    id: 'placeholder-feast',
-    time: '12:30 PM',
-    title: 'The Big Feast',
-    description: 'Potluck lines open. Elders served first.',
-  },
-  {
-    id: 'placeholder-games',
-    time: '2:00 PM',
-    title: 'Family Games',
-    description: 'Annual relay races and water balloons.',
-  },
-  {
-    id: 'placeholder-photos',
-    time: '4:00 PM',
-    title: 'Golden Hour Photos',
-    description: 'Find the cousins. Find the shade. Smile.',
-  },
-];
