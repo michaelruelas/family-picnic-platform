@@ -3,9 +3,27 @@
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
+import { usePathname } from 'next/navigation';
 import { useMounted } from '~/hooks/useMounted';
 
+const PUBLIC_NAV_PATTERNS: readonly RegExp[] = [
+  /^\/$/,
+  /^\/login$/,
+  /^\/events$/,
+  /^\/events\/calendar$/,
+  /^\/events\/invitation\/[^/]+$/,
+  /^\/events\/[^/]+$/,
+  /^\/events\/[^/]+\/potluck$/,
+  /^\/events\/[^/]+\/photos$/,
+];
+
+function isPublicNavRoute(pathname: string): boolean {
+  const normalized = pathname.length > 1 ? pathname.replace(/\/+$/, '') : '/';
+  return PUBLIC_NAV_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
 export default function NavBarClient() {
+  const pathname = usePathname();
   const { data: session, status } = useSession();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
@@ -14,6 +32,8 @@ export default function NavBarClient() {
     if (!mounted) return;
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
+
+  if (isPublicNavRoute(pathname)) return null;
 
   return (
     <nav className="border-border/60 bg-background/80 sticky top-0 z-30 border-b backdrop-blur-lg">

@@ -13,7 +13,6 @@ Next.js App Router pages and API endpoints.
 | `/events/[id]/potluck` | `src/app/events/[id]/potluck/page.tsx` | Event-scoped potluck (read-only) |
 | `/events/[id]/photos`  | `src/app/events/[id]/photos/page.tsx`  | Event-scoped photo gallery       |
 | `/events/calendar`     | `src/app/events/calendar/page.tsx`     | Calendar view                    |
-| `/my-events`           | `src/app/my-events/page.tsx`           | User's RSVP history              |
 
 Legacy `/potluck` and `/photos` URLs are redirected (301) to the
 relevant event-scoped URL by `src/app/potluck/route.ts` and
@@ -25,6 +24,7 @@ the redirect, the route returns a 404 HTML body with a link to
 
 | Route             | File                              | Description                  |
 | ----------------- | --------------------------------- | ---------------------------- |
+| `/my-events`      | `src/app/my-events/page.tsx`      | User's RSVP history          |
 | `/profile`        | `src/app/profile/page.tsx`        | User profile & preferences   |
 | `/household`      | `src/app/household/page.tsx`      | Household dashboard          |
 | `/household/tree` | `src/app/household/tree/page.tsx` | Family tree visualization    |
