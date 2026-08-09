@@ -8,7 +8,36 @@ import type { Role } from './generated/enums';
 import { findOrCreateUserByIdentity, isOAuthProvider, type OAuthProvider } from './user-identity';
 import { buildAppleClientSecret, readAppleClientSecretConfig } from './apple-client-secret';
 
-export const ADMIN_ROLES: readonly Role[] = ['ADMIN', 'ADMIN_ADULT'] as const;
+// FPP-65 / QUB-13: role taxonomy after the FPP-65 audit.
+//   - SUPER_ADMIN: platform-level admin (renamed from ADMIN). Global
+//     access to every event and every admin page.
+//   - ADMIN_ADULT: the default for newly signed-up adult family
+//     members. Kept on the admin set for backwards compatibility with
+//     the pre-FPP-65 behaviour where regular users could access
+//     household admin tools.
+//   - HOST: a per-event role. A HOST user is scoped to events
+//     they have an EventAdmin row for; `isAdminRole` deliberately
+//     excludes HOST so a host cannot unlock global admin access. Per-
+//     event surfaces use `requireEventAdminApi` /
+//     `requireEventAdminPage` (or `canAccessEvent` directly) to
+//     allow HOST alongside the platform-level admins.
+//
+// The legacy `ADMIN` value is intentionally NOT in this set — the
+// 20260809090000_fpp65_super_admin_and_host_roles migration renamed
+// every existing admin row to SUPER_ADMIN, so no user has `ADMIN` any
+// more. New rows can never land in `ADMIN` because the Prisma client
+// no longer exposes it as a valid enum value.
+export const ADMIN_ROLES: readonly Role[] = ['SUPER_ADMIN', 'ADMIN_ADULT'] as const;
+
+// FPP-65: strict check for platform-level super-admin access. Use
+// this when the action must be reserved for the platform owner (e.g.
+// assigning hosts to events). For broader admin gating, keep using
+// `isAdminRole`.
+export const SUPER_ADMIN_ROLES: readonly Role[] = ['SUPER_ADMIN'] as const;
+
+export function isSuperAdminRole(role: Role | null | undefined): boolean {
+  return (SUPER_ADMIN_ROLES as readonly string[]).includes(role as string);
+}
 
 export function isAdminRole(role: Role | null | undefined): boolean {
   return (ADMIN_ROLES as readonly string[]).includes(role as string);
@@ -65,7 +94,7 @@ function devCredentialsProvider() {
             data: {
               email: devEmail,
               name: adminUsername,
-              role: 'ADMIN',
+              role: 'SUPER_ADMIN',
             },
           });
         }

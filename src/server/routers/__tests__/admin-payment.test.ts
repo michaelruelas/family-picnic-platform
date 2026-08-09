@@ -61,7 +61,7 @@ vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 vi.mock('~/lib/auth', () => ({
   authOptions: {},
   getServerSession: vi.fn(),
-  isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
+  isAdminRole: (role: unknown) => role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT',
 }));
 
 vi.mock('~/lib/generated/enums', () => ({
@@ -100,7 +100,7 @@ const adminSession = {
     id: 'admin-1',
     name: 'Admin',
     email: 'admin@x.com',
-    role: 'ADMIN' as Role,
+    role: 'SUPER_ADMIN' as Role,
     householdId: null,
   },
   expires: 'x',

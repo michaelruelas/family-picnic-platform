@@ -39,7 +39,7 @@ describe('GET /api/admin/events', () => {
   });
 
   it('returns events for admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findMany.mockResolvedValue([{ id: 'e-1', name: 'Picnic' }] as never);
     const res = await GET();
     expect(res.status).toBe(200);
@@ -48,7 +48,7 @@ describe('GET /api/admin/events', () => {
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findMany.mockRejectedValue(new Error('boom'));
     const res = await GET();
     expect(res.status).toBe(500);
@@ -65,13 +65,13 @@ describe('POST /api/admin/events', () => {
   });
 
   it('returns 400 when fields missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POST(makeJsonRequest('http://x', { name: 'Picnic' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 400 when rsvp deadline is after event date', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POST(
       makeJsonRequest('http://x', {
         name: 'Picnic',
@@ -84,7 +84,7 @@ describe('POST /api/admin/events', () => {
   });
 
   it('returns 400 when maxCapacity < 1', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POST(
       makeJsonRequest('http://x', {
         name: 'Picnic',
@@ -97,7 +97,7 @@ describe('POST /api/admin/events', () => {
   });
 
   it('creates event in DRAFT status', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.create.mockResolvedValue({ id: 'e-new' } as never);
     const res = await POST(
       makeJsonRequest('http://x', { name: 'Picnic', date: '2026-01-01', location: 'Park' }),
@@ -111,7 +111,7 @@ describe('POST /api/admin/events', () => {
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.create.mockRejectedValue(new Error('boom'));
     const res = await POST(
       makeJsonRequest('http://x', { name: 'Picnic', date: '2026-01-01', location: 'Park' }),

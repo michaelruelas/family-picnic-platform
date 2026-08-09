@@ -7,9 +7,16 @@ datasource db {
   provider = "postgresql"
 }
 
+// FPP-65 / QUB-13: per-event host role. The platform-level `SUPER_ADMIN`
+// role (renamed from `ADMIN` in this ticket) grants global admin access;
+// `HOST` is a scoped role granted per event via the `EventAdmin` join row.
+// `ADMIN_ADULT` is the default role for newly signed-up adult family
+// members and keeps the legacy "user with admin rights over their own
+// household" behaviour from before the host model landed.
 enum Role {
   ADMIN_ADULT
-  ADMIN
+  SUPER_ADMIN
+  HOST
 }
 
 enum CommunicationPreference {

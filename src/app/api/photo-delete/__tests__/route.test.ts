@@ -74,7 +74,7 @@ describe('POST /api/photo-delete', () => {
   });
 
   it('soft-deletes a photo when user is admin', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.photo.findUnique.mockResolvedValue({
       id: 'p1',
       uploadedByUserId: 'u-other',

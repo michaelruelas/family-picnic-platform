@@ -77,6 +77,19 @@ export interface EventHeaderSectionProps {
     registrationFeeCurrency: string;
   } | null;
   userRsvpStatus: RSVPStatus | null;
+  /**
+   * FPP-65 / QUB-13.3: list of hosts for this event (EventAdmin rows
+   * with role=OWNER). Empty array means "no host assigned yet" and
+   * the HostBlock hides itself in that case. We only carry the
+   * public-facing fields (id, name, email, phoneNumber); no household
+   * or admin metadata.
+   */
+  hosts: {
+    id: string;
+    name: string;
+    email: string;
+    phoneNumber: string | null;
+  }[];
 }
 
 /**
@@ -113,6 +126,7 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
     hasPendingInvitation,
     existingRsvp,
     userRsvpStatus,
+    hosts,
   } = props;
 
   const now = new Date();
@@ -169,7 +183,7 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
         dishesClaimed={totalPotluckDishes}
       />
 
-      <HostBlock description={eventDescription} maxCapacity={maxCapacity} />
+      <HostBlock description={eventDescription} maxCapacity={maxCapacity} hosts={hosts} />
 
       {isLoggedIn && pendingInvitations.length > 0 && (
         <PendingInvitationsCard invitations={pendingInvitations} />
@@ -250,17 +264,23 @@ function MetaStrip({
 }
 
 /**
- * FPP-10: "host block from QUB-13.3". Until the dedicated host model
- * lands in Foundations, we render the event description under the
- * existing copy. The structure is preserved so swapping the source
- * is a one-line change later.
+ * FPP-10 / FPP-65 / QUB-13.3: host block on the public event page.
+ *
+ * Renders the welcome note (event description) and, when at least
+ * one host is assigned, a contact card listing each host's name and
+ * the public contact channels they have on file (email + phone when
+ * set). Hosts are intentionally not rendered when the array is empty
+ * — the spec says "Hidden when no host assigned", and we don't want
+ * a stray "no host yet" placeholder polluting the public surface.
  */
 function HostBlock({
   description,
   maxCapacity,
+  hosts,
 }: {
   description: string;
   maxCapacity: number | null;
+  hosts: { id: string; name: string; email: string; phoneNumber: string | null }[];
 }) {
   return (
     <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
@@ -273,6 +293,47 @@ function HostBlock({
         <div className="bg-sunlight/20 text-foreground ring-sunlight/40 mt-6 rounded-2xl px-5 py-4 text-sm ring-1">
           <span className="font-semibold">Heads up:</span> We can host up to {maxCapacity} people.
           Reserve your spot early.
+        </div>
+      )}
+      {hosts.length > 0 && (
+        <div className="border-border mt-8 border-t pt-6" data-testid="host-contact-block">
+          <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
+            Your host{hosts.length === 1 ? '' : 's'}
+          </p>
+          <h4 className="font-display text-foreground mt-2 text-2xl font-medium tracking-tight md:text-3xl">
+            {hosts.length === 1
+              ? `Hosted by ${hosts[0]!.name}`
+              : `Hosted by ${hosts.length} people`}
+          </h4>
+          <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+            {hosts.map((host) => (
+              <li
+                key={host.id}
+                className="bg-secondary flex items-start gap-3 rounded-2xl px-4 py-3"
+              >
+                <span className="text-terracotta text-lg" aria-hidden>
+                  👤
+                </span>
+                <div className="min-w-0">
+                  <p className="text-foreground font-medium">{host.name}</p>
+                  <a
+                    href={`mailto:${host.email}`}
+                    className="text-muted-foreground hover:text-foreground block truncate text-sm underline-offset-2 hover:underline"
+                  >
+                    {host.email}
+                  </a>
+                  {host.phoneNumber && (
+                    <a
+                      href={`tel:${host.phoneNumber}`}
+                      className="text-muted-foreground hover:text-foreground block text-sm underline-offset-2 hover:underline"
+                    >
+                      {host.phoneNumber}
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

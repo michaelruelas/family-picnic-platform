@@ -60,28 +60,28 @@ describe('POST /api/admin/sms/send', () => {
   });
 
   it('returns 400 on invalid body (missing userId)', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POST(makeNextReq('http://x', { body: 'hi' }));
     expect(res.status).toBe(400);
     expect(sendSMS).not.toHaveBeenCalled();
   });
 
   it('returns 400 when body is empty', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POST(makeNextReq('http://x', { userId: 'u-2', body: '   ' }));
     expect(res.status).toBe(400);
     expect(sendSMS).not.toHaveBeenCalled();
   });
 
   it('returns 400 when body exceeds 320 chars', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POST(makeNextReq('http://x', { userId: 'u-2', body: 'x'.repeat(321) }));
     expect(res.status).toBe(400);
     expect(sendSMS).not.toHaveBeenCalled();
   });
 
   it('returns 404 when recipient is missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findUnique.mockResolvedValue(null);
     const res = await POST(makeNextReq('http://x', { userId: 'u-2', body: 'hi' }));
     expect(res.status).toBe(404);
@@ -89,7 +89,7 @@ describe('POST /api/admin/sms/send', () => {
   });
 
   it('returns 403 and writes audit entry when recipient has not granted SMS consent', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findUnique.mockResolvedValue({
       id: 'u-2',
       phoneNumber: '+15551234567',
@@ -116,7 +116,7 @@ describe('POST /api/admin/sms/send', () => {
   });
 
   it('returns 422 and writes audit entry when recipient has no valid E.164 phone on file', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findUnique.mockResolvedValue({
       id: 'u-2',
       phoneNumber: '5551234567',
@@ -143,7 +143,7 @@ describe('POST /api/admin/sms/send', () => {
   });
 
   it('sends SMS, writes SENT log and audit entry on success with eventId', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findUnique.mockResolvedValue({
       id: 'u-2',
       phoneNumber: '+15551234567',
@@ -183,7 +183,7 @@ describe('POST /api/admin/sms/send', () => {
   });
 
   it('sends SMS without writing CommunicationLog when eventId is omitted', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findUnique.mockResolvedValue({
       id: 'u-2',
       phoneNumber: '+15551234567',
@@ -204,7 +204,7 @@ describe('POST /api/admin/sms/send', () => {
   });
 
   it('returns 502 and writes FAILED log + audit entry on Twilio failure', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findUnique.mockResolvedValue({
       id: 'u-2',
       phoneNumber: '+15551234567',
@@ -245,14 +245,14 @@ describe('POST /api/admin/sms/send', () => {
   });
 
   it('returns 500 when an unexpected error occurs', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.user.findUnique.mockRejectedValue(new Error('boom'));
     const res = await POST(makeNextReq('http://x', { userId: 'u-2', body: 'hi' }));
     expect(res.status).toBe(500);
   });
 
   it('rejects a body that is not parseable JSON', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const req = new NextRequest('http://x', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

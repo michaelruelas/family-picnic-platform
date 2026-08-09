@@ -108,7 +108,7 @@ describe('authOptions session callback', () => {
     const { prisma } = await import('~/lib/prisma');
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       id: 'user-42',
-      role: 'ADMIN',
+      role: 'SUPER_ADMIN',
       householdId: 'house-1',
     } as any);
     const { authOptions } = await import('../auth');
@@ -119,7 +119,7 @@ describe('authOptions session callback', () => {
     const result = await sessionCallback({ session, token: { sub: 'user-42' } });
     const user = (result as any).user;
     expect(user.id).toBe('user-42');
-    expect(user.role).toBe('ADMIN');
+    expect(user.role).toBe('SUPER_ADMIN');
     expect(user.householdId).toBe('house-1');
     expect(prisma.user.findUnique).toHaveBeenCalledWith({
       where: { id: 'user-42' },
@@ -382,7 +382,7 @@ describe('dev credentials provider', () => {
       const devProvider = await getDevProvider();
       const result = await devProvider.authorize({ username: 'admin', password: 'pass' });
       expect(prisma.user.create).toHaveBeenCalledWith({
-        data: { email: 'dev-admin@family-picnic.local', name: 'admin', role: 'ADMIN' },
+        data: { email: 'dev-admin@family-picnic.local', name: 'admin', role: 'SUPER_ADMIN' },
       });
       expect(result).toEqual({
         id: 'u-new',

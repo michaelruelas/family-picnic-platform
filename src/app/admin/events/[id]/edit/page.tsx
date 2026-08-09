@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { requireAdminPage } from '~/lib/admin-auth';
+import { requireEventAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import EventForm from '~/components/event/EventForm';
 import EventStatusBadge from '~/components/event/EventStatusBadge';
@@ -46,9 +46,11 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function EditEventPage({ params }: PageProps) {
-  await requireAdminPage();
-
   const { id } = await params;
+  // FPP-65 / QUB-13.1: per-event guard. Platform-level admins OR
+  // a HOST with an EventAdmin row for this event can edit it.
+  await requireEventAdminPage(id);
+
   const event = await getEvent(id);
 
   if (!event) {

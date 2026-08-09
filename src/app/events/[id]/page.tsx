@@ -9,6 +9,7 @@ import { EventTabs, EVENT_TAB_KEYS, type EventTabKey } from '~/components/event/
 import { EventHeaderSection } from '~/components/event/EventHeaderSection';
 import { formatItineraryTime } from '~/lib/itinerary-time';
 import type { RSVPStatus } from '~/lib/generated/enums';
+import { AdminPermission } from '~/lib/generated/enums';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,62 +99,97 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
   const now = new Date();
   const isPast = eventDate < now;
 
-  const [confirmedHeadcount, pendingInvitationCount, userRsvp, pendingInvitations, userRole] =
-    await Promise.all([
-      prisma.rSVP
-        .aggregate({
-          where: { eventId: id, status: 'CONFIRMED' },
-          _sum: { headcount: true },
-        })
-        .then((res) => res._sum.headcount ?? 0),
-      prisma.invitation.count({
-        where: {
-          eventId: id,
-          status: { in: ['SENT', 'DELIVERED'] },
-        },
-      }),
-      userId
-        ? prisma.rSVP.findFirst({
-            where: { eventId: id, userId },
-            select: {
-              id: true,
-              status: true,
-              headcount: true,
-              waitlistPosition: true,
-              modifiedAt: true,
-              memberAttendances: {
-                orderBy: { createdAt: 'asc' },
-                select: {
-                  id: true,
-                  householdMemberId: true,
-                  memberNameSnapshot: true,
-                  memberAgeSnapshot: true,
-                  attending: true,
-                },
+  const [
+    confirmedHeadcount,
+    pendingInvitationCount,
+    userRsvp,
+    pendingInvitations,
+    userRole,
+    hosts,
+  ] = await Promise.all([
+    prisma.rSVP
+      .aggregate({
+        where: { eventId: id, status: 'CONFIRMED' },
+        _sum: { headcount: true },
+      })
+      .then((res) => res._sum.headcount ?? 0),
+    prisma.invitation.count({
+      where: {
+        eventId: id,
+        status: { in: ['SENT', 'DELIVERED'] },
+      },
+    }),
+    userId
+      ? prisma.rSVP.findFirst({
+          where: { eventId: id, userId },
+          select: {
+            id: true,
+            status: true,
+            headcount: true,
+            waitlistPosition: true,
+            modifiedAt: true,
+            memberAttendances: {
+              orderBy: { createdAt: 'asc' },
+              select: {
+                id: true,
+                householdMemberId: true,
+                memberNameSnapshot: true,
+                memberAgeSnapshot: true,
+                attending: true,
               },
             },
-          })
-        : Promise.resolve(null),
-      userId
-        ? prisma.invitation.findMany({
-            where: {
-              eventId: id,
-              status: { in: ['SENT', 'DELIVERED'] },
-            },
+          },
+        })
+      : Promise.resolve(null),
+    userId
+      ? prisma.invitation.findMany({
+          where: {
+            eventId: id,
+            status: { in: ['SENT', 'DELIVERED'] },
+          },
+          select: {
+            id: true,
+            status: true,
+            user: { select: { name: true } },
+            household: { select: { name: true } },
+          },
+        })
+      : Promise.resolve([]),
+    userId
+      ? prisma.user
+          .findUnique({ where: { id: userId }, select: { role: true } })
+          .then((u) => u?.role)
+      : Promise.resolve(null),
+    // FPP-65 / QUB-13.3: public event page lists the host(s). We
+    // pull `EventAdmin` rows with role=OWNER (the host permission)
+    // and the contact info the user opted into (email is always
+    // public; phoneNumber is shown when set). Selection is
+    // intentionally narrow — only the public contact surface, no
+    // household or admin metadata leaks.
+    prisma.eventAdmin
+      .findMany({
+        where: { eventId: id, role: AdminPermission.OWNER },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          user: {
             select: {
               id: true,
-              status: true,
-              user: { select: { name: true } },
-              household: { select: { name: true } },
+              name: true,
+              email: true,
+              phoneNumber: true,
             },
-          })
-        : Promise.resolve([]),
-      userId
-        ? prisma.user
-            .findUnique({ where: { id: userId }, select: { role: true } })
-            .then((u) => u?.role)
-        : Promise.resolve(null),
-    ]);
+          },
+        },
+      })
+      .then((rows) =>
+        rows.map((row) => ({
+          id: row.user.id,
+          name: row.user.name,
+          email: row.user.email,
+          phoneNumber: row.user.phoneNumber,
+        })),
+      ),
+  ]);
 
   // Load the caller's Registration row in parallel so the RSVP card
   // can show the fee total alongside the summary. Free events have
@@ -270,6 +306,11 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
               hasPendingInvitation={pendingInvitations.length > 0}
               existingRsvp={existingRsvpForCard}
               userRsvpStatus={existingRsvpForCard?.status ?? null}
+              // FPP-65 / QUB-13.3: hosts list. Empty array when no
+              // host is assigned — the HostBlock component hides
+              // itself in that case so we don't render an empty
+              // section.
+              hosts={hosts}
             />
           }
           itineraryItems={event.itineraryItems.map((item) => ({

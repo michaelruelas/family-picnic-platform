@@ -526,7 +526,8 @@ describe('FPP-78 payment audit coverage', () => {
       vi.doMock('~/lib/auth', () => ({
         authOptions: {},
         getServerSession: vi.fn(),
-        isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
+        isAdminRole: (role: unknown) =>
+          role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT' || role === 'HOST',
       }));
       vi.doMock('~/lib/generated/enums', enumMock);
 
@@ -623,7 +624,8 @@ describe('FPP-78 payment audit coverage', () => {
       vi.doMock('~/lib/auth', () => ({
         authOptions: {},
         getServerSession: vi.fn(),
-        isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
+        isAdminRole: (role: unknown) =>
+          role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT' || role === 'HOST',
       }));
       vi.doMock('~/lib/generated/enums', enumMock);
 
@@ -741,7 +743,8 @@ describe('FPP-78 payment audit coverage', () => {
       vi.doMock('~/lib/auth', () => ({
         authOptions: {},
         getServerSession: vi.fn(),
-        isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
+        isAdminRole: (role: unknown) =>
+          role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT' || role === 'HOST',
       }));
       vi.doMock('~/lib/generated/enums', enumMock);
 
@@ -753,7 +756,7 @@ describe('FPP-78 payment audit coverage', () => {
             id: 'admin-1',
             name: 'Admin',
             email: 'admin@x.com',
-            role: 'ADMIN',
+            role: 'SUPER_ADMIN',
             householdId: null,
           },
           expires: 'x',
@@ -806,7 +809,8 @@ describe('FPP-78 payment audit coverage', () => {
       vi.doMock('~/lib/auth', () => ({
         authOptions: {},
         getServerSession: vi.fn(),
-        isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
+        isAdminRole: (role: unknown) =>
+          role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT' || role === 'HOST',
       }));
       vi.doMock('~/lib/generated/enums', enumMock);
       vi.doMock('~/lib/receipt', () => ({
@@ -821,7 +825,7 @@ describe('FPP-78 payment audit coverage', () => {
             id: 'admin-1',
             name: 'Admin',
             email: 'admin@x.com',
-            role: 'ADMIN',
+            role: 'SUPER_ADMIN',
             householdId: null,
           },
           expires: 'x',
@@ -882,7 +886,8 @@ describe('FPP-78 payment audit coverage', () => {
       vi.doMock('~/lib/auth', () => ({
         authOptions: {},
         getServerSession: vi.fn(),
-        isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
+        isAdminRole: (role: unknown) =>
+          role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT' || role === 'HOST',
       }));
       vi.doMock('~/lib/generated/enums', enumMock);
 
@@ -894,7 +899,7 @@ describe('FPP-78 payment audit coverage', () => {
             id: 'admin-1',
             name: 'Admin',
             email: 'admin@x.com',
-            role: 'ADMIN',
+            role: 'SUPER_ADMIN',
             householdId: null,
           },
           expires: 'x',

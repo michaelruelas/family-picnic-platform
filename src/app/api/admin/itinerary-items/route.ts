@@ -1,22 +1,34 @@
 import { NextResponse } from 'next/server';
-import { requireAdminApi } from '~/lib/admin-auth';
+import { requireEventAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { itineraryItemCreateSchema } from '~/lib/schemas/itinerary';
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApi();
+  // FPP-65 audit: per-event gate. A HOST with an EventAdmin row on
+  // the target event can curate the itinerary for their own
+  // picnic; super-admins can curate any event. The input eventId
+  // is parsed from the body once; the same parsed body is reused
+  // for the schema gate and the actual handler so the request
+  // body stream is not consumed twice.
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const probe = itineraryItemCreateSchema.safeParse(body);
+  if (!probe.success) {
+    const firstError = probe.error.issues[0];
+    return NextResponse.json({ error: firstError?.message ?? 'Invalid input' }, { status: 400 });
+  }
+
+  const auth = await requireEventAdminApi(probe.data.eventId);
   if (!auth.ok) return auth.response;
-  const { session } = auth;
-  void session;
+  void auth.session;
 
   try {
-    const body = await request.json();
-    const parseResult = itineraryItemCreateSchema.safeParse(body);
-    if (!parseResult.success) {
-      const firstError = parseResult.error.issues[0];
-      return NextResponse.json({ error: firstError?.message ?? 'Invalid input' }, { status: 400 });
-    }
-    const input = parseResult.data;
+    const input = probe.data;
 
     const event = await prisma.event.findUnique({
       where: { id: input.eventId },

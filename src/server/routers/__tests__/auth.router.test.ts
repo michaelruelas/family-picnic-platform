@@ -18,7 +18,7 @@ vi.mock('next-auth', () => ({
 vi.mock('~/lib/auth', () => ({
   authOptions: {},
   getServerSession: vi.fn(),
-  isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
+  isAdminRole: (role: unknown) => role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT',
 }));
 
 describe('authRouter', () => {
@@ -36,7 +36,7 @@ describe('authRouter', () => {
         id: 'user-1',
         email: 'test@example.com',
         name: 'Test',
-        role: 'ADMIN' as const,
+        role: 'SUPER_ADMIN' as const,
         householdId: null,
       },
       expires: new Date(Date.now() + 86400000).toISOString(),

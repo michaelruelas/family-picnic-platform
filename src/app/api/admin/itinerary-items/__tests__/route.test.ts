@@ -13,6 +13,9 @@ const prismaMock = vi.hoisted(() => ({
     aggregate: vi.fn(),
   },
   event: { findUnique: vi.fn() },
+  // FPP-65 audit: requireEventAdminApi consults canAccessEvent,
+  // which reads eventAdmin.findUnique. The mock must expose it.
+  eventAdmin: { findUnique: vi.fn(() => Promise.resolve(null)) },
   $transaction: vi.fn(),
 }));
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
@@ -38,27 +41,30 @@ beforeEach(() => {
 });
 
 describe('POST /api/admin/itinerary-items', () => {
-  it('returns 401 when not admin', async () => {
+  it('returns 403 when caller has no admin role or EventAdmin row', async () => {
+    // FPP-65 audit: GUEST has a session but no admin role and no
+    // EventAdmin row — `requireEventAdminApi` returns 403, not 401.
+    // 401 is reserved for missing sessions.
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POST(makeJsonRequest('http://x', { eventId: 'e-1', title: 'Setup' }));
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 
   it('returns 400 when fields missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POST(makeJsonRequest('http://x', { eventId: 'e-1' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when event not found', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue(null);
     const res = await POST(makeJsonRequest('http://x', { eventId: 'e-1', title: 'Setup' }));
     expect(res.status).toBe(404);
   });
 
   it('appends the new item at the next order', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e-1' } as never);
     prismaMock.itineraryItem.aggregate.mockResolvedValue({ _max: { order: 2 } } as never);
     prismaMock.itineraryItem.create.mockResolvedValue({ id: 'i-new' } as never);
@@ -85,7 +91,7 @@ describe('POST /api/admin/itinerary-items', () => {
   });
 
   it('starts the order at 0 when no items exist', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e-1' } as never);
     prismaMock.itineraryItem.aggregate.mockResolvedValue({ _max: { order: null } } as never);
     prismaMock.itineraryItem.create.mockResolvedValue({ id: 'i-new' } as never);
@@ -99,7 +105,7 @@ describe('POST /api/admin/itinerary-items', () => {
   });
 
   it('stores an empty time as null', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e-1' } as never);
     prismaMock.itineraryItem.aggregate.mockResolvedValue({ _max: { order: 0 } } as never);
     prismaMock.itineraryItem.create.mockResolvedValue({ id: 'i-new' } as never);
@@ -115,7 +121,7 @@ describe('POST /api/admin/itinerary-items', () => {
   });
 
   it('returns 400 when time is malformed', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POST(
       makeJsonRequest('http://x', { eventId: 'e-1', title: 'Setup', time: 'before lunch' }),
     );
@@ -123,7 +129,7 @@ describe('POST /api/admin/itinerary-items', () => {
   });
 
   it('returns 500 on Prisma error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockRejectedValue(new Error('boom'));
     const res = await POST(makeJsonRequest('http://x', { eventId: 'e-1', title: 'Setup' }));
     expect(res.status).toBe(500);
@@ -131,21 +137,30 @@ describe('POST /api/admin/itinerary-items', () => {
 });
 
 describe('PATCH /api/admin/itinerary-items/[id]', () => {
-  it('returns 401 when not admin', async () => {
+  it('returns 403 when caller has no admin role or EventAdmin row', async () => {
+    // FPP-65 audit: GUEST has a session but no admin role and no
+    // EventAdmin row — `requireEventAdminApi` returns 403, not 401.
+    // 401 is reserved for missing sessions. We have to mock the
+    // item+event lookup to succeed so the auth check actually runs
+    // (the route looks up the item first to find its eventId).
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
+    prismaMock.itineraryItem.findUnique.mockResolvedValue({
+      id: 'i-1',
+      eventId: 'e-1',
+    } as never);
     const res = await PATCH(makeJsonRequest('http://x', { title: 'New' }, 'PATCH'), itemParams);
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 
   it('returns 404 when item not found', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.itineraryItem.findUnique.mockResolvedValue(null);
     const res = await PATCH(makeJsonRequest('http://x', { title: 'New' }, 'PATCH'), itemParams);
     expect(res.status).toBe(404);
   });
 
   it('updates the title', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.itineraryItem.findUnique.mockResolvedValue({ id: 'i-1', eventId: 'e-1' } as never);
     prismaMock.itineraryItem.update.mockResolvedValue({} as never);
     const res = await PATCH(makeJsonRequest('http://x', { title: 'New' }, 'PATCH'), itemParams);
@@ -159,7 +174,7 @@ describe('PATCH /api/admin/itinerary-items/[id]', () => {
   });
 
   it('clears the time when an empty string is sent', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.itineraryItem.findUnique.mockResolvedValue({ id: 'i-1', eventId: 'e-1' } as never);
     prismaMock.itineraryItem.update.mockResolvedValue({} as never);
     const res = await PATCH(makeJsonRequest('http://x', { time: '' }, 'PATCH'), itemParams);
@@ -173,13 +188,13 @@ describe('PATCH /api/admin/itinerary-items/[id]', () => {
   });
 
   it('rejects an empty title', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await PATCH(makeJsonRequest('http://x', { title: '   ' }, 'PATCH'), itemParams);
     expect(res.status).toBe(400);
   });
 
   it('returns 500 on Prisma error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.itineraryItem.findUnique.mockRejectedValue(new Error('boom'));
     const res = await PATCH(makeJsonRequest('http://x', { title: 'New' }, 'PATCH'), itemParams);
     expect(res.status).toBe(500);
@@ -187,21 +202,27 @@ describe('PATCH /api/admin/itinerary-items/[id]', () => {
 });
 
 describe('DELETE /api/admin/itinerary-items/[id]', () => {
-  it('returns 401 when not admin', async () => {
+  it('returns 403 when caller has no admin role or EventAdmin row', async () => {
+    // FPP-65 audit: same gating rationale as PATCH / POST. Mock
+    // the item lookup so the auth check actually runs.
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
+    prismaMock.itineraryItem.findUnique.mockResolvedValue({
+      id: 'i-1',
+      eventId: 'e-1',
+    } as never);
     const res = await DELETE(new Request('http://x'), itemParams);
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 
   it('returns 404 when item not found', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.itineraryItem.findUnique.mockResolvedValue(null);
     const res = await DELETE(new Request('http://x'), itemParams);
     expect(res.status).toBe(404);
   });
 
   it('deletes the item and re-packs the order', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.itineraryItem.findUnique.mockResolvedValue({
       id: 'i-1',
       eventId: 'e-1',
@@ -237,7 +258,7 @@ describe('DELETE /api/admin/itinerary-items/[id]', () => {
   });
 
   it('returns 500 on Prisma error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.itineraryItem.findUnique.mockRejectedValue(new Error('boom'));
     const res = await DELETE(new Request('http://x'), itemParams);
     expect(res.status).toBe(500);

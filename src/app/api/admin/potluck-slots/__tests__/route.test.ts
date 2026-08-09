@@ -44,13 +44,13 @@ describe('POST /api/admin/potluck-slots', () => {
   });
 
   it('returns 400 when fields missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POST(makeJsonRequest('http://x', { eventId: 'e1' }));
     expect(res.status).toBe(400);
   });
 
   it('FPP-54: creates a slot without a name', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e1' } as never);
     prismaMock.potluckSlot.create.mockResolvedValue({
       id: 's-1',
@@ -77,7 +77,7 @@ describe('POST /api/admin/potluck-slots', () => {
   });
 
   it('FPP-54: trims whitespace-only name to null', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e1' } as never);
     prismaMock.potluckSlot.create.mockResolvedValue({ id: 's-1' } as never);
     const res = await POST(
@@ -97,7 +97,7 @@ describe('POST /api/admin/potluck-slots', () => {
   });
 
   it('returns 404 when event not found', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue(null);
     const res = await POST(
       makeJsonRequest('http://x', {
@@ -111,7 +111,7 @@ describe('POST /api/admin/potluck-slots', () => {
   });
 
   it('returns 400 for LIMITED slot without maxSignups', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e1' } as never);
     const res = await POST(
       makeJsonRequest('http://x', {
@@ -125,7 +125,7 @@ describe('POST /api/admin/potluck-slots', () => {
   });
 
   it('creates an OPEN slot', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e1' } as never);
     prismaMock.potluckSlot.create.mockResolvedValue({ id: 's-1' } as never);
     const res = await POST(
@@ -140,7 +140,7 @@ describe('POST /api/admin/potluck-slots', () => {
   });
 
   it('creates a LIMITED slot', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e1' } as never);
     prismaMock.potluckSlot.create.mockResolvedValue({ id: 's-1' } as never);
     const res = await POST(
@@ -156,7 +156,7 @@ describe('POST /api/admin/potluck-slots', () => {
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockRejectedValue(new Error('boom'));
     const res = await POST(
       makeJsonRequest('http://x', {
@@ -178,14 +178,14 @@ describe('PATCH /api/admin/potluck-slots/[id]', () => {
   });
 
   it('returns 404 when slot not found', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.potluckSlot.findUnique.mockResolvedValue(null);
     const res = await PATCH(makeJsonRequest('http://x', { name: 'New' }, 'PATCH'), slotParams);
     expect(res.status).toBe(404);
   });
 
   it('updates slot name', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.potluckSlot.findUnique.mockResolvedValue({ id: 's-1', slotType: 'OPEN' } as never);
     prismaMock.potluckSlot.update.mockResolvedValue({} as never);
     const res = await PATCH(makeJsonRequest('http://x', { name: 'New' }, 'PATCH'), slotParams);
@@ -193,7 +193,7 @@ describe('PATCH /api/admin/potluck-slots/[id]', () => {
   });
 
   it('FPP-54: clears slot name when an empty string is sent', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.potluckSlot.findUnique.mockResolvedValue({ id: 's-1', slotType: 'OPEN' } as never);
     prismaMock.potluckSlot.update.mockResolvedValue({} as never);
     const res = await PATCH(makeJsonRequest('http://x', { name: '' }, 'PATCH'), slotParams);
@@ -207,7 +207,7 @@ describe('PATCH /api/admin/potluck-slots/[id]', () => {
   });
 
   it('returns 400 when LIMITED slot has maxSignups < 1', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.potluckSlot.findUnique.mockResolvedValue({
       id: 's-1',
       slotType: 'LIMITED',
@@ -217,7 +217,7 @@ describe('PATCH /api/admin/potluck-slots/[id]', () => {
   });
 
   it('updates maxSignups for LIMITED slot', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.potluckSlot.findUnique.mockResolvedValue({
       id: 's-1',
       slotType: 'LIMITED',
@@ -228,7 +228,7 @@ describe('PATCH /api/admin/potluck-slots/[id]', () => {
   });
 
   it('ignores maxSignups for OPEN slot', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.potluckSlot.findUnique.mockResolvedValue({ id: 's-1', slotType: 'OPEN' } as never);
     prismaMock.potluckSlot.update.mockResolvedValue({} as never);
     const res = await PATCH(makeJsonRequest('http://x', { maxSignups: 10 }, 'PATCH'), slotParams);
@@ -236,7 +236,7 @@ describe('PATCH /api/admin/potluck-slots/[id]', () => {
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.potluckSlot.findUnique.mockRejectedValue(new Error('boom'));
     const res = await PATCH(makeJsonRequest('http://x', { name: 'New' }, 'PATCH'), slotParams);
     expect(res.status).toBe(500);
@@ -251,14 +251,14 @@ describe('DELETE /api/admin/potluck-slots/[id]', () => {
   });
 
   it('returns 404 when slot not found', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.potluckSlot.findUnique.mockResolvedValue(null);
     const res = await DELETE(new Request('http://x'), slotParams);
     expect(res.status).toBe(404);
   });
 
   it('deletes the slot', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.potluckSlot.findUnique.mockResolvedValue({ id: 's-1' } as never);
     prismaMock.potluckSlot.delete.mockResolvedValue({} as never);
     const res = await DELETE(new Request('http://x'), slotParams);
@@ -266,7 +266,7 @@ describe('DELETE /api/admin/potluck-slots/[id]', () => {
   });
 
   it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.potluckSlot.findUnique.mockResolvedValue({ id: 's-1' } as never);
     prismaMock.potluckSlot.delete.mockRejectedValue(new Error('boom'));
     const res = await DELETE(new Request('http://x'), slotParams);

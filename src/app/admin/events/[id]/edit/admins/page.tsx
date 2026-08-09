@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { requireAdminPage } from '~/lib/admin-auth';
+import { requireEventAdminPage } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import EventAdminsClient from './EventAdminsClient';
 import AdminShell from '~/components/admin/AdminShell';
@@ -39,9 +39,11 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function EventAdminsPage({ params }: PageProps) {
-  const session = await requireAdminPage();
-
   const { id } = await params;
+  // FPP-65 / QUB-13.1: per-event guard. HOST users can manage the
+  // admin roster for events they have an EventAdmin row for.
+  const session = await requireEventAdminPage(id);
+
   const event = await getEvent(id);
 
   if (!event) {

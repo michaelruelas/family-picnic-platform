@@ -48,6 +48,11 @@ const mockPrisma = {
     findMany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
+    // FPP-65: stampHostRole uses updateManyAndReturn to discover
+    // which target users were actually promoted. The mock has to
+    // exist or the tRPC addAdmin transaction throws.
+    updateManyAndReturn: vi.fn(() => Promise.resolve([])),
     findFirst: vi.fn(),
   },
   dependent: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
@@ -98,7 +103,18 @@ const mockPrisma = {
   // event-admin hooks. Tests that cover the hooks assert against this
   // mock alongside the existing adminAuditLog mock.
   auditLog: { create: vi.fn(), findMany: vi.fn() },
-  eventAdmin: { findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
+  eventAdmin: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+    // FPP-65 audit: canAccessEvent + unassignHostRole read this in
+    // every listAdmins / addAdmin / removeAdmin call. Default to
+    // "no row" so super-admin tests (where the gate short-circuits)
+    // still pass; HOST / ADMIN_ADULT callers set it explicitly per
+    // test. `count` powers the un-stamp guard in unassignHostRole.
+    findUnique: vi.fn(() => Promise.resolve(null)),
+    count: vi.fn(() => Promise.resolve(0)),
+  },
   // FPP-48: the RSVP router now reads + upserts Registration rows to
   // snapshot the per-attendee fee. The mock surface must match.
   registration: {
@@ -158,7 +174,12 @@ vi.mock('next-auth', () => ({
 vi.mock('~/lib/auth', () => ({
   authOptions: {},
   getServerSession: vi.fn(),
-  isAdminRole: (role: unknown) => role === 'ADMIN' || role === 'ADMIN_ADULT',
+  isAdminRole: (role: unknown) => role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT',
+  // FPP-65: canAccessEvent calls isSuperAdminRole to short-circuit
+  // super-admin access without hitting EventAdmin. Mirror it here
+  // so HOST / ADMIN_ADULT callers fall through to the EventAdmin
+  // row check the per-event-access tests assert on.
+  isSuperAdminRole: (role: unknown) => role === 'SUPER_ADMIN',
 }));
 
 vi.mock('~/lib/invitation-token', () => ({
@@ -171,6 +192,9 @@ vi.mock('~/lib/invitation-token', () => ({
 }));
 
 vi.mock('~/lib/generated/enums', () => ({
+  // FPP-65: stampHostRole reads Role.SUPER_ADMIN / Role.HOST when
+  // building the where clause for the user.role updateManyAndReturn.
+  Role: { SUPER_ADMIN: 'SUPER_ADMIN', HOST: 'HOST', ADMIN_ADULT: 'ADMIN_ADULT' },
   EventStatus: { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED', CLOSED: 'CLOSED', CANCELLED: 'CANCELLED' },
   RSVPStatus: {
     CONFIRMED: 'CONFIRMED',
@@ -264,7 +288,7 @@ const adminSession = {
     id: 'admin-1',
     name: 'Admin',
     email: 'admin@x.com',
-    role: 'ADMIN' as const,
+    role: 'SUPER_ADMIN' as const,
     householdId: null,
   },
   expires: 'x',
@@ -292,6 +316,21 @@ const otherUserSession = {
   expires: 'x',
 };
 void otherUserSession;
+
+// FPP-65 / QUB-13.4: HOST users are admins globally (they pass
+// adminProcedure) but their per-event access is gated on an
+// EventAdmin row. The per-event-access tests below assert both
+// sides of that contract.
+const hostSession = {
+  user: {
+    id: 'host-1',
+    name: 'Host',
+    email: 'host@x.com',
+    role: 'HOST' as const,
+    householdId: null,
+  },
+  expires: 'x',
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -560,28 +599,7 @@ describe('event.router', () => {
     expect(result).toEqual(mockAdmins);
   });
 
-  it('addAdmin creates event admin with default COADMIN role', async () => {
-    mockPrisma.eventAdmin.create.mockResolvedValue({
-      id: 'ea-1',
-      eventId: 'evt-1',
-      userId: 'user-2',
-      role: 'COADMIN',
-    });
-
-    const { eventRouter } = await import('~/server/routers/event.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(eventRouter)({ session: adminSession });
-    const result = await caller.addAdmin({ eventId: 'evt-1', userId: 'user-2' });
-
-    expect(mockPrisma.eventAdmin.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ eventId: 'evt-1', userId: 'user-2', role: 'COADMIN' }),
-      }),
-    );
-    expect(result).toEqual({ id: 'ea-1', eventId: 'evt-1', userId: 'user-2', role: 'COADMIN' });
-  });
-
-  it('addAdmin with OWNER role creates event admin with OWNER role', async () => {
+  it('addAdmin defaults to OWNER role when none is supplied (FPP-65)', async () => {
     mockPrisma.eventAdmin.create.mockResolvedValue({
       id: 'ea-1',
       eventId: 'evt-1',
@@ -592,14 +610,78 @@ describe('event.router', () => {
     const { eventRouter } = await import('~/server/routers/event.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(eventRouter)({ session: adminSession });
-    const result = await caller.addAdmin({ eventId: 'evt-1', userId: 'user-2', role: 'OWNER' });
+    const result = await caller.addAdmin({ eventId: 'evt-1', userId: 'user-2' });
 
     expect(mockPrisma.eventAdmin.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ role: 'OWNER' }),
+        data: expect.objectContaining({ eventId: 'evt-1', userId: 'user-2', role: 'OWNER' }),
       }),
     );
-    expect(result.role).toBe('OWNER');
+    expect(result).toEqual({ id: 'ea-1', eventId: 'evt-1', userId: 'user-2', role: 'OWNER' });
+  });
+
+  it('addAdmin with OWNER stamps User.role = HOST atomically (FPP-65)', async () => {
+    mockPrisma.eventAdmin.create.mockResolvedValue({
+      id: 'ea-1',
+      eventId: 'evt-1',
+      userId: 'user-2',
+      role: 'OWNER',
+    });
+    mockPrisma.user.updateManyAndReturn.mockResolvedValueOnce([{ id: 'user-2' }] as never);
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    await caller.addAdmin({ eventId: 'evt-1', userId: 'user-2', role: 'OWNER' });
+
+    expect(mockPrisma.user.updateManyAndReturn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: ['user-2'] },
+          role: { not: 'SUPER_ADMIN' },
+        }),
+        data: { role: 'HOST' },
+      }),
+    );
+  });
+
+  it('addAdmin with COADMIN does NOT stamp User.role = HOST', async () => {
+    mockPrisma.eventAdmin.create.mockResolvedValue({
+      id: 'ea-1',
+      eventId: 'evt-1',
+      userId: 'user-2',
+      role: 'COADMIN',
+    });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    await caller.addAdmin({ eventId: 'evt-1', userId: 'user-2', role: 'COADMIN' });
+
+    expect(mockPrisma.user.updateManyAndReturn).not.toHaveBeenCalled();
+  });
+
+  it('addAdmin with INVITER role creates event admin with INVITER role', async () => {
+    mockPrisma.eventAdmin.create.mockResolvedValue({
+      id: 'ea-1',
+      eventId: 'evt-1',
+      userId: 'user-2',
+      role: 'INVITER',
+    });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    const result = await caller.addAdmin({ eventId: 'evt-1', userId: 'user-2', role: 'INVITER' });
+
+    expect(mockPrisma.eventAdmin.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ role: 'INVITER' }),
+      }),
+    );
+    expect(result.role).toBe('INVITER');
+    // INVITER is not a host — no role stamp.
+    expect(mockPrisma.user.updateManyAndReturn).not.toHaveBeenCalled();
   });
 
   it('removeAdmin deletes event admin by composite key', async () => {
@@ -623,7 +705,7 @@ describe('event.router', () => {
       id: 'ea-1',
       eventId: 'evt-1',
       userId: 'user-2',
-      role: 'COADMIN',
+      role: 'OWNER',
     });
 
     const { eventRouter } = await import('~/server/routers/event.router');
@@ -639,7 +721,7 @@ describe('event.router', () => {
       payload: {
         eventId: 'evt-1',
         userId: 'user-2',
-        role: 'COADMIN',
+        role: 'OWNER',
       },
     });
   });
@@ -667,8 +749,119 @@ describe('event.router', () => {
         eventId: 'evt-1',
         userId: 'user-2',
         role: 'COADMIN',
+        demoted: false,
       },
     });
+  });
+
+  // FPP-65 audit: when the removed row had role=OWNER, the audit
+  // payload records `demoted: true` so the actor can see whether
+  // the un-stamp helper fired. The mock for `unassignHostRole`
+  // is asserted by the event-access unit tests; this check just
+  // confirms the audit-log surface picked up the flag.
+  it('removeAdmin of an OWNER row records demoted: true in the audit payload', async () => {
+    const { writeDomainAuditLog } = await import('~/lib/audit');
+    mockPrisma.eventAdmin.delete.mockResolvedValue({
+      id: 'ea-1',
+      eventId: 'evt-1',
+      userId: 'user-2',
+      role: 'OWNER',
+    });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    await caller.removeAdmin({ eventId: 'evt-1', userId: 'user-2' });
+
+    expect(writeDomainAuditLog).toHaveBeenCalledWith({
+      actorId: 'admin-1',
+      action: 'event.admin.remove',
+      subjectType: 'EventAdmin',
+      subjectId: 'evt-1:user-2',
+      payload: {
+        eventId: 'evt-1',
+        userId: 'user-2',
+        role: 'OWNER',
+        demoted: true,
+      },
+    });
+  });
+
+  // FPP-65 / QUB-13.4: HOST users can manage events they have an
+  // EventAdmin row for. Per-event access is gated by `canAccessEvent`
+  // inside each procedure, not by the procedure type — so the tests
+  // drive the per-event gate directly via the EventAdmin mock.
+  it('listAdmins throws FORBIDDEN for HOST users with no EventAdmin row (FPP-65)', async () => {
+    mockPrisma.eventAdmin.findUnique.mockResolvedValue(null);
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: hostSession });
+
+    await expect(caller.listAdmins({ eventId: 'evt-1' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    expect(mockPrisma.eventAdmin.findMany).not.toHaveBeenCalled();
+  });
+
+  it('listAdmins permits HOST users when they have an EventAdmin row (FPP-65)', async () => {
+    mockPrisma.eventAdmin.findUnique.mockResolvedValue({ id: 'ea-1' } as never);
+    mockPrisma.eventAdmin.findMany.mockResolvedValue([]);
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: hostSession });
+
+    await expect(caller.listAdmins({ eventId: 'evt-1' })).resolves.toEqual([]);
+    expect(mockPrisma.eventAdmin.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { eventId: 'evt-1' } }),
+    );
+  });
+
+  it('addAdmin throws FORBIDDEN for HOST users with no EventAdmin row (FPP-65)', async () => {
+    mockPrisma.eventAdmin.findUnique.mockResolvedValue(null);
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: hostSession });
+
+    await expect(
+      caller.addAdmin({ eventId: 'evt-1', userId: 'user-2', role: 'OWNER' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    expect(mockPrisma.eventAdmin.create).not.toHaveBeenCalled();
+    expect(mockPrisma.user.updateManyAndReturn).not.toHaveBeenCalled();
+  });
+
+  it('addAdmin permits HOST users when they have an EventAdmin row (FPP-65)', async () => {
+    mockPrisma.eventAdmin.findUnique.mockResolvedValue({ id: 'ea-1' } as never);
+    mockPrisma.eventAdmin.create.mockResolvedValue({
+      id: 'ea-2',
+      eventId: 'evt-1',
+      userId: 'user-2',
+      role: 'OWNER',
+    } as never);
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: hostSession });
+
+    await caller.addAdmin({ eventId: 'evt-1', userId: 'user-2', role: 'OWNER' });
+    expect(mockPrisma.eventAdmin.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ role: 'OWNER' }) }),
+    );
+  });
+
+  it('removeAdmin throws FORBIDDEN for HOST users with no EventAdmin row (FPP-65)', async () => {
+    mockPrisma.eventAdmin.findUnique.mockResolvedValue(null);
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: hostSession });
+
+    await expect(caller.removeAdmin({ eventId: 'evt-1', userId: 'user-2' })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    expect(mockPrisma.eventAdmin.delete).not.toHaveBeenCalled();
   });
 
   it('create with rsvpDeadline and maxCapacity passes extra fields', async () => {
@@ -703,7 +896,7 @@ describe('user.router', () => {
       id: 'admin-1',
       name: 'Admin',
       email: 'admin@x.com',
-      role: 'ADMIN',
+      role: 'SUPER_ADMIN',
       communicationPreference: 'EMAIL',
       household: { id: 'h-1', name: 'Family' },
     };
@@ -3969,7 +4162,7 @@ describe('photo.router', () => {
       url: 'https://example.com',
       event: { id: 'evt-1' },
     });
-    mockPrisma.user.findUnique.mockResolvedValue({ id: 'admin-1', role: 'ADMIN' });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'admin-1', role: 'SUPER_ADMIN' });
     mockPrisma.photo.update.mockResolvedValue({ id: 'photo-1', deletedAt: new Date() });
 
     const { photoRouter } = await import('~/server/routers/photo.router');
