@@ -267,10 +267,37 @@ model Event {
   adminAuditLogs     AdminAuditLog[]
   admins             EventAdmin[]
   registrations      Registration[]
+  itineraryItems     ItineraryItem[]
 
   @@index([status])
   @@index([date])
   @@index([rsvpDeadline])
+}
+
+// FPP-45 / QUB-31: per-event itinerary rows rendered on the event
+// page Itinerary tab. `time` is a wall-clock time (no date) stored
+// in the event's timezone; the admin form lets the host pick a time
+// in the host's local clock and the rendered tab keeps that same
+// wall-clock label so guests in other timezones see the host's
+// intended wall-clock reading. `order` is the stable display order
+// after drag-to-reorder; the page reads `order asc, time asc` so
+// rows stay sorted even when two items share the same time.
+model ItineraryItem {
+  id          String   @id @default(cuid())
+  eventId     String
+  // Time-of-day (HH:MM:SS) without a date. Storing without a date
+  // matches the "what time does the potluck start" admin intent and
+  // avoids drift between the host's wall clock and a UTC instant.
+  time        String?
+  title       String
+  description String?
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, order])
 }
 
 model Invitation {

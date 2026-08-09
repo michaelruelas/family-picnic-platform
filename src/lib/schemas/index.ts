@@ -8,6 +8,7 @@ export * from './attendee-name';
 export * from './profile';
 export * from './photo';
 export * from './event';
+export * from './itinerary';
 export * from './sms';
 export * from './household';
 export * from './payment';

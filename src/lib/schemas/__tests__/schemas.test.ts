@@ -1011,3 +1011,203 @@ describe('household-member schemas reuse attendee-name rules (FPP-36)', () => {
     expect(result.success).toBe(false);
   });
 });
+
+import {
+  itineraryItemCreateSchema,
+  itineraryItemUpdateSchema,
+  itineraryItemReorderSchema,
+} from '~/lib/schemas/itinerary';
+
+describe('itineraryItemCreateSchema (FPP-45)', () => {
+  it('passes with a title and HH:MM time', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      time: '10:00',
+      title: 'Setup',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.time).toBe('10:00');
+      expect(result.data.title).toBe('Setup');
+      expect(result.data.description).toBeNull();
+    }
+  });
+
+  it('passes with an HH:MM:SS time', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      time: '14:30:00',
+      title: 'Setup',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes with an empty time (no time-of-day)', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      time: '',
+      title: 'Setup',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.time).toBeNull();
+    }
+  });
+
+  it('passes when time is omitted', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      title: 'Setup',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.time).toBeNull();
+    }
+  });
+
+  it('trims and stores a description', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      title: 'Setup',
+      description: '  Bring coolers.  ',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.description).toBe('Bring coolers.');
+    }
+  });
+
+  it('stores a whitespace-only description as null', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      title: 'Setup',
+      description: '   ',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.description).toBeNull();
+    }
+  });
+
+  it('rejects when eventId is missing', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      title: 'Setup',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an empty title', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      title: '   ',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an oversized title', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      title: 'a'.repeat(201),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an oversized description', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      title: 'Setup',
+      description: 'a'.repeat(2001),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a malformed time', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      title: 'Setup',
+      time: '25:00',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a non-time string', () => {
+    const result = itineraryItemCreateSchema.safeParse({
+      eventId: 'e-1',
+      title: 'Setup',
+      time: 'before lunch',
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('itineraryItemUpdateSchema (FPP-45)', () => {
+  it('passes with just an id', () => {
+    const result = itineraryItemUpdateSchema.safeParse({ id: 'i-1' });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes an empty time string through (the API converts to null on write)', () => {
+    const result = itineraryItemUpdateSchema.safeParse({ id: 'i-1', time: '' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.time).toBe('');
+    }
+  });
+
+  it('preserves undefined fields (does not coerce them to null)', () => {
+    const result = itineraryItemUpdateSchema.safeParse({ id: 'i-1', title: 'New' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.description).toBeUndefined();
+    }
+  });
+
+  it('rejects when id is missing', () => {
+    const result = itineraryItemUpdateSchema.safeParse({ title: 'New' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an empty title', () => {
+    const result = itineraryItemUpdateSchema.safeParse({ id: 'i-1', title: '   ' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects unknown fields', () => {
+    const result = itineraryItemUpdateSchema.safeParse({ id: 'i-1', foo: 'bar' });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('itineraryItemReorderSchema (FPP-45)', () => {
+  it('passes with an eventId and at least one item id', () => {
+    const result = itineraryItemReorderSchema.safeParse({
+      eventId: 'e-1',
+      itemIds: ['i-1', 'i-2'],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an empty itemIds array', () => {
+    const result = itineraryItemReorderSchema.safeParse({
+      eventId: 'e-1',
+      itemIds: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an empty eventId', () => {
+    const result = itineraryItemReorderSchema.safeParse({
+      eventId: '',
+      itemIds: ['i-1'],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an empty item id', () => {
+    const result = itineraryItemReorderSchema.safeParse({
+      eventId: 'e-1',
+      itemIds: ['i-1', ''],
+    });
+    expect(result.success).toBe(false);
+  });
+});

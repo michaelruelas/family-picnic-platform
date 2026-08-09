@@ -1,9 +1,15 @@
 import EmptyState from '~/components/ui/EmptyState';
 
 export interface ItineraryItem {
-  /** Stable id; falls back to index for the placeholder set until QUB-31 ships. */
-  id?: string;
-  /** Optional display time, formatted in the event's timezone. */
+  /** Stable id from the itinerary_items table. */
+  id: string;
+  /**
+   * Wall-clock time formatted as "10:00 AM" in the event's
+   * timezone. The host enters the time once in the admin editor
+   * (QUB-31.2) and that string is stored on `ItineraryItem.time`
+   * as HH:MM(:SS); the page formats it for display so guests in
+   * other timezones see the host's intended wall-clock reading.
+   */
   time: string | null;
   title: string;
   description: string | null;
@@ -11,18 +17,17 @@ export interface ItineraryItem {
 
 export interface EventItinerarySectionProps {
   /**
-   * Items ordered by `order` ascending, then by `time` ascending. The
-   * current detail page passes the placeholder set until QUB-31.3
-   * adds the `ItineraryItem` model + admin CRUD. Once the model lands
-   * and items are stored in the event's timezone, render the times
-   * through `Intl.DateTimeFormat` with `timeZone` so guests in other
-   * timezones see the same wall-clock time as the host.
+   * Items in the order set by the admin editor (i.e. by
+   * `ItineraryItem.order` ascending, with `time` as the tie-break).
+   * The detail page queries the items ordered by `[{ order: 'asc' },
+   * { time: 'asc' }]` and pre-formats the wall-clock time, so this
+   * component just renders what it's given.
    */
   items: ItineraryItem[];
 }
 
 /**
- * FPP-46 / FPP-9: Itinerary tab content. Renders the event's
+ * FPP-46 / FPP-45: Itinerary tab content. Renders the event's
  * itinerary items (time, title, description) in the order provided
  * by the caller. Shows a friendly empty state when there are no
  * items so the tab is never blank.
@@ -49,9 +54,9 @@ export function EventItinerarySection({ items }: EventItinerarySectionProps) {
         </div>
       ) : (
         <ol className="mt-6 space-y-3" data-testid="event-itinerary-list">
-          {items.map((item, idx) => (
+          {items.map((item) => (
             <li
-              key={item.id ?? `itinerary-${idx}`}
+              key={item.id}
               className="bg-card shadow-card ring-border/60 flex items-center gap-5 rounded-2xl p-5 ring-1"
               data-testid="event-itinerary-item"
             >

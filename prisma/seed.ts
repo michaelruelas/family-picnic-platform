@@ -273,6 +273,47 @@ async function main() {
 
   console.log('Created photos with reactions');
 
+  // FPP-45: seed an itinerary so local dev shows a populated tab
+  // out of the box. Order matches the host's intended schedule.
+  const itinerarySeed = [
+    {
+      time: '10:00',
+      title: 'Setup & Early Arrival',
+      description: 'Unloading coolers and firing up the grill.',
+      order: 0,
+    },
+    {
+      time: '12:30',
+      title: 'The Big Feast',
+      description: 'Potluck lines open. Elders served first.',
+      order: 1,
+    },
+    {
+      time: '14:00',
+      title: 'Family Games',
+      description: 'Annual relay races and water balloons.',
+      order: 2,
+    },
+    {
+      time: '16:00',
+      title: 'Golden Hour Photos',
+      description: 'Find the cousins. Find the shade. Smile.',
+      order: 3,
+    },
+  ];
+  for (const item of itinerarySeed) {
+    await prisma.itineraryItem.create({
+      data: {
+        eventId: event.id,
+        time: item.time,
+        title: item.title,
+        description: item.description,
+        order: item.order,
+      },
+    });
+  }
+  console.log('Created itinerary items');
+
   // Invitations for un-RSVPed households
   await prisma.invitation.upsert({
     where: { token: 'seed-invitation-token-patels' },
