@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { EventRsvpCard } from './EventRsvpCard';
+import { EventLocationMap } from './EventLocationMap';
 import { SignInPrompt } from './SignInPrompt';
 import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS } from '~/lib/constants';
 import type { RSVPStatus, RsvpAttending } from '~/lib/generated/enums';
@@ -36,6 +37,8 @@ export interface EventHeaderSectionProps {
   eventDescription: string;
   eventDate: Date;
   eventLocation: string;
+  eventLat: number | null;
+  eventLng: number | null;
   isPast: boolean;
   isLoggedIn: boolean;
   rsvpDeadline: Date | null;
@@ -112,6 +115,8 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
     eventDescription,
     eventDate,
     eventLocation,
+    eventLat,
+    eventLng,
     isPast,
     isLoggedIn,
     rsvpDeadline,
@@ -182,6 +187,10 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
         attending={currentAttending}
         dishesClaimed={totalPotluckDishes}
       />
+
+      {eventLat !== null && eventLng !== null && (
+        <EventLocationMap lat={eventLat} lng={eventLng} location={eventLocation} />
+      )}
 
       <HostBlock description={eventDescription} maxCapacity={maxCapacity} hosts={hosts} />
 

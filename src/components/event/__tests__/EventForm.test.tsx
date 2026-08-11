@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import EventForm from '../EventForm';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -10,8 +11,6 @@ vi.mock('next/navigation', () => ({
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch as never;
-
-const { default: EventForm } = await import('../EventForm');
 
 beforeEach(() => {
   mockFetch.mockReset();
@@ -31,6 +30,9 @@ describe('EventForm', () => {
       name: 'Annual Picnic',
       date: '2026-08-15T10:00',
       location: 'Central Park',
+      lat: null,
+      lng: null,
+      placeId: null,
       description: 'Family fun',
       rsvpDeadline: '2026-08-01',
       maxCapacity: 50,
@@ -65,7 +67,7 @@ describe('EventForm', () => {
     });
   });
 
-  it('submits create form successfully', async () => {
+  it('submits create form with geo fields', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ id: 'e-new' }),
@@ -96,6 +98,9 @@ describe('EventForm', () => {
       name: 'Picnic',
       date: '2026-08-15T10:00',
       location: 'Park',
+      lat: null,
+      lng: null,
+      placeId: null,
       description: '',
     };
     render(<EventForm mode="edit" initialData={initialData} />);
@@ -106,6 +111,27 @@ describe('EventForm', () => {
         '/api/admin/events/e-1',
         expect.objectContaining({ method: 'PATCH' }),
       );
+    });
+  });
+
+  it('includes lat, lng, placeId in submit payload', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'e-new' }),
+    } as never);
+    render(<EventForm mode="create" />);
+    fireEvent.change(screen.getByLabelText(/event name/i), { target: { value: 'New' } });
+    fireEvent.change(screen.getByLabelText(/event date/i), {
+      target: { value: '2026-08-15T10:00' },
+    });
+    fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
+    const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
+    fireEvent.submit(form);
+    await waitFor(() => {
+      const body = mockFetch.mock.calls[0]![1]!.body as string;
+      expect(body).toContain('"lat"');
+      expect(body).toContain('"lng"');
+      expect(body).toContain('"placeId"');
     });
   });
 
@@ -155,15 +181,14 @@ describe('EventForm', () => {
         name: 'Annual Picnic',
         date: '2026-08-15T10:00',
         location: 'Park',
+        lat: null,
+        lng: null,
+        placeId: null,
         description: '',
         registrationFeeCents: 2500,
         registrationFeeMinAge: 13,
       };
       render(<EventForm mode="edit" initialData={initialData} />);
-      // `type="number"` inputs normalize the rendered value; we only
-      // care that the form seeded the cents correctly. Submit will
-      // re-emit the payload so the integration test below is the
-      // source of truth for cents/min-age.
       expect(screen.getByLabelText(/registration fee/i)).toHaveValue(25);
       expect(screen.getByLabelText(/minimum age for fee/i)).toHaveValue(13);
     });

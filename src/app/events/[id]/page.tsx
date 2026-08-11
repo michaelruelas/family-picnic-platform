@@ -287,6 +287,8 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
               eventDescription={event.description}
               eventDate={eventDate}
               eventLocation={event.location}
+              eventLat={event.lat}
+              eventLng={event.lng}
               isPast={isPast}
               isLoggedIn={isLoggedIn}
               rsvpDeadline={event.rsvpDeadline}

@@ -83,10 +83,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       name,
       date,
       location,
+      lat,
+      lng,
+      placeId,
       description,
       rsvpDeadline,
       maxCapacity,
       mapImageUrl,
+      currency,
       registrationFeeCents,
       registrationFeeMinAge,
     } = body;
@@ -128,11 +132,15 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (name !== undefined) updateData.name = name;
     if (date !== undefined) updateData.date = new Date(date);
     if (location !== undefined) updateData.location = location;
+    if (lat !== undefined) updateData.lat = lat;
+    if (lng !== undefined) updateData.lng = lng;
+    if (placeId !== undefined) updateData.placeId = placeId;
     if (description !== undefined) updateData.description = description;
     if (rsvpDeadline !== undefined)
       updateData.rsvpDeadline = rsvpDeadline ? new Date(rsvpDeadline) : null;
     if (maxCapacity !== undefined) updateData.maxCapacity = maxCapacity || null;
     if (mapImageUrl !== undefined) updateData.mapImageUrl = mapImageUrl || null;
+    if (currency !== undefined) updateData.currency = currency;
     if (registrationFeeCents !== undefined) updateData.registrationFeeCents = registrationFeeCents;
     if (registrationFeeMinAge !== undefined)
       updateData.registrationFeeMinAge = registrationFeeMinAge;
