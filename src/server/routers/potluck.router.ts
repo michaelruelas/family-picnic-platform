@@ -1,5 +1,6 @@
 import { router, protectedProcedure, eventAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { prisma } from '~/lib/prisma';
 import { PotluckCategory, SlotType, RSVPStatus, EventStatus } from '~/lib/generated/enums';
 import { writeDomainAuditLog } from '~/lib/audit';
@@ -71,12 +72,10 @@ export const potluckRouter = router({
         select: { eventId: true },
       });
       if (!slot) {
-        // tRPC's TRPCError does not have a "Slot not found" shape, so
-        // surface as BAD_REQUEST — the REST route returns 404 for
-        // the same case. Hosts who hit this path are trying to
-        // update a slot that no longer exists; the caller should
-        // refetch before retrying.
-        throw new Error('Slot not found');
+        // FPP-104 review: throw a tRPC-shaped NOT_FOUND so the
+        // client surfaces a real protocol error. A plain Error
+        // would land as INTERNAL_SERVER_ERROR at the tRPC layer.
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Slot not found' });
       }
       return slot.eventId;
     },
@@ -95,7 +94,7 @@ export const potluckRouter = router({
       select: { eventId: true },
     });
     if (!slot) {
-      throw new Error('Slot not found');
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Slot not found' });
     }
     return slot.eventId;
   }).mutation(async ({ input }) => {

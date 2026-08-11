@@ -76,7 +76,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   const auth = await requireEventAdminApi(id);
   if (!auth.ok) return auth.response;
-  void auth.session;
 
   try {
     const body = await request.json();
@@ -163,7 +162,6 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
 
   const auth = await requireEventAdminApi(id);
   if (!auth.ok) return auth.response;
-  void auth.session;
 
   try {
     const existing = await prisma.event.findUnique({ where: { id } });

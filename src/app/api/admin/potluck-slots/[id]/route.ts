@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   if (!sessionAuth.ok) return sessionAuth.response;
   const preloadedSession = sessionAuth.session;
 
-  let lookup: { id: string; eventId: string; slotType: string };
+  let slot: { id: string; eventId: string; slotType: string };
   try {
     const { id } = await params;
     const row = await prisma.potluckSlot.findUnique({
@@ -30,15 +30,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (!row) {
       return NextResponse.json({ error: 'Slot not found' }, { status: 404 });
     }
-    lookup = row;
+    slot = row;
   } catch (error) {
     console.error('Failed to load potluck slot:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
-  const auth = await requireEventAdminApi(lookup.eventId, { preloadedSession });
+  const auth = await requireEventAdminApi(slot.eventId, { preloadedSession });
   if (!auth.ok) return auth.response;
-  void auth.session;
 
   try {
     const body = await request.json();
@@ -53,7 +52,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       updateData.name = trimmed === '' ? null : trimmed;
     }
     if (maxSignups !== undefined) {
-      if (lookup.slotType === 'LIMITED') {
+      if (slot.slotType === 'LIMITED') {
         if (!maxSignups || maxSignups < 1) {
           return NextResponse.json(
             { error: 'maxSignups must be at least 1 for LIMITED slots' },
@@ -65,7 +64,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     const updatedSlot = await prisma.potluckSlot.update({
-      where: { id: lookup.id },
+      where: { id: slot.id },
       data: updateData,
     });
 
@@ -85,7 +84,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   if (!sessionAuth.ok) return sessionAuth.response;
   const preloadedSession = sessionAuth.session;
 
-  let lookup: { id: string; eventId: string };
+  let slot: { id: string; eventId: string };
   try {
     const { id } = await params;
     const row = await prisma.potluckSlot.findUnique({
@@ -95,18 +94,17 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     if (!row) {
       return NextResponse.json({ error: 'Slot not found' }, { status: 404 });
     }
-    lookup = row;
+    slot = row;
   } catch (error) {
     console.error('Failed to load potluck slot:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
-  const auth = await requireEventAdminApi(lookup.eventId, { preloadedSession });
+  const auth = await requireEventAdminApi(slot.eventId, { preloadedSession });
   if (!auth.ok) return auth.response;
-  void auth.session;
 
   try {
-    await prisma.potluckSlot.delete({ where: { id: lookup.id } });
+    await prisma.potluckSlot.delete({ where: { id: slot.id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

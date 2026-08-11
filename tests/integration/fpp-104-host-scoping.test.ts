@@ -113,13 +113,12 @@ describe('FPP-104: complete per-event host scoping', () => {
       // route must look the slot up before calling
       // `requireEventAdminApi`. The audit fixes the missing
       // try/catch around the lookup. The local var is named
-      // `lookup` (not `slot`) so the eslint `no-useless-assignment`
-      // rule does not flag the assignment as dead. The second
-      // arg (`{ preloadedSession }`) is optional — the regex
-      // accepts either form.
+      // `slot` (matches the tRPC proc's name for the same
+      // shape). The second arg (`{ preloadedSession }`) is
+      // optional — the regex accepts either form.
       const route = await fs.readFile(potluckSlotsIdPath, 'utf-8');
       expect(route).toMatch(/potluckSlot\.findUnique/);
-      expect(route).toMatch(/requireEventAdminApi\(\s*lookup\.eventId/);
+      expect(route).toMatch(/requireEventAdminApi\(\s*slot\.eventId/);
     });
 
     it('REST PATCH/DELETE close the 404-vs-401 information leak with requireSessionApi', async () => {

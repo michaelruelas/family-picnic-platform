@@ -63,15 +63,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'invalid role' }, { status: 400 });
   }
 
-  // FPP-65 audit / FPP-104 followup: defensive self-assignment
-  // check. Only SUPER_ADMIN can include themselves in the target
-  // list. We use `isSuperAdminRole` (not `isAdminRole`) so a
-  // default `ADMIN_ADULT` user cannot self-promote to OWNER on an
-  // event they already have a row for. The previous check used
-  // `isAdminRole`, which let ADMIN_ADULT users through; the impact
-  // was bounded (canAccessEvent is role-agnostic, so they did not
-  // gain extra access), but the comment claimed "only super-admins"
-  // which was inaccurate. Tightened to `isSuperAdminRole` to match.
+  // FPP-104: tighten to isSuperAdminRole so an ADMIN_ADULT user
+  // cannot self-promote to OWNER on an event they already have a
+  // row for.
   const actorIsSuperAdmin = isSuperAdminRole(session.user.role);
   if (!actorIsSuperAdmin && targetUserIds.includes(session.user.id)) {
     return NextResponse.json(

@@ -15,7 +15,6 @@ export async function POST(_request: Request, { params }: RouteParams) {
 
   const auth = await requireEventAdminApi(id);
   if (!auth.ok) return auth.response;
-  void auth.session;
 
   try {
     const event = await prisma.event.findUnique({ where: { id } });
