@@ -3,8 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions, getEnabledOAuthProviders } from '~/lib/auth';
 import LoginForm from '~/components/LoginForm';
 
-export const dynamic = 'force-dynamic';
-
 export default async function UnauthenticatedPage({
   showBackLink = true,
 }: {
