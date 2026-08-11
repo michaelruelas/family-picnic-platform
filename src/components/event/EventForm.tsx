@@ -58,7 +58,12 @@ function LocationAutocomplete({
   onChange,
 }: {
   value: string;
-  onChange: (data: { location: string; lat: number | null; lng: number | null; placeId: string | null }) => void;
+  onChange: (data: {
+    location: string;
+    lat: number | null;
+    lng: number | null;
+    placeId: string | null;
+  }) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -156,7 +161,12 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
   });
 
   const handleLocationChange = useCallback(
-    (data: { location: string; lat: number | null; lng: number | null; placeId: string | null }) => {
+    (data: {
+      location: string;
+      lat: number | null;
+      lng: number | null;
+      placeId: string | null;
+    }) => {
       setFormData((prev) => ({
         ...prev,
         location: data.location,
@@ -271,10 +281,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
           <label htmlFor="location" className="text-foreground/85 block text-sm font-medium">
             Location * (start typing for address suggestions)
           </label>
-          <LocationAutocomplete
-            value={formData.location}
-            onChange={handleLocationChange}
-          />
+          <LocationAutocomplete value={formData.location} onChange={handleLocationChange} />
         </div>
 
         <div>

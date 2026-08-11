@@ -14,7 +14,7 @@ export function EventLocationMap({ lat, lng, location }: EventLocationMapProps) 
   const embedUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${lat},${lng}`;
 
   return (
-    <div className="bg-card shadow-card ring-border/60 rounded-3xl overflow-hidden ring-1">
+    <div className="bg-card shadow-card ring-border/60 overflow-hidden rounded-3xl ring-1">
       <div className="aspect-[21/9] w-full">
         <iframe
           title={`Map of ${location}`}
