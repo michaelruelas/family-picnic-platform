@@ -28,7 +28,10 @@ const prismaMock = vi.hoisted(() => ({
     updateMany: vi.fn(),
   },
   charge: { updateMany: vi.fn() },
-  eventAdmin: { findMany: vi.fn() },
+  // FPP-104: the per-event gate consults canAccessEvent, which
+  // reads `eventAdmin.findUnique` for non-platform-admins.
+  // Stub it to `null` so non-admin users hit the 403 path.
+  eventAdmin: { findMany: vi.fn(), findUnique: vi.fn(() => Promise.resolve(null)) },
   communicationLog: { createMany: vi.fn() },
   adminAuditLog: { create: vi.fn() },
   auditLog: { create: vi.fn() },
@@ -100,8 +103,24 @@ beforeEach(() => {
 });
 
 describe('POST /api/admin/rsvp/override', () => {
-  it('returns 401 when not admin', async () => {
+  it('returns 403 when session exists but caller has no admin role or EventAdmin row', async () => {
+    // FPP-104: per-event gate. A session exists but the user has
+    // no admin role and no EventAdmin row, so the gate returns
+    // 403 (not 401). 401 is reserved for missing sessions; see
+    // the no-session test below.
     mockedSession.mockResolvedValue(NON_ADMIN_SESSION);
+    const res = await POST(
+      makeJsonRequest('http://x', {
+        eventId: 'e1',
+        userId: 'target-1',
+        status: 'CONFIRMED',
+      }),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 when no session at all', async () => {
+    mockedSession.mockResolvedValue(null);
     const res = await POST(
       makeJsonRequest('http://x', {
         eventId: 'e1',

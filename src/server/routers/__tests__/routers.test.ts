@@ -3379,6 +3379,11 @@ describe('potluck.router', () => {
   });
 
   it('updateSlot updates potluck slot fields', async () => {
+    // FPP-104: the updateSlot getEventId resolver looks the slot
+    // up to find its parent event so the gate can consult
+    // canAccessEvent. Stub the lookup to return a slot on
+    // `event-1` so the admin session passes the per-event gate.
+    mockPrisma.potluckSlot.findUnique.mockResolvedValue({ eventId: 'event-1' });
     mockPrisma.potluckSlot.update.mockResolvedValue({
       id: 'slot-1',
       name: 'Updated',
@@ -3400,6 +3405,8 @@ describe('potluck.router', () => {
   });
 
   it('FPP-54: updateSlot clears the name when an empty string is sent', async () => {
+    // FPP-104: see the getEventId note above.
+    mockPrisma.potluckSlot.findUnique.mockResolvedValue({ eventId: 'event-1' });
     mockPrisma.potluckSlot.update.mockResolvedValue({ id: 'slot-1', name: null });
 
     const { potluckRouter } = await import('~/server/routers/potluck.router');
@@ -3416,6 +3423,9 @@ describe('potluck.router', () => {
   });
 
   it('deleteSlot deletes a potluck slot', async () => {
+    // FPP-104: the deleteSlot getEventId resolver looks the slot
+    // up to find its parent event.
+    mockPrisma.potluckSlot.findUnique.mockResolvedValue({ eventId: 'event-1' });
     mockPrisma.potluckSlot.delete.mockResolvedValue({ id: 'slot-1' });
 
     const { potluckRouter } = await import('~/server/routers/potluck.router');

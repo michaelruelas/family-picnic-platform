@@ -22,7 +22,11 @@ describe('FPP-102: manual RSVP entry in admin MembersTable', () => {
 
     it('adminOverride persists declineMessage only on decline (clears on re-confirm)', async () => {
       const router = await fs.readFile(routerPath, 'utf-8');
-      const block = router.split(/adminOverride:\s*auditedAdminProcedure/)[1] ?? '';
+      // FPP-104: the proc is now `eventAdminProcedure` (not
+      // `auditedAdminProcedure`); the split regex mirrors the
+      // new shape. The declineMessage persistence is unchanged
+      // from the FPP-102 contract.
+      const block = router.split(/adminOverride:\s*eventAdminProcedure/)[1] ?? '';
       // Both the create and update branches must stamp
       // `declineMessage: null` when the new status is not
       // DECLINED so a re-confirm wipes a stale note.
@@ -33,7 +37,11 @@ describe('FPP-102: manual RSVP entry in admin MembersTable', () => {
 
     it('adminOverride writes a DECLINE_NOTE CommunicationLog row to each event owner', async () => {
       const router = await fs.readFile(routerPath, 'utf-8');
-      const block = router.split(/adminOverride:\s*auditedAdminProcedure/)[1] ?? '';
+      // FPP-104: the proc is now `eventAdminProcedure` (not
+      // `auditedAdminProcedure`). The decline-note forward block
+      // is identical to the prior implementation; the gate just
+      // moved.
+      const block = router.split(/adminOverride:\s*eventAdminProcedure/)[1] ?? '';
       // The forward block must be gated on a non-empty
       // declineMessage so a no-note decline does not write
       // empty log rows.
@@ -47,27 +55,51 @@ describe('FPP-102: manual RSVP entry in admin MembersTable', () => {
 
     it('adminOverride flips pre-existing attendances to NO on decline without a list', async () => {
       const router = await fs.readFile(routerPath, 'utf-8');
-      const block = router.split(/adminOverride:\s*auditedAdminProcedure/)[1] ?? '';
+      const block = router.split(/adminOverride:\s*eventAdminProcedure/)[1] ?? '';
       // The modal hides the per-member grid on DECLINED, so the
       // server must defensively flip any YES/MAYBE rows to NO
       // so the decline is internally consistent.
       expect(block).toMatch(/markAllAttendanceNo/);
     });
 
-    it('getById tRPC query is auditedAdminProcedure and returns members + attendances', async () => {
+    it('getById tRPC query is eventAdminProcedure and returns members + attendances', async () => {
+      // FPP-104: getById is now `eventAdminProcedure` so a HOST
+      // with an EventAdmin row for the parent event can fetch the
+      // modal's prefilled form state. The builder takes the input
+      // schema + a getEventId resolver before the `.query(...)`
+      // call, so we look for the new shape directly.
       const router = await fs.readFile(routerPath, 'utf-8');
-      const block = router.match(/getById:\s*auditedAdminProcedure[\s\S]*?\}\),/);
-      expect(block).not.toBeNull();
-      expect(block![0]!).toMatch(/rsvpId:\s*z\.string\(\)\.min\(1\)/);
-      expect(block![0]!).toMatch(/memberAttendances:/);
-      expect(block![0]!).toMatch(/householdMember\.findMany/);
+      expect(router).toMatch(/getById:\s*eventAdminProcedure/);
+      // The getEventId resolver looks the RSVP up to find its
+      // parent event so the gate has the id to consult.
+      expect(router).toMatch(/getById:[\s\S]*?prisma\.rSVP\.findUnique[\s\S]*?eventId:\s*true/);
+      // The query body must still return the full RSVP + members
+      // (the procedure-level gate does not change the body).
+      expect(router).toMatch(/getById:[\s\S]*?memberAttendances:/);
+      expect(router).toMatch(/getById:[\s\S]*?householdMember\.findMany/);
+      // Defensive: the old auditedAdminProcedure form must not
+      // still be wired up.
+      expect(router).not.toMatch(/getById:\s*auditedAdminProcedure/);
+    });
+
+    it('getByEvent tRPC query is eventAdminProcedure', async () => {
+      // FPP-104: the admin MembersTable view of an event's
+      // RSVPs is now per-event-gated. The proc is unchanged
+      // otherwise.
+      const router = await fs.readFile(routerPath, 'utf-8');
+      expect(router).toMatch(/getByEvent:\s*eventAdminProcedure/);
+      expect(router).not.toMatch(/getByEvent:\s*auditedAdminProcedure/);
     });
   });
 
   describe('2. REST /api/admin/rsvp/override route mirrors the tRPC proc', () => {
-    it('gates on admin auth and validates with rsvpAdminOverrideSchema', async () => {
+    it('gates on per-event auth and validates with rsvpAdminOverrideSchema', async () => {
       const route = await fs.readFile(restPath, 'utf-8');
-      expect(route).toMatch(/requireAdminApi/);
+      // FPP-104: the route now uses `requireEventAdminApi` so a
+      // HOST with an EventAdmin row for the event can override
+      // RSVPs. The gate runs on the parsed eventId from the body.
+      expect(route).toMatch(/requireEventAdminApi/);
+      expect(route).not.toMatch(/requireAdminApi\(\)/);
       expect(route).toMatch(/rsvpAdminOverrideSchema\.safeParse/);
     });
 

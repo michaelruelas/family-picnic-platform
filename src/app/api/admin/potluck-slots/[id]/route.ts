@@ -1,23 +1,47 @@
 import { NextResponse } from 'next/server';
-import { requireAdminApi } from '~/lib/admin-auth';
+import { requireEventAdminApi, requireSessionApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+/**
+ * FPP-104: per-event gate. Look up the slot's parent event id, then
+ * gate on `requireEventAdminApi(eventId)`. Mirrors the tRPC
+ * `potluck.updateSlot` procedure's move to `eventAdminProcedure`.
+ *
+ * `requireSessionApi` runs first so an unauthenticated caller gets
+ * 401 before any DB read — the slot lookup below would otherwise
+ * leak whether the slot exists (404) versus whether the caller is
+ * allowed (403). The preloaded session is then handed to
+ * `requireEventAdminApi` to avoid a second `getServerSession` call.
+ */
 export async function PATCH(request: Request, { params }: RouteParams) {
-  const auth = await requireAdminApi();
-  if (!auth.ok) return auth.response;
-  const { session } = auth;
+  const sessionAuth = await requireSessionApi();
+  if (!sessionAuth.ok) return sessionAuth.response;
+  const preloadedSession = sessionAuth.session;
 
+  let slot: { id: string; eventId: string; slotType: string };
   try {
     const { id } = await params;
-    const body = await request.json();
-    const { name, maxSignups } = body;
-
-    const slot = await prisma.potluckSlot.findUnique({ where: { id } });
-    if (!slot) {
+    const row = await prisma.potluckSlot.findUnique({
+      where: { id },
+      select: { id: true, eventId: true, slotType: true },
+    });
+    if (!row) {
       return NextResponse.json({ error: 'Slot not found' }, { status: 404 });
     }
+    slot = row;
+  } catch (error) {
+    console.error('Failed to load potluck slot:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+
+  const auth = await requireEventAdminApi(slot.eventId, { preloadedSession });
+  if (!auth.ok) return auth.response;
+
+  try {
+    const body = await request.json();
+    const { name, maxSignups } = body;
 
     const updateData: { name?: string | null; maxSignups?: number | null } = {};
     if (name !== undefined) {
@@ -40,7 +64,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     const updatedSlot = await prisma.potluckSlot.update({
-      where: { id },
+      where: { id: slot.id },
       data: updateData,
     });
 
@@ -51,20 +75,36 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(request: Request, { params }: RouteParams) {
-  const auth = await requireAdminApi();
-  if (!auth.ok) return auth.response;
-  const { session } = auth;
+/**
+ * FPP-104: per-event gate, same pattern as PATCH. Mirrors the tRPC
+ * `potluck.deleteSlot` procedure's move to `eventAdminProcedure`.
+ */
+export async function DELETE(_request: Request, { params }: RouteParams) {
+  const sessionAuth = await requireSessionApi();
+  if (!sessionAuth.ok) return sessionAuth.response;
+  const preloadedSession = sessionAuth.session;
 
+  let slot: { id: string; eventId: string };
   try {
     const { id } = await params;
-
-    const slot = await prisma.potluckSlot.findUnique({ where: { id } });
-    if (!slot) {
+    const row = await prisma.potluckSlot.findUnique({
+      where: { id },
+      select: { id: true, eventId: true },
+    });
+    if (!row) {
       return NextResponse.json({ error: 'Slot not found' }, { status: 404 });
     }
+    slot = row;
+  } catch (error) {
+    console.error('Failed to load potluck slot:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 
-    await prisma.potluckSlot.delete({ where: { id } });
+  const auth = await requireEventAdminApi(slot.eventId, { preloadedSession });
+  if (!auth.ok) return auth.response;
+
+  try {
+    await prisma.potluckSlot.delete({ where: { id: slot.id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdminRole } from '~/lib/auth';
+import { isSuperAdminRole } from '~/lib/auth';
 import { requireEventAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { AdminPermission } from '~/lib/generated/enums';
@@ -63,15 +63,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'invalid role' }, { status: 400 });
   }
 
-  // FPP-65 audit: defensive self-assignment check. A HOST cannot
-  // self-assign via this endpoint — they already have an EventAdmin
-  // row to act through, and promoting themselves to OWNER would let
-  // them reverse a super-admin's removal. Only super-admins can
-  // include themselves in the target list.
-  const actorIsSuperAdmin = isAdminRole(session.user.role);
+  // FPP-104: tighten to isSuperAdminRole so an ADMIN_ADULT user
+  // cannot self-promote to OWNER on an event they already have a
+  // row for.
+  const actorIsSuperAdmin = isSuperAdminRole(session.user.role);
   if (!actorIsSuperAdmin && targetUserIds.includes(session.user.id)) {
     return NextResponse.json(
-      { error: 'hosts cannot self-assign via this endpoint' },
+      { error: 'only super-admins can self-assign via this endpoint' },
       { status: 403 },
     );
   }

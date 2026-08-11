@@ -1,77 +1,107 @@
-import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
+import { router, protectedProcedure, eventAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { prisma } from '~/lib/prisma';
 import { PotluckCategory, SlotType, RSVPStatus, EventStatus } from '~/lib/generated/enums';
 import { writeDomainAuditLog } from '~/lib/audit';
 
 export const potluckRouter = router({
-  createSlot: auditedAdminProcedure
-    .input(
-      z.object({
-        eventId: z.string(),
-        category: z.enum([
-          PotluckCategory.MAIN,
-          PotluckCategory.SIDE,
-          PotluckCategory.DESSERT,
-          PotluckCategory.DRINK,
-          PotluckCategory.OTHER,
-        ]),
-        // FPP-54: slot name is optional. Admins may leave it blank to
-        // open a category slot with no specific dish. An empty / whitespace
-        // string is normalised to NULL by the resolver.
-        name: z
-          .string()
-          .trim()
-          .max(120)
-          .optional()
-          .nullable()
-          .transform((v) => (v == null || v === '' ? null : v)),
-        slotType: z.enum([SlotType.LIMITED, SlotType.UNLIMITED]),
-        maxSignups: z.number().int().positive().optional(),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      return prisma.potluckSlot.create({
-        data: {
-          eventId: input.eventId,
-          category: input.category,
-          name: input.name,
-          slotType: input.slotType,
-          maxSignups: input.slotType === 'LIMITED' ? (input.maxSignups ?? 1) : null,
-        },
-      });
+  // FPP-104: per-event gate. A HOST with an EventAdmin row on the
+  // event can create slots for their own picnic; super-admins /
+  // ADMIN_ADULT users pass via the platform-level admin branch.
+  // Aligns the tRPC proc with the per-event REST gate the admin UI
+  // already relies on.
+  createSlot: eventAdminProcedure(
+    z.object({
+      eventId: z.string(),
+      category: z.enum([
+        PotluckCategory.MAIN,
+        PotluckCategory.SIDE,
+        PotluckCategory.DESSERT,
+        PotluckCategory.DRINK,
+        PotluckCategory.OTHER,
+      ]),
+      // FPP-54: slot name is optional. Admins may leave it blank to
+      // open a category slot with no specific dish. An empty / whitespace
+      // string is normalised to NULL by the resolver.
+      name: z
+        .string()
+        .trim()
+        .max(120)
+        .optional()
+        .nullable()
+        .transform((v) => (v == null || v === '' ? null : v)),
+      slotType: z.enum([SlotType.LIMITED, SlotType.UNLIMITED]),
+      maxSignups: z.number().int().positive().optional(),
     }),
+    (input) => input.eventId,
+  ).mutation(async ({ input }) => {
+    return prisma.potluckSlot.create({
+      data: {
+        eventId: input.eventId,
+        category: input.category,
+        name: input.name,
+        slotType: input.slotType,
+        maxSignups: input.slotType === 'LIMITED' ? (input.maxSignups ?? 1) : null,
+      },
+    });
+  }),
 
-  updateSlot: auditedAdminProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        // FPP-54: empty / whitespace clears the name (NULL).
-        name: z
-          .string()
-          .trim()
-          .max(120)
-          .optional()
-          .nullable()
-          .transform((v) => (v === undefined ? undefined : v == null || v === '' ? null : v)),
-        maxSignups: z.number().int().positive().optional(),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      const { id, ...data } = input;
-      return prisma.potluckSlot.update({
-        where: { id },
-        data,
-      });
+  // FPP-104: per-event gate. The input is the slot id, not the
+  // event id, so we look the slot up first and run the gate on its
+  // parent event. A HOST can edit slots on their own event; a
+  // non-event-admin attempting to PATCH a foreign event's slot
+  // gets FORBIDDEN. Mirrors the REST PATCH route's
+  // `requireEventAdminApi(slot.eventId)` flow.
+  updateSlot: eventAdminProcedure(
+    z.object({
+      id: z.string(),
+      // FPP-54: empty / whitespace clears the name (NULL).
+      name: z
+        .string()
+        .trim()
+        .max(120)
+        .optional()
+        .nullable()
+        .transform((v) => (v === undefined ? undefined : v == null || v === '' ? null : v)),
+      maxSignups: z.number().int().positive().optional(),
     }),
-
-  deleteSlot: auditedAdminProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ input }) => {
-      return prisma.potluckSlot.delete({
+    async (input) => {
+      const slot = await prisma.potluckSlot.findUnique({
         where: { id: input.id },
+        select: { eventId: true },
       });
-    }),
+      if (!slot) {
+        // FPP-104 review: throw a tRPC-shaped NOT_FOUND so the
+        // client surfaces a real protocol error. A plain Error
+        // would land as INTERNAL_SERVER_ERROR at the tRPC layer.
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Slot not found' });
+      }
+      return slot.eventId;
+    },
+  ).mutation(async ({ input }) => {
+    const { id, ...data } = input;
+    return prisma.potluckSlot.update({
+      where: { id },
+      data,
+    });
+  }),
+
+  // FPP-104: per-event gate, same lookup shape as `updateSlot`.
+  deleteSlot: eventAdminProcedure(z.object({ id: z.string() }), async (input) => {
+    const slot = await prisma.potluckSlot.findUnique({
+      where: { id: input.id },
+      select: { eventId: true },
+    });
+    if (!slot) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Slot not found' });
+    }
+    return slot.eventId;
+  }).mutation(async ({ input }) => {
+    return prisma.potluckSlot.delete({
+      where: { id: input.id },
+    });
+  }),
 
   listSlots: protectedProcedure
     .input(z.object({ eventId: z.string() }))

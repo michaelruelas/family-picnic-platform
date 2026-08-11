@@ -7,12 +7,6 @@ import { z } from 'zod';
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 
-const timeFieldSchema = z
-  .string()
-  .regex(timePattern, 'Time must be HH:MM or HH:MM:SS')
-  .optional()
-  .or(z.literal(''));
-
 // For updates, distinguish between "not provided" (undefined, leave
 // alone) and "explicitly cleared" (empty string, store null).
 const timeUpdateFieldSchema = z
