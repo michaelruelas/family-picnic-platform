@@ -9,9 +9,10 @@ type OAuthProvider = 'google' | 'apple' | 'facebook';
 interface LoginFormProps {
   devAuthEnabled: boolean;
   enabledProviders: OAuthProvider[];
+  showBackLink?: boolean;
 }
 
-export default function LoginForm({ devAuthEnabled, enabledProviders }: LoginFormProps) {
+export default function LoginForm({ devAuthEnabled, enabledProviders, showBackLink = true }: LoginFormProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -23,7 +24,7 @@ export default function LoginForm({ devAuthEnabled, enabledProviders }: LoginFor
       username,
       password,
       redirect: true,
-      callbackUrl: '/',
+      callbackUrl: '/events',
     });
     if (result?.error) {
       setError('Invalid credentials');
@@ -107,7 +108,7 @@ export default function LoginForm({ devAuthEnabled, enabledProviders }: LoginFor
           <div className="space-y-3">
             {enabledProviders.includes('google') && (
               <button
-                onClick={() => signIn('google', { callbackUrl: '/' })}
+                onClick={() => signIn('google', { callbackUrl: '/events' })}
                 className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -133,7 +134,7 @@ export default function LoginForm({ devAuthEnabled, enabledProviders }: LoginFor
             )}
             {enabledProviders.includes('apple') && (
               <button
-                onClick={() => signIn('apple', { callbackUrl: '/' })}
+                onClick={() => signIn('apple', { callbackUrl: '/events' })}
                 className="rounded-pill border-foreground bg-foreground text-background press hover:bg-foreground/90 flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -147,7 +148,7 @@ export default function LoginForm({ devAuthEnabled, enabledProviders }: LoginFor
             )}
             {enabledProviders.includes('facebook') && (
               <button
-                onClick={() => signIn('facebook', { callbackUrl: '/' })}
+                onClick={() => signIn('facebook', { callbackUrl: '/events' })}
                 className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -179,14 +180,16 @@ export default function LoginForm({ devAuthEnabled, enabledProviders }: LoginFor
           </ul>
         </div>
 
-        <div className="mt-6 text-center">
-          <Link
-            href="/"
-            className="text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
-          >
-            ← Back to home
-          </Link>
-        </div>
+        {showBackLink && (
+          <div className="mt-6 text-center">
+            <Link
+              href="/"
+              className="text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
+            >
+              ← Back to home
+            </Link>
+          </div>
+        )}
       </div>
     </main>
   );

@@ -1,7 +1,17 @@
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions, getEnabledOAuthProviders } from '~/lib/auth';
 import LoginForm from '~/components/LoginForm';
-import { getEnabledOAuthProviders } from '~/lib/auth';
 
-export default function LoginPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function LoginPage() {
+  const session = await getServerSession(authOptions);
+
+  if (session?.user?.id) {
+    redirect('/events');
+  }
+
   const devAuthEnabled = process.env.DEV_AUTH_ENABLED === 'true';
   const enabledProviders = getEnabledOAuthProviders();
 
