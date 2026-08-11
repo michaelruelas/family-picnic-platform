@@ -28,7 +28,10 @@ const prismaMock = vi.hoisted(() => ({
     updateMany: vi.fn(),
   },
   charge: { updateMany: vi.fn() },
-  eventAdmin: { findMany: vi.fn() },
+  // FPP-104: the per-event gate consults canAccessEvent, which
+  // reads `eventAdmin.findUnique` for non-platform-admins.
+  // Stub it to `null` so non-admin users hit the 403 path.
+  eventAdmin: { findMany: vi.fn(), findUnique: vi.fn(() => Promise.resolve(null)) },
   communicationLog: { createMany: vi.fn() },
   adminAuditLog: { create: vi.fn() },
   auditLog: { create: vi.fn() },
