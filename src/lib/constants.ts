@@ -52,3 +52,5 @@ export const HERO_IMAGES = {
     },
   },
 } as const;
+
+export const DEFAULT_CURRENCY = 'usd';

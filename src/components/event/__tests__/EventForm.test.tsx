@@ -114,7 +114,7 @@ describe('EventForm', () => {
     });
   });
 
-  it('includes lat, lng, placeId in submit payload', async () => {
+  it('sends lat=null, lng=null, placeId=null on manual input', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ id: 'e-new' }),
@@ -129,10 +129,17 @@ describe('EventForm', () => {
     fireEvent.submit(form);
     await waitFor(() => {
       const body = mockFetch.mock.calls[0]![1]!.body as string;
-      expect(body).toContain('"lat"');
-      expect(body).toContain('"lng"');
-      expect(body).toContain('"placeId"');
+      expect(body).toContain('"lat":null');
+      expect(body).toContain('"lng":null');
+      expect(body).toContain('"placeId":null');
     });
+  });
+
+  it('shows hint when location is typed without autocomplete selection', () => {
+    render(<EventForm mode="create" />);
+    const input = screen.getByLabelText(/location/i);
+    fireEvent.change(input, { target: { value: 'Park' } });
+    expect(screen.getByText(/enable the map/i)).toBeInTheDocument();
   });
 
   it('shows error when API returns failure', async () => {

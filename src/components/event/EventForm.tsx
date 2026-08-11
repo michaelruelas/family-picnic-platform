@@ -33,24 +33,29 @@ interface EventFormProps {
   mode: 'create' | 'edit';
 }
 
+let googleMapsLoadPromise: Promise<void> | null = null;
+
 function loadGoogleMapsScript(): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve();
-  if (document.querySelector('script[src*="maps.googleapis.com"]')) {
-    return Promise.resolve();
-  }
+  if (googleMapsLoadPromise) return googleMapsLoadPromise;
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
-    return Promise.reject(new Error('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set'));
+    googleMapsLoadPromise = Promise.reject(new Error('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set'));
+    return googleMapsLoadPromise;
   }
-  return new Promise((resolve, reject) => {
+  googleMapsLoadPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Google Maps script'));
+    script.onerror = () => {
+      googleMapsLoadPromise = null;
+      reject(new Error('Failed to load Google Maps script'));
+    };
     document.head.appendChild(script);
   });
+  return googleMapsLoadPromise;
 }
 
 function LocationAutocomplete({
@@ -68,6 +73,7 @@ function LocationAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [scriptError, setScriptError] = useState(false);
+  const [geoSelected, setGeoSelected] = useState(!!value);
 
   useEffect(() => {
     loadGoogleMapsScript()
@@ -86,6 +92,7 @@ function LocationAutocomplete({
     const listener = autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
       if (!place?.geometry?.location) return;
+      setGeoSelected(true);
       onChange({
         location: place.formatted_address || inputRef.current?.value || '',
         lat: place.geometry.location.lat(),
@@ -100,6 +107,7 @@ function LocationAutocomplete({
   }, [scriptLoaded, onChange]);
 
   const handleManualInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setGeoSelected(false);
     onChange({
       location: e.target.value,
       lat: null,
@@ -121,6 +129,11 @@ function LocationAutocomplete({
         className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
         placeholder="Start typing an address..."
       />
+      {value && !geoSelected && (
+        <p className="text-muted-foreground mt-1 text-xs">
+          Select an address from the suggestions to enable the map and directions.
+        </p>
+      )}
       {scriptError && (
         <p className="text-destructive mt-1 text-xs">
           Address autocomplete unavailable. You can type the address manually.

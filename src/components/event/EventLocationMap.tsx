@@ -8,7 +8,10 @@ interface EventLocationMapProps {
 
 export function EventLocationMap({ lat, lng, location }: EventLocationMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.warn('EventLocationMap: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set');
+    return null;
+  }
 
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
   const embedUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${lat},${lng}`;

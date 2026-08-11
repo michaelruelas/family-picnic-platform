@@ -5,6 +5,7 @@ import { prisma } from '~/lib/prisma';
 import { EventStatus, AdminPermission } from '~/lib/generated/enums';
 import { writeDomainAuditLog } from '~/lib/audit';
 import { stampHostRole, unassignHostRole } from '~/lib/event-access';
+import { DEFAULT_CURRENCY } from '~/lib/constants';
 
 export const eventRouter = router({
   create: auditedAdminProcedure
@@ -38,7 +39,7 @@ export const eventRouter = router({
           rsvpDeadline: input.rsvpDeadline ? new Date(input.rsvpDeadline) : null,
           maxCapacity: input.maxCapacity,
           mapImageUrl: input.mapImageUrl ?? null,
-          currency: input.currency ?? 'usd',
+          currency: input.currency ?? DEFAULT_CURRENCY,
           registrationFeeCents: input.registrationFeeCents ?? 0,
           registrationFeeMinAge: input.registrationFeeMinAge ?? 0,
           status: EventStatus.DRAFT,

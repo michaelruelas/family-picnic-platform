@@ -4,6 +4,7 @@ import { prisma } from '~/lib/prisma';
 import { EventStatus } from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
+import { DEFAULT_CURRENCY } from '~/lib/constants';
 
 export async function GET() {
   const requestId = generateRequestId();
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
             rsvpDeadline: rsvpDeadline ? new Date(rsvpDeadline) : null,
             maxCapacity: maxCapacity || null,
             mapImageUrl: mapImageUrl || null,
-            currency: currency ?? 'usd',
+            currency: currency ?? DEFAULT_CURRENCY,
             registrationFeeCents: registrationFeeCents ?? 0,
             registrationFeeMinAge: registrationFeeMinAge ?? 0,
             status: EventStatus.DRAFT,
