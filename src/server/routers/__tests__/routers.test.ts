@@ -574,6 +574,44 @@ describe('event.router', () => {
     );
   });
 
+  it('reopen transitions a CLOSED event back to PUBLISHED', async () => {
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1', status: 'CLOSED' });
+    mockPrisma.event.update.mockResolvedValue({ id: 'evt-1', status: 'PUBLISHED' });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    const result = await caller.reopen({ id: 'evt-1' });
+
+    expect(mockPrisma.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'PUBLISHED' }) }),
+    );
+    expect(result).toEqual({ id: 'evt-1', status: 'PUBLISHED' });
+  });
+
+  it('reopen rejects an event that is not CLOSED (open -> open)', async () => {
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1', status: 'PUBLISHED' });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+
+    await expect(caller.reopen({ id: 'evt-1' })).rejects.toThrow(
+      /Only CLOSED events can be re-opened/,
+    );
+    expect(mockPrisma.event.update).not.toHaveBeenCalled();
+  });
+
+  it('reopen returns NOT_FOUND when the event does not exist', async () => {
+    mockPrisma.event.findUnique.mockResolvedValue(null);
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+
+    await expect(caller.reopen({ id: 'evt-1' })).rejects.toThrow();
+  });
+
   it('listAdmins calls prisma.eventAdmin.findMany with includes', async () => {
     const mockAdmins = [
       {

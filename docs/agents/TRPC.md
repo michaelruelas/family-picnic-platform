@@ -6,19 +6,19 @@ tRPC routers handle all typed API communication between client and server.
 
 Located in `src/server/routers/`:
 
-| Router          | File                      | Procedures                                                                    |
-| --------------- | ------------------------- | ----------------------------------------------------------------------------- |
-| `auth`          | `auth.router.ts`          | session, signIn, signOut, callback                                            |
-| `user`          | `user.router.ts`          | me, update, updatePreferences, completeOnboarding, linkHousehold              |
-| `household`     | `household.router.ts`     | create, get, getById, update, addMember, removeMember, getCumulativeHeadcount |
-| `dependent`     | `dependent.router.ts`     | create, update, remove, list                                                  |
-| `event`         | `event.router.ts`         | create, list, getById, update, listAdmins, addAdmin, removeAdmin              |
-| `invitation`    | `invitation.router.ts`    | create, send, resend, track, consume                                          |
-| `rsvp`          | `rsvp.router.ts`          | confirm, decline, update, getByEvent, getMyRsvp, getHeadcount                 |
-| `potluck`       | `potluck.router.ts`       | listSlots, signup, updateSignup, cancelSignup, getFoodSummary                 |
-| `photo`         | `photo.router.ts`         | getUploadUrl, confirmUpload, search, delete, addReaction, removeReaction      |
-| `communication` | `communication.router.ts` | sendInvite, sendRsvpReminder, sendBroadcast, unsubscribe, getRateLimitStatus  |
-| `admin`         | `admin.router.ts`         | getUsers, getAuditLog, dashboard, csvImport                                   |
+| Router          | File                      | Procedures                                                                                       |
+| --------------- | ------------------------- | ------------------------------------------------------------------------------------------------ |
+| `auth`          | `auth.router.ts`          | session, signIn, signOut, callback                                                               |
+| `user`          | `user.router.ts`          | me, update, updatePreferences, completeOnboarding, linkHousehold                                 |
+| `household`     | `household.router.ts`     | create, get, getById, update, addMember, removeMember, getCumulativeHeadcount                    |
+| `dependent`     | `dependent.router.ts`     | create, update, remove, list                                                                     |
+| `event`         | `event.router.ts`         | create, list, getById, update, publish, close, reopen, cancel, listAdmins, addAdmin, removeAdmin |
+| `invitation`    | `invitation.router.ts`    | create, send, resend, track, consume                                                             |
+| `rsvp`          | `rsvp.router.ts`          | confirm, decline, update, getByEvent, getMyRsvp, getHeadcount                                    |
+| `potluck`       | `potluck.router.ts`       | listSlots, signup, updateSignup, cancelSignup, getFoodSummary                                    |
+| `photo`         | `photo.router.ts`         | getUploadUrl, confirmUpload, search, delete, addReaction, removeReaction                         |
+| `communication` | `communication.router.ts` | sendInvite, sendRsvpReminder, sendBroadcast, unsubscribe, getRateLimitStatus                     |
+| `admin`         | `admin.router.ts`         | getUsers, getAuditLog, dashboard, csvImport                                                      |
 
 ## Procedure Types
 

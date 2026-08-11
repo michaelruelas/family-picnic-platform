@@ -12,6 +12,7 @@ export default function EventActions({ eventId, status }: EventActionsProps) {
   const router = useRouter();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
   const handlePublish = async () => {
@@ -31,6 +32,19 @@ export default function EventActions({ eventId, status }: EventActionsProps) {
       router.refresh();
     } finally {
       setIsClosing(false);
+    }
+  };
+
+  // FPP-70: re-open flips a CLOSED event back to PUBLISHED so RSVPs
+  // are accepted again. Existing RSVPs are untouched and no household
+  // is re-notified.
+  const handleReopen = async () => {
+    setIsReopening(true);
+    try {
+      await fetch(`/api/admin/events/${eventId}/reopen`, { method: 'POST' });
+      router.refresh();
+    } finally {
+      setIsReopening(false);
     }
   };
 
@@ -64,6 +78,16 @@ export default function EventActions({ eventId, status }: EventActionsProps) {
           className="rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
         >
           {isClosing ? 'Closing...' : 'Close RSVPs'}
+        </button>
+      )}
+      {status === 'CLOSED' && (
+        <button
+          type="button"
+          onClick={handleReopen}
+          disabled={isReopening}
+          className="rounded-lg bg-green-100 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-200 disabled:opacity-50"
+        >
+          {isReopening ? 'Re-opening...' : 'Re-open RSVPs'}
         </button>
       )}
       {status !== 'CLOSED' && status !== 'CANCELLED' && (

@@ -554,7 +554,8 @@ from reality).
 │   ├── getById
 │   ├── list (with status filter)
 │   ├── publish
-│   └── close
+│   ├── close
+│   └── reopen
 ├── invitation.router
 │   ├── send
 │   ├── resend
