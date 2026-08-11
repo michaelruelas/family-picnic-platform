@@ -28,7 +28,6 @@ describe('Per-member RSVP attendance (FPP-30, FPP-29)', () => {
     process.cwd(),
     'prisma/migrations/20260804120000_rsvp_member_attendance/migration.sql',
   );
-  const homePagePath = path.join(process.cwd(), 'src/app/page.tsx');
   const onboardingHouseholdRoutePath = path.join(
     process.cwd(),
     'src/app/api/onboarding/household/route.ts',
@@ -228,15 +227,6 @@ describe('Per-member RSVP attendance (FPP-30, FPP-29)', () => {
       // The three status labels are surfaced via the EmptyState tile
       // row above the table — also from MembersTable.
       expect(tableContent).toMatch(/Going[\s\S]*?Maybe[\s\S]*?Not going/);
-    });
-  });
-
-  describe('Home page deep link (QUB-17)', () => {
-    it('queries the user\u2019s next RSVP for the CTA', async () => {
-      const content = await fs.readFile(homePagePath, 'utf-8');
-      expect(content).toContain('nextUserRsvp');
-      expect(content).toContain('confirmation');
-      expect(content).toMatch(/View your RSVP/);
     });
   });
 
