@@ -15,5 +15,11 @@ export default async function Home() {
   const devAuthEnabled = process.env.DEV_AUTH_ENABLED === 'true';
   const enabledProviders = getEnabledOAuthProviders();
 
-  return <LoginForm devAuthEnabled={devAuthEnabled} enabledProviders={enabledProviders} showBackLink={false} />;
+  return (
+    <LoginForm
+      devAuthEnabled={devAuthEnabled}
+      enabledProviders={enabledProviders}
+      showBackLink={false}
+    />
+  );
 }

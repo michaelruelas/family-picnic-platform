@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useState, createContext, useContext, useCallback, ReactNode, useSyncExternalStore } from 'react';
+import {
+  useEffect,
+  useState,
+  createContext,
+  useContext,
+  useCallback,
+  ReactNode,
+  useSyncExternalStore,
+} from 'react';
 
 function useIsClient() {
   return useSyncExternalStore(
@@ -56,7 +64,8 @@ export function ToastProvider({ children }: ToastProviderProps) {
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-      {isClient && createPortal(<ToastContainer toasts={toasts} removeToast={removeToast} />, document.body)}
+      {isClient &&
+        createPortal(<ToastContainer toasts={toasts} removeToast={removeToast} />, document.body)}
     </ToastContext.Provider>
   );
 }

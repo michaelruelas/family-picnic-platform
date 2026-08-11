@@ -12,7 +12,11 @@ interface LoginFormProps {
   showBackLink?: boolean;
 }
 
-export default function LoginForm({ devAuthEnabled, enabledProviders, showBackLink = true }: LoginFormProps) {
+export default function LoginForm({
+  devAuthEnabled,
+  enabledProviders,
+  showBackLink = true,
+}: LoginFormProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
