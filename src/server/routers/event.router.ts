@@ -1,4 +1,5 @@
 import { router, protectedProcedure, auditedAdminProcedure, eventAdminProcedure } from '~/lib/trpc';
+import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { EventStatus, AdminPermission } from '~/lib/generated/enums';
@@ -135,6 +136,33 @@ export const eventRouter = router({
       return prisma.event.update({
         where: { id: input.id },
         data: { status: EventStatus.CLOSED },
+      });
+    },
+  ),
+
+  // FPP-70: re-open is the inverse of close (CLOSED -> PUBLISHED).
+  // The transition guard rejects every other source status — an
+  // open, draft, cancelled, or future ARCHIVED (QUB-12) event. The
+  // auditLog middleware records the mutation as `event.reopen`; no
+  // re-notification is sent to households that already RSVPed.
+  reopen: eventAdminProcedure(z.object({ id: z.string() }), (input) => input.id).mutation(
+    async ({ input }) => {
+      const event = await prisma.event.findUnique({ where: { id: input.id } });
+
+      if (!event) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' });
+      }
+
+      if (event.status !== EventStatus.CLOSED) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Only CLOSED events can be re-opened',
+        });
+      }
+
+      return prisma.event.update({
+        where: { id: input.id },
+        data: { status: EventStatus.PUBLISHED },
       });
     },
   ),

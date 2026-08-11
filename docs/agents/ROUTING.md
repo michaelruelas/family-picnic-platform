@@ -71,6 +71,7 @@ the redirect, the route returns a 404 HTML body with a link to
 | `/api/admin/events/[id]`           | `src/app/api/admin/events/[id]/route.ts`           | Admin single event          |
 | `/api/admin/events/[id]/publish`   | `src/app/api/admin/events/[id]/publish/route.ts`   | Publish event               |
 | `/api/admin/events/[id]/close`     | `src/app/api/admin/events/[id]/close/route.ts`     | Close RSVPs                 |
+| `/api/admin/events/[id]/reopen`    | `src/app/api/admin/events/[id]/reopen/route.ts`    | Re-open CLOSED event        |
 | `/api/admin/events/[id]/cancel`    | `src/app/api/admin/events/[id]/cancel/route.ts`    | Cancel event                |
 | `/api/admin/events/[id]/admins`    | `src/app/api/admin/events/[id]/admins/route.ts`    | Event admin management      |
 | `/api/admin/potluck-slots`         | `src/app/api/admin/potluck-slots/route.ts`         | Create potluck slots        |

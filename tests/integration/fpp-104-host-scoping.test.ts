@@ -16,7 +16,7 @@ import path from 'path';
  *   - `src/lib/__tests__/event-access.test.ts` (the helper)
  *   - `src/app/api/admin/potluck-slots/__tests__/route.test.ts`
  *   - `src/app/api/admin/events/__tests__/event-detail.test.ts`
- *   - `src/app/api/admin/events/[id]/{publish,close,cancel}/__tests__/`
+ *   - `src/app/api/admin/events/[id]/{publish,close,reopen,cancel}/__tests__/`
  *   - `src/app/api/admin/rsvp/override/__tests__/route.test.ts`
  *   - `src/server/routers/__tests__/routers.test.ts`
  *   - `src/app/api/admin/events/[id]/admins/__tests__/route.test.ts`
@@ -41,6 +41,7 @@ describe('FPP-104: complete per-event host scoping', () => {
     'src/app/api/admin/events/[id]/publish/route.ts',
   );
   const eventClosePath = path.join(process.cwd(), 'src/app/api/admin/events/[id]/close/route.ts');
+  const eventReopenPath = path.join(process.cwd(), 'src/app/api/admin/events/[id]/reopen/route.ts');
   const eventCancelPath = path.join(process.cwd(), 'src/app/api/admin/events/[id]/cancel/route.ts');
   const rsvpOverridePath = path.join(process.cwd(), 'src/app/api/admin/rsvp/override/route.ts');
 
@@ -190,8 +191,8 @@ describe('FPP-104: complete per-event host scoping', () => {
       expect(getBlock![0]!).toMatch(/requireAdminApi/);
     });
 
-    it('REST publish/close/cancel use requireEventAdminApi', async () => {
-      for (const p of [eventPublishPath, eventClosePath, eventCancelPath]) {
+    it('REST publish/close/reopen/cancel use requireEventAdminApi', async () => {
+      for (const p of [eventPublishPath, eventClosePath, eventReopenPath, eventCancelPath]) {
         const route = await fs.readFile(p, 'utf-8');
         expect(route).toMatch(/requireEventAdminApi/);
         expect(route).not.toMatch(/requireAdminApi\(\)/);
@@ -288,13 +289,14 @@ describe('FPP-104: complete per-event host scoping', () => {
     });
 
     it('event.router.ts keeps the per-event tRPC procs on eventAdminProcedure', async () => {
-      // FPP-65 / FPP-104: event.update, publish, close, cancel,
-      // listAdmins, addAdmin, removeAdmin all stay per-event-gated.
+      // FPP-65 / FPP-104: event.update, publish, close, reopen,
+      // cancel, listAdmins, addAdmin, removeAdmin all stay per-event-gated.
       const router = await fs.readFile(eventRouterPath, 'utf-8');
       const procedures = [
         /update:\s*eventAdminProcedure/,
         /publish:\s*eventAdminProcedure/,
         /close:\s*eventAdminProcedure/,
+        /reopen:\s*eventAdminProcedure/,
         /cancel:\s*eventAdminProcedure/,
         /listAdmins:\s*eventAdminProcedure/,
         /addAdmin:\s*eventAdminProcedure/,
