@@ -1,25 +1,7 @@
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions, getEnabledOAuthProviders } from '~/lib/auth';
-import LoginForm from '~/components/LoginForm';
+import UnauthenticatedPage from '~/components/UnauthenticatedPage';
 
-export const dynamic = 'force-dynamic';
+export { dynamic } from '~/components/UnauthenticatedPage';
 
-export default async function Home() {
-  const session = await getServerSession(authOptions);
-
-  if (session?.user?.id) {
-    redirect('/events');
-  }
-
-  const devAuthEnabled = process.env.DEV_AUTH_ENABLED === 'true';
-  const enabledProviders = getEnabledOAuthProviders();
-
-  return (
-    <LoginForm
-      devAuthEnabled={devAuthEnabled}
-      enabledProviders={enabledProviders}
-      showBackLink={false}
-    />
-  );
+export default function Home() {
+  return <UnauthenticatedPage showBackLink={false} />;
 }

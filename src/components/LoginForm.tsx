@@ -4,6 +4,8 @@ import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useState } from 'react';
 
+const POST_LOGIN_CALLBACK = '/events';
+
 type OAuthProvider = 'google' | 'apple' | 'facebook';
 
 interface LoginFormProps {
@@ -28,7 +30,7 @@ export default function LoginForm({
       username,
       password,
       redirect: true,
-      callbackUrl: '/events',
+      callbackUrl: POST_LOGIN_CALLBACK,
     });
     if (result?.error) {
       setError('Invalid credentials');
@@ -112,7 +114,7 @@ export default function LoginForm({
           <div className="space-y-3">
             {enabledProviders.includes('google') && (
               <button
-                onClick={() => signIn('google', { callbackUrl: '/events' })}
+                onClick={() => signIn('google', { callbackUrl: POST_LOGIN_CALLBACK })}
                 className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -138,7 +140,7 @@ export default function LoginForm({
             )}
             {enabledProviders.includes('apple') && (
               <button
-                onClick={() => signIn('apple', { callbackUrl: '/events' })}
+                onClick={() => signIn('apple', { callbackUrl: POST_LOGIN_CALLBACK })}
                 className="rounded-pill border-foreground bg-foreground text-background press hover:bg-foreground/90 flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -152,7 +154,7 @@ export default function LoginForm({
             )}
             {enabledProviders.includes('facebook') && (
               <button
-                onClick={() => signIn('facebook', { callbackUrl: '/events' })}
+                onClick={() => signIn('facebook', { callbackUrl: POST_LOGIN_CALLBACK })}
                 className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
