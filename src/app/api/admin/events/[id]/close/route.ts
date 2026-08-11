@@ -1,16 +1,21 @@
 import { NextResponse } from 'next/server';
-import { requireAdminApi } from '~/lib/admin-auth';
+import { requireEventAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { EventStatus } from '~/lib/generated/enums';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+/**
+ * FPP-104: per-event gate. Mirrors the tRPC `event.close`
+ * procedure's move to `eventAdminProcedure` so a HOST can close
+ * their own event. The PUBLISHED-only guard is unchanged.
+ */
 export async function POST(_request: Request, { params }: RouteParams) {
-  const auth = await requireAdminApi();
-  if (!auth.ok) return auth.response;
-  const { session } = auth;
-
   const { id } = await params;
+
+  const auth = await requireEventAdminApi(id);
+  if (!auth.ok) return auth.response;
+  void auth.session;
 
   try {
     const event = await prisma.event.findUnique({ where: { id } });

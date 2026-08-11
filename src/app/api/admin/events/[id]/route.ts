@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
-import { requireAdminApi } from '~/lib/admin-auth';
+import { requireAdminApi, requireEventAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+/**
+ * FPP-104: GET is intentionally global-admin only. The host
+ * surface is the dedicated event-edit page, which already routes
+ * through `requireEventAdminPage` and ships the per-event payload
+ * in the same Prisma call. Keeping GET on `requireAdminApi` stops
+ * a host from enumerating every event by id via this route.
+ */
 export async function GET(_request: Request, { params }: RouteParams) {
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;
-  const { session } = auth;
+  void auth.session;
 
   const { id } = await params;
 
@@ -59,12 +66,17 @@ export async function GET(_request: Request, { params }: RouteParams) {
   }
 }
 
+/**
+ * FPP-104: per-event gate. Mirrors the tRPC `event.update`
+ * procedure's move to `eventAdminProcedure` so a HOST can edit
+ * their own event.
+ */
 export async function PATCH(request: Request, { params }: RouteParams) {
-  const auth = await requireAdminApi();
-  if (!auth.ok) return auth.response;
-  const { session } = auth;
-
   const { id } = await params;
+
+  const auth = await requireEventAdminApi(id);
+  if (!auth.ok) return auth.response;
+  void auth.session;
 
   try {
     const body = await request.json();
@@ -138,12 +150,20 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 }
 
+/**
+ * FPP-104: per-event gate. Mirrors the tRPC `event.delete` (which
+ * remains platform-admin only) by routing through the per-event
+ * gate so a HOST can remove their own event. The `event.delete`
+ * tRPC proc is intentionally not changed in this ticket — REST is
+ * a different surface with its own auth — but both paths now share
+ * the per-event check.
+ */
 export async function DELETE(_request: Request, { params }: RouteParams) {
-  const auth = await requireAdminApi();
-  if (!auth.ok) return auth.response;
-  const { session } = auth;
-
   const { id } = await params;
+
+  const auth = await requireEventAdminApi(id);
+  if (!auth.ok) return auth.response;
+  void auth.session;
 
   try {
     const existing = await prisma.event.findUnique({ where: { id } });

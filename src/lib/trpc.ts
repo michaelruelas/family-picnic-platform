@@ -95,13 +95,17 @@ export const router = t.router;
  * `getEventId` extracts the event id from the parsed input. Most
  * procedures use `input.eventId` (e.g. addAdmin, removeAdmin); the
  * event-mutation procedures use `input.id` (e.g. update, publish).
+ * FPP-104 also accepts a `Promise<string>` so a procedure that
+ * keys on a sub-resource id (e.g. `rsvp.getById` resolving the
+ * parent event from the rsvp id) can do a single Prisma lookup
+ * inside the gate.
  *
  * The `auditLog` middleware runs after the per-event check so a
  * 403 never writes an audit row.
  */
 export function eventAdminProcedure<TInput extends z.ZodTypeAny>(
   inputSchema: TInput,
-  getEventId: (input: z.infer<TInput>) => string,
+  getEventId: (input: z.infer<TInput>) => string | Promise<string>,
 ) {
   // NOTE: tRPC's `input` here is `inferParser<TInput>["out"]` which
   // is structurally identical to `z.infer<TInput>` but TypeScript
@@ -112,9 +116,8 @@ export function eventAdminProcedure<TInput extends z.ZodTypeAny>(
     .input(inputSchema)
     .use(async ({ ctx, input, next }) => {
       const role = ctx.session.user.role;
-      const allowed =
-        isAdminRole(role) ||
-        (await canAccessEvent(ctx.session, getEventId(input as z.infer<TInput>)));
+      const eventId = await getEventId(input as z.infer<TInput>);
+      const allowed = isAdminRole(role) || (await canAccessEvent(ctx.session, eventId));
       if (!allowed) {
         throw new TRPCError({ code: 'FORBIDDEN' });
       }

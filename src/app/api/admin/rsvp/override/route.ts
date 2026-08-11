@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdminApi } from '~/lib/admin-auth';
+import { requireEventAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import {
   RSVPStatus,
@@ -22,7 +22,10 @@ import {
  * MembersTable modal can call a plain fetch without bundling a tRPC
  * client. Mirrors the tRPC proc:
  *
- * - Admin auth gate (admin role required).
+ * - FPP-104: per-event gate via `requireEventAdminApi(eventId)` —
+ *   a HOST with an EventAdmin row for the event can override
+ *   RSVPs on their own event. Super-admins / ADMIN_ADULT still
+ *   pass via the platform-level admin branch.
  * - Validates the payload with `rsvpAdminOverrideSchema`.
  * - Inside a single `$transaction`:
  *   - Upserts the RSVP with the supplied status + headcount.
@@ -43,19 +46,29 @@ import {
  *   pick them up.
  */
 export async function POST(request: Request) {
-  const auth = await requireAdminApi();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const parsed = rsvpAdminOverrideSchema.safeParse(body);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0]?.message ?? 'Invalid input';
+    return NextResponse.json({ error: firstIssue }, { status: 400 });
+  }
+  const input = parsed.data;
+
+  // FPP-104: per-event gate. We know the eventId from the validated
+  // body so we can run the gate before the user lookup, mirroring
+  // the tRPC `eventAdminProcedure` middleware that runs after the
+  // Zod parse.
+  const auth = await requireEventAdminApi(input.eventId);
   if (!auth.ok) return auth.response;
   const { session } = auth;
 
   try {
-    const body = await request.json();
-    const parsed = rsvpAdminOverrideSchema.safeParse(body);
-    if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0]?.message ?? 'Invalid input';
-      return NextResponse.json({ error: firstIssue }, { status: 400 });
-    }
-    const input = parsed.data;
-
     const targetUser = await prisma.user.findUnique({
       where: { id: input.userId },
       select: { id: true, householdId: true },

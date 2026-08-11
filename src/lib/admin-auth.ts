@@ -32,6 +32,30 @@ export async function requireAdminApi(): Promise<AdminApiAuth | AdminApiDenied> 
 }
 
 /**
+ * FPP-104: returns `{ ok: true, session }` when the caller has any
+ * authenticated session, or `{ ok: false, response }` (a 401
+ * NextResponse) when the caller is unauthenticated. No role check.
+ *
+ * Use this at the top of a route that needs to look up a sub-resource
+ * (e.g. a slot id) before it can run a per-event auth gate. Without
+ * this helper, the sub-resource lookup runs first and a missing
+ * session + missing slot returns 404 — leaking the slot's existence
+ * to unauthenticated callers. Calling `requireSessionApi` first
+ * returns 401 before any DB read, so the leak is closed.
+ *
+ * Pass the returned `session` to `requireEventAdminApi` via the
+ * `preloadedSession` option to avoid a second `getServerSession`
+ * call.
+ */
+export async function requireSessionApi(): Promise<AdminApiAuth | AdminApiDenied> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return { ok: false, response: UNAUTHORIZED_RESPONSE };
+  }
+  return { ok: true, session };
+}
+
+/**
  * For admin pages: returns the session if the caller is an admin, or redirects
  * to the home page if not.
  */

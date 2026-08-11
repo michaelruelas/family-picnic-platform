@@ -249,12 +249,21 @@ describe('FPP-65: host role and assignment to events', () => {
       const trpc = await fs.readFile(trpcPath, 'utf-8');
       expect(trpc).toMatch(/export function eventAdminProcedure/);
       // The builder must consult canAccessEvent so a HOST with an
-      // EventAdmin row can pass. The exact phrasing of the
+      // EventAdmin row can pass. FPP-104 refactored the call site
+      // to compute the eventId once (`const eventId = await
+      // getEventId(...)`) and feed it into canAccessEvent, so the
+      // test accepts either the older inline form or the
+      // FPP-104 named-variable form. The exact phrasing of the
       // short-circuit may vary; we just need both branches
       // touching the same `next()` call.
       const builderSlice = trpc.split(/export function eventAdminProcedure/)[1] ?? '';
       expect(builderSlice).toMatch(/isAdminRole\(role\)/);
-      expect(builderSlice).toMatch(/canAccessEvent\(ctx\.session, getEventId\(input/);
+      // Match either the inline form (canAccessEvent(ctx.session,
+      // getEventId(input...))) or the FPP-104 refactored form
+      // (canAccessEvent(ctx.session, eventId)).
+      expect(builderSlice).toMatch(
+        /canAccessEvent\(ctx\.session, (?:\s*getEventId\(input|eventId\s*\))/,
+      );
       expect(builderSlice).toMatch(/throw new TRPCError\(\{ code: 'FORBIDDEN' \}\)/);
     });
 
@@ -292,9 +301,16 @@ describe('FPP-65: host role and assignment to events', () => {
 
     it('REST POST admins route rejects HOST self-assignment', async () => {
       const route = await fs.readFile(adminsRoutePath, 'utf-8');
+      // FPP-104: tightened to use `isSuperAdminRole` so an
+      // ADMIN_ADULT user cannot self-promote to OWNER on an event
+      // they already have a row for. The error message was updated
+      // to reflect the new "only super-admins" framing.
+      const actorCheck = route.match(/const actorIsSuperAdmin[\s\S]*?\);/);
+      expect(actorCheck).not.toBeNull();
+      expect(actorCheck![0]!).toMatch(/isSuperAdminRole/);
       // A non-super-admin actor cannot include themselves in the
       // target list. The check must run before any DB write.
-      expect(route).toMatch(/hosts cannot self-assign via this endpoint/);
+      expect(route).toMatch(/only super-admins can self-assign via this endpoint/);
     });
 
     it('REST DELETE admins route uses requireEventAdminApi + un-stamp on OWNER removal', async () => {

@@ -1,4 +1,4 @@
-import { router, protectedProcedure, auditedAdminProcedure } from '~/lib/trpc';
+import { router, protectedProcedure, eventAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { prisma } from '~/lib/prisma';
@@ -933,9 +933,13 @@ export const rsvpRouter = router({
     return declined;
   }),
 
-  adminOverride: auditedAdminProcedure
-    .input(rsvpAdminOverrideSchema)
-    .mutation(async ({ ctx, input }) => {
+  // FPP-104: per-event gate. A HOST with an EventAdmin row on the
+  // event can override RSVPs on their own picnic. Super-admins /
+  // ADMIN_ADULT users pass via the platform-level admin branch.
+  // Aligns the tRPC proc with the REST `/api/admin/rsvp/override`
+  // route (FPP-102) and the existing event-scoped tRPC builders.
+  adminOverride: eventAdminProcedure(rsvpAdminOverrideSchema, (input) => input.eventId).mutation(
+    async ({ ctx, input }) => {
       const targetUser = await prisma.user.findUnique({
         where: { id: input.userId },
         select: { id: true, householdId: true },
@@ -1123,7 +1127,8 @@ export const rsvpRouter = router({
       }
 
       return result;
-    }),
+    },
+  ),
 
   /**
    * FPP-102: admin-only RSVP detail fetch used by the manual entry
@@ -1132,51 +1137,64 @@ export const rsvpRouter = router({
    * headcount, decline message, and per-member attendance. Returns
    * `null` when no RSVP row exists for the supplied id (so the
    * caller can branch on missing data).
+   *
+   * FPP-104: per-event gate. The input is just the rsvp id, so the
+   * `getEventId` lookup resolves the parent event. Mirrors the
+   * `potluck.updateSlot` / `potluck.deleteSlot` pattern — a
+   * missing RSVP throws `TRPCError(NOT_FOUND)` from the resolver
+   * so the gate never sees a dangling empty-string eventId.
    */
-  getById: auditedAdminProcedure
-    .input(z.object({ rsvpId: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const rsvp = await prisma.rSVP.findUnique({
-        where: { id: input.rsvpId },
-        include: {
-          // The user/household context (name, email) is already
-          // passed to the modal as the `targetUser` prop from the
-          // row the admin clicked. We only need the householdId
-          // to scope the roster lookup.
-          user: { select: { householdId: true } },
-          memberAttendances: { orderBy: { createdAt: 'asc' } },
-        },
-      });
-      if (!rsvp) return null;
+  getById: eventAdminProcedure(z.object({ rsvpId: z.string().min(1) }), async (input) => {
+    const rsvp = await prisma.rSVP.findUnique({
+      where: { id: input.rsvpId },
+      select: { eventId: true },
+    });
+    if (!rsvp) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'RSVP not found' });
+    }
+    return rsvp.eventId;
+  }).query(async ({ input }) => {
+    const rsvp = await prisma.rSVP.findUnique({
+      where: { id: input.rsvpId },
+      include: {
+        // The user/household context (name, email) is already
+        // passed to the modal as the `targetUser` prop from the
+        // row the admin clicked. We only need the householdId
+        // to scope the roster lookup.
+        user: { select: { householdId: true } },
+        memberAttendances: { orderBy: { createdAt: 'asc' } },
+      },
+    });
+    if (!rsvp) return null;
 
-      const householdId = rsvp.user.householdId ?? rsvp.userId;
-      const members = await prisma.householdMember.findMany({
-        where: { householdId, deletedAt: null },
-        orderBy: { createdAt: 'asc' },
-        select: { id: true, name: true, age: true, relationship: true },
-      });
+    const householdId = rsvp.user.householdId ?? rsvp.userId;
+    const members = await prisma.householdMember.findMany({
+      where: { householdId, deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, name: true, age: true, relationship: true },
+    });
 
-      return {
-        rsvp: {
-          id: rsvp.id,
-          eventId: rsvp.eventId,
-          userId: rsvp.userId,
-          householdId: rsvp.householdId,
-          status: rsvp.status,
-          headcount: rsvp.headcount,
-          declineMessage: rsvp.declineMessage,
-          respondedAt: rsvp.respondedAt ? rsvp.respondedAt.toISOString() : null,
-          memberAttendances: rsvp.memberAttendances.map((a) => ({
-            id: a.id,
-            householdMemberId: a.householdMemberId,
-            memberNameSnapshot: a.memberNameSnapshot,
-            memberAgeSnapshot: a.memberAgeSnapshot,
-            attending: a.attending,
-          })),
-        },
-        members,
-      };
-    }),
+    return {
+      rsvp: {
+        id: rsvp.id,
+        eventId: rsvp.eventId,
+        userId: rsvp.userId,
+        householdId: rsvp.householdId,
+        status: rsvp.status,
+        headcount: rsvp.headcount,
+        declineMessage: rsvp.declineMessage,
+        respondedAt: rsvp.respondedAt ? rsvp.respondedAt.toISOString() : null,
+        memberAttendances: rsvp.memberAttendances.map((a) => ({
+          id: a.id,
+          householdMemberId: a.householdMemberId,
+          memberNameSnapshot: a.memberNameSnapshot,
+          memberAgeSnapshot: a.memberAgeSnapshot,
+          attending: a.attending,
+        })),
+      },
+      members,
+    };
+  }),
 
   getHeadcount: protectedProcedure
     .input(z.object({ eventId: z.string() }))
@@ -1203,27 +1221,31 @@ export const rsvpRouter = router({
    * `getRsvpFormState` flow already sources from the database, and
    * we do not want authenticated non-admins scraping the full
    * household roster for any event.
+   *
+   * FPP-104: per-event gate. A HOST with an EventAdmin row for the
+   * event can view the full attendee roster for their own picnic.
    */
-  getByEvent: auditedAdminProcedure
-    .input(z.object({ eventId: z.string() }))
-    .query(async ({ input }) => {
-      return prisma.rSVP.findMany({
-        where: { eventId: input.eventId },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          memberAttendances: {
-            orderBy: { createdAt: 'asc' },
+  getByEvent: eventAdminProcedure(
+    z.object({ eventId: z.string() }),
+    (input) => input.eventId,
+  ).query(async ({ input }) => {
+    return prisma.rSVP.findMany({
+      where: { eventId: input.eventId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
-        orderBy: { respondedAt: 'desc' },
-      });
-    }),
+        memberAttendances: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { respondedAt: 'desc' },
+    });
+  }),
 
   getMyRsvp: protectedProcedure
     .input(z.object({ eventId: z.string() }))
