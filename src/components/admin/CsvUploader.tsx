@@ -127,7 +127,7 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
   };
 
   return (
-    <div className="border-border rounded-xl border bg-white p-4">
+    <div className="border-border bg-card rounded-xl border p-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-foreground text-lg font-semibold">Bulk CSV Import</h3>
@@ -282,14 +282,14 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
                 <button
                   onClick={() => handleImport(true)}
                   disabled={importing || parseResult.errors.length > 0}
-                  className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 font-medium disabled:bg-stone-300"
+                  className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 font-medium disabled:opacity-50"
                 >
                   Dry Run
                 </button>
                 <button
                   onClick={() => handleImport(false)}
                   disabled={importing || parseResult.errors.length > 0}
-                  className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white disabled:bg-stone-300"
+                  className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
                 >
                   {importing ? 'Importing...' : 'Import'}
                 </button>

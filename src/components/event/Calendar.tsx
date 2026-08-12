@@ -83,7 +83,7 @@ export function Calendar({ events }: CalendarProps) {
         <div className="flex items-center gap-4">
           <button
             onClick={prevMonth}
-            className="border-border text-foreground/85 hover:bg-secondary/60 active:bg-secondary rounded-lg border bg-white px-4 py-2 text-lg font-medium transition-colors"
+            className="border-border text-foreground/85 hover:bg-secondary/60 active:bg-secondary bg-card rounded-lg border px-4 py-2 text-lg font-medium transition-colors"
             aria-label="Previous month"
           >
             ‹
@@ -93,7 +93,7 @@ export function Calendar({ events }: CalendarProps) {
           </h2>
           <button
             onClick={nextMonth}
-            className="border-border text-foreground/85 hover:bg-secondary/60 active:bg-secondary rounded-lg border bg-white px-4 py-2 text-lg font-medium transition-colors"
+            className="border-border text-foreground/85 hover:bg-secondary/60 active:bg-secondary bg-card rounded-lg border px-4 py-2 text-lg font-medium transition-colors"
             aria-label="Next month"
           >
             ›
@@ -101,7 +101,7 @@ export function Calendar({ events }: CalendarProps) {
         </div>
         <button
           onClick={goToToday}
-          className="border-border text-muted-foreground hover:bg-secondary/60 active:bg-secondary rounded-lg border bg-white px-4 py-2 text-sm font-medium transition-colors"
+          className="border-border text-muted-foreground hover:bg-secondary/60 active:bg-secondary bg-card rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
         >
           Today
         </button>
@@ -119,7 +119,7 @@ export function Calendar({ events }: CalendarProps) {
 
         {calendarDays.map((day, index) => {
           if (day === null) {
-            return <div key={`empty-${index}`} className="min-h-24 bg-white p-2 md:min-h-32" />;
+            return <div key={`empty-${index}`} className="bg-card min-h-24 p-2 md:min-h-32" />;
           }
 
           const dayEvents = getEventsForDay(day);
@@ -128,7 +128,7 @@ export function Calendar({ events }: CalendarProps) {
           return (
             <div
               key={day}
-              className={`min-h-24 bg-white p-2 md:min-h-32 ${isCurrentDay ? 'ring-2 ring-green-500 ring-inset' : ''}`}
+              className={`bg-card min-h-24 p-2 md:min-h-32 ${isCurrentDay ? 'ring-2 ring-green-500 ring-inset' : ''}`}
             >
               <div
                 className={`mb-1 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium ${

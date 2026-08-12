@@ -235,7 +235,7 @@ export default function MembersTable({
 
   return (
     <div className="space-y-4">
-      <div className="border-border flex flex-wrap items-start justify-between gap-3 rounded-xl bg-white p-5 shadow-sm">
+      <div className="border-border bg-card flex flex-wrap items-start justify-between gap-3 rounded-xl p-5 shadow-sm">
         <div>
           <p className="text-muted-foreground text-sm font-semibold tracking-widest uppercase">
             Admin · Members
@@ -299,19 +299,19 @@ export default function MembersTable({
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl bg-white p-4 shadow-sm">
+        <div className="bg-card rounded-xl p-4 shadow-sm">
           <p className="text-muted-foreground text-xs">Going</p>
           <p className="text-sage mt-1 text-2xl font-semibold tabular-nums">
             {counts[RsvpAttending.YES]}
           </p>
         </div>
-        <div className="rounded-xl bg-white p-4 shadow-sm">
+        <div className="bg-card rounded-xl p-4 shadow-sm">
           <p className="text-muted-foreground text-xs">Maybe</p>
           <p className="mt-1 text-2xl font-semibold text-[#a07c2f] tabular-nums">
             {counts[RsvpAttending.MAYBE]}
           </p>
         </div>
-        <div className="rounded-xl bg-white p-4 shadow-sm">
+        <div className="bg-card rounded-xl p-4 shadow-sm">
           <p className="text-muted-foreground text-xs">Not going</p>
           <p className="text-destructive mt-1 text-2xl font-semibold tabular-nums">
             {counts[RsvpAttending.NO]}

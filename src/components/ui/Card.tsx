@@ -11,11 +11,11 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variantClasses: Record<CardVariant, string> = {
-  default: 'bg-card text-card-foreground ring-1 ring-border/60 shadow-card',
+  default: 'bg-card text-card-foreground ring-1 ring-border shadow-card',
   success: 'bg-sage/10 text-foreground ring-1 ring-sage/30',
   warning: 'bg-sunlight/20 text-foreground ring-1 ring-sunlight/40',
   error: 'bg-destructive/10 text-foreground ring-1 ring-destructive/30',
-  muted: 'bg-secondary text-foreground',
+  muted: 'bg-secondary text-foreground ring-1 ring-border',
   sunlight: 'bg-sunlight/20 text-foreground',
   sage: 'bg-sage/15 text-foreground ring-1 ring-sage/30',
 };

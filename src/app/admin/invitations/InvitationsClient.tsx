@@ -177,7 +177,7 @@ export default function AdminInvitationsClient({
       </div>
 
       {selectedEvent && searchQuery ? (
-        <div className="border-border rounded-xl border bg-white p-4">
+        <div className="border-border bg-card rounded-xl border p-4">
           <h3 className="text-foreground/85 mb-3 text-sm font-medium">
             Matching Households ({filteredHouseholds.length})
           </h3>
@@ -196,7 +196,7 @@ export default function AdminInvitationsClient({
                   type="button"
                   onClick={() => setSelectedHousehold(household.id)}
                   disabled={selectedHousehold === household.id}
-                  className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-1 text-sm font-medium text-white disabled:bg-stone-300"
+                  className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
                 >
                   {selectedHousehold === household.id ? 'Selected' : 'Select'}
                 </button>
@@ -212,7 +212,7 @@ export default function AdminInvitationsClient({
                 type="button"
                 onClick={() => void handleSendInvitation()}
                 disabled={sending}
-                className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white disabled:bg-stone-300"
+                className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
               >
                 {sending ? 'Sending…' : 'Send Invitation'}
               </button>

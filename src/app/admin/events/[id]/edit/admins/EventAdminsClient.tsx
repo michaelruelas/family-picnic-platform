@@ -245,7 +245,7 @@ export default function EventAdminsClient({
               contact info show on the public event page.
             </p>
           ) : (
-            <ul className="divide-y divide-stone-200">
+            <ul className="divide-border divide-y">
               {hosts.map((host) => (
                 <li key={host.id} className="flex items-center justify-between py-3">
                   <div>
@@ -384,7 +384,7 @@ export default function EventAdminsClient({
           {others.length === 0 ? (
             <p className="text-muted-foreground">No co-admins or inviters assigned.</p>
           ) : (
-            <ul className="divide-y divide-stone-200">
+            <ul className="divide-border divide-y">
               {others.map((admin) => (
                 <li key={admin.id} className="flex items-center justify-between py-3">
                   <div>

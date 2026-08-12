@@ -68,7 +68,7 @@ export default function LinkedAccounts({ enabledProviders, sessionEmail }: Linke
   }
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+    <div className="bg-card ring-border rounded-xl p-6 shadow-sm ring-1">
       <div className="flex items-start gap-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-2xl">
           🔗
@@ -99,7 +99,7 @@ export default function LinkedAccounts({ enabledProviders, sessionEmail }: Linke
           {identities.map((identity) => (
             <li
               key={identity.id}
-              className="flex items-center justify-between gap-4 rounded-lg border border-stone-200 px-4 py-3"
+              className="border-border flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
             >
               <div className="min-w-0">
                 <p className="text-foreground font-medium">
@@ -128,7 +128,7 @@ export default function LinkedAccounts({ enabledProviders, sessionEmail }: Linke
       )}
 
       {unlinkedProviders.length > 0 && (
-        <div className="mt-6 border-t border-stone-200 pt-6">
+        <div className="border-border mt-6 border-t pt-6">
           <p className="text-foreground/85 text-sm font-medium">Link another account</p>
           <p className="text-muted-foreground mt-1 text-xs">
             Sign in with the new provider. If the email matches your account, we&apos;ll link it

@@ -106,8 +106,8 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
         </div>
       </div>
 
-      <div className="border-border overflow-x-auto rounded-xl border bg-white">
-        <table className="min-w-full divide-y divide-stone-200">
+      <div className="border-border bg-card overflow-x-auto rounded-xl border">
+        <table className="divide-border min-w-full divide-y">
           <thead className="bg-secondary/60">
             <tr>
               <th className="text-muted-foreground px-4 py-3 text-left text-xs font-medium tracking-wider uppercase">
@@ -127,7 +127,7 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-200">
+          <tbody className="divide-border divide-y">
             {logs.map((log) => (
               <tr key={log.id} className="hover:bg-secondary/60">
                 <td className="px-4 py-3 whitespace-nowrap">

@@ -268,7 +268,7 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
             onDragEnd={onDragEnd}
             data-testid="itinerary-editor-item"
             data-itinerary-id={item.id}
-            className={`border-border rounded-lg border bg-white p-4 transition-shadow ${
+            className={`border-border bg-card rounded-lg border p-4 transition-shadow ${
               draggingId === item.id ? 'opacity-50 shadow-md' : ''
             } ${pendingReorder ? 'opacity-90' : ''}`}
           >
@@ -402,7 +402,7 @@ function ItineraryItemForm({ mode, initial, onSubmit, onCancel }: ItineraryItemF
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-3 rounded-xl bg-white p-4 shadow-sm"
+      className="bg-card space-y-3 rounded-xl p-4 shadow-sm"
       data-testid={mode === 'add' ? 'itinerary-add-form' : 'itinerary-edit-form'}
     >
       <h3 className="text-foreground text-lg font-semibold">

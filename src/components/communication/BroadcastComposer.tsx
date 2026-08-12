@@ -214,7 +214,7 @@ export default function BroadcastComposer({
         <button
           type="submit"
           disabled={disabled || sending || !isValid}
-          className="bg-terracotta hover:bg-terracotta rounded-lg px-6 py-2 font-medium text-white disabled:bg-stone-300"
+          className="bg-terracotta hover:bg-terracotta rounded-lg px-6 py-2 font-medium text-white disabled:opacity-50"
         >
           {sending ? 'Queuing...' : sendImmediately ? 'Send Message' : 'Schedule Message'}
         </button>

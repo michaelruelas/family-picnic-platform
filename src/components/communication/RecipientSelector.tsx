@@ -111,7 +111,7 @@ export default function RecipientSelector({
                       className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 ${
                         selectedIds.includes(household.id)
                           ? 'border-terracotta bg-sunlight/20'
-                          : 'border-border bg-white'
+                          : 'border-border bg-card'
                       }`}
                     >
                       <span className="text-foreground font-medium">{household.name}</span>
@@ -141,7 +141,7 @@ export default function RecipientSelector({
                       className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 ${
                         selectedIds.includes(user.id)
                           ? 'border-terracotta bg-sunlight/20'
-                          : 'border-border bg-white'
+                          : 'border-border bg-card'
                       }`}
                     >
                       <div>

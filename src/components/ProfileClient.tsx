@@ -225,7 +225,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+      <div className="bg-card ring-border rounded-xl p-6 shadow-sm ring-1">
         <div className="flex items-center justify-between">
           <h2 className="text-foreground text-xl font-semibold">Profile Settings</h2>
           {!isEditing && (
@@ -362,7 +362,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
         </form>
       </div>
 
-      <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+      <div className="bg-card ring-border rounded-xl p-6 shadow-sm ring-1">
         <div className="flex items-center justify-between">
           <h2 className="text-foreground text-xl font-semibold">Family Members</h2>
           {!showDependentForm && (

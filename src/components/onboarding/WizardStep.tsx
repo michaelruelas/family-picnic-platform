@@ -40,7 +40,7 @@ export default function WizardStep({
         {description && <p className="text-muted-foreground mt-3 text-lg">{description}</p>}
       </div>
 
-      <div className="mb-8 rounded-xl bg-white p-8 shadow-sm ring-1 ring-stone-200">{children}</div>
+      <div className="bg-card ring-border mb-8 rounded-xl p-8 shadow-sm ring-1">{children}</div>
 
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1">
@@ -49,7 +49,7 @@ export default function WizardStep({
               type="button"
               onClick={onBack}
               disabled={isLoading}
-              className="border-border text-foreground/85 hover:bg-secondary/60 rounded-lg border bg-white px-6 py-3 text-lg font-medium disabled:opacity-50"
+              className="border-border text-foreground/85 hover:bg-secondary/60 bg-card rounded-lg border px-6 py-3 text-lg font-medium disabled:opacity-50"
             >
               {backLabel || 'Back'}
             </button>

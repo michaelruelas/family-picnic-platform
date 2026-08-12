@@ -122,7 +122,7 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
       )}
 
       {Object.entries(slotsByCategory).map(([category, categorySlots]) => (
-        <div key={category} className="rounded-xl bg-white p-6 shadow-sm">
+        <div key={category} className="bg-card rounded-xl p-6 shadow-sm">
           <h3 className="text-foreground flex items-center gap-2 text-lg font-semibold">
             <span className="text-2xl">{POTLUCK_CATEGORY_EMOJIS[category] || '📦'}</span>
             {POTLUCK_CATEGORY_LABELS[category] || category}

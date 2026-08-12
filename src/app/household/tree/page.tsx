@@ -147,7 +147,7 @@ export default async function HouseholdTreePage() {
         </p>
       </div>
 
-      <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+      <div className="bg-card ring-border rounded-xl p-6 shadow-sm ring-1">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-foreground text-lg font-semibold">Household Network</h2>
           <div className="text-muted-foreground flex items-center gap-4 text-xs">

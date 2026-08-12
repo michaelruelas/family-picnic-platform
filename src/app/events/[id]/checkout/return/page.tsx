@@ -57,7 +57,7 @@ export default async function CheckoutReturnPage({ params, searchParams }: Props
   if (registration?.status === RegistrationStatus.PAID) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-12">
-        <div className="rounded-xl bg-white p-8 shadow-sm">
+        <div className="bg-card rounded-xl p-8 shadow-sm">
           <h1 className="text-foreground text-3xl font-bold">You are registered</h1>
           <p className="text-muted-foreground mt-2">
             Your payment of {formatAmount(registration.amountCents, registration.currency)} for{' '}
@@ -77,7 +77,7 @@ export default async function CheckoutReturnPage({ params, searchParams }: Props
   if (redirectStatus === 'failed' || latestCharge?.status === ChargeStatus.FAILED) {
     return (
       <main className="mx-auto max-w-2xl px-4 py-12">
-        <div className="rounded-xl bg-white p-8 shadow-sm">
+        <div className="bg-card rounded-xl p-8 shadow-sm">
           <h1 className="text-foreground text-3xl font-bold">Payment did not complete</h1>
           <p className="text-muted-foreground mt-2">
             Your card was not charged. You can try again, or contact an admin if the problem
@@ -96,7 +96,7 @@ export default async function CheckoutReturnPage({ params, searchParams }: Props
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
-      <div className="rounded-xl bg-white p-8 shadow-sm">
+      <div className="bg-card rounded-xl p-8 shadow-sm">
         <h1 className="text-foreground text-3xl font-bold">Processing your payment</h1>
         <p className="text-muted-foreground mt-2">
           Stripe has confirmed your payment. We are updating your registration now.

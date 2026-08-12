@@ -39,7 +39,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
     <li className="relative">
       <div
         className={`flex flex-wrap items-center gap-2 rounded-lg p-3 transition-colors ${
-          level === 0 ? 'border-sunlight/40 bg-sunlight/20 border' : 'border-border border bg-white'
+          level === 0 ? 'border-sunlight/40 bg-sunlight/20 border' : 'border-border bg-card border'
         } hover:shadow-sm`}
         style={{ marginLeft: level > 0 ? '1.5rem' : 0 }}
       >
@@ -87,7 +87,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
 
       {showDetails && (
         <div
-          className="border-border rounded-lg border bg-white p-4"
+          className="border-border bg-card rounded-lg border p-4"
           style={{ marginLeft: level > 0 ? '1.5rem' : 0, marginTop: '0.5rem' }}
         >
           {node.users.length > 0 && (

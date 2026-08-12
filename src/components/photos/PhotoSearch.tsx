@@ -49,7 +49,7 @@ export default function PhotoSearch({ eventId }: { eventId: string }) {
   }, [router, eventId]);
 
   return (
-    <div className="rounded-xl bg-white p-4 shadow-sm">
+    <div className="bg-card rounded-xl p-4 shadow-sm">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Input
           type="text"

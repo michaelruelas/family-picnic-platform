@@ -85,7 +85,7 @@ export default function PhotoCard({ photo, eventName, userId, userRole }: PhotoC
           </button>
 
           {showMenu && (
-            <div className="absolute top-10 right-0 z-10 w-32 rounded-lg bg-white py-1 shadow-lg ring-1 ring-stone-200">
+            <div className="bg-card ring-border absolute top-10 right-0 z-10 w-32 rounded-lg py-1 shadow-lg ring-1">
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="text-destructive hover:bg-destructive/10 flex w-full items-center px-3 py-2 text-left text-sm"
@@ -99,7 +99,7 @@ export default function PhotoCard({ photo, eventName, userId, userRole }: PhotoC
 
       {showDeleteConfirm && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-          <div className="rounded-lg bg-white p-4 shadow-lg">
+          <div className="bg-card rounded-lg p-4 shadow-lg">
             <p className="text-foreground mb-3 text-sm font-medium">Delete this photo?</p>
             <p className="text-muted-foreground mb-3 text-xs">This action cannot be undone.</p>
             <div className="flex gap-2">

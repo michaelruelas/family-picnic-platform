@@ -188,19 +188,19 @@ export default function DashboardTable({ rows }: DashboardTableProps) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl bg-white p-4 shadow-sm">
+        <div className="bg-card rounded-xl p-4 shadow-sm">
           <p className="text-muted-foreground text-xs">Total RSVPs</p>
           <p className="text-foreground mt-1 text-2xl font-semibold tabular-nums">
             {formatHeadcount(totals.rsvpTotal)}
           </p>
         </div>
-        <div className="rounded-xl bg-white p-4 shadow-sm">
+        <div className="bg-card rounded-xl p-4 shadow-sm">
           <p className="text-muted-foreground text-xs">Total Confirmed</p>
           <p className="text-sage mt-1 text-2xl font-semibold tabular-nums">
             {formatHeadcount(totals.rsvpConfirmed)}
           </p>
         </div>
-        <div className="rounded-xl bg-white p-4 shadow-sm">
+        <div className="bg-card rounded-xl p-4 shadow-sm">
           <p className="text-muted-foreground text-xs">Total Headcount</p>
           <p className="text-foreground mt-1 text-2xl font-semibold tabular-nums">
             {formatHeadcount(totals.headcount)}

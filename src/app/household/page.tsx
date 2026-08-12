@@ -141,7 +141,7 @@ export default async function HouseholdPage() {
       </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">
-        <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+        <div className="bg-card ring-border rounded-xl p-6 shadow-sm ring-1">
           <h2 className="text-foreground text-lg font-semibold">Account Holders</h2>
           <p className="text-muted-foreground mt-1 text-sm">Adults with login access</p>
 
@@ -164,7 +164,7 @@ export default async function HouseholdPage() {
           )}
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+        <div className="bg-card ring-border rounded-xl p-6 shadow-sm ring-1">
           <h2 className="text-foreground text-lg font-semibold">Cumulative RSVP Headcount</h2>
           <p className="text-muted-foreground mt-1 text-sm">Total attendees from your household</p>
 
@@ -197,11 +197,11 @@ export default async function HouseholdPage() {
         </div>
       </div>
 
-      <div className="mt-8 rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+      <div className="bg-card ring-border mt-8 rounded-xl p-6 shadow-sm ring-1">
         <HouseholdMembersClient householdId={household.id} initialMembers={household.members} />
       </div>
 
-      <div className="mt-8 rounded-xl bg-white p-6 shadow-sm ring-1 ring-stone-200">
+      <div className="bg-card ring-border mt-8 rounded-xl p-6 shadow-sm ring-1">
         <HouseholdClient initialDependents={household.dependents} />
       </div>
     </main>

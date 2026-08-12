@@ -283,7 +283,7 @@ export default function DataTable<TData extends RowData>({
   return (
     <div className={`space-y-4 ${className}`} data-testid="data-table">
       {(toolbar || showColumnToggle) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm">
+        <div className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-xl p-3 shadow-sm">
           <div className="flex flex-1 flex-wrap items-center gap-3">{toolbar}</div>
           {showColumnToggle ? (
             <ColumnToggle
@@ -298,7 +298,7 @@ export default function DataTable<TData extends RowData>({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+      <div className="bg-card overflow-x-auto rounded-xl shadow-sm">
         {loading ? (
           <div className="p-12" data-testid="data-table-loading">
             <Spinner size="lg" label="Loading…" />
@@ -312,7 +312,7 @@ export default function DataTable<TData extends RowData>({
             )}
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-stone-200">
+          <table className="divide-border min-w-full divide-y">
             <thead className={`bg-secondary/60 ${stickyHeader ? 'sticky top-0 z-10' : ''}`}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
@@ -351,7 +351,7 @@ export default function DataTable<TData extends RowData>({
                 </tr>
               ))}
             </thead>
-            <tbody className="divide-y divide-stone-200">
+            <tbody className="divide-border divide-y">
               {table.getRowModel().rows.map((row) => {
                 const clickable = Boolean(onRowClick);
                 return (
@@ -499,7 +499,7 @@ function PaginationControls<TData extends RowData>({
   const canPrev = table.getCanPreviousPage();
   const canNext = table.getCanNextPage();
   return (
-    <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 text-sm shadow-sm">
+    <div className="bg-card flex items-center justify-between rounded-xl px-4 py-3 text-sm shadow-sm">
       <span className="text-muted-foreground" data-testid="pagination-summary">
         Page {pageIndex + 1} of {pageCount}
       </span>
