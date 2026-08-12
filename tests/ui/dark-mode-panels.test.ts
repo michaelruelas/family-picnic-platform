@@ -2,8 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-const SKIP_BG_WHITE = ['src/components/PhotoReactionButton.tsx', 'src/app/events/[id]/page.tsx'];
-
 /**
  * FPP-44: regression tests that prevent panel/card surfaces from
  * rendering with hard-coded colors in dark mode.
@@ -15,9 +13,11 @@ const SKIP_BG_WHITE = ['src/components/PhotoReactionButton.tsx', 'src/app/events
  * brighter than the surrounding dark surface — exactly the bug
  * FPP-44 reports.
  *
- * A small allow-list keeps intentional overlays (translucent
- * `bg-white/N` on top of `bg-black/50` photo chips, hero status
- * badge) from being flagged.
+ * For `bg-white`, an inline `skipLine` callback exempts translucent
+ * overlays (`bg-white/N`) used on top of dark image backgrounds — for
+ * example, the emoji reaction chips on photos in `PhotoReactionButton.tsx`
+ * and the hero status badge on `events/[id]/page.tsx`. These are
+ * intentional white-tinted overlays, not panel surfaces.
  */
 describe('Dark mode panel surfaces (FPP-44)', () => {
   const srcDir = path.join(process.cwd(), 'src');
@@ -102,7 +102,6 @@ async function findOffenders(
   const files = await walk(path.join(process.cwd(), 'src'));
   for (const file of files) {
     if (!/\.(tsx|ts)$/.test(file)) continue;
-    if (SKIP_BG_WHITE.some((skip) => file.endsWith(skip.replace(/^src\//, '')))) continue;
     const content = await fs.readFile(file, 'utf-8');
     const lines = content.split('\n');
     lines.forEach((line, index) => {

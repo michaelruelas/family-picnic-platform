@@ -15,7 +15,7 @@ const variantClasses: Record<CardVariant, string> = {
   success: 'bg-sage/10 text-foreground ring-1 ring-sage/30',
   warning: 'bg-sunlight/20 text-foreground ring-1 ring-sunlight/40',
   error: 'bg-destructive/10 text-foreground ring-1 ring-destructive/30',
-  muted: 'bg-secondary text-foreground ring-1 ring-border',
+  muted: 'bg-secondary text-foreground',
   sunlight: 'bg-sunlight/20 text-foreground',
   sage: 'bg-sage/15 text-foreground ring-1 ring-sage/30',
 };
