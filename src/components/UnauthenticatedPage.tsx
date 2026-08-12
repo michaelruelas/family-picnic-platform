@@ -5,7 +5,7 @@ import { SIGNED_IN_REDIRECT } from '~/lib/constants';
 import LoginForm from '~/components/LoginForm';
 
 export default async function UnauthenticatedPage({
-  showBackLink = true,
+  showBackLink = false,
 }: {
   showBackLink?: boolean;
 }) {
