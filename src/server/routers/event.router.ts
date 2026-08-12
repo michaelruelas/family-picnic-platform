@@ -5,7 +5,7 @@ import { prisma } from '~/lib/prisma';
 import { EventStatus, AdminPermission } from '~/lib/generated/enums';
 import { writeDomainAuditLog } from '~/lib/audit';
 import { stampHostRole, unassignHostRole } from '~/lib/event-access';
-import { DEFAULT_CURRENCY } from '~/lib/constants';
+import { toEventCreateData } from '~/lib/event-data';
 
 export const eventRouter = router({
   create: auditedAdminProcedure
@@ -29,19 +29,7 @@ export const eventRouter = router({
     .mutation(async ({ input }) => {
       return prisma.event.create({
         data: {
-          name: input.name,
-          date: new Date(input.date),
-          location: input.location,
-          lat: input.lat ?? null,
-          lng: input.lng ?? null,
-          placeId: input.placeId ?? null,
-          description: input.description,
-          rsvpDeadline: input.rsvpDeadline ? new Date(input.rsvpDeadline) : null,
-          maxCapacity: input.maxCapacity,
-          mapImageUrl: input.mapImageUrl ?? null,
-          currency: input.currency ?? DEFAULT_CURRENCY,
-          registrationFeeCents: input.registrationFeeCents ?? 0,
-          registrationFeeMinAge: input.registrationFeeMinAge ?? 0,
+          ...toEventCreateData(input),
           status: EventStatus.DRAFT,
         },
       });

@@ -1,5 +1,7 @@
 'use client';
 
+import { getGoogleMapsApiKey, getDirectionsUrl, getEmbedUrl } from '~/lib/google-maps';
+
 interface EventLocationMapProps {
   lat: number;
   lng: number;
@@ -7,14 +9,14 @@ interface EventLocationMapProps {
 }
 
 export function EventLocationMap({ lat, lng, location }: EventLocationMapProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const apiKey = getGoogleMapsApiKey();
   if (!apiKey) {
     console.warn('EventLocationMap: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set');
     return null;
   }
 
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-  const embedUrl = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${lat},${lng}`;
+  const directionsUrl = getDirectionsUrl(lat, lng);
+  const embedUrl = getEmbedUrl(lat, lng);
 
   return (
     <div className="bg-card shadow-card ring-border/60 overflow-hidden rounded-3xl ring-1">
