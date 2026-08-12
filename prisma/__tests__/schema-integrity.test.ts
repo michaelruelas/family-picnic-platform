@@ -174,4 +174,33 @@ describe('Prisma schema integrity vs SPEC', () => {
   it('FPP-45: Event model has an itineraryItems relation', () => {
     expect(schema).toMatch(/model Event \{[\s\S]*?itineraryItems\s+ItineraryItem\[\]/);
   });
+
+  it('FPP-43: EventAttachment model has key, filename, sizeBytes, virusScanStatus', () => {
+    const block = schema.match(/model EventAttachment \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    const body = block![1]!;
+    expect(body).toMatch(/key\s+String\s+@unique/);
+    expect(body).toMatch(/filename\s+String/);
+    expect(body).toMatch(/sizeBytes\s+Int/);
+    expect(body).toMatch(/virusScanStatus\s+AttachmentScanStatus/);
+  });
+
+  it('FPP-43: AttachmentScanStatus enum has PENDING, CLEAN, INFECTED, SKIPPED, FAILED', () => {
+    const match = schema.match(/enum AttachmentScanStatus \{([^}]+)\}/);
+    expect(match).not.toBeNull();
+    const body = match![1]!.trim();
+    expect(body).toContain('PENDING');
+    expect(body).toContain('CLEAN');
+    expect(body).toContain('INFECTED');
+    expect(body).toContain('SKIPPED');
+    expect(body).toContain('FAILED');
+  });
+
+  it('FPP-43: Event model has an attachments relation', () => {
+    expect(schema).toMatch(/model Event \{[\s\S]*?attachments\s+EventAttachment\[\]/);
+  });
+
+  it('FPP-43: User model has an uploadedAttachments relation', () => {
+    expect(schema).toMatch(/model User \{[\s\S]*?uploadedAttachments\s+EventAttachment\[\]/);
+  });
 });

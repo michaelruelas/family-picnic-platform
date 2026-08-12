@@ -212,6 +212,8 @@ model User {
   registrations      Registration[]
   refundsIssued      Refund[]          @relation("RefundIssuer")
   linkedIdentities   LinkedIdentity[]
+  // FPP-43: PDF attachments uploaded by this user.
+  uploadedAttachments EventAttachment[]
 
   @@index([householdId])
   @@index([role])
@@ -278,6 +280,11 @@ model Event {
   admins             EventAdmin[]
   registrations      Registration[]
   itineraryItems     ItineraryItem[]
+  // FPP-43: PDF attachments hosted in the S3-compatible bucket.
+  // The DB row owns the metadata (filename, size, scan status);
+  // the bucket owns the bytes. Cascade-delete so removing an event
+  // cleans up its attachments in one shot.
+  attachments        EventAttachment[]
 
   @@index([status])
   @@index([date])
@@ -308,6 +315,57 @@ model ItineraryItem {
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([eventId, order])
+}
+
+// FPP-43: per-event PDF attachments (directions, waivers, schedules).
+//
+// One row per file. The bytes live in the S3-compatible bucket under
+// `events/{eventId}/attachments/{userId}/{timestamp}-{filename}` and
+// `key` is the canonical reference; `filename` is the human label the
+// host typed at upload time (and is what guests see on the public
+// page). `contentType` is captured at upload so a future content-type
+// swap can't change what guests download. `sizeBytes` is captured so
+// the public page can render a human-readable size without re-reading
+// the object. `virusScanStatus` is PENDING on create and stays
+// PENDING until a future scan worker marks it CLEAN/INFECTED/SKIPPED
+// — for the first ship we log a stub and immediately set SKIPPED so
+// downloads are not blocked behind an unfinished worker.
+model EventAttachment {
+  id               String                  @id @default(cuid())
+  eventId          String
+  uploadedByUserId String
+  // S3 object key (no bucket prefix). Re-derived at download time to
+  // mint a fresh presigned URL; never rendered to the page directly.
+  key              String                  @unique
+  // Human-readable filename shown on the public page (and used as the
+  // download `Content-Disposition` filename on the presigned URL).
+  filename         String
+  contentType      String                  @default("application/pdf")
+  sizeBytes        Int
+  virusScanStatus  AttachmentScanStatus    @default(PENDING)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  event      Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  uploadedBy User  @relation(fields: [uploadedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([uploadedByUserId])
+  @@index([virusScanStatus])
+}
+
+// FPP-43: virus-scan lifecycle. PENDING is the initial state and
+// means "the scan worker hasn't picked this up yet" — for the first
+// ship the API row-create path immediately moves new rows to SKIPPED
+// so the public download is not blocked behind an unfinished worker.
+// Future CLAMAV integration lands via a cron-style worker that flips
+// PENDING rows to CLEAN / INFECTED.
+enum AttachmentScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  SKIPPED
+  FAILED
 }
 
 model Invitation {

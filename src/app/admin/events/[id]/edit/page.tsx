@@ -6,6 +6,7 @@ import EventStatusBadge from '~/components/event/EventStatusBadge';
 import SlotGrid from '~/components/potluck/SlotGrid';
 import AdminShell from '~/components/admin/AdminShell';
 import ItineraryEditor from '~/components/event/ItineraryEditor';
+import EventAttachmentsEditor from '~/components/event/EventAttachmentsEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,10 @@ async function getEvent(id: string) {
       // a stale list by re-fetching on action.
       itineraryItems: {
         orderBy: { order: 'asc' },
+      },
+      // FPP-43 / FPP-2: PDF attachments for the admin editor.
+      attachments: {
+        orderBy: { createdAt: 'asc' },
       },
     },
   });
@@ -102,6 +107,26 @@ export default async function EditEventPage({ params }: PageProps) {
         </p>
         <div className="mt-6">
           <SlotGrid eventId={event.id} slots={event.potluckSlots} />
+        </div>
+      </div>
+
+      <div className="mt-12 border-t pt-12">
+        <h2 className="text-foreground text-2xl font-bold">PDF Attachments</h2>
+        <p className="text-muted-foreground mt-2">
+          Share directions, waivers, or the day-of schedule with guests
+        </p>
+        <div className="mt-6">
+          <EventAttachmentsEditor
+            eventId={event.id}
+            initialAttachments={event.attachments.map((a) => ({
+              id: a.id,
+              filename: a.filename,
+              contentType: a.contentType,
+              sizeBytes: a.sizeBytes,
+              virusScanStatus: a.virusScanStatus,
+              createdAt: a.createdAt.toISOString(),
+            }))}
+          />
         </div>
       </div>
 

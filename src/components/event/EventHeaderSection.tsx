@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { EventRsvpCard } from './EventRsvpCard';
 import { EventLocationMap } from './EventLocationMap';
 import { SignInPrompt } from './SignInPrompt';
+import { EventDownloadsSection, type PublicEventAttachment } from './EventDownloadsSection';
 import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS } from '~/lib/constants';
 import type { RSVPStatus, RsvpAttending } from '~/lib/generated/enums';
 
@@ -93,6 +94,13 @@ export interface EventHeaderSectionProps {
     email: string;
     phoneNumber: string | null;
   }[];
+  /**
+   * FPP-43 / FPP-1: PDF attachments surfaced as a Downloads block on
+   * the public event page. The block is hidden when the array is
+   * empty, so callers can pass an empty array on draft events
+   * without showing a placeholder.
+   */
+  attachments: PublicEventAttachment[];
 }
 
 /**
@@ -132,6 +140,7 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
     existingRsvp,
     userRsvpStatus,
     hosts,
+    attachments,
   } = props;
 
   const now = new Date();
@@ -193,6 +202,8 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
       )}
 
       <HostBlock description={eventDescription} maxCapacity={maxCapacity} hosts={hosts} />
+
+      {attachments.length > 0 && <EventDownloadsSection attachments={attachments} />}
 
       {isLoggedIn && pendingInvitations.length > 0 && (
         <PendingInvitationsCard invitations={pendingInvitations} />

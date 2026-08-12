@@ -202,6 +202,10 @@ For complete documentation on:
 | `/api/admin/audit-log`                        | `src/app/api/admin/audit-log/route.ts`                        | Audit log queries                              |
 | `/api/admin/csv-import`                       | `src/app/api/admin/csv-import/route.ts`                       | Bulk CSV import                                |
 | `/api/admin/users/search`                     | `src/app/api/admin/users/search/route.ts`                     | Search users by email                          |
+| `/api/admin/event-attachments`                | `src/app/api/admin/event-attachments/route.ts`                | Persist event PDF attachment metadata          |
+| `/api/admin/event-attachments/[id]`           | `src/app/api/admin/event-attachments/[id]/route.ts`           | Rename / delete event PDF attachment           |
+| `/api/admin/event-attachments/upload-url`     | `src/app/api/admin/event-attachments/upload-url/route.ts`     | Presigned PUT URL for PDF upload               |
+| `/api/public/event-attachments/[id]/download` | `src/app/api/public/event-attachments/[id]/download/route.ts` | Rate-limited public PDF download (302)         |
 | `/api/onboarding/household`                   | `src/app/api/onboarding/household/route.ts`                   | Onboarding household setup                     |
 | `/api/onboarding/dependent`                   | `src/app/api/onboarding/dependent/route.ts`                   | Onboarding dependent creation                  |
 | `/api/onboarding/complete`                    | `src/app/api/onboarding/complete/route.ts`                    | Complete onboarding                            |
