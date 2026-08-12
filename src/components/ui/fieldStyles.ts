@@ -13,6 +13,8 @@
  *
  * The values match what `Input.tsx` and `Select.tsx` already use, so
  * the field look stays consistent across the existing primitives.
+ * The background uses `bg-card` so the field stays legible in dark
+ * mode, matching the FPP-44 dark-panel rule.
  */
 
 export const FOCUS_RING_DEFAULT = 'focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)]';
@@ -20,7 +22,7 @@ export const FOCUS_RING_DESTRUCTIVE = 'focus:shadow-[0_0_0_3px_rgba(196,69,54,0.
 
 export const fieldBaseClasses =
   'text-foreground placeholder:text-muted-foreground disabled:bg-muted disabled:text-muted-foreground ' +
-  'block min-h-12 w-full rounded-pill border bg-white px-4 py-3 text-base transition-all duration-200 ' +
+  'block min-h-12 w-full rounded-pill border bg-card px-4 py-3 text-base transition-all duration-200 ' +
   'focus:ring-0 focus:outline-none disabled:cursor-not-allowed';
 
 export function fieldStateClasses(error?: string): string {
