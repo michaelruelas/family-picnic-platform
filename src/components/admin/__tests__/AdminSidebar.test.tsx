@@ -27,10 +27,13 @@ beforeEach(() => {
 });
 
 describe('AdminSidebar', () => {
-  it('renders all six primary nav items', () => {
+  it('renders all seven primary nav items', () => {
     render(<AdminSidebar />);
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Events')).toBeInTheDocument();
+    // FPP-68 / QUB-12: top-level Past events link lives next to
+    // Events so a host can jump straight to the archive view.
+    expect(screen.getByText('Past events')).toBeInTheDocument();
     expect(screen.getByText('Invitations')).toBeInTheDocument();
     expect(screen.getByText('Communications')).toBeInTheDocument();
     expect(screen.getByText('Charges')).toBeInTheDocument();
@@ -63,6 +66,31 @@ describe('AdminSidebar', () => {
     mockPathname = '/admin/invitations';
     render(<AdminSidebar />);
     expect(screen.getByTestId('admin-nav-invitations').getAttribute('data-active')).toBe('true');
+  });
+
+  it('FPP-68: marks the Past events nav item active on /admin/events/past', () => {
+    mockPathname = '/admin/events/past';
+    render(<AdminSidebar />);
+    expect(screen.getByTestId('admin-nav-past').getAttribute('data-active')).toBe('true');
+  });
+
+  it('FPP-68: Past events route does not also highlight the Events nav item', () => {
+    mockPathname = '/admin/events/past';
+    render(<AdminSidebar />);
+    // Without explicit matchPrefixes, the old `startsWith` heuristic
+    // would highlight BOTH items on the past page. The Events nav
+    // item only claims the `/admin/events/new` and `/admin/events/`
+    // (nested edit) prefixes — `/admin/events/past` belongs to its
+    // own row.
+    expect(screen.getByTestId('admin-nav-events').getAttribute('data-active')).toBe('false');
+    expect(screen.getByTestId('admin-nav-past').getAttribute('data-active')).toBe('true');
+  });
+
+  it('FPP-68: /admin/events/new keeps the Events nav item active', () => {
+    mockPathname = '/admin/events/new';
+    render(<AdminSidebar />);
+    expect(screen.getByTestId('admin-nav-events').getAttribute('data-active')).toBe('true');
+    expect(screen.getByTestId('admin-nav-past').getAttribute('data-active')).toBe('false');
   });
 
   it('shows the session user name and email in the footer when signed in', () => {

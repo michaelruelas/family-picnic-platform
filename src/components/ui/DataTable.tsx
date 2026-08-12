@@ -66,7 +66,7 @@ export interface DataTableEmptyState {
   title: string;
   description?: string;
   action?: React.ReactNode;
-  icon?: 'calendar' | 'photo' | 'users' | 'list' | 'search' | 'inbox' | 'sparkle';
+  icon?: 'calendar' | 'photo' | 'users' | 'list' | 'search' | 'inbox' | 'sparkle' | 'archive';
 }
 
 export interface DataTableProps<TData> {

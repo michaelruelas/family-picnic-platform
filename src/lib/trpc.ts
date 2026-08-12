@@ -101,29 +101,46 @@ export const router = t.router;
  * inside the gate.
  *
  * The `auditLog` middleware runs after the per-event check so a
- * 403 never writes an audit row.
+ * 403 never writes an audit row. Pass `{ audit: false }` in the
+ * options object to skip the middleware audit when the procedure
+ * needs to write its own diff-aware entry (FPP-68 / QUB-12 archive
+ * and unarchive do this so the audit viewer shows `oldValue` /
+ * `newValue` instead of a noisy double-write).
  */
+export interface EventAdminProcedureOptions {
+  /**
+   * When false, the built procedure omits the `auditLog` middleware.
+   * The procedure must write its own audit entry (typically via
+   * `writeAuditLog` with `eventId` + `oldValue` + `newValue`) so
+   * the audit log gets a single, diff-bearing row per mutation.
+   * Default: true (every eventAdmin mutation writes the generic
+   * `action: path` row that matches the rest of the FPP-65 / QUB-26
+   * audit shape).
+   */
+  audit?: boolean;
+}
+
 export function eventAdminProcedure<TInput extends z.ZodTypeAny>(
   inputSchema: TInput,
   getEventId: (input: z.infer<TInput>) => string | Promise<string>,
+  options: EventAdminProcedureOptions = {},
 ) {
+  const { audit = true } = options;
   // NOTE: tRPC's `input` here is `inferParser<TInput>["out"]` which
   // is structurally identical to `z.infer<TInput>` but TypeScript
   // treats them as distinct. We cast inside the middleware to
   // bridge the two so the caller can write a schema-typed
   // extractor without seeing the mismatch.
-  return protectedProcedure
-    .input(inputSchema)
-    .use(async ({ ctx, input, next }) => {
-      const role = ctx.session.user.role;
-      const eventId = await getEventId(input as z.infer<TInput>);
-      const allowed = isAdminRole(role) || (await canAccessEvent(ctx.session, eventId));
-      if (!allowed) {
-        throw new TRPCError({ code: 'FORBIDDEN' });
-      }
-      return next({ ctx: ctx as AuthedCtx });
-    })
-    .use(auditLog);
+  const gated = protectedProcedure.input(inputSchema).use(async ({ ctx, input, next }) => {
+    const role = ctx.session.user.role;
+    const eventId = await getEventId(input as z.infer<TInput>);
+    const allowed = isAdminRole(role) || (await canAccessEvent(ctx.session, eventId));
+    if (!allowed) {
+      throw new TRPCError({ code: 'FORBIDDEN' });
+    }
+    return next({ ctx: ctx as AuthedCtx });
+  });
+  return audit ? gated.use(auditLog) : gated;
 }
 
 export async function createTRPCContext(opts?: { headers?: Headers }) {

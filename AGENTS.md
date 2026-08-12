@@ -153,6 +153,7 @@ For complete documentation on:
 | -------------------------------- | ------------------------------------------------ | ---------------------------------- |
 | `/admin/dashboard`               | `src/app/admin/dashboard/page.tsx`               | Admin overview metrics             |
 | `/admin/events`                  | `src/app/admin/events/page.tsx`                  | Event management list              |
+| `/admin/events/past`             | `src/app/admin/events/past/page.tsx`             | Past / archived events (FPP-68)    |
 | `/admin/events/new`              | `src/app/admin/events/new/page.tsx`              | Create event                       |
 | `/admin/events/[id]/edit`        | `src/app/admin/events/[id]/edit/page.tsx`        | Edit event & potluck slots         |
 | `/admin/events/[id]/edit/admins` | `src/app/admin/events/[id]/edit/admins/page.tsx` | Event admin management             |
@@ -188,6 +189,8 @@ For complete documentation on:
 | `/api/admin/events/[id]/close`                | `src/app/api/admin/events/[id]/close/route.ts`                | Close event                                    |
 | `/api/admin/events/[id]/reopen`               | `src/app/api/admin/events/[id]/reopen/route.ts`               | Re-open CLOSED event                           |
 | `/api/admin/events/[id]/cancel`               | `src/app/api/admin/events/[id]/cancel/route.ts`               | Cancel event                                   |
+| `/api/admin/events/[id]/archive`              | `src/app/api/admin/events/[id]/archive/route.ts`              | Archive event (FPP-68)                         |
+| `/api/admin/events/[id]/unarchive`            | `src/app/api/admin/events/[id]/unarchive/route.ts`            | Restore archived event (FPP-68)                |
 | `/api/admin/events/[id]/admins`               | `src/app/api/admin/events/[id]/admins/route.ts`               | Event admin management                         |
 | `/api/admin/potluck-slots`                    | `src/app/api/admin/potluck-slots/route.ts`                    | Create potluck slots                           |
 | `/api/admin/potluck-slots/[id]`               | `src/app/api/admin/potluck-slots/[id]/route.ts`               | Update/delete potluck slots                    |
