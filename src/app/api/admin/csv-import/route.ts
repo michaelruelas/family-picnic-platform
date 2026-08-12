@@ -22,6 +22,9 @@ const CsvImportSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // FPP-104: stays super-admin only. Bulk CSV import creates
+  // invitees and RSVPs in bulk; per-event host scoping would need
+  // a separate restricted import flow.
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;
   const { session } = auth;

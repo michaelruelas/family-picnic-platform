@@ -4,6 +4,9 @@ import { listAuditLogEntries } from '~/server/audit-entries';
 import { auditLogFilterSchema } from '~/lib/schemas/audit';
 
 export async function GET(request: NextRequest) {
+  // FPP-104: stays super-admin only. The audit log is the
+  // platform-wide audit trail; per-event hosts do not read it
+  // directly.
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;
 

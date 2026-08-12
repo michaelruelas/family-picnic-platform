@@ -40,6 +40,10 @@ function trpcErrorToResponse(err: unknown): NextResponse | null {
 }
 
 export async function POST(request: Request) {
+  // FPP-104: stays super-admin only. Invitation sends trip
+  // cross-event rate-limit gates (per-hour and per-recipient) that
+  // a host shouldn't bypass by switching surfaces. Per-event host
+  // scoping of invitations is tracked separately.
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;
   const { session } = auth;

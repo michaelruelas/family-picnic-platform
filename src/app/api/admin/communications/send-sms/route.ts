@@ -7,6 +7,9 @@ import { adminSendSmsInputSchema } from '~/lib/schemas/sms';
 import { dispatchAdminSms } from '~/lib/sms-dispatch';
 
 export async function POST(request: NextRequest) {
+  // FPP-104: stays super-admin only. SMS dispatch is consent-gated
+  // and per-recipient rate-limited; per-event hosts currently use
+  // the broadcast composer for SMS, not this ad-hoc path.
   const requestId = generateRequestId();
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;

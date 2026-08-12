@@ -12,6 +12,9 @@ const smsSendSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // FPP-104: stays super-admin only. Ad-hoc SMS to a single user is
+  // a platform-level action; per-event hosts use the broadcast
+  // composer for SMS, not this path.
   const requestId = generateRequestId();
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;

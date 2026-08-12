@@ -162,7 +162,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-xl bg-white p-6 shadow-sm">
+    <form onSubmit={handleSubmit} className="bg-card space-y-6 rounded-xl p-6 shadow-sm">
       {error && (
         <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>
       )}

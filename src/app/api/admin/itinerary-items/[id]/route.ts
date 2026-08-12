@@ -1,24 +1,32 @@
 import { NextResponse } from 'next/server';
-import { requireEventAdminApi } from '~/lib/admin-auth';
+import { requireEventAdminApi, requireSessionApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 import { itineraryItemUpdateSchema } from '~/lib/schemas/itinerary';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 /**
- * Resolve the item id from the URL, look up its eventId, then run
- * `requireEventAdminApi`. Doing the lookup first means a HOST
- * without access to the event gets 403 / 404, not 401 (no
- * session). The auth check is the same regardless of which
- * mutation runs.
+ * FPP-104 / FPP-45 / EH-001: per-event gate on the sub-resource
+ * route. Mirrors the potluck slot route pattern.
+ *
+ * `requireSessionApi` runs first so an unauthenticated caller gets
+ * 401 before any DB read — the item lookup below would otherwise
+ * leak whether the item exists (404) versus whether the caller is
+ * allowed (403). The preloaded session is then handed to
+ * `requireEventAdminApi` to avoid a second `getServerSession` call.
  */
 async function authorizeRequest(id: string, request: Request) {
+  const sessionAuth = await requireSessionApi();
+  if (!sessionAuth.ok) return { kind: 'denied' as const, response: sessionAuth.response };
+  const session = sessionAuth.session;
+
   const existing = await prisma.itineraryItem.findUnique({
     where: { id },
     select: { id: true, eventId: true },
   });
   if (!existing) return { kind: 'not-found' as const };
-  const auth = await requireEventAdminApi(existing.eventId);
+
+  const auth = await requireEventAdminApi(existing.eventId, { preloadedSession: session });
   if (!auth.ok) return { kind: 'denied' as const, response: auth.response };
   void request;
   return { kind: 'ok' as const, existing };

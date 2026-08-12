@@ -143,8 +143,8 @@
   --destructive: #d96a5a;
   --destructive-foreground: #1f1812;
 
-  --border: #322c25;
-  --input: #322c25;
+  --border: #3a3329;
+  --input: #3a3329;
   --ring: #f3ede2;
 
   --chart-1: #e8907a;
@@ -159,7 +159,7 @@
   --sidebar-primary-foreground: #1f1812;
   --sidebar-accent: #3a2f1c;
   --sidebar-accent-foreground: #d9b678;
-  --sidebar-border: #322c25;
+  --sidebar-border: #3a3329;
   --sidebar-ring: #f3ede2;
 }
 
@@ -269,20 +269,21 @@
     box-shadow:
       0 10px 40px -10px rgba(0, 0, 0, 0.5),
       0 4px 12px -4px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(243, 237, 226, 0.04);
+      inset 0 1px 0 rgba(243, 237, 226, 0.05);
   }
 
   .dark .shadow-card {
     box-shadow:
       0 1px 2px rgba(0, 0, 0, 0.3),
       0 8px 32px -8px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(243, 237, 226, 0.03);
+      inset 0 1px 0 rgba(243, 237, 226, 0.06);
   }
 
   .dark .shadow-pop {
     box-shadow:
       0 20px 60px -20px rgba(0, 0, 0, 0.7),
-      0 8px 24px -8px rgba(0, 0, 0, 0.5);
+      0 8px 24px -8px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(243, 237, 226, 0.04);
   }
 
   .squircle {

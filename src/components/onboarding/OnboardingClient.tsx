@@ -498,7 +498,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
   );
 
   return (
-    <div className="bg-secondary/60 rounded-xl p-6 shadow-sm ring-1 ring-stone-200">
+    <div className="bg-secondary/60 ring-border rounded-xl p-6 shadow-sm ring-1">
       <div className="mb-6 flex items-center justify-between">
         {STEPS.map((step, index) => (
           <div key={step.key} className="flex items-center">

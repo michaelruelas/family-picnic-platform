@@ -123,7 +123,7 @@ export default async function MyEventsPage() {
                     <Link
                       key={rsvp.id}
                       href={`/events/${rsvp.event.id}`}
-                      className="block rounded-xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
+                      className="bg-card block rounded-xl p-6 shadow-sm transition-shadow hover:shadow-md"
                     >
                       <div className="flex items-start justify-between">
                         <div>
@@ -200,7 +200,7 @@ export default async function MyEventsPage() {
                     <Link
                       key={rsvp.id}
                       href={`/events/${rsvp.event.id}`}
-                      className="block rounded-xl bg-white p-6 opacity-80 shadow-sm transition-all hover:opacity-100 hover:shadow-md"
+                      className="bg-card block rounded-xl p-6 opacity-80 shadow-sm transition-all hover:opacity-100 hover:shadow-md"
                     >
                       <div className="flex items-start justify-between">
                         <div>

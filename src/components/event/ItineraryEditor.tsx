@@ -119,6 +119,11 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
 
   const persistReorder = useCallback(
     async (nextOrder: ItineraryItem[]) => {
+      // EH-002: snapshot the order we started from so we can restore
+      // locally on failure BEFORE router.refresh() fires. Without
+      // this, the server's authoritative order renders first and the
+      // list flashes as the rollback settles.
+      const previousOrder = items;
       setError(null);
       setPendingReorder(true);
       try {
@@ -133,7 +138,10 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
         const data = await response.json();
         if (!response.ok) {
           setError(data.error || 'Failed to save new order');
-          // Roll back to the server's authoritative order.
+          // Restore the snapshot locally so the UI is correct on
+          // the next paint, then refresh in the background to
+          // converge with the server's authoritative state.
+          setItems(previousOrder);
           router.refresh();
           return;
         }
@@ -143,16 +151,22 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
         router.refresh();
       } catch {
         setError('Something went wrong. Please try again.');
+        setItems(previousOrder);
         router.refresh();
       } finally {
         setPendingReorder(false);
       }
     },
-    [eventId, router],
+    [eventId, items, router],
   );
 
   const reorderAround = useCallback(
     (draggedId: string, targetId: string) => {
+      // EH-003: ignore nested drag/drop while a reorder is in
+      // flight. The up/down buttons already gate on `pendingReorder`,
+      // but the drag handlers bypass that check and would otherwise
+      // mutate state on top of stale `items` closure.
+      if (pendingReorder) return;
       if (draggedId === targetId) return;
       const fromIdx = items.findIndex((item) => item.id === draggedId);
       const toIdx = items.findIndex((item) => item.id === targetId);
@@ -165,16 +179,21 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
       setItems(withOrder);
       void persistReorder(withOrder);
     },
-    [items, persistReorder],
+    [items, pendingReorder, persistReorder],
   );
 
   const onDragStart = (id: string) => (e: React.DragEvent<HTMLLIElement>) => {
+    if (pendingReorder) {
+      e.preventDefault();
+      return;
+    }
     setDraggingId(id);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', id);
   };
 
   const onDragOver = (id: string) => (e: React.DragEvent<HTMLLIElement>) => {
+    if (pendingReorder) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     dragOverIdRef.current = id;
@@ -182,6 +201,7 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
 
   const onDrop = (id: string) => (e: React.DragEvent<HTMLLIElement>) => {
     e.preventDefault();
+    if (pendingReorder) return;
     const draggedId = draggingId ?? e.dataTransfer.getData('text/plain');
     setDraggingId(null);
     dragOverIdRef.current = null;
@@ -268,7 +288,7 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
             onDragEnd={onDragEnd}
             data-testid="itinerary-editor-item"
             data-itinerary-id={item.id}
-            className={`border-border rounded-lg border bg-white p-4 transition-shadow ${
+            className={`border-border bg-card rounded-lg border p-4 transition-shadow ${
               draggingId === item.id ? 'opacity-50 shadow-md' : ''
             } ${pendingReorder ? 'opacity-90' : ''}`}
           >
@@ -402,7 +422,7 @@ function ItineraryItemForm({ mode, initial, onSubmit, onCancel }: ItineraryItemF
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-3 rounded-xl bg-white p-4 shadow-sm"
+      className="bg-card space-y-3 rounded-xl p-4 shadow-sm"
       data-testid={mode === 'add' ? 'itinerary-add-form' : 'itinerary-edit-form'}
     >
       <h3 className="text-foreground text-lg font-semibold">

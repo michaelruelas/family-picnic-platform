@@ -24,7 +24,7 @@ export default function PaymentForm(props: PaymentFormProps) {
 
   if (!stripePromise) {
     return (
-      <div className="rounded-xl bg-white p-6 shadow-sm">
+      <div className="bg-card rounded-xl p-6 shadow-sm">
         <p className="text-foreground">Loading payment form…</p>
       </div>
     );
@@ -104,7 +104,7 @@ function PaymentFormInner(props: PaymentFormProps) {
 
   if (createIntent.isPending && !clientSecret) {
     return (
-      <div className="rounded-xl bg-white p-8 shadow-sm">
+      <div className="bg-card rounded-xl p-8 shadow-sm">
         <Spinner />
         <p className="text-muted-foreground mt-3">Preparing secure payment…</p>
       </div>
@@ -113,7 +113,7 @@ function PaymentFormInner(props: PaymentFormProps) {
 
   if (createIntent.isError) {
     return (
-      <div className="rounded-xl bg-white p-6 shadow-sm">
+      <div className="bg-card rounded-xl p-6 shadow-sm">
         <p className="text-destructive">
           {error ?? 'Could not start the payment. Please try again or contact an admin.'}
         </p>
@@ -131,7 +131,7 @@ function PaymentFormInner(props: PaymentFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 rounded-xl bg-white p-6 shadow-sm"
+      className="bg-card space-y-6 rounded-xl p-6 shadow-sm"
       data-testid="payment-form"
     >
       <div className="border-border flex items-baseline justify-between border-b pb-4">

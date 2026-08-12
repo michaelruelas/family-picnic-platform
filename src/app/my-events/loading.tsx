@@ -10,7 +10,7 @@ export default function Loading() {
         <div className="bg-secondary h-6 w-44 rounded" />
         <div className="mt-4 space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="rounded-xl bg-white p-6 shadow-sm">
+            <div key={i} className="bg-card rounded-xl p-6 shadow-sm">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
                   <div className="flex gap-2">
@@ -34,7 +34,7 @@ export default function Loading() {
         <div className="bg-secondary h-6 w-36 rounded" />
         <div className="mt-4 space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="rounded-xl bg-white p-6 opacity-75 shadow-sm">
+            <div key={i} className="bg-card rounded-xl p-6 opacity-75 shadow-sm">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
                   <div className="flex gap-2">

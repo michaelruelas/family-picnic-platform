@@ -84,7 +84,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-xl bg-white p-4 shadow-sm">
+    <form onSubmit={handleSubmit} className="bg-card space-y-4 rounded-xl p-4 shadow-sm">
       <h3 className="text-foreground text-lg font-semibold">
         {initialData ? 'Edit Potluck Slot' : 'Add Potluck Slot'}
       </h3>

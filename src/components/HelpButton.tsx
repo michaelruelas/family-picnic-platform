@@ -69,7 +69,7 @@ export default function HelpButton({ context = 'events', className = '' }: HelpB
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div
-            className="max-w-md rounded-xl bg-white p-6 shadow-xl"
+            className="bg-card max-w-md rounded-xl p-6 shadow-xl"
             role="dialog"
             aria-labelledby="help-title"
           >

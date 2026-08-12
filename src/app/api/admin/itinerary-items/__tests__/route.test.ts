@@ -137,6 +137,16 @@ describe('POST /api/admin/itinerary-items', () => {
 });
 
 describe('PATCH /api/admin/itinerary-items/[id]', () => {
+  it('returns 401 with no session and does not query the item', async () => {
+    // FPP-104 / EH-001: unauthenticated callers must get 401 before
+    // any DB read so they can't enumerate valid item ids by
+    // observing 404 vs 401.
+    mockedSession.mockResolvedValue(null);
+    const res = await PATCH(makeJsonRequest('http://x', { title: 'New' }, 'PATCH'), itemParams);
+    expect(res.status).toBe(401);
+    expect(prismaMock.itineraryItem.findUnique).not.toHaveBeenCalled();
+  });
+
   it('returns 403 when caller has no admin role or EventAdmin row', async () => {
     // FPP-65 audit: GUEST has a session but no admin role and no
     // EventAdmin row — `requireEventAdminApi` returns 403, not 401.
@@ -202,6 +212,16 @@ describe('PATCH /api/admin/itinerary-items/[id]', () => {
 });
 
 describe('DELETE /api/admin/itinerary-items/[id]', () => {
+  it('returns 401 with no session and does not query the item', async () => {
+    // FPP-104 / EH-001: unauthenticated callers must get 401 before
+    // any DB read so they can't enumerate valid item ids by
+    // observing 404 vs 401.
+    mockedSession.mockResolvedValue(null);
+    const res = await DELETE(new Request('http://x'), itemParams);
+    expect(res.status).toBe(401);
+    expect(prismaMock.itineraryItem.findUnique).not.toHaveBeenCalled();
+  });
+
   it('returns 403 when caller has no admin role or EventAdmin row', async () => {
     // FPP-65 audit: same gating rationale as PATCH / POST. Mock
     // the item lookup so the auth check actually runs.

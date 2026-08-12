@@ -27,13 +27,13 @@ export default async function CalendarPage() {
         </div>
         <Link
           href="/events"
-          className="border-border text-foreground/85 hover:bg-secondary/60 rounded-lg border bg-white px-4 py-2 text-sm font-medium transition-colors"
+          className="border-border text-foreground/85 hover:bg-secondary/60 bg-card rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
         >
           List View
         </Link>
       </div>
 
-      <div className="rounded-xl bg-white p-6 shadow-sm">
+      <div className="bg-card rounded-xl p-6 shadow-sm">
         <Calendar events={events} />
       </div>
 

@@ -122,7 +122,7 @@ export default function AdminCommunicationsClient({
       </div>
 
       {activeTab === 'compose' ? (
-        <div className="border-border rounded-xl border bg-white p-6">
+        <div className="border-border bg-card rounded-xl border p-6">
           <h2 className="text-foreground mb-4 text-lg font-semibold">New Broadcast Message</h2>
           <BroadcastComposer
             eventId={eventId}

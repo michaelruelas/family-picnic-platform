@@ -343,7 +343,7 @@ export default function AdminRsvpModal({
                       ? value === RSVPStatus.DECLINED
                         ? 'border-destructive bg-destructive/10 text-destructive'
                         : 'border-sage bg-sage/10 text-sage'
-                      : 'border-border text-foreground/85 hover:bg-secondary bg-white'
+                      : 'border-border text-foreground/85 hover:bg-secondary bg-card'
                   } ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`}
                   data-testid={`status-${value.toLowerCase()}`}
                 >
@@ -368,7 +368,7 @@ export default function AdminRsvpModal({
               min="0"
               value={headcount}
               onChange={(e) => setHeadcount(safeCount(e.target.value))}
-              className="border-border focus:border-foreground block w-full rounded-2xl border bg-white px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+              className="border-border focus:border-foreground bg-card block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
               data-testid="headcount-input"
             />
             <p className="text-muted-foreground mt-1 text-xs">
@@ -393,7 +393,7 @@ export default function AdminRsvpModal({
               onChange={(e) => setDeclineMessage(e.target.value)}
               maxLength={1000}
               rows={3}
-              className="border-border focus:border-foreground block w-full rounded-2xl border bg-white px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+              className="border-border focus:border-foreground bg-card block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
               placeholder="Forwarded to the event owner"
               data-testid="decline-message"
             />
@@ -407,10 +407,10 @@ export default function AdminRsvpModal({
           <div>
             <p className="text-foreground mb-2 text-sm font-medium">Per-member attendance</p>
             <div
-              className="border-border overflow-hidden rounded-xl border bg-white"
+              className="border-border bg-card overflow-hidden rounded-xl border"
               data-testid="attendance-grid"
             >
-              <table className="min-w-full divide-y divide-stone-200">
+              <table className="divide-border min-w-full divide-y">
                 <thead className="bg-secondary/60">
                   <tr>
                     <th className="text-muted-foreground px-3 py-2 text-left text-xs font-medium tracking-wider uppercase">
@@ -426,7 +426,7 @@ export default function AdminRsvpModal({
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-200">
+                <tbody className="divide-border divide-y">
                   {attendanceRows.map((row) => (
                     <tr key={row.householdMemberId} data-testid={`row-${row.householdMemberId}`}>
                       <td className="px-3 py-2 text-sm">

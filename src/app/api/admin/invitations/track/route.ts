@@ -4,6 +4,9 @@ import { prisma } from '~/lib/prisma';
 import { InvitationStatus } from '~/lib/generated/enums';
 
 export async function POST(request: Request) {
+  // FPP-104: stays super-admin only. Delivery tracking is a
+  // platform-wide audit concern; per-event hosts see their own
+  // delivery summary via the events page, not this bulk endpoint.
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;
   const { session } = auth;
