@@ -5,7 +5,7 @@ import { loadGoogleMapsScript } from '~/lib/google-maps';
 
 interface LocationAutocompleteProps {
   value: string;
-  hasGeo: boolean;
+  hasGeocodedAddress: boolean;
   onChange: (data: {
     location: string;
     lat: number | null;
@@ -14,11 +14,15 @@ interface LocationAutocompleteProps {
   }) => void;
 }
 
-export function LocationAutocomplete({ value, hasGeo, onChange }: LocationAutocompleteProps) {
+export function LocationAutocomplete({
+  value,
+  hasGeocodedAddress,
+  onChange,
+}: LocationAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [scriptError, setScriptError] = useState(false);
-  const [geoSelected, setGeoSelected] = useState(hasGeo);
+  const [geoSelected, setGeoSelected] = useState(hasGeocodedAddress);
 
   useEffect(() => {
     loadGoogleMapsScript()

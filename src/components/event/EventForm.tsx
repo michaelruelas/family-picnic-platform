@@ -187,7 +187,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
           </label>
           <LocationAutocomplete
             value={formData.location}
-            hasGeo={formData.lat !== null && formData.lng !== null}
+            hasGeocodedAddress={formData.lat !== null && formData.lng !== null}
             onChange={handleLocationChange}
           />
         </div>

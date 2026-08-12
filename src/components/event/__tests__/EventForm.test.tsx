@@ -196,10 +196,7 @@ describe('EventForm', () => {
         registrationFeeMinAge: 13,
       };
       render(<EventForm mode="edit" initialData={initialData} />);
-      // `type="number"` inputs normalize the rendered value; we only
-      // care that the form seeded the cents correctly. Submit will
-      // re-emit the payload so the integration test below is the
-      // source of truth for cents/min-age.
+      // `type="number"` normalizes the rendered value; submit re-emits cents.
       expect(screen.getByLabelText(/registration fee/i)).toHaveValue(25);
       expect(screen.getByLabelText(/minimum age for fee/i)).toHaveValue(13);
     });
