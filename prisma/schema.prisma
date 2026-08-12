@@ -265,6 +265,20 @@ model Event {
   // behavior that shipped before per-attendee age logic existed.
   registrationFeeMinAge Int       @default(0)
   status       EventStatus @default(DRAFT)
+  // FPP-68 / QUB-12: archive flag. When non-null, the event is
+  // hidden from the active admin event list and surfaced under
+  // "Past events" instead. Distinct from the `status` enum
+  // (DRAFT/PUBLISHED/CLOSED/CANCELLED): archiving is orthogonal to
+  // the lifecycle, so a CLOSED event can be archived without
+  // re-opening it (QUB-11 / FPP-70 reopen), and a PUBLISHED event
+  // can be archived when the host wants to retire it from the
+  // active roster without flipping it to CLOSED.
+  //
+  // Backfill invariant: every pre-FPP-68 row leaves `archivedAt`
+  // null. The admin "Past events" view surfaces both
+  // `archivedAt IS NOT NULL` AND rows whose `date < now` so legacy
+  // events are still discoverable. See FPP-68 acceptance criteria.
+  archivedAt   DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -282,6 +296,12 @@ model Event {
   @@index([status])
   @@index([date])
   @@index([rsvpDeadline])
+  @@index([archivedAt])
+  // FPP-68 / QUB-12: the past-events page runs `WHERE (archivedAt IS
+  // NOT NULL OR (archivedAt IS NULL AND date < now)) ORDER BY date
+  // DESC`. A composite index on `(archivedAt, date)` covers both the
+  // filter and the sort so Postgres can skip a separate sort step.
+  @@index([archivedAt, date])
 }
 
 // FPP-45 / QUB-31: per-event itinerary rows rendered on the event

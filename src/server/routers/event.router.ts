@@ -3,8 +3,9 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
 import { EventStatus, AdminPermission } from '~/lib/generated/enums';
-import { writeDomainAuditLog } from '~/lib/audit';
-import { stampHostRole, unassignHostRole } from '~/lib/event-access';
+import { writeDomainAuditLog, writeAuditLog } from '~/lib/audit';
+import { stampHostRole, unassignHostRole, canAccessEvent } from '~/lib/event-access';
+import { isAdminRole } from '~/lib/auth';
 import { toEventCreateData } from '~/lib/event-data';
 
 export const eventRouter = router({
@@ -67,8 +68,12 @@ export const eventRouter = router({
     });
   }),
 
-  getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ input }) => {
-    return prisma.event.findUnique({
+  // FPP-68 / QUB-12: a regular user must never see an archived event
+  // by id, even if they know the cuid. Super-admins and HOST users
+  // with an EventAdmin row for the event still get the row so the
+  // admin past-events page can drill down into an archived event.
+  getById: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+    const event = await prisma.event.findUnique({
       where: { id: input.id },
       include: {
         potluckSlots: {
@@ -101,8 +106,31 @@ export const eventRouter = router({
         },
       },
     });
+
+    if (!event) {
+      return event;
+    }
+
+    if (!event.archivedAt) {
+      return event;
+    }
+
+    // Archived row: only surface it to admins (platform-level or
+    // HOST with an EventAdmin row). Anyone else gets NOT_FOUND so the
+    // event effectively disappears from their view.
+    const allowed =
+      isAdminRole(ctx.session?.user?.role) || (await canAccessEvent(ctx.session, event.id));
+    if (!allowed) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' });
+    }
+
+    return event;
   }),
 
+  // FPP-68 / QUB-12: archived rows are hidden from non-admin callers
+  // so the public event listing never shows retired gatherings. Admins
+  // (platform-level) still see every event so the admin past-events
+  // page can drive off the same procedure if it ever needs to.
   list: protectedProcedure
     .input(
       z
@@ -118,9 +146,14 @@ export const eventRouter = router({
         })
         .optional(),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const showArchived = isAdminRole(ctx.session?.user?.role);
+      const where = {
+        ...(input?.status ? { status: input.status } : {}),
+        ...(showArchived ? {} : { archivedAt: null }),
+      };
       return prisma.event.findMany({
-        where: input?.status ? { status: input.status } : undefined,
+        where,
         orderBy: { date: 'desc' },
       });
     }),
@@ -178,6 +211,84 @@ export const eventRouter = router({
       });
     },
   ),
+
+  // FPP-68 / QUB-12: archive stamps `archivedAt` so the event
+  // leaves the active admin list and surfaces under "Past events".
+  // Distinct from `status` — an event can be archived regardless
+  // of its current lifecycle state (DRAFT, PUBLISHED, CLOSED, or
+  // CANCELLED). Idempotent: archiving an already-archived event
+  // is a no-op (the existing timestamp is preserved).
+  //
+  // QUB-26.1: the transition is recorded in the admin audit log
+  // with old/new archived-at values so the audit viewer can show
+  // "archived by <admin> at <time>" without a separate column.
+  // `audit: false` skips the generic `action: path` audit that the
+  // eventAdminProcedure middleware would otherwise stack on top —
+  // the diff entry below is the only audit row for this mutation.
+  archive: eventAdminProcedure(z.object({ id: z.string() }), (input) => input.id, {
+    audit: false,
+  }).mutation(async ({ ctx, input }) => {
+    const event = await prisma.event.findUnique({ where: { id: input.id } });
+
+    if (!event) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' });
+    }
+
+    // Idempotent guard: do not rewrite `archivedAt` on a row that
+    // is already archived so the original archive timestamp
+    // survives a re-click.
+    if (event.archivedAt) {
+      return event;
+    }
+
+    const updated = await prisma.event.update({
+      where: { id: input.id },
+      data: { archivedAt: new Date() },
+    });
+
+    await writeAuditLog({
+      userId: ctx.session.user.id,
+      eventId: event.id,
+      action: 'event.archive',
+      oldValue: { archivedAt: null },
+      newValue: { archivedAt: updated.archivedAt },
+    });
+
+    return updated;
+  }),
+
+  // FPP-68 / QUB-12: unarchive clears `archivedAt` so the event
+  // returns to the active admin list. Idempotent: unarchiving a
+  // non-archived event is a no-op. Same QUB-26.1 audit shape as
+  // archive; `audit: false` for the same reason.
+  unarchive: eventAdminProcedure(z.object({ id: z.string() }), (input) => input.id, {
+    audit: false,
+  }).mutation(async ({ ctx, input }) => {
+    const event = await prisma.event.findUnique({ where: { id: input.id } });
+
+    if (!event) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Event not found' });
+    }
+
+    if (!event.archivedAt) {
+      return event;
+    }
+
+    const updated = await prisma.event.update({
+      where: { id: input.id },
+      data: { archivedAt: null },
+    });
+
+    await writeAuditLog({
+      userId: ctx.session.user.id,
+      eventId: event.id,
+      action: 'event.unarchive',
+      oldValue: { archivedAt: event.archivedAt },
+      newValue: { archivedAt: null },
+    });
+
+    return updated;
+  }),
 
   // FPP-65 / QUB-13.1: per-event gated. Same pattern as
   // update/publish/close/cancel — super-admin or HOST with an

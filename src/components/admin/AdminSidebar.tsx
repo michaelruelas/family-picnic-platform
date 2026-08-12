@@ -9,6 +9,14 @@ interface NavItem {
   label: string;
   description?: string;
   icon: React.ReactNode;
+  /**
+   * Pathname prefixes that activate this nav item. Defaults to
+   * `[href]` when omitted, so simple items behave as before. Items
+   * that share a prefix with a sibling (e.g. `/admin/events` and
+   * `/admin/events/past`) must opt into explicit prefixes so the
+   * shared path does not double-highlight.
+   */
+  matchPrefixes?: readonly string[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -51,6 +59,38 @@ const NAV_ITEMS: NavItem[] = [
         />
       </svg>
     ),
+    // FPP-68 / QUB-12: do NOT light up the Events nav item on
+    // `/admin/events/past` — that route belongs to its own nav
+    // entry so the sidebar does not double-highlight on the past
+    // page. Explicit prefixes cover the list page, the new-event
+    // form, and the edit drill-down. `isActive` excludes sibling
+    // single-segment routes from a parent's startsWith match so
+    // `/admin/events/past` (and any future sibling) lights up its
+    // own row instead.
+    matchPrefixes: ['/admin/events', '/admin/events/new'],
+  },
+  // FPP-68 / QUB-12: top-level link to the Past events view so a
+  // host can jump straight to the archive from any admin page.
+  {
+    href: '/admin/events/past',
+    label: 'Past events',
+    description: 'Archived gatherings and history',
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.6}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+        />
+      </svg>
+    ),
+    matchPrefixes: ['/admin/events/past'],
   },
   {
     href: '/admin/invitations',
@@ -134,12 +174,36 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-function isActive(pathname: string, href: string): boolean {
-  if (pathname === href) return true;
-  // Treat nested routes (e.g. /admin/events/[id]/edit) as belonging to the
-  // parent section so the section stays highlighted while drilling down.
-  if (pathname.startsWith(`${href}/`)) return true;
-  return false;
+/**
+ * Pathnames that should not be considered "drill-down" matches of
+ * `/admin/events` even though they share the prefix. They each have
+ * their own nav entry (Past events) and live at the second URL
+ * segment. Adding to this list lets the Events nav item ignore the
+ * past-events route while still highlighting the edit page for
+ * cuid-keyed event rows.
+ */
+const EVENTS_SIBLING_SEGMENTS = new Set(['past']);
+
+function isActive(pathname: string, item: NavItem): boolean {
+  const prefixes = item.matchPrefixes ?? [item.href];
+  return prefixes.some((prefix) => {
+    const base = prefix.replace(/\/$/, '');
+    if (pathname === base) return true;
+
+    // Drill-down: pathname starts with `${base}/`. When the parent
+    // nav item is `/admin/events` and the next segment is a sibling
+    // route like `past`, do NOT match — the sibling route has its
+    // own nav entry. cuids are the only valid drill-down segments.
+    if (pathname.startsWith(`${base}/`)) {
+      const nextSegment = pathname.slice(base.length + 1).split('/')[0] ?? '';
+      if (item.href === '/admin/events' && EVENTS_SIBLING_SEGMENTS.has(nextSegment)) {
+        return false;
+      }
+      return true;
+    }
+
+    return false;
+  });
 }
 
 interface AdminSidebarProps {
@@ -175,7 +239,7 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Admin navigation">
         {NAV_ITEMS.map((item) => {
-          const active = isActive(pathname, item.href);
+          const active = isActive(pathname, item);
           return (
             <Link
               key={item.href}

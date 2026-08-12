@@ -425,25 +425,84 @@ describe('event.router', () => {
 
     const { eventRouter } = await import('~/server/routers/event.router');
     const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(eventRouter)({ session: userSession });
+    // userSession is ADMIN_ADULT, which isAdminRole treats as admin
+    // so the archive filter does not apply — use a GUEST session to
+    // exercise the non-admin path. Same shape as the new archive
+    // filter tests below.
+    const guestSession = {
+      ...userSession,
+      user: { ...userSession.user, role: NON_ADMIN_ROLE },
+    };
+    const caller = createCallerFactory(eventRouter)({ session: guestSession });
     await caller.list({ status: 'PUBLISHED' });
 
     expect(mockPrisma.event.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { status: 'PUBLISHED' } }),
+      expect.objectContaining({
+        where: { status: 'PUBLISHED', archivedAt: null },
+      }),
     );
   });
 
-  it('list returns all events when no status filter provided (where undefined)', async () => {
+  it('list filters archivedAt for non-admin callers (FPP-68)', async () => {
     mockPrisma.event.findMany.mockResolvedValue([]);
 
     const { eventRouter } = await import('~/server/routers/event.router');
     const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(eventRouter)({ session: userSession });
+    // `GUEST` is a sentinel used elsewhere in this file for
+    // "no admin role" — `isAdminRole` (mocked above) returns false
+    // for any string outside {SUPER_ADMIN, ADMIN_ADULT}.
+    const guestSession = {
+      ...userSession,
+      user: { ...userSession.user, role: NON_ADMIN_ROLE },
+    };
+    const caller = createCallerFactory(eventRouter)({ session: guestSession });
     await caller.list();
 
     expect(mockPrisma.event.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: undefined }),
+      expect.objectContaining({ where: { archivedAt: null } }),
     );
+  });
+
+  it('list returns every event (including archived) for platform admins (FPP-68)', async () => {
+    mockPrisma.event.findMany.mockResolvedValue([]);
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    await caller.list();
+
+    expect(mockPrisma.event.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: {} }));
+  });
+
+  it('getById returns NOT_FOUND for a non-admin caller requesting an archived event (FPP-68)', async () => {
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      archivedAt: new Date('2026-08-01T00:00:00Z'),
+    });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const guestSession = {
+      ...userSession,
+      user: { ...userSession.user, role: NON_ADMIN_ROLE },
+    };
+    const caller = createCallerFactory(eventRouter)({ session: guestSession });
+
+    await expect(caller.getById({ id: 'evt-1' })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
+  });
+
+  it('getById returns the row to a platform admin even when archived (FPP-68)', async () => {
+    const archivedAt = new Date('2026-08-01T00:00:00Z');
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1', archivedAt });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    const result = await caller.getById({ id: 'evt-1' });
+
+    expect(result).toEqual({ id: 'evt-1', archivedAt });
   });
 
   it('create returns the created event with DRAFT status', async () => {
@@ -610,6 +669,130 @@ describe('event.router', () => {
     const caller = createCallerFactory(eventRouter)({ session: adminSession });
 
     await expect(caller.reopen({ id: 'evt-1' })).rejects.toThrow();
+  });
+
+  it('archive stamps archivedAt and writes a single diff audit entry (FPP-68 / QUB-12 / QUB-26.1)', async () => {
+    const archiveTimestamp = new Date('2026-08-12T12:00:00Z');
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1', archivedAt: null });
+    mockPrisma.event.update.mockResolvedValue({
+      id: 'evt-1',
+      archivedAt: archiveTimestamp,
+    });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const { writeAuditLog } = await import('~/lib/audit');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    const result = await caller.archive({ id: 'evt-1' });
+
+    expect(mockPrisma.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'evt-1' },
+        data: expect.objectContaining({ archivedAt: expect.any(Date) }),
+      }),
+    );
+    // `audit: false` on the procedure means the eventAdminProcedure
+    // audit middleware does not also stamp the path — this is the
+    // single audit row for the mutation.
+    expect(writeAuditLog).toHaveBeenCalledTimes(1);
+    expect(writeAuditLog).toHaveBeenCalledWith({
+      userId: 'admin-1',
+      eventId: 'evt-1',
+      action: 'event.archive',
+      oldValue: { archivedAt: null },
+      newValue: { archivedAt: archiveTimestamp },
+    });
+    expect(result).toEqual({ id: 'evt-1', archivedAt: archiveTimestamp });
+  });
+
+  it('archive is idempotent — re-archiving does not rewrite archivedAt or write an audit entry', async () => {
+    const existingTimestamp = new Date('2026-01-01T00:00:00Z');
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      archivedAt: existingTimestamp,
+    });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const { writeAuditLog } = await import('~/lib/audit');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    const result = await caller.archive({ id: 'evt-1' });
+
+    expect(mockPrisma.event.update).not.toHaveBeenCalled();
+    // archive/unarchive skip the eventAdminProcedure audit middleware
+    // (audit: false) so the only writeAuditLog call comes from the
+    // diff branch. Re-archiving a row that already has archivedAt
+    // must skip the diff branch and write nothing.
+    expect(writeAuditLog).not.toHaveBeenCalled();
+    expect(result).toEqual({ id: 'evt-1', archivedAt: existingTimestamp });
+  });
+
+  it('archive returns NOT_FOUND when the event does not exist', async () => {
+    mockPrisma.event.findUnique.mockResolvedValue(null);
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+
+    await expect(caller.archive({ id: 'evt-1' })).rejects.toThrow();
+  });
+
+  it('unarchive clears archivedAt and writes a single diff audit entry (FPP-68 / QUB-12 / QUB-26.1)', async () => {
+    const previousArchivedAt = new Date('2026-01-01T00:00:00Z');
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      archivedAt: previousArchivedAt,
+    });
+    mockPrisma.event.update.mockResolvedValue({ id: 'evt-1', archivedAt: null });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const { writeAuditLog } = await import('~/lib/audit');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    const result = await caller.unarchive({ id: 'evt-1' });
+
+    expect(mockPrisma.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'evt-1' },
+        data: { archivedAt: null },
+      }),
+    );
+    // `audit: false` keeps this to a single diff row.
+    expect(writeAuditLog).toHaveBeenCalledTimes(1);
+    expect(writeAuditLog).toHaveBeenCalledWith({
+      userId: 'admin-1',
+      eventId: 'evt-1',
+      action: 'event.unarchive',
+      oldValue: { archivedAt: previousArchivedAt },
+      newValue: { archivedAt: null },
+    });
+    expect(result).toEqual({ id: 'evt-1', archivedAt: null });
+  });
+
+  it('unarchive is idempotent — unarchiving a non-archived event does not write an audit entry', async () => {
+    mockPrisma.event.findUnique.mockResolvedValue({ id: 'evt-1', archivedAt: null });
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const { writeAuditLog } = await import('~/lib/audit');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+    const result = await caller.unarchive({ id: 'evt-1' });
+
+    expect(mockPrisma.event.update).not.toHaveBeenCalled();
+    // Same as archive — the audit middleware is skipped, so the
+    // idempotent path must write nothing.
+    expect(writeAuditLog).not.toHaveBeenCalled();
+    expect(result).toEqual({ id: 'evt-1', archivedAt: null });
+  });
+
+  it('unarchive returns NOT_FOUND when the event does not exist', async () => {
+    mockPrisma.event.findUnique.mockResolvedValue(null);
+
+    const { eventRouter } = await import('~/server/routers/event.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(eventRouter)({ session: adminSession });
+
+    await expect(caller.unarchive({ id: 'evt-1' })).rejects.toThrow();
   });
 
   it('listAdmins calls prisma.eventAdmin.findMany with includes', async () => {
