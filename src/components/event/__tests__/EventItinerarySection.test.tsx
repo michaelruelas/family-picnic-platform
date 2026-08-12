@@ -19,8 +19,8 @@ import { EventItinerarySection } from '../EventItinerarySection';
  *        query (`orderBy: [{ order: 'asc' }, { time: 'asc' }]`) is
  *        responsible for sorting; this component's contract is
  *        "render in the order I'm given". The test passes a list
- *        with gaps and non-sorted `order` values to confirm the
- *        component does not re-sort.
+ *        whose array index is intentionally not sorted by `order`
+ *        to confirm the component does not re-sort.
  */
 describe('EventItinerarySection (FPP-4 / QUB-31.3)', () => {
   it('renders the Itinerary heading so guests can identify the tab', () => {
