@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions, getEnabledOAuthProviders } from '~/lib/auth';
+import { SIGNED_IN_REDIRECT } from '~/lib/constants';
 import LoginForm from '~/components/LoginForm';
 
 export default async function UnauthenticatedPage({
@@ -11,7 +12,7 @@ export default async function UnauthenticatedPage({
   const session = await getServerSession(authOptions);
 
   if (session?.user?.id) {
-    redirect('/events');
+    redirect(SIGNED_IN_REDIRECT);
   }
 
   const devAuthEnabled = process.env.DEV_AUTH_ENABLED === 'true';

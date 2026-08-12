@@ -3,8 +3,7 @@
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useState } from 'react';
-
-const POST_LOGIN_CALLBACK = '/events';
+import { SIGNED_IN_REDIRECT } from '~/lib/constants';
 
 type OAuthProvider = 'google' | 'apple' | 'facebook';
 
@@ -30,7 +29,7 @@ export default function LoginForm({
       username,
       password,
       redirect: true,
-      callbackUrl: POST_LOGIN_CALLBACK,
+      callbackUrl: SIGNED_IN_REDIRECT,
     });
     if (result?.error) {
       setError('Invalid credentials');
@@ -114,7 +113,7 @@ export default function LoginForm({
           <div className="space-y-3">
             {enabledProviders.includes('google') && (
               <button
-                onClick={() => signIn('google', { callbackUrl: POST_LOGIN_CALLBACK })}
+                onClick={() => signIn('google', { callbackUrl: SIGNED_IN_REDIRECT })}
                 className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -140,7 +139,7 @@ export default function LoginForm({
             )}
             {enabledProviders.includes('apple') && (
               <button
-                onClick={() => signIn('apple', { callbackUrl: POST_LOGIN_CALLBACK })}
+                onClick={() => signIn('apple', { callbackUrl: SIGNED_IN_REDIRECT })}
                 className="rounded-pill border-foreground bg-foreground text-background press hover:bg-foreground/90 flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -154,7 +153,7 @@ export default function LoginForm({
             )}
             {enabledProviders.includes('facebook') && (
               <button
-                onClick={() => signIn('facebook', { callbackUrl: POST_LOGIN_CALLBACK })}
+                onClick={() => signIn('facebook', { callbackUrl: SIGNED_IN_REDIRECT })}
                 className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
