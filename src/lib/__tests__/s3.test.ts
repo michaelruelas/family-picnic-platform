@@ -197,6 +197,29 @@ describe('generatePresignedDownloadUrl', () => {
     const url = await generatePresignedDownloadUrl('events/e-1/attachments/u-1/x.pdf');
     expect(url).toBe('https://presigned-url.example.com/upload');
   });
+
+  it('passes the host filename to S3 via ResponseContentDisposition', async () => {
+    const { generatePresignedDownloadUrl } = await import('../s3');
+    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+    await generatePresignedDownloadUrl('events/e-1/attachments/u-1/x.pdf', {
+      filename: 'waiver.pdf',
+    });
+    expect(GetObjectCommand).toHaveBeenCalledWith({
+      Bucket: 'family-picnic-photos',
+      Key: 'events/e-1/attachments/u-1/x.pdf',
+      ResponseContentDisposition: 'attachment; filename="waiver.pdf"',
+    });
+  });
+
+  it('omits ResponseContentDisposition when no filename is supplied', async () => {
+    const { generatePresignedDownloadUrl } = await import('../s3');
+    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+    await generatePresignedDownloadUrl('events/e-1/attachments/u-1/x.pdf');
+    expect(GetObjectCommand).toHaveBeenCalledWith({
+      Bucket: 'family-picnic-photos',
+      Key: 'events/e-1/attachments/u-1/x.pdf',
+    });
+  });
 });
 
 describe('deleteS3Object', () => {

@@ -120,6 +120,9 @@ describe('GET /api/public/event-attachments/[id]/download', () => {
     const res = await GET(new Request('http://x'), itemParams);
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('https://s3.example/x.pdf?signed=1');
-    expect(mockedPresign).toHaveBeenCalledWith('events/e-1/attachments/u-1/x.pdf', 300);
+    expect(mockedPresign).toHaveBeenCalledWith('events/e-1/attachments/u-1/x.pdf', {
+      filename: 'x.pdf',
+      expiresInSeconds: 300,
+    });
   });
 });

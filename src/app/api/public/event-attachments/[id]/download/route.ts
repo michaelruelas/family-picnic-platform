@@ -76,7 +76,10 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 
   try {
-    const url = await generatePresignedDownloadUrl(attachment.key, PDF_DOWNLOAD_URL_EXPIRY_SECONDS);
+    const url = await generatePresignedDownloadUrl(attachment.key, {
+      filename: attachment.filename,
+      expiresInSeconds: PDF_DOWNLOAD_URL_EXPIRY_SECONDS,
+    });
     return NextResponse.redirect(url, {
       status: 302,
       headers: {

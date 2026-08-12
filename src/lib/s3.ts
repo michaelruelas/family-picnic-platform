@@ -123,11 +123,18 @@ export async function generateAttachmentPresignedUploadUrl(args: {
  */
 export async function generatePresignedDownloadUrl(
   key: string,
-  expiresInSeconds: number = PDF_DOWNLOAD_URL_EXPIRY_SECONDS,
+  options: { expiresInSeconds?: number; filename?: string } = {},
 ): Promise<string> {
+  const { expiresInSeconds = PDF_DOWNLOAD_URL_EXPIRY_SECONDS, filename } = options;
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
     Key: key,
+    // FPP-43 / FPP-1: the browser follows the 302 redirect to S3 and
+    // ignores the anchor's `download` attribute once the response is
+    // cross-origin. Setting ResponseContentDisposition here makes S3
+    // emit a `Content-Disposition: attachment; filename=...` header
+    // so the downloaded file keeps the name the host set.
+    ...(filename ? { ResponseContentDisposition: `attachment; filename="${filename}"` } : {}),
   });
   return getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
 }
