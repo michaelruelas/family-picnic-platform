@@ -232,7 +232,7 @@ export default function EventAttachmentsEditor({
           {attachments.map((attachment) => (
             <li
               key={attachment.id}
-              className="border-border rounded-lg border bg-white p-4"
+              className="border-border rounded-lg border bg-card p-4"
               data-testid="event-attachments-item"
               data-attachment-id={attachment.id}
             >
