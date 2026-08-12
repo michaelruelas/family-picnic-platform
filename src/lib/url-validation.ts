@@ -24,3 +24,23 @@ export function assertHttpUrl(value: string, fieldName: string): NextResponse | 
   }
   return null;
 }
+
+/**
+ * FPP-60: validate every named URL field on a request body in one
+ * pass. Each field is checked only when present and non-empty, so
+ * the helper composes cleanly with the PATCH partial-update
+ * semantics. Returns the first failing 400 response, or `null` when
+ * every field is acceptable (including absent or empty strings).
+ */
+export function validateHttpUrlFields(
+  body: Record<string, unknown>,
+  fieldNames: readonly string[],
+): NextResponse | null {
+  for (const fieldName of fieldNames) {
+    const value = body[fieldName];
+    if (typeof value !== 'string' || value === '') continue;
+    const err = assertHttpUrl(value, fieldName);
+    if (err) return err;
+  }
+  return null;
+}

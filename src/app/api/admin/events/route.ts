@@ -5,7 +5,7 @@ import { EventStatus } from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 import { toEventCreateData } from '~/lib/event-data';
-import { assertHttpUrl } from '~/lib/url-validation';
+import { validateHttpUrlFields } from '~/lib/url-validation';
 
 export async function GET() {
   const requestId = generateRequestId();
@@ -113,21 +113,14 @@ export async function POST(request: Request) {
           );
         }
 
-        // FPP-60: validate URL shape at the trust boundary so an
+        // FPP-60: validate URL fields at the trust boundary so an
         // `javascript:` or otherwise malformed payload cannot land
-        // in the column. Empty string is treated as "no image" and
-        // collapses to null below via `toEventCreateData`. The Zod
-        // schema has the same rule but is only consulted by the
+        // in the column. Empty strings are treated as "no value"
+        // and collapse to null below via `toEventCreateData`. The
+        // Zod schema has the same rule but is only consulted by the
         // client form; the REST surface is reachable directly.
-        if (typeof featuredImageUrl === 'string' && featuredImageUrl !== '') {
-          const err = assertHttpUrl(featuredImageUrl, 'featuredImageUrl');
-          if (err) return err;
-        }
-
-        if (typeof mapImageUrl === 'string' && mapImageUrl !== '') {
-          const err = assertHttpUrl(mapImageUrl, 'mapImageUrl');
-          if (err) return err;
-        }
+        const urlErr = validateHttpUrlFields(body, ['featuredImageUrl', 'mapImageUrl']);
+        if (urlErr) return urlErr;
 
         const event = await prisma.event.create({
           data: {

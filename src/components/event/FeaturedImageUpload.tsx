@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { stripExifFromFile } from '~/lib/exif-stripper';
+import { ALLOWED_IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES } from '~/lib/image-upload';
 
 interface FeaturedImageUploadProps {
   eventId: string;
@@ -9,18 +10,17 @@ interface FeaturedImageUploadProps {
   onUploaded: (url: string) => void;
 }
 
-const MAX_FILE_SIZE_MB = 10;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
-
 type Status = 'idle' | 'processing' | 'uploading' | 'done' | 'error';
 
 /**
  * FPP-60: small client widget that uploads an event hero image to
- * S3 via a presigned URL. Mirrors the gallery upload flow but
- * (1) hits the admin featured-image endpoint so only hosts can
- * produce a presigned URL, (2) does not create a Photo row, and
- * (3) returns the resulting public URL through `onUploaded` so
- * the form can persist it on the event.
+ * S3 via a presigned URL. The shape (strip EXIF, presign, PUT,
+ * resolve the public URL) mirrors the gallery `<UploadButton>`
+ * because the gallery flow also has no shared uploader hook today;
+ * the boundary constants come from `~/lib/image-upload` so the two
+ * callers stay in lockstep. This widget differs from the gallery
+ * one in that it hits the admin featured-image endpoint (host-only)
+ * and never creates a Photo row.
  */
 export default function FeaturedImageUpload({
   eventId,
@@ -40,13 +40,13 @@ export default function FeaturedImageUpload({
     if (!files || files.length === 0) return;
     const file = files[0]!;
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setError('Unsupported image type. Use JPEG, PNG, WebP, HEIC, or HEIF.');
+    if (!ALLOWED_IMAGE_CONTENT_TYPES.includes(file.type as never)) {
+      setError(`Unsupported image type. Use one of: ${ALLOWED_IMAGE_CONTENT_TYPES.join(', ')}.`);
       setStatus('error');
       return;
     }
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setError(`File too large. Max ${MAX_FILE_SIZE_MB}MB.`);
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError(`File too large. Max ${MAX_IMAGE_BYTES / (1024 * 1024)}MB.`);
       setStatus('error');
       return;
     }
@@ -129,7 +129,7 @@ export default function FeaturedImageUpload({
         <input
           ref={fileInputRef}
           type="file"
-          accept={ALLOWED_TYPES.join(',')}
+          accept={ALLOWED_IMAGE_CONTENT_TYPES.join(',')}
           className="hidden"
           onChange={(e) => {
             void handleFiles(e.target.files);

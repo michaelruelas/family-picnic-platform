@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi, requireEventAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
-import { assertHttpUrl } from '~/lib/url-validation';
+import { validateHttpUrlFields } from '~/lib/url-validation';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -130,19 +130,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       );
     }
 
-    // FPP-60: validate URL shape at the trust boundary. The Zod
+    // FPP-60: validate URL fields at the trust boundary. The Zod
     // schema has the same rule but is only consulted by the client
     // form; the REST surface is reachable directly. Empty string is
     // a clear request and collapses to null below.
-    if (typeof featuredImageUrl === 'string' && featuredImageUrl !== '') {
-      const err = assertHttpUrl(featuredImageUrl, 'featuredImageUrl');
-      if (err) return err;
-    }
-
-    if (typeof mapImageUrl === 'string' && mapImageUrl !== '') {
-      const err = assertHttpUrl(mapImageUrl, 'mapImageUrl');
-      if (err) return err;
-    }
+    const urlErr = validateHttpUrlFields(body, ['featuredImageUrl', 'mapImageUrl']);
+    if (urlErr) return urlErr;
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
