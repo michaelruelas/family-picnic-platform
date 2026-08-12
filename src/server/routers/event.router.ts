@@ -5,6 +5,7 @@ import { prisma } from '~/lib/prisma';
 import { EventStatus, AdminPermission } from '~/lib/generated/enums';
 import { writeDomainAuditLog } from '~/lib/audit';
 import { stampHostRole, unassignHostRole } from '~/lib/event-access';
+import { toEventCreateData } from '~/lib/event-data';
 
 export const eventRouter = router({
   create: auditedAdminProcedure
@@ -13,9 +14,14 @@ export const eventRouter = router({
         name: z.string().min(1),
         date: z.string().datetime(),
         location: z.string().min(1),
+        lat: z.number().optional().nullable(),
+        lng: z.number().optional().nullable(),
+        placeId: z.string().optional().nullable(),
         description: z.string(),
         rsvpDeadline: z.string().datetime().optional(),
         maxCapacity: z.number().int().positive().optional(),
+        mapImageUrl: z.string().optional(),
+        currency: z.string().optional(),
         registrationFeeCents: z.number().int().nonnegative().optional(),
         registrationFeeMinAge: z.number().int().min(0).max(120).optional(),
       }),
@@ -23,14 +29,7 @@ export const eventRouter = router({
     .mutation(async ({ input }) => {
       return prisma.event.create({
         data: {
-          name: input.name,
-          date: new Date(input.date),
-          location: input.location,
-          description: input.description,
-          rsvpDeadline: input.rsvpDeadline ? new Date(input.rsvpDeadline) : null,
-          maxCapacity: input.maxCapacity,
-          registrationFeeCents: input.registrationFeeCents ?? 0,
-          registrationFeeMinAge: input.registrationFeeMinAge ?? 0,
+          ...toEventCreateData(input),
           status: EventStatus.DRAFT,
         },
       });
@@ -45,10 +44,14 @@ export const eventRouter = router({
       name: z.string().min(1).optional(),
       date: z.string().datetime().optional(),
       location: z.string().min(1).optional(),
+      lat: z.number().optional().nullable(),
+      lng: z.number().optional().nullable(),
+      placeId: z.string().optional().nullable(),
       description: z.string().optional(),
       rsvpDeadline: z.string().datetime().optional(),
       maxCapacity: z.number().int().positive().optional(),
       mapImageUrl: z.string().optional(),
+      currency: z.string().optional(),
       registrationFeeCents: z.number().int().nonnegative().optional(),
       registrationFeeMinAge: z.number().int().min(0).max(120).optional(),
     }),

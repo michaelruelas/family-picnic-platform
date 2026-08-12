@@ -1,22 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { eventCreateSchema, eventUpdateSchema } from '~/lib/schemas';
+import { LocationAutocomplete } from './LocationAutocomplete';
 
 interface EventFormData {
   name: string;
   date: string;
   location: string;
+  lat: number | null;
+  lng: number | null;
+  placeId: string | null;
   description: string;
   rsvpDeadline?: string;
   maxCapacity?: number;
   mapImageUrl?: string;
-  // Optional per-attendee fee in dollars. Empty string means "no fee".
   registrationFeeDollars?: string;
-  // Minimum age (inclusive) for an attendee to owe the per-attendee fee.
-  // 0 means "everyone pays", which is the default. Empty string on the
-  // form means 0 (everyone pays).
   registrationFeeMinAge?: string;
 }
 
@@ -53,6 +53,9 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     name: initialData?.name ?? '',
     date: initialData?.date ?? '',
     location: initialData?.location ?? '',
+    lat: initialData?.lat ?? null,
+    lng: initialData?.lng ?? null,
+    placeId: initialData?.placeId ?? null,
     description: initialData?.description ?? '',
     rsvpDeadline: initialData?.rsvpDeadline ?? '',
     maxCapacity: initialData?.maxCapacity ?? undefined,
@@ -60,6 +63,24 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     registrationFeeDollars: initialFeeDollars,
     registrationFeeMinAge: initialMinAge,
   });
+
+  const handleLocationChange = useCallback(
+    (data: {
+      location: string;
+      lat: number | null;
+      lng: number | null;
+      placeId: string | null;
+    }) => {
+      setFormData((prev) => ({
+        ...prev,
+        location: data.location,
+        lat: data.lat,
+        lng: data.lng,
+        placeId: data.placeId,
+      }));
+    },
+    [],
+  );
 
   function buildPayload(): Record<string, unknown> {
     const feeDollars = formData.registrationFeeDollars?.trim();
@@ -160,19 +181,14 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
           />
         </div>
 
-        <div>
+        <div className="md:col-span-2">
           <label htmlFor="location" className="text-foreground/85 block text-sm font-medium">
-            Location *
+            Location * (start typing for address suggestions)
           </label>
-          <input
-            type="text"
-            id="location"
-            name="location"
+          <LocationAutocomplete
             value={formData.location}
-            onChange={handleChange}
-            required
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-            placeholder="Central Park Pavilion"
+            hasGeocodedAddress={formData.lat !== null && formData.lng !== null}
+            onChange={handleLocationChange}
           />
         </div>
 

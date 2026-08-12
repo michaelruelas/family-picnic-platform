@@ -4,6 +4,7 @@ import { prisma } from '~/lib/prisma';
 import { EventStatus } from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
+import { toEventCreateData } from '~/lib/event-data';
 
 export async function GET() {
   const requestId = generateRequestId();
@@ -63,10 +64,14 @@ export async function POST(request: Request) {
           name,
           date,
           location,
+          lat,
+          lng,
+          placeId,
           description,
           rsvpDeadline,
           maxCapacity,
           mapImageUrl,
+          currency,
           registrationFeeCents,
           registrationFeeMinAge,
         } = body;
@@ -108,15 +113,21 @@ export async function POST(request: Request) {
 
         const event = await prisma.event.create({
           data: {
-            name,
-            date: new Date(date),
-            location,
-            description: description || '',
-            rsvpDeadline: rsvpDeadline ? new Date(rsvpDeadline) : null,
-            maxCapacity: maxCapacity || null,
-            mapImageUrl: mapImageUrl || null,
-            registrationFeeCents: registrationFeeCents ?? 0,
-            registrationFeeMinAge: registrationFeeMinAge ?? 0,
+            ...toEventCreateData({
+              name,
+              date,
+              location,
+              lat,
+              lng,
+              placeId,
+              description,
+              rsvpDeadline,
+              maxCapacity,
+              mapImageUrl,
+              currency,
+              registrationFeeCents,
+              registrationFeeMinAge,
+            }),
             status: EventStatus.DRAFT,
           },
         });

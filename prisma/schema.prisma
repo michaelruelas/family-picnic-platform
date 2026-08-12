@@ -245,6 +245,9 @@ model Event {
   name         String
   date         DateTime
   location     String
+  lat          Float?
+  lng          Float?
+  placeId      String?
   mapImageUrl  String?
   description  String
   rsvpDeadline DateTime?
