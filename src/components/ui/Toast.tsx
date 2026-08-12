@@ -11,6 +11,8 @@ import {
 } from 'react';
 
 function useIsClient() {
+  // true on the client, false during SSR — prevents hydration mismatch
+  // from rendering a portal in a server environment.
   return useSyncExternalStore(
     () => () => {},
     () => true,
