@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import LoginForm from '../LoginForm';
+import { SIGNED_IN_REDIRECT } from '~/lib/constants';
 
 vi.mock('next-auth/react', () => ({
   signIn: vi.fn(),
@@ -60,7 +61,7 @@ describe('LoginForm', () => {
         username: 'admin',
         password: 'pass',
         redirect: true,
-        callbackUrl: '/',
+        callbackUrl: SIGNED_IN_REDIRECT,
       });
     });
   });
@@ -76,7 +77,7 @@ describe('LoginForm', () => {
         username: 'admin',
         password: 'wrong',
         redirect: true,
-        callbackUrl: '/',
+        callbackUrl: SIGNED_IN_REDIRECT,
       });
       expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
     });
@@ -86,21 +87,21 @@ describe('LoginForm', () => {
     mockedSignIn.mockResolvedValue({} as never);
     render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} />);
     fireEvent.click(screen.getByRole('button', { name: /continue with google/i }));
-    expect(mockedSignIn).toHaveBeenCalledWith('google', { callbackUrl: '/' });
+    expect(mockedSignIn).toHaveBeenCalledWith('google', { callbackUrl: SIGNED_IN_REDIRECT });
   });
 
   it('triggers Apple sign in when enabled', async () => {
     mockedSignIn.mockResolvedValue({} as never);
     render(<LoginForm devAuthEnabled={false} enabledProviders={['apple']} />);
     fireEvent.click(screen.getByRole('button', { name: /continue with apple/i }));
-    expect(mockedSignIn).toHaveBeenCalledWith('apple', { callbackUrl: '/' });
+    expect(mockedSignIn).toHaveBeenCalledWith('apple', { callbackUrl: SIGNED_IN_REDIRECT });
   });
 
   it('triggers Facebook sign in when enabled', async () => {
     mockedSignIn.mockResolvedValue({} as never);
     render(<LoginForm devAuthEnabled={false} enabledProviders={['facebook']} />);
     fireEvent.click(screen.getByRole('button', { name: /continue with facebook/i }));
-    expect(mockedSignIn).toHaveBeenCalledWith('facebook', { callbackUrl: '/' });
+    expect(mockedSignIn).toHaveBeenCalledWith('facebook', { callbackUrl: SIGNED_IN_REDIRECT });
   });
 
   it('hides provider buttons for non-enabled providers', () => {
@@ -111,9 +112,14 @@ describe('LoginForm', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders back to home link', () => {
+  it('renders back to home link by default', () => {
     render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} />);
     const link = screen.getByRole('link', { name: /back to home/i });
     expect(link).toHaveAttribute('href', '/');
+  });
+
+  it('hides back to home link when showBackLink is false', () => {
+    render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} showBackLink={false} />);
+    expect(screen.queryByRole('link', { name: /back to home/i })).not.toBeInTheDocument();
   });
 });

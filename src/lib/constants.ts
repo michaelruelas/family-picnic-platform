@@ -54,3 +54,5 @@ export const HERO_IMAGES = {
 } as const;
 
 export const DEFAULT_CURRENCY = 'usd';
+
+export const SIGNED_IN_REDIRECT = '/events';

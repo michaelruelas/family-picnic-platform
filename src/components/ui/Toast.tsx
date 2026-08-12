@@ -1,6 +1,24 @@
 'use client';
 
-import { useEffect, useState, createContext, useContext, useCallback, ReactNode } from 'react';
+import {
+  useEffect,
+  useState,
+  createContext,
+  useContext,
+  useCallback,
+  ReactNode,
+  useSyncExternalStore,
+} from 'react';
+
+function useIsClient() {
+  // true on the client, false during SSR — prevents hydration mismatch
+  // from rendering a portal in a server environment.
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
 import { createPortal } from 'react-dom';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -34,6 +52,7 @@ interface ToastProviderProps {
 
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const isClient = useIsClient();
 
   const addToast = useCallback((type: ToastType, message: string, duration = 5000) => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -47,7 +66,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
-      {typeof window !== 'undefined' &&
+      {isClient &&
         createPortal(<ToastContainer toasts={toasts} removeToast={removeToast} />, document.body)}
     </ToastContext.Provider>
   );
