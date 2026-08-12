@@ -65,8 +65,13 @@ describe('DateTimePicker', () => {
     render(<DateTimePicker label="Event Date" name="date" value="" onChange={() => {}} />);
     const tzLine = await screen.findByText(/time zone:/i);
     expect(tzLine).toBeInTheDocument();
+  });
+
+  it('renders the timezone line as a plain paragraph, not a live region', async () => {
+    render(<DateTimePicker label="Event Date" name="date" value="" onChange={() => {}} />);
+    const tzLine = await screen.findByText(/time zone:/i);
     const liveRegion = tzLine.closest('[aria-live]');
-    expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+    expect(liveRegion).toBeNull();
   });
 
   it('uses an explicit timezone when one is provided', () => {

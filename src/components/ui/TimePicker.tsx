@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef, useId } from 'react';
+import { fieldBaseClasses, fieldStateClasses } from './fieldStyles';
 
 export interface TimePickerProps {
   /** Field label rendered above the input and linked via `htmlFor`. */
@@ -28,16 +29,6 @@ export interface TimePickerProps {
   /** Test hook forwarded to the underlying `<input>`. */
   'data-testid'?: string;
 }
-
-const baseClasses =
-  'text-foreground placeholder:text-muted-foreground disabled:bg-muted disabled:text-muted-foreground ' +
-  'block min-h-12 w-full rounded-pill border bg-white px-4 py-3 text-base transition-all duration-200 ' +
-  'focus:ring-0 focus:outline-none disabled:cursor-not-allowed';
-
-const stateClasses = (error?: string) =>
-  error
-    ? 'border-destructive focus:border-destructive focus:shadow-[0_0_0_3px_rgba(196,69,54,0.15)]'
-    : 'border-border focus:border-foreground focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)]';
 
 /**
  * Accessible time picker used by the itinerary editor and any other
@@ -104,7 +95,7 @@ const TimePicker = forwardRef<HTMLInputElement, TimePickerProps>(function TimePi
         aria-invalid={error ? 'true' : undefined}
         aria-describedby={describedBy}
         data-testid={dataTestId}
-        className={`${baseClasses} ${stateClasses(error)} ${className}`}
+        className={`${fieldBaseClasses} ${fieldStateClasses(error)} ${className}`}
       />
       {hint && !error && (
         <p id={hintId} className="text-muted-foreground mt-2 text-sm">

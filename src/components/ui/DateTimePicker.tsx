@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useId, useState } from 'react';
 import { formatTimezoneLabel, getClientTimezone } from '~/lib/timezone';
+import { fieldBaseClasses, fieldStateClasses } from './fieldStyles';
 
 export interface DateTimePickerProps {
   /** Field label rendered above the input and linked via `htmlFor`. */
@@ -34,16 +35,6 @@ export interface DateTimePickerProps {
   /** Test hook forwarded to the underlying `<input>`. */
   'data-testid'?: string;
 }
-
-const baseClasses =
-  'text-foreground placeholder:text-muted-foreground disabled:bg-muted disabled:text-muted-foreground ' +
-  'block min-h-12 w-full rounded-pill border bg-white px-4 py-3 text-base transition-all duration-200 ' +
-  'focus:ring-0 focus:outline-none disabled:cursor-not-allowed';
-
-const stateClasses = (error?: string) =>
-  error
-    ? 'border-destructive focus:border-destructive focus:shadow-[0_0_0_3px_rgba(196,69,54,0.15)]'
-    : 'border-border focus:border-foreground focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)]';
 
 /**
  * Accessible datetime picker used by the event admin form and any other
@@ -132,13 +123,14 @@ const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(functio
         aria-invalid={error ? 'true' : undefined}
         aria-describedby={describedBy}
         data-testid={dataTestId}
-        className={`${baseClasses} ${stateClasses(error)} ${className}`}
+        className={`${fieldBaseClasses} ${fieldStateClasses(error)} ${className}`}
       />
       {showTimezone && tzLabel && (
-        <p
-          className="text-muted-foreground mt-2 flex items-center gap-1.5 text-sm"
-          aria-live="polite"
-        >
+        // FPP-62 follow-up (Q1): the resolved timezone does not change
+        // for the lifetime of this component, so a live region is the
+        // wrong semantic. A plain paragraph lets the screen reader
+        // announce the line when the user navigates to it.
+        <p className="text-muted-foreground mt-2 flex items-center gap-1.5 text-sm">
           <span aria-hidden="true">🌐</span>
           <span>
             Time zone: <span className="text-foreground font-medium">{tzLabel}</span>
