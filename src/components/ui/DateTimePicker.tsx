@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useEffect, useId, useState } from 'react';
+import { forwardRef, useId, useState } from 'react';
 import { formatTimezoneLabel, getClientTimezone } from '~/lib/timezone';
 import { fieldBaseClasses, fieldStateClasses } from './fieldStyles';
 
@@ -83,15 +83,14 @@ const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(functio
   const describedBy =
     [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(' ') || undefined;
 
-  const [resolvedTz, setResolvedTz] = useState<string | undefined>(timezone);
-
-  useEffect(() => {
-    if (timezone) {
-      setResolvedTz(timezone);
-      return;
-    }
-    setResolvedTz(getClientTimezone());
-  }, [timezone]);
+  // FPP-62 follow-up (DP-1): resolve the timezone on first render
+  // instead of in a useEffect, so the label appears with the rest of
+  // the form on the first paint and never flashes in after hydration.
+  // The lazy initializer runs on the server too, where `getClientTimezone`
+  // may return a different value than the browser. We tolerate the
+  // mismatch via `suppressHydrationWarning` on the label below; the
+  // visible text on the client always reflects the user's actual zone.
+  const [resolvedTz] = useState<string | undefined>(() => timezone ?? getClientTimezone());
 
   const tzLabel = formatTimezoneLabel(resolvedTz);
 
@@ -130,7 +129,13 @@ const DateTimePicker = forwardRef<HTMLInputElement, DateTimePickerProps>(functio
         // for the lifetime of this component, so a live region is the
         // wrong semantic. A plain paragraph lets the screen reader
         // announce the line when the user navigates to it.
-        <p className="text-muted-foreground mt-2 flex items-center gap-1.5 text-sm">
+        // FPP-62 follow-up (DP-1): `suppressHydrationWarning` keeps the
+        // dev console quiet when the server-side initial render and
+        // the first client render compute different timezone values.
+        <p
+          className="text-muted-foreground mt-2 flex items-center gap-1.5 text-sm"
+          suppressHydrationWarning
+        >
           <span aria-hidden="true">🌐</span>
           <span>
             Time zone: <span className="text-foreground font-medium">{tzLabel}</span>

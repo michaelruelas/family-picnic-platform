@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { eventCreateSchema, eventUpdateSchema } from '~/lib/schemas';
+import { isEventWindowAfter } from '~/lib/event-window';
 import DateTimePicker from '~/components/ui/DateTimePicker';
 import { LocationAutocomplete } from './LocationAutocomplete';
 import FeaturedImageUpload from './FeaturedImageUpload';
@@ -124,10 +125,12 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
   // deadline that would now sit past the new event date, otherwise the
   // pair would fail the schema's `rsvpDeadline <= date` invariant on
   // submit and the user would only learn about it after pressing save.
+  // FPP-62 follow-up (SP-3): the comparison is delegated to
+  // `isEventWindowAfter` so the format dependency lives in one place.
   const handleDateChange = (value: string) => {
     setFormData((prev) => {
       const next = { ...prev, date: value };
-      if (next.rsvpDeadline && value && next.rsvpDeadline > value) {
+      if (isEventWindowAfter(next.rsvpDeadline ?? '', value)) {
         next.rsvpDeadline = '';
       }
       return next;
