@@ -43,6 +43,9 @@ async function scheduleWorkflow(
 }
 
 export async function POST(request: NextRequest) {
+  // FPP-104: stays super-admin only. Broadcast sends hit the
+  // per-hour / per-recipient rate limits that operate across all
+  // events; a host-scope variant would need separate rate buckets.
   const requestId = generateRequestId();
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;

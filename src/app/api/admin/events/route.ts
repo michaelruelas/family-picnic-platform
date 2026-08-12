@@ -7,6 +7,9 @@ import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 import { toEventCreateData } from '~/lib/event-data';
 
 export async function GET() {
+  // FPP-104: stays super-admin only. The host surface is the dedicated
+  // per-event edit page, not this cross-event list. Returning every
+  // event to a host would leak the existence of other families' events.
   const requestId = generateRequestId();
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;
@@ -44,6 +47,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // FPP-104: event creation stays super-admin only. Hosts curate
+  // existing events; the platform-layer admin creates the event and
+  // then assigns the host role via the admins route.
   const requestId = generateRequestId();
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;

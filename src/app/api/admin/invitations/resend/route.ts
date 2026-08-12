@@ -4,6 +4,9 @@ import { prisma } from '~/lib/prisma';
 import { InvitationStatus, CommunicationStatus, CommunicationChannel } from '~/lib/generated/enums';
 
 export async function POST(request: Request) {
+  // FPP-104: stays super-admin only. Resends share the cross-event
+  // rate-limit gates with the send route; per-event host scoping
+  // is tracked separately.
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;
   const { session } = auth;

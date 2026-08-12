@@ -3,6 +3,10 @@ import { requireAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
 
 export async function GET(req: NextRequest) {
+  // FPP-104: stays super-admin only. Cross-event user search would
+  // let a host probe the existence of any user by email; the
+  // per-event host surface uses the existing invitation wizard
+  // instead.
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;
 

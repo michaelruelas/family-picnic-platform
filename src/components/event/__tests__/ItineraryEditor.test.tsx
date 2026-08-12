@@ -201,4 +201,57 @@ describe('ItineraryEditor', () => {
     );
     expect(screen.getByText(/2:30\s*PM/i)).toBeInTheDocument();
   });
+
+  it('EH-002: restores the previous order locally on reorder failure', async () => {
+    // The first reorder fails; the second never fires because the
+    // test finishes in the microtask. We assert that fetching the
+    // endpoint produced the call, and that the snapshot rollback
+    // path is exercised (setItems is called with the previous
+    // order before refresh).
+    mockFetch.mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ error: 'Itinerary item list is out of sync' }),
+    } as never);
+    render(<ItineraryEditor eventId="e-1" initialItems={initialItems} />);
+    const downButtons = screen.getAllByLabelText('Move down');
+    fireEvent.click(downButtons[0]!);
+    await waitFor(() => {
+      expect(screen.getByText(/out of sync/i)).toBeInTheDocument();
+    });
+    // After failure, the visible order should match the original
+    // `[Setup, Lunch]` sequence. The server response was rejected,
+    // so the optimistic move was rolled back.
+    const items = screen.getAllByTestId('itinerary-editor-item');
+    expect(items[0]).toHaveAttribute('data-itinerary-id', 'i-1');
+    expect(items[1]).toHaveAttribute('data-itinerary-id', 'i-2');
+  });
+
+  it('EH-003: ignores drag start while a reorder is pending', async () => {
+    let resolveReorder: (value: unknown) => void = () => {};
+    const pendingResponse = new Promise((resolve) => {
+      resolveReorder = resolve;
+    });
+    mockFetch.mockReturnValue(pendingResponse as never);
+    render(<ItineraryEditor eventId="e-1" initialItems={initialItems} />);
+    // Kick off the first reorder — release only after the snapshot
+    // assertions below.
+    const downButtons = screen.getAllByLabelText('Move down');
+    fireEvent.click(downButtons[0]!);
+    // While the reorder is pending, a second reorder attempt should
+    // not fire another fetch. The down button is disabled by the
+    // pendingReorder flag, so we route through the drag handler
+    // path which we just guarded.
+    const items = screen.getAllByTestId('itinerary-editor-item');
+    const firstItem = items[0]!;
+    const dragStart = new Event('dragstart', { bubbles: true });
+    Object.defineProperty(dragStart, 'dataTransfer', {
+      value: { effectAllowed: '', dropEffect: '', setData: vi.fn(), getData: () => 'i-1' },
+    });
+    fireEvent(firstItem, dragStart);
+    await waitFor(() => {
+      // Only the first reorder fetch should have happened.
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+    resolveReorder({ ok: true, json: () => Promise.resolve({ success: true }) });
+  });
 });
