@@ -1,25 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi, requireEventAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
+import { assertHttpUrl } from '~/lib/url-validation';
 
 type RouteParams = { params: Promise<{ id: string }> };
-
-// FPP-60: trust-boundary URL check. `new URL()` accepts `javascript:`
-// and other dangerous schemes, so the helper additionally enforces an
-// http(s) protocol. The Zod schema enforces the same rule via
-// `.string().url()` but is only consulted by the client form.
-function assertHttpUrl(value: string, fieldName: string): NextResponse | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(value);
-  } catch {
-    return NextResponse.json({ error: `${fieldName} must be a valid URL` }, { status: 400 });
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    return NextResponse.json({ error: `${fieldName} must be an http(s) URL` }, { status: 400 });
-  }
-  return null;
-}
 
 /**
  * FPP-104: GET is intentionally global-admin only. The host

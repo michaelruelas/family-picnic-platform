@@ -5,23 +5,7 @@ import { EventStatus } from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 import { toEventCreateData } from '~/lib/event-data';
-
-// FPP-60: trust-boundary URL check. `new URL()` accepts `javascript:`
-// and other dangerous schemes, so the helper additionally enforces an
-// http(s) protocol. The Zod schema enforces the same rule via
-// `.string().url()` but is only consulted by the client form.
-function assertHttpUrl(value: string, fieldName: string): NextResponse | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(value);
-  } catch {
-    return NextResponse.json({ error: `${fieldName} must be a valid URL` }, { status: 400 });
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    return NextResponse.json({ error: `${fieldName} must be an http(s) URL` }, { status: 400 });
-  }
-  return null;
-}
+import { assertHttpUrl } from '~/lib/url-validation';
 
 export async function GET() {
   const requestId = generateRequestId();

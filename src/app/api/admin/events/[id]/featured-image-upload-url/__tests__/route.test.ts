@@ -49,7 +49,7 @@ describe('POST /api/admin/events/[id]/featured-image-upload-url', () => {
   it('returns 401 when no session', async () => {
     mockedSession.mockResolvedValue(null);
     const res = await POST(
-      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg' }),
+      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg', size: 1024 }),
       eventParams,
     );
     expect(res.status).toBe(401);
@@ -58,20 +58,63 @@ describe('POST /api/admin/events/[id]/featured-image-upload-url', () => {
   it('returns 403 when session is for a user with no admin or EventAdmin row', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'GUEST' } } as never);
     const res = await POST(
-      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg' }),
+      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg', size: 1024 }),
       eventParams,
     );
     expect(res.status).toBe(403);
   });
 
-  it('returns 503 when S3 is not configured', async () => {
+  it('EH-001: returns 500 when auth throws (DB failure during gate check)', async () => {
+    // FPP-60 / EH-001: requireEventAdminApi runs a Prisma query for
+    // non-admin callers; a transient DB error used to produce an
+    // unhandled rejection because the auth call sat outside the
+    // try/catch. SUPER_ADMIN bypasses the lookup so we exercise the
+    // path with a HOST session that reaches canAccessEvent.
+    mockedSession.mockResolvedValue({ user: { id: 'host-1', role: 'HOST' } } as never);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    prismaMock.eventAdmin.findUnique.mockRejectedValueOnce(new Error('db down'));
+    const res = await POST(
+      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg', size: 1024 }),
+      eventParams,
+    );
+    expect(res.status).toBe(500);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('returns 503 and logs when S3 is not configured', async () => {
+    // FPP-60 / EH-002: a missing-env-var 503 must produce a log
+    // line so on-call sees the root cause.
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     process.env = { ...ORIGINAL_ENV };
     delete process.env.AWS_ACCESS_KEY_ID;
     delete process.env.AWS_SECRET_ACCESS_KEY;
     delete process.env.S3_BUCKET_NAME;
     const res = await POST(
-      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg' }),
+      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg', size: 1024 }),
+      eventParams,
+    );
+    expect(res.status).toBe(503);
+    expect(consoleError).toHaveBeenCalledWith(
+      '[featured-image-upload-url] S3 not configured',
+      expect.objectContaining({ missing: expect.any(Array) }),
+    );
+    consoleError.mockRestore();
+  });
+
+  it('EH-004: returns 503 when an S3 credential is set to an empty string', async () => {
+    // FPP-60 / EH-004: empty-string env vars previously fell through
+    // to the S3 client as `''` and would only surface at PUT time.
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
+    process.env = {
+      ...ORIGINAL_ENV,
+      AWS_ACCESS_KEY_ID: '',
+      AWS_SECRET_ACCESS_KEY: 'secret-test',
+      S3_BUCKET_NAME: 'test-bucket',
+    };
+    const res = await POST(
+      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg', size: 1024 }),
       eventParams,
     );
     expect(res.status).toBe(503);
@@ -79,14 +122,17 @@ describe('POST /api/admin/events/[id]/featured-image-upload-url', () => {
 
   it('returns 400 when filename or contentType missing', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
-    const res = await POST(makeJsonRequest('http://x', { filename: 'a.jpg' }), eventParams);
+    const res = await POST(
+      makeJsonRequest('http://x', { filename: 'a.jpg', size: 1024 }),
+      eventParams,
+    );
     expect(res.status).toBe(400);
   });
 
   it('returns 400 when contentType is invalid', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const res = await POST(
-      makeJsonRequest('http://x', { filename: 'a.gif', contentType: 'image/gif' }),
+      makeJsonRequest('http://x', { filename: 'a.gif', contentType: 'image/gif', size: 1024 }),
       eventParams,
     );
     expect(res.status).toBe(400);
@@ -103,6 +149,32 @@ describe('POST /api/admin/events/[id]/featured-image-upload-url', () => {
       eventParams,
     );
     expect(res.status).toBe(400);
+  });
+
+  it('DP-003: returns 400 when size is missing', async () => {
+    // FPP-60 / DP-003: without `size` the presigned URL has no
+    // ContentLength cap, so the route rejects the request rather
+    // than issuing an unlimited PUT URL.
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
+    const res = await POST(
+      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg' }),
+      eventParams,
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('DP-003: returns 400 when size is zero or negative', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
+    const zero = await POST(
+      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg', size: 0 }),
+      eventParams,
+    );
+    expect(zero.status).toBe(400);
+    const negative = await POST(
+      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg', size: -1 }),
+      eventParams,
+    );
+    expect(negative.status).toBe(400);
   });
 
   it('returns presigned URL and public URL on success', async () => {
@@ -150,13 +222,13 @@ describe('POST /api/admin/events/[id]/featured-image-upload-url', () => {
     mockedSession.mockResolvedValue({ user: { id: 'host-1', role: 'HOST' } } as never);
     prismaMock.eventAdmin.findUnique.mockResolvedValue(null);
     const res = await POST(
-      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg' }),
+      makeJsonRequest('http://x', { filename: 'a.jpg', contentType: 'image/jpeg', size: 1024 }),
       eventParams,
     );
     expect(res.status).toBe(403);
   });
 
-  it('FPP-60: pins ContentLength on the presigned URL when size is provided', async () => {
+  it('always pins ContentLength on the presigned URL when size is provided', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     const { PutObjectCommand } = await import('@aws-sdk/client-s3');
     await POST(
@@ -173,30 +245,21 @@ describe('POST /api/admin/events/[id]/featured-image-upload-url', () => {
     expect(lastCall.ContentLength).toBe(1024);
   });
 
-  it('FPP-60: omits ContentLength when the client did not send size', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
-    const { PutObjectCommand } = await import('@aws-sdk/client-s3');
-    await POST(
-      makeJsonRequest('http://x', {
-        filename: 'hero.jpg',
-        contentType: 'image/jpeg',
-      }),
-      eventParams,
-    );
-    const lastCall = vi.mocked(PutObjectCommand).mock.calls.at(-1)?.[0] as {
-      ContentLength?: number;
-    };
-    expect(lastCall.ContentLength).toBeUndefined();
-  });
-
   it('returns 500 on error', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
     vi.mocked(getSignedUrl).mockRejectedValueOnce(new Error('boom'));
     const res = await POST(
-      makeJsonRequest('http://x', { filename: 'hero.jpg', contentType: 'image/jpeg' }),
+      makeJsonRequest('http://x', {
+        filename: 'hero.jpg',
+        contentType: 'image/jpeg',
+        size: 1024,
+      }),
       eventParams,
     );
     expect(res.status).toBe(500);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });

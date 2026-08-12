@@ -97,6 +97,10 @@ export default function FeaturedImageUpload({
       onUploaded(publicUrl);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed';
+      // FPP-60 / EH-006: surface upload failures to the browser
+      // console so client-side issues are visible in Sentry / dev
+      // tools instead of being swallowed by the UI message.
+      console.error('[FeaturedImageUpload] upload failed', err);
       setError(message);
       setStatus('error');
     }

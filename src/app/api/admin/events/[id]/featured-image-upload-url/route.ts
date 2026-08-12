@@ -14,7 +14,6 @@ const s3Client = new S3Client({
     : undefined,
 });
 
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'family-picnic-photos';
 const PRESIGNED_URL_EXPIRY = 3600;
 
 const VALID_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
@@ -27,28 +26,44 @@ function generateFeaturedImageKey(eventId: string, userId: string, filename: str
   return `events/${eventId}/featured/${userId}/${randomUUID()}-${sanitizedFilename}`;
 }
 
+function s3Config(): { ok: true; bucket: string } | { ok: false; missing: string[] } {
+  // FPP-60 / EH-004: require all three env vars AND reject empty
+  // strings. The module-level S3Client falls back to undefined
+  // credentials when any single var is missing, which would fail
+  // silently inside the SDK at PUT time.
+  const required = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'S3_BUCKET_NAME'] as const;
+  const missing = required.filter((name) => !process.env[name]?.trim());
+  if (missing.length > 0) return { ok: false, missing };
+  return { ok: true, bucket: process.env.S3_BUCKET_NAME! };
+}
+
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, { params }: RouteParams) {
-  const { id: eventId } = await params;
-
-  const auth = await requireEventAdminApi(eventId);
-  if (!auth.ok) return auth.response;
-
-  const session = auth.session;
-
-  if (
-    !process.env.AWS_ACCESS_KEY_ID ||
-    !process.env.AWS_SECRET_ACCESS_KEY ||
-    !process.env.S3_BUCKET_NAME
-  ) {
-    return NextResponse.json(
-      { error: 'S3 is not configured. Please set AWS credentials.' },
-      { status: 503 },
-    );
-  }
-
+  // FPP-60 / EH-001: wrap the entire handler so an auth DB failure
+  // or any other unexpected error surfaces as a 500 instead of an
+  // unhandled rejection that takes down the route worker.
   try {
+    const { id: eventId } = await params;
+
+    const auth = await requireEventAdminApi(eventId);
+    if (!auth.ok) return auth.response;
+
+    const session = auth.session;
+
+    const config = s3Config();
+    if (!config.ok) {
+      // FPP-60 / EH-002: log the misconfig so on-call sees the
+      // root cause instead of a silent 503.
+      console.error('[featured-image-upload-url] S3 not configured', {
+        missing: config.missing,
+      });
+      return NextResponse.json(
+        { error: 'S3 is not configured. Please set AWS credentials.' },
+        { status: 503 },
+      );
+    }
+
     const body = await request.json();
     const { filename, contentType, size } = body;
 
@@ -63,22 +78,26 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    if (typeof size === 'number' && size > MAX_BYTES) {
+    // FPP-60 / DP-003: `size` is required and must be a positive
+    // integer. The presigned URL pins ContentLength so a malicious
+    // client cannot PUT a multi-GB file through a URL sized for a
+    // 10MB hero. When the client omits size we cannot enforce the
+    // cap at the S3 layer, so we reject the request.
+    if (typeof size !== 'number' || !Number.isFinite(size) || size <= 0) {
+      return NextResponse.json({ error: 'size must be a positive number' }, { status: 400 });
+    }
+
+    if (size > MAX_BYTES) {
       return NextResponse.json({ error: 'File too large. Maximum 10MB.' }, { status: 400 });
     }
 
     const key = generateFeaturedImageKey(eventId, session.user.id, filename);
 
     const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: config.bucket,
       Key: key,
       ContentType: contentType,
-      // FPP-60: pin ContentLength on the presigned URL so a client
-      // cannot PUT a multi-GB file through a URL sized for a 10MB
-      // hero. Only set when the client provided a positive size;
-      // absence of `size` keeps the URL permissive (the cap is
-      // enforced server-side via the validation above).
-      ...(typeof size === 'number' && size > 0 ? { ContentLength: size } : {}),
+      ContentLength: size,
     });
 
     const uploadUrl = await getSignedUrl(s3Client, command, {
@@ -98,7 +117,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       expiresAt: expiresAt.toISOString(),
     });
   } catch (error) {
-    console.error('Generate featured image upload URL error:', error);
+    console.error('[featured-image-upload-url] handler error', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
