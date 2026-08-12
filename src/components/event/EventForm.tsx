@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { eventCreateSchema, eventUpdateSchema } from '~/lib/schemas';
+import DateTimePicker from '~/components/ui/DateTimePicker';
 import { LocationAutocomplete } from './LocationAutocomplete';
 import FeaturedImageUpload from './FeaturedImageUpload';
 
@@ -117,6 +118,26 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     }));
   };
 
+  // FPP-62: the DateTimePicker forwards the new value as a plain string
+  // instead of an event, so wrap the assignment here. When the host
+  // pushes the event date forward we also have to wipe any RSVP
+  // deadline that would now sit past the new event date, otherwise the
+  // pair would fail the schema's `rsvpDeadline <= date` invariant on
+  // submit and the user would only learn about it after pressing save.
+  const handleDateChange = (value: string) => {
+    setFormData((prev) => {
+      const next = { ...prev, date: value };
+      if (next.rsvpDeadline && value && next.rsvpDeadline > value) {
+        next.rsvpDeadline = '';
+      }
+      return next;
+    });
+  };
+
+  const handleRsvpDeadlineChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, rsvpDeadline: value }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -196,31 +217,30 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
         </div>
 
         <div>
-          <label htmlFor="date" className="text-foreground/85 block text-sm font-medium">
-            Event Date *
-          </label>
-          <input
-            type="datetime-local"
-            id="date"
+          <DateTimePicker
+            label="Event Date"
             name="date"
             value={formData.date}
-            onChange={handleChange}
+            onChange={handleDateChange}
             required
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            // FPP-62: keep the event date inside the event window. If the
+            // host already pinned an RSVP deadline, the event date must
+            // sit on or after it.
+            min={formData.rsvpDeadline || undefined}
+            data-testid="event-date-input"
           />
         </div>
 
         <div>
-          <label htmlFor="rsvpDeadline" className="text-foreground/85 block text-sm font-medium">
-            RSVP Deadline
-          </label>
-          <input
-            type="datetime-local"
-            id="rsvpDeadline"
+          <DateTimePicker
+            label="RSVP Deadline"
             name="rsvpDeadline"
             value={formData.rsvpDeadline}
-            onChange={handleChange}
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            onChange={handleRsvpDeadlineChange}
+            // FPP-62: the RSVP deadline cannot land after the event date.
+            max={formData.date || undefined}
+            hint="Optional. If blank, RSVPs stay open until the event starts."
+            data-testid="event-rsvp-deadline-input"
           />
         </div>
 

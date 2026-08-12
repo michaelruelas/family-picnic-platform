@@ -175,6 +175,59 @@ describe('EventForm', () => {
     });
   });
 
+  describe('FPP-62 date picker', () => {
+    it('constrains the RSVP deadline to be on or before the event date', () => {
+      render(<EventForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/event date/i), {
+        target: { value: '2026-08-15T10:00' },
+      });
+      expect(screen.getByLabelText(/rsvp deadline/i)).toHaveAttribute('max', '2026-08-15T10:00');
+    });
+
+    it('constrains the event date to be on or after the RSVP deadline', () => {
+      render(<EventForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/rsvp deadline/i), {
+        target: { value: '2026-08-01T12:00' },
+      });
+      expect(screen.getByLabelText(/event date/i)).toHaveAttribute('min', '2026-08-01T12:00');
+    });
+
+    it('clears the RSVP deadline when moving the event date earlier would violate the window', () => {
+      render(<EventForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/rsvp deadline/i), {
+        target: { value: '2026-08-10T12:00' },
+      });
+      expect(screen.getByLabelText(/rsvp deadline/i)).toHaveValue('2026-08-10T12:00');
+      fireEvent.change(screen.getByLabelText(/event date/i), {
+        target: { value: '2026-08-05T10:00' },
+      });
+      expect(screen.getByLabelText(/rsvp deadline/i)).toHaveValue('');
+    });
+
+    it('keeps the RSVP deadline when the event date stays after it', () => {
+      render(<EventForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/rsvp deadline/i), {
+        target: { value: '2026-08-01T12:00' },
+      });
+      fireEvent.change(screen.getByLabelText(/event date/i), {
+        target: { value: '2026-08-15T10:00' },
+      });
+      expect(screen.getByLabelText(/rsvp deadline/i)).toHaveValue('2026-08-01T12:00');
+    });
+
+    it('surfaces the resolved timezone next to the picker', () => {
+      render(<EventForm mode="create" />);
+      expect(screen.getAllByText(/time zone:/i).length).toBeGreaterThan(0);
+    });
+
+    it('uses a pill input with a 48px minimum tap target', () => {
+      render(<EventForm mode="create" />);
+      const dateInput = screen.getByLabelText(/event date/i);
+      expect(dateInput.className).toContain('rounded-pill');
+      expect(dateInput.className).toContain('min-h-12');
+    });
+  });
+
   describe('registration fee fields (FPP-16)', () => {
     it('renders the fee dollar input and the min-age input', () => {
       render(<EventForm mode="create" />);
