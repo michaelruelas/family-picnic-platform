@@ -11,6 +11,11 @@ const eventFields = {
   rsvpDeadline: z.string().optional(),
   maxCapacity: z.number().int().positive().optional(),
   mapImageUrl: z.string().url().optional().or(z.literal('')),
+  // FPP-60: optional per-event hero image URL. Stored as a public
+  // S3 URL once the admin upload PUT lands; an empty string clears
+  // the field. The public hero falls back to `mapImageUrl` (then a
+  // gradient) when this is unset.
+  featuredImageUrl: z.string().url().optional().or(z.literal('')),
   currency: z.string().optional(),
   // Optional per-attendee fee in cents. Null/0 means registration is free
   // and the Stripe checkout flow is hidden.
@@ -51,6 +56,7 @@ export const eventUpdateSchema = z
     rsvpDeadline: z.string().optional(),
     maxCapacity: z.number().int().positive().optional(),
     mapImageUrl: z.string().url().optional().or(z.literal('')),
+    featuredImageUrl: z.string().url().optional().or(z.literal('')),
     currency: z.string().optional(),
     registrationFeeCents: z.number().int().nonnegative().optional(),
     registrationFeeMinAge: z.number().int().min(0).max(120).optional(),

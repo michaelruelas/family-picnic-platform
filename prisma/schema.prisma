@@ -249,6 +249,12 @@ model Event {
   lng          Float?
   placeId      String?
   mapImageUrl  String?
+  // FPP-60: optional per-event hero image. When set, the public event
+  // page renders it in place of the static map fallback (or default
+  // gradient). Stored as a public URL once the upload PUT lands in
+  // S3. Existing events backfill with NULL so the prior map fallback
+  // keeps rendering until the host sets an image.
+  featuredImageUrl String?
   description  String
   rsvpDeadline DateTime?
   maxCapacity  Int?

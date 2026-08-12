@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { eventCreateSchema, eventUpdateSchema } from '~/lib/schemas';
 import { LocationAutocomplete } from './LocationAutocomplete';
+import FeaturedImageUpload from './FeaturedImageUpload';
 
 interface EventFormData {
   name: string;
@@ -16,6 +17,7 @@ interface EventFormData {
   rsvpDeadline?: string;
   maxCapacity?: number;
   mapImageUrl?: string;
+  featuredImageUrl?: string;
   registrationFeeDollars?: string;
   registrationFeeMinAge?: string;
 }
@@ -60,6 +62,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     rsvpDeadline: initialData?.rsvpDeadline ?? '',
     maxCapacity: initialData?.maxCapacity ?? undefined,
     mapImageUrl: initialData?.mapImageUrl ?? '',
+    featuredImageUrl: initialData?.featuredImageUrl ?? '',
     registrationFeeDollars: initialFeeDollars,
     registrationFeeMinAge: initialMinAge,
   });
@@ -250,6 +253,44 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="https://..."
           />
+          <p className="text-muted-foreground mt-1 text-xs">
+            Fallback hero used when no featured image is set.
+          </p>
+        </div>
+
+        <div className="md:col-span-2">
+          <label
+            htmlFor="featuredImageUrl"
+            className="text-foreground/85 block text-sm font-medium"
+          >
+            Featured Image
+          </label>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Hero photo shown at the top of the event page. Overrides the map when set.
+          </p>
+          <div className="mt-2 space-y-2">
+            <input
+              type="url"
+              id="featuredImageUrl"
+              name="featuredImageUrl"
+              value={formData.featuredImageUrl ?? ''}
+              onChange={handleChange}
+              className="border-border focus:border-terracotta focus:ring-foreground/20 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+              placeholder="https://..."
+            />
+            {mode === 'edit' && initialData?.id && (
+              <FeaturedImageUpload
+                eventId={initialData.id}
+                currentUrl={formData.featuredImageUrl}
+                onUploaded={(url) => setFormData((prev) => ({ ...prev, featuredImageUrl: url }))}
+              />
+            )}
+            {mode === 'create' && (
+              <p className="text-muted-foreground text-xs">
+                Save the event first, then upload an image from the edit page.
+              </p>
+            )}
+          </div>
         </div>
 
         <div>

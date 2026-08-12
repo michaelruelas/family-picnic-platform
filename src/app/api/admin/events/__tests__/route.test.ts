@@ -110,6 +110,59 @@ describe('POST /api/admin/events', () => {
     );
   });
 
+  it('persists featuredImageUrl on create', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
+    prismaMock.event.create.mockResolvedValue({ id: 'e-new' } as never);
+    const res = await POST(
+      makeJsonRequest('http://x', {
+        name: 'Picnic',
+        date: '2026-01-01',
+        location: 'Park',
+        featuredImageUrl: 'https://cdn.example.com/featured.jpg',
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(prismaMock.event.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          featuredImageUrl: 'https://cdn.example.com/featured.jpg',
+        }),
+      }),
+    );
+  });
+
+  it('FPP-60: an empty-string featuredImageUrl collapses to null on create', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
+    prismaMock.event.create.mockResolvedValue({ id: 'e-new' } as never);
+    const res = await POST(
+      makeJsonRequest('http://x', {
+        name: 'Picnic',
+        date: '2026-01-01',
+        location: 'Park',
+        featuredImageUrl: '',
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(prismaMock.event.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ featuredImageUrl: null }),
+      }),
+    );
+  });
+
+  it('FPP-60: rejects a non-URL featuredImageUrl at the trust boundary', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
+    const res = await POST(
+      makeJsonRequest('http://x', {
+        name: 'Picnic',
+        date: '2026-01-01',
+        location: 'Park',
+        featuredImageUrl: 'javascript:alert(1)',
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
   it('returns 500 on error', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.create.mockRejectedValue(new Error('boom'));

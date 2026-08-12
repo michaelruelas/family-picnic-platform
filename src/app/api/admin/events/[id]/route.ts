@@ -4,6 +4,23 @@ import { prisma } from '~/lib/prisma';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+// FPP-60: trust-boundary URL check. `new URL()` accepts `javascript:`
+// and other dangerous schemes, so the helper additionally enforces an
+// http(s) protocol. The Zod schema enforces the same rule via
+// `.string().url()` but is only consulted by the client form.
+function assertHttpUrl(value: string, fieldName: string): NextResponse | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return NextResponse.json({ error: `${fieldName} must be a valid URL` }, { status: 400 });
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return NextResponse.json({ error: `${fieldName} must be an http(s) URL` }, { status: 400 });
+  }
+  return null;
+}
+
 /**
  * FPP-104: GET is intentionally global-admin only. The host
  * surface is the dedicated event-edit page, which already routes
@@ -90,6 +107,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       rsvpDeadline,
       maxCapacity,
       mapImageUrl,
+      featuredImageUrl,
       currency,
       registrationFeeCents,
       registrationFeeMinAge,
@@ -128,6 +146,20 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       );
     }
 
+    // FPP-60: validate URL shape at the trust boundary. The Zod
+    // schema has the same rule but is only consulted by the client
+    // form; the REST surface is reachable directly. Empty string is
+    // a clear request and collapses to null below.
+    if (typeof featuredImageUrl === 'string' && featuredImageUrl !== '') {
+      const err = assertHttpUrl(featuredImageUrl, 'featuredImageUrl');
+      if (err) return err;
+    }
+
+    if (typeof mapImageUrl === 'string' && mapImageUrl !== '') {
+      const err = assertHttpUrl(mapImageUrl, 'mapImageUrl');
+      if (err) return err;
+    }
+
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (date !== undefined) updateData.date = new Date(date);
@@ -140,6 +172,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       updateData.rsvpDeadline = rsvpDeadline ? new Date(rsvpDeadline) : null;
     if (maxCapacity !== undefined) updateData.maxCapacity = maxCapacity || null;
     if (mapImageUrl !== undefined) updateData.mapImageUrl = mapImageUrl || null;
+    if (featuredImageUrl !== undefined) updateData.featuredImageUrl = featuredImageUrl || null;
     if (currency !== undefined) updateData.currency = currency;
     if (registrationFeeCents !== undefined) updateData.registrationFeeCents = registrationFeeCents;
     if (registrationFeeMinAge !== undefined)

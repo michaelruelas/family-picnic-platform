@@ -6,6 +6,23 @@ import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 import { toEventCreateData } from '~/lib/event-data';
 
+// FPP-60: trust-boundary URL check. `new URL()` accepts `javascript:`
+// and other dangerous schemes, so the helper additionally enforces an
+// http(s) protocol. The Zod schema enforces the same rule via
+// `.string().url()` but is only consulted by the client form.
+function assertHttpUrl(value: string, fieldName: string): NextResponse | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return NextResponse.json({ error: `${fieldName} must be a valid URL` }, { status: 400 });
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return NextResponse.json({ error: `${fieldName} must be an http(s) URL` }, { status: 400 });
+  }
+  return null;
+}
+
 export async function GET() {
   const requestId = generateRequestId();
   const auth = await requireAdminApi();
@@ -71,6 +88,7 @@ export async function POST(request: Request) {
           rsvpDeadline,
           maxCapacity,
           mapImageUrl,
+          featuredImageUrl,
           currency,
           registrationFeeCents,
           registrationFeeMinAge,
@@ -111,6 +129,22 @@ export async function POST(request: Request) {
           );
         }
 
+        // FPP-60: validate URL shape at the trust boundary so an
+        // `javascript:` or otherwise malformed payload cannot land
+        // in the column. Empty string is treated as "no image" and
+        // collapses to null below via `toEventCreateData`. The Zod
+        // schema has the same rule but is only consulted by the
+        // client form; the REST surface is reachable directly.
+        if (typeof featuredImageUrl === 'string' && featuredImageUrl !== '') {
+          const err = assertHttpUrl(featuredImageUrl, 'featuredImageUrl');
+          if (err) return err;
+        }
+
+        if (typeof mapImageUrl === 'string' && mapImageUrl !== '') {
+          const err = assertHttpUrl(mapImageUrl, 'mapImageUrl');
+          if (err) return err;
+        }
+
         const event = await prisma.event.create({
           data: {
             ...toEventCreateData({
@@ -124,6 +158,7 @@ export async function POST(request: Request) {
               rsvpDeadline,
               maxCapacity,
               mapImageUrl,
+              featuredImageUrl,
               currency,
               registrationFeeCents,
               registrationFeeMinAge,

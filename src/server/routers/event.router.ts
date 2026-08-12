@@ -21,12 +21,18 @@ export const eventRouter = router({
         rsvpDeadline: z.string().datetime().optional(),
         maxCapacity: z.number().int().positive().optional(),
         mapImageUrl: z.string().optional(),
+        featuredImageUrl: z.string().optional(),
         currency: z.string().optional(),
         registrationFeeCents: z.number().int().nonnegative().optional(),
         registrationFeeMinAge: z.number().int().min(0).max(120).optional(),
       }),
     )
     .mutation(async ({ input }) => {
+      // FPP-60: `toEventCreateData` collapses `""` (and any other
+      // empty URL input) to null via `||`, so an empty string
+      // arrives in the DB as NULL. The update path keeps an
+      // explicit `=== ''` check at this layer because it operates
+      // on the partial-update shape; create does not need one.
       return prisma.event.create({
         data: {
           ...toEventCreateData(input),
@@ -51,6 +57,7 @@ export const eventRouter = router({
       rsvpDeadline: z.string().datetime().optional(),
       maxCapacity: z.number().int().positive().optional(),
       mapImageUrl: z.string().optional(),
+      featuredImageUrl: z.string().optional(),
       currency: z.string().optional(),
       registrationFeeCents: z.number().int().nonnegative().optional(),
       registrationFeeMinAge: z.number().int().min(0).max(120).optional(),
@@ -61,6 +68,11 @@ export const eventRouter = router({
     const updateData: Record<string, unknown> = { ...data };
     if (data.date) updateData.date = new Date(data.date);
     if (data.rsvpDeadline) updateData.rsvpDeadline = new Date(data.rsvpDeadline);
+    // FPP-60: allow clearing the featured image by sending an
+    // empty string through the optional update field.
+    if (data.featuredImageUrl !== undefined && data.featuredImageUrl === '') {
+      updateData.featuredImageUrl = null;
+    }
     return prisma.event.update({
       where: { id },
       data: updateData,

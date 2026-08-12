@@ -192,6 +192,36 @@ describe('eventCreateSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('passes when featuredImageUrl is a valid URL', () => {
+    const result = eventCreateSchema.safeParse({
+      name: 'Annual Picnic',
+      date: '2026-07-15',
+      location: 'Central Park',
+      featuredImageUrl: 'https://cdn.example.com/featured.jpg',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes when featuredImageUrl is an empty string', () => {
+    const result = eventCreateSchema.safeParse({
+      name: 'Annual Picnic',
+      date: '2026-07-15',
+      location: 'Central Park',
+      featuredImageUrl: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('fails when featuredImageUrl is not a URL', () => {
+    const result = eventCreateSchema.safeParse({
+      name: 'Annual Picnic',
+      date: '2026-07-15',
+      location: 'Central Park',
+      featuredImageUrl: 'not-a-url',
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('fails when name is missing', () => {
     const result = eventCreateSchema.safeParse({
       date: '2026-07-15',
@@ -312,6 +342,30 @@ describe('eventUpdateSchema', () => {
       mapImageUrl: '',
     });
     expect(result.success).toBe(true);
+  });
+
+  it('passes when featuredImageUrl is a valid URL', () => {
+    const result = eventUpdateSchema.safeParse({
+      id: 'evt-1',
+      featuredImageUrl: 'https://cdn.example.com/featured.jpg',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('allows empty string featuredImageUrl to clear the field', () => {
+    const result = eventUpdateSchema.safeParse({
+      id: 'evt-1',
+      featuredImageUrl: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('fails when featuredImageUrl is not a URL', () => {
+    const result = eventUpdateSchema.safeParse({
+      id: 'evt-1',
+      featuredImageUrl: 'not-a-url',
+    });
+    expect(result.success).toBe(false);
   });
 });
 

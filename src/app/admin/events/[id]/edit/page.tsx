@@ -69,6 +69,9 @@ export default async function EditEventPage({ params }: PageProps) {
     rsvpDeadline: event.rsvpDeadline?.toISOString().slice(0, 16) ?? '',
     maxCapacity: event.maxCapacity ?? undefined,
     mapImageUrl: event.mapImageUrl ?? '',
+    // FPP-60: pre-fill the featured image so the host can see/replace
+    // the currently-set hero in edit mode.
+    featuredImageUrl: event.featuredImageUrl ?? '',
     registrationFeeCents: event.registrationFeeCents ?? 0,
     registrationFeeMinAge: event.registrationFeeMinAge ?? 0,
   };
