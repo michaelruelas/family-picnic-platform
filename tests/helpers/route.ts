@@ -21,6 +21,24 @@ export function nextResponseJson() {
 }
 
 /**
+ * Returns a polyfilled `NextResponse.redirect` that emits a 302
+ * Response with the supplied `Location` header. Tests that exercise
+ * a redirect (e.g. `/api/public/event-attachments/[id]/download`)
+ * need this in their `next/server` mock so the polyfilled
+ * `NextResponse.json` does not erase the redirect.
+ */
+export function nextResponseRedirect() {
+  return (url: string | URL, init?: ResponseInit) =>
+    new Response(null, {
+      status: init?.status ?? 302,
+      headers: {
+        location: typeof url === 'string' ? url : url.toString(),
+        ...(init?.headers as Record<string, string>),
+      },
+    });
+}
+
+/**
  * Resets all mocks in a hoisted prisma mock. Use in beforeEach:
  *   beforeEach(() => resetPrismaMock(prismaMock));
  */

@@ -79,6 +79,26 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
           },
         },
       },
+      // FPP-43 / FPP-1: PDF attachments surfaced on the public page.
+      // Filters out rows a future scan worker has flagged as
+      // INFECTED so guests do not see a link they cannot download,
+      // and rows whose parent event is not yet PUBLISHED so we
+      // never expose filenames before launch. The download endpoint
+      // (`/api/public/event-attachments/[id]/download`) re-checks
+      // both gates — this filter is belt-and-braces to keep the
+      // list itself off draft event pages.
+      attachments: {
+        where: {
+          virusScanStatus: { not: 'INFECTED' },
+          event: { status: 'PUBLISHED' },
+        },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          filename: true,
+          sizeBytes: true,
+        },
+      },
       // FPP-45 / QUB-31.3: itinerary rows for the public Itinerary
       // tab. Sorted by `order` ascending — the admin editor stores
       // the stable display order, the public page reads it as-is.
@@ -313,6 +333,14 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
               // itself in that case so we don't render an empty
               // section.
               hosts={hosts}
+              // FPP-43 / FPP-1: surface the host's PDF attachments.
+              // EventHeaderSection renders nothing when the list is
+              // empty so draft events stay quiet.
+              attachments={event.attachments.map((a) => ({
+                id: a.id,
+                filename: a.filename,
+                sizeBytes: a.sizeBytes,
+              }))}
             />
           }
           itineraryItems={event.itineraryItems.map((item) => ({

@@ -20,6 +20,13 @@ const RECIPIENT_GROUP_WINDOW_MS = 30 * 60 * 1000;
 const RECIPIENTS_PER_DAY = 2;
 const RECIPIENT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+// FPP-43 / FPP-1: public PDF download limit. Per-IP sliding window.
+// 10 requests / minute is generous enough for a guest browsing the
+// page and clicking the link a few times, and tight enough to stop
+// scraping.
+export const PDF_DOWNLOADS_PER_MINUTE = 10;
+export const PDF_DOWNLOAD_WINDOW_MS = 60 * 1000;
+
 export async function checkAdminBroadcastRateLimit(adminUserId: string): Promise<RateLimitResult> {
   const oneHourAgo = new Date(Date.now() - BROADCAST_WINDOW_MS);
 
@@ -177,4 +184,66 @@ export function rateLimitError(result: RateLimitResult, type: string): never {
       retryAfterMs: result.retryAfterMs,
     },
   });
+}
+
+/**
+ * FPP-43 / FPP-1: in-memory sliding-window rate limit keyed by an
+ * opaque bucket id (we use the resolved client IP). In-memory is
+ * sufficient for a single-process Next.js deployment; for
+ * multi-instance deployments the limit becomes per-instance which
+ * is still better than no limit.
+ *
+ * The bucket map is module-scoped so a single test run does not
+ * leak counters between cases; tests can call
+ * `resetInMemoryRateLimits()` (exported below) in beforeEach.
+ *
+ * Returns a `RateLimitResult` so callers can surface the
+ * `Retry-After` header in the same shape as the Prisma-backed
+ * helpers.
+ */
+interface Bucket {
+  timestamps: number[];
+}
+const ipBuckets = new Map<string, Bucket>();
+
+export function resetInMemoryRateLimits(): void {
+  ipBuckets.clear();
+}
+
+export function checkInMemoryIpRateLimit(
+  bucketKey: string | null,
+  maxRequests: number = PDF_DOWNLOADS_PER_MINUTE,
+  windowMs: number = PDF_DOWNLOAD_WINDOW_MS,
+  now: number = Date.now(),
+): RateLimitResult {
+  // Null bucket (no IP resolvable) collapses to a global bucket so
+  // we still rate-limit, just less precisely. Without this, callers
+  // in dev (no trusted proxy) would bypass the limit entirely.
+  const key = bucketKey ?? '__anonymous__';
+
+  const bucket = ipBuckets.get(key) ?? { timestamps: [] };
+  // Drop timestamps outside the window.
+  const cutoff = now - windowMs;
+  bucket.timestamps = bucket.timestamps.filter((t) => t > cutoff);
+
+  if (bucket.timestamps.length >= maxRequests) {
+    const oldest = bucket.timestamps[0]!;
+    const resetAt = new Date(oldest + windowMs);
+    ipBuckets.set(key, bucket);
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt,
+      retryAfterMs: Math.max(0, resetAt.getTime() - now),
+    };
+  }
+
+  bucket.timestamps.push(now);
+  ipBuckets.set(key, bucket);
+  const resetAt = new Date(now + windowMs);
+  return {
+    allowed: true,
+    remaining: Math.max(0, maxRequests - bucket.timestamps.length),
+    resetAt,
+  };
 }

@@ -7,6 +7,8 @@ vi.mock('@aws-sdk/client-s3', () => {
       send = mockSend;
     },
     PutObjectCommand: vi.fn(),
+    GetObjectCommand: vi.fn(),
+    DeleteObjectCommand: vi.fn(),
   };
 });
 
@@ -132,5 +134,78 @@ describe('isS3Configured', () => {
     vi.stubEnv('S3_BUCKET_NAME', '');
     const { isS3Configured } = await import('../s3');
     expect(isS3Configured()).toBe(false);
+  });
+});
+
+// FPP-43: PDF attachment helpers reuse the same S3 client, with a
+// dedicated `attachments/` prefix and short-lived download URLs so a
+// leaked link can't be reused for long.
+describe('generateAttachmentS3Key', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-06-15T12:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('places attachments under events/{eventId}/attachments/{userId}/', async () => {
+    const { generateAttachmentS3Key } = await import('../s3');
+    const key = generateAttachmentS3Key('event-123', 'user-456', 'directions.pdf');
+    expect(key).toMatch(/^events\/event-123\/attachments\/user-456\//);
+  });
+
+  it('does not collide with the photo prefix', async () => {
+    const { generateAttachmentS3Key, generateS3Key } = await import('../s3');
+    const photo = generateS3Key('e1', 'u1', 'a.pdf');
+    const attachment = generateAttachmentS3Key('e1', 'u1', 'a.pdf');
+    expect(photo).toContain('/uploads/');
+    expect(attachment).toContain('/attachments/');
+  });
+});
+
+describe('generateAttachmentPresignedUploadUrl', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-06-15T12:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns uploadUrl/key/expiresAt and uses the attachments prefix', async () => {
+    const { generateAttachmentPresignedUploadUrl } = await import('../s3');
+    const result = await generateAttachmentPresignedUploadUrl({
+      eventId: 'e-1',
+      userId: 'u-1',
+      filename: 'waiver.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 1234,
+    });
+    expect(result.uploadUrl).toMatch(/^https:/);
+    expect(result.key).toMatch(/^events\/e-1\/attachments\/u-1\//);
+    expect(result.expiresAt).toBeInstanceOf(Date);
+    expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+});
+
+describe('generatePresignedDownloadUrl', () => {
+  it('returns the URL produced by the presigner', async () => {
+    const { generatePresignedDownloadUrl } = await import('../s3');
+    const url = await generatePresignedDownloadUrl('events/e-1/attachments/u-1/x.pdf');
+    expect(url).toBe('https://presigned-url.example.com/upload');
+  });
+});
+
+describe('deleteS3Object', () => {
+  it('sends a DeleteObjectCommand for the given key', async () => {
+    const { deleteS3Object } = await import('../s3');
+    const { S3Client } = await import('@aws-sdk/client-s3');
+    const send = vi.mocked(new S3Client({}).send);
+    send.mockResolvedValue({} as never);
+    await deleteS3Object('events/e-1/attachments/u-1/x.pdf');
+    expect(send).toHaveBeenCalled();
   });
 });
