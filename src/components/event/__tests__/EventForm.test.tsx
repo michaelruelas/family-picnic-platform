@@ -264,4 +264,80 @@ describe('EventForm', () => {
       });
     });
   });
+
+  describe('FPP-60 featured image field', () => {
+    it('renders the featured image URL input in create mode', () => {
+      render(<EventForm mode="create" />);
+      expect(screen.getByLabelText(/featured image/i)).toBeInTheDocument();
+    });
+
+    it('shows the create-mode hint instead of the upload widget', () => {
+      render(<EventForm mode="create" />);
+      expect(screen.getByText(/save the event first/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /upload image/i })).not.toBeInTheDocument();
+    });
+
+    it('pre-fills the featured image URL in edit mode', () => {
+      const initialData = {
+        id: 'e-1',
+        name: 'Annual Picnic',
+        date: '2026-08-15T10:00',
+        location: 'Central Park',
+        lat: null,
+        lng: null,
+        placeId: null,
+        description: 'Family fun',
+        rsvpDeadline: '',
+        maxCapacity: undefined,
+        mapImageUrl: '',
+        featuredImageUrl: 'https://cdn.example.com/hero.jpg',
+      };
+      render(<EventForm mode="edit" initialData={initialData} />);
+      expect(screen.getByLabelText(/featured image/i)).toHaveValue(
+        'https://cdn.example.com/hero.jpg',
+      );
+    });
+
+    it('renders the upload widget in edit mode', () => {
+      const initialData = {
+        id: 'e-1',
+        name: 'Annual Picnic',
+        date: '2026-08-15T10:00',
+        location: 'Central Park',
+        lat: null,
+        lng: null,
+        placeId: null,
+        description: '',
+        featuredImageUrl: '',
+      };
+      render(<EventForm mode="edit" initialData={initialData} />);
+      expect(screen.getByRole('button', { name: /upload image/i })).toBeInTheDocument();
+    });
+
+    it('sends featuredImageUrl in the create payload when set', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'e-new' }),
+      } as never);
+      render(<EventForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/event name/i), { target: { value: 'New' } });
+      fireEvent.change(screen.getByLabelText(/event date/i), {
+        target: { value: '2026-08-15T10:00' },
+      });
+      fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
+      fireEvent.change(screen.getByLabelText(/featured image/i), {
+        target: { value: 'https://cdn.example.com/hero.jpg' },
+      });
+      const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
+      fireEvent.submit(form);
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/admin/events',
+          expect.objectContaining({
+            body: expect.stringContaining('"featuredImageUrl":"https://cdn.example.com/hero.jpg"'),
+          }),
+        );
+      });
+    });
+  });
 });

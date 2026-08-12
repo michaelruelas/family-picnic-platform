@@ -5,6 +5,7 @@ import { EventStatus } from '~/lib/generated/enums';
 import { generateRequestId, createRequestLogger } from '~/lib/logger';
 import { createTraceContext, runWithTraceContext } from '~/lib/tracing';
 import { toEventCreateData } from '~/lib/event-data';
+import { validateHttpUrlFields } from '~/lib/url-validation';
 
 export async function GET() {
   const requestId = generateRequestId();
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
           rsvpDeadline,
           maxCapacity,
           mapImageUrl,
+          featuredImageUrl,
           currency,
           registrationFeeCents,
           registrationFeeMinAge,
@@ -111,6 +113,15 @@ export async function POST(request: Request) {
           );
         }
 
+        // FPP-60: validate URL fields at the trust boundary so an
+        // `javascript:` or otherwise malformed payload cannot land
+        // in the column. Empty strings are treated as "no value"
+        // and collapse to null below via `toEventCreateData`. The
+        // Zod schema has the same rule but is only consulted by the
+        // client form; the REST surface is reachable directly.
+        const urlErr = validateHttpUrlFields(body, ['featuredImageUrl', 'mapImageUrl']);
+        if (urlErr) return urlErr;
+
         const event = await prisma.event.create({
           data: {
             ...toEventCreateData({
@@ -124,6 +135,7 @@ export async function POST(request: Request) {
               rsvpDeadline,
               maxCapacity,
               mapImageUrl,
+              featuredImageUrl,
               currency,
               registrationFeeCents,
               registrationFeeMinAge,
