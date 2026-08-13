@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import TimePicker from '~/components/ui/TimePicker';
 import { formatItineraryTime } from '~/lib/itinerary-time';
 
 // FPP-45 / QUB-31.2: admin-side itinerary item editor with
@@ -431,16 +432,12 @@ function ItineraryItemForm({ mode, initial, onSubmit, onCancel }: ItineraryItemF
 
       <div className="grid gap-3 md:grid-cols-2">
         <div>
-          <label htmlFor="item-time" className="text-foreground/85 block text-sm font-medium">
-            Time <span className="text-muted-foreground text-xs font-normal">(optional)</span>
-          </label>
-          <input
-            type="time"
-            id="item-time"
+          <TimePicker
+            label="Time"
             name="time"
             value={form.time}
-            onChange={handleChange}
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            onChange={(value) => setForm((prev) => ({ ...prev, time: value }))}
+            hint="Optional. Times stay in the event's local clock."
           />
         </div>
 

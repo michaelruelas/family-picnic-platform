@@ -254,4 +254,23 @@ describe('ItineraryEditor', () => {
     });
     resolveReorder({ ok: true, json: () => Promise.resolve({ success: true }) });
   });
+
+  describe('FPP-62 time picker', () => {
+    it('uses a pill input with a 48px minimum tap target in the add form', () => {
+      render(<ItineraryEditor eventId="e-1" initialItems={[]} />);
+      fireEvent.click(screen.getByText('Add First Item'));
+      const timeInput = screen.getByLabelText(/time/i);
+      expect(timeInput.tagName).toBe('INPUT');
+      expect(timeInput).toHaveAttribute('type', 'time');
+      expect(timeInput.className).toContain('rounded-pill');
+      expect(timeInput.className).toContain('min-h-12');
+    });
+
+    it('renders the time picker as optional (no required attribute)', () => {
+      render(<ItineraryEditor eventId="e-1" initialItems={[]} />);
+      fireEvent.click(screen.getByText('Add First Item'));
+      const timeInput = screen.getByLabelText(/time/i);
+      expect(timeInput).not.toBeRequired();
+    });
+  });
 });

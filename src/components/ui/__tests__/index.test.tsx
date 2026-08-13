@@ -17,6 +17,14 @@ describe('UI index exports', () => {
     expect(ui.Select).toBeDefined();
   });
 
+  it('exports DateTimePicker', () => {
+    expect(ui.DateTimePicker).toBeDefined();
+  });
+
+  it('exports TimePicker', () => {
+    expect(ui.TimePicker).toBeDefined();
+  });
+
   it('exports Card', () => {
     expect(ui.Card).toBeDefined();
   });
