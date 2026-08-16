@@ -209,20 +209,15 @@ export const authOptions: NextAuthOptions = {
       // re-query here because NextAuth's profile is read-only and we
       // cannot stash the user id on it.
       if (account?.provider && isOAuthProvider(account.provider)) {
-        // If the user is already signed in, this OAuth callback is a
-        // "link" flow (FPP-31). Preserve the existing token.sub so the
-        // session is not replaced by whatever findOrCreateUserByIdentity
-        // would resolve to. The LinkedIdentity row was already created
-        // (or rejected) by the signIn callback.
-        if (token.sub) {
-          return token;
-        }
         const provider = account.provider as OAuthProvider;
-        const providerAccountId = extractProviderAccountId(provider, profile);
+        const providerAccountId =
+          extractProviderAccountId(provider, profile) ??
+          (typeof account.providerAccountId === 'string' ? account.providerAccountId : null);
         if (!providerAccountId) {
           return token;
         }
-        const email = extractEmail(profile);
+        const email =
+          extractEmail(profile) ?? (typeof user?.email === 'string' ? user.email : null);
         const userId = await resolveIdentityToUserId(provider, providerAccountId, email);
         if (userId) {
           token.sub = userId;

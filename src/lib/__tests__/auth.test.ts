@@ -96,10 +96,81 @@ describe('authOptions configuration', () => {
     expect(authOptions.pages?.signIn).toBe('/login');
   });
 
-  it('has session and signIn callbacks defined', async () => {
+  it('has session, jwt, and signIn callbacks defined', async () => {
     const { authOptions } = await import('../auth');
     expect(typeof authOptions.callbacks?.session).toBe('function');
+    expect(typeof authOptions.callbacks?.jwt).toBe('function');
     expect(typeof authOptions.callbacks?.signIn).toBe('function');
+  });
+});
+
+describe('authOptions jwt callback', () => {
+  it('resolves google OAuth login to internal user id even when token.sub has provider sub', async () => {
+    const { prisma } = await import('~/lib/prisma');
+    vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue({
+      id: 'ident-123',
+      userId: 'user-cuid-999',
+      provider: 'google',
+      providerAccountId: 'google-sub-12345',
+      user: {
+        id: 'user-cuid-999',
+        email: 'user@gmail.com',
+        name: 'Google User',
+        role: 'SUPER_ADMIN',
+        deletedAt: null,
+      },
+    } as any);
+
+    const { authOptions } = await import('../auth');
+    const jwtCallback = authOptions.callbacks!.jwt as unknown as (
+      params: Record<string, unknown>,
+    ) => Promise<Record<string, unknown>>;
+
+    // NextAuth pre-populates token.sub with the provider user id on initial OAuth callback
+    const initialToken = {
+      name: 'Google User',
+      email: 'user@gmail.com',
+      sub: 'google-sub-12345',
+    };
+    const account = { provider: 'google', providerAccountId: 'google-sub-12345' };
+    const profile = { sub: 'google-sub-12345', email: 'user@gmail.com', name: 'Google User' };
+
+    const result = await jwtCallback({
+      token: initialToken,
+      account,
+      profile,
+      user: { id: 'google-sub-12345' },
+    });
+
+    expect(result.sub).toBe('user-cuid-999');
+  });
+
+  it('maps dev-credentials login user.id directly to token.sub', async () => {
+    const { authOptions } = await import('../auth');
+    const jwtCallback = authOptions.callbacks!.jwt as unknown as (
+      params: Record<string, unknown>,
+    ) => Promise<Record<string, unknown>>;
+
+    const result = await jwtCallback({
+      token: {},
+      account: { provider: 'dev-credentials' },
+      user: { id: 'dev-user-123' },
+    });
+
+    expect(result.sub).toBe('dev-user-123');
+  });
+
+  it('preserves existing token.sub on subsequent token reads (when account is undefined)', async () => {
+    const { authOptions } = await import('../auth');
+    const jwtCallback = authOptions.callbacks!.jwt as unknown as (
+      params: Record<string, unknown>,
+    ) => Promise<Record<string, unknown>>;
+
+    const result = await jwtCallback({
+      token: { sub: 'user-cuid-999', name: 'Existing User' },
+    });
+
+    expect(result.sub).toBe('user-cuid-999');
   });
 });
 
