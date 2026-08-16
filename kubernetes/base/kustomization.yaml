@@ -13,3 +13,4 @@ resources:
   - photoprism.yaml
   - configmap.yaml
   - ingressroute.yaml
+  - ingress.yaml

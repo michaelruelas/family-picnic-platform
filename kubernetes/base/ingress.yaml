@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nextjs
+  labels:
+    app.kubernetes.io/name: nextjs
+spec:
+  ingressClassName: cloudflare-tunnel
+  rules:
+    - host: family-picnic.dev.qubitquilt.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nextjs
+                port:
+                  number: 80
+    - host: foliapicnic.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nextjs
+                port:
+                  number: 80
