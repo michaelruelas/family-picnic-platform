@@ -22,10 +22,8 @@ export const metadata: Metadata = {
   title: 'Family Picnic — A Place for Our People',
   description:
     'A private family engagement hub for our annual picnic — RSVP, potluck coordination, photo sharing, and family communication.',
-  manifest: '/manifest.webmanifest',
-  icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/icon-512.png',
+  appleWebApp: {
+    title: 'Folia Picnic',
   },
 };
 

@@ -1,5 +1,10 @@
 const CACHE_NAME = 'family-picnic-v1';
-const STATIC_ASSETS = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
+const STATIC_ASSETS = [
+  '/',
+  '/manifest.json',
+  '/web-app-manifest-192x192.png',
+  '/web-app-manifest-512x512.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
