@@ -94,26 +94,6 @@ const NAV_ITEMS: NavItem[] = [
     matchPrefixes: ['/admin/events/past'],
   },
   {
-    href: '/admin/invitations',
-    label: 'Invitations',
-    description: 'Send and track invitations',
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={1.6}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M3 8l9 6 9-6m-18 0v8a2 2 0 002 2h14a2 2 0 002-2V8m-18 0V6a2 2 0 012-2h14a2 2 0 012 2v2"
-        />
-      </svg>
-    ),
-  },
-  {
     href: '/admin/communications',
     label: 'Communications',
     description: 'Broadcasts and SMS',

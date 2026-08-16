@@ -14,6 +14,7 @@ const PUBLIC_NAV_PATTERNS: readonly RegExp[] = [
   /^\/events\/calendar$/,
   /^\/events\/invitation\/[^/]+$/,
   /^\/events\/[^/]+$/,
+  /^\/events\/[^/]+\/rsvp$/,
   /^\/events\/[^/]+\/potluck$/,
   /^\/events\/[^/]+\/photos$/,
 ];

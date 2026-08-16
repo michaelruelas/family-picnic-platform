@@ -56,6 +56,11 @@ interface AttendanceDraft {
    * because there is no row to write back to.
    */
   originalMemberName: string | null;
+  /**
+   * When true, this new member will be persisted to the HouseholdMember
+   * table so they are retained for future event RSVPs.
+   */
+  saveToHousehold?: boolean;
 }
 
 const ATTENDANCE_OPTIONS: RsvpAttending[] = [
@@ -75,6 +80,7 @@ function defaultAttendanceForNewMember(
     memberAge: age,
     attending: RsvpAttending.YES,
     originalMemberName: name,
+    saveToHousehold: true,
   };
 }
 
@@ -86,6 +92,7 @@ function buildInitialDrafts(
     memberAgeSnapshot: number | null;
     attending: RsvpAttending;
   }>,
+  userName?: string | null,
 ): AttendanceDraft[] {
   const existing = new Map<string, AttendanceDraft>();
   for (const att of attendances) {
@@ -97,6 +104,7 @@ function buildInitialDrafts(
       memberAge: att.memberAgeSnapshot,
       attending: att.attending,
       originalMemberName: att.householdMemberId ? att.memberNameSnapshot : null,
+      saveToHousehold: Boolean(att.householdMemberId),
     });
   }
 
@@ -112,6 +120,7 @@ function buildInitialDrafts(
         // household member name is not silently overwritten. The
         // submit handler compares against this baseline.
         originalMemberName: prior.originalMemberName ?? m.name,
+        saveToHousehold: true,
       };
     }
     return defaultAttendanceForNewMember(m.id, m.name, m.age);
@@ -126,6 +135,20 @@ function buildInitialDrafts(
       next.push(draft);
     }
   }
+
+  // If no members exist yet, seed with the current user's name so they
+  // immediately appear in the attendance list.
+  if (next.length === 0 && userName && userName.trim()) {
+    next.push({
+      householdMemberId: null,
+      memberName: userName.trim(),
+      memberAge: null,
+      attending: RsvpAttending.YES,
+      originalMemberName: null,
+      saveToHousehold: true,
+    });
+  }
+
   return next;
 }
 
@@ -154,7 +177,7 @@ export function RsvpBottomSheet({
   } = useRsvpFormState(isOpen ? eventId : null);
 
   const [drafts, setDrafts] = useState<AttendanceDraft[]>([]);
-  const [newMember, setNewMember] = useState({ name: '', age: '' });
+  const [newMember, setNewMember] = useState({ name: '', age: '', saveToHousehold: true });
   const [showAddMember, setShowAddMember] = useState(false);
   // FPP-34: optional phone + comms consent. The phone is a free-form
   // E.164 string the user types; the consent checkbox gates saving a
@@ -176,12 +199,7 @@ export function RsvpBottomSheet({
   const [activeTab, setActiveTab] = useState<Tab>('attendance');
   const [showSuccess, setShowSuccess] = useState(false);
   const searchParams = useSearchParams();
-  // FPP-80: household name is editable from the RSVP form. The
-  // sheet seeds the input from the server snapshot and only
-  // commits a rename to `household.update` when the trimmed value
-  // differs from the stored one. When the caller has no household
-  // (formState.householdName is null) the input is hidden because
-  // there is nothing to rename.
+  // Household name is editable from the RSVP form.
   const [householdName, setHouseholdName] = useState('');
   // Tracks whether the user has begun editing. We only seed from
   // the server snapshot when the form is empty, so a refetch that
@@ -192,13 +210,10 @@ export function RsvpBottomSheet({
   useEffect(() => {
     if (!isOpen) {
       // Reset everything on close so a fresh open does not inherit
-      // a stale snapshot from a previous event. This is the
-      // intended use of setState in an effect: a state transition
-      // triggered by a prop change, not a render-time cascading
-      // update.
+      // a stale snapshot from a previous event.
       /* eslint-disable react-hooks/set-state-in-effect */
       setDrafts([]);
-      setNewMember({ name: '', age: '' });
+      setNewMember({ name: '', age: '', saveToHousehold: true });
       setShowAddMember(false);
       setPhone('');
       setSmsConsent(false);
@@ -213,11 +228,7 @@ export function RsvpBottomSheet({
   }, [isOpen]);
 
   // FPP-21: honor the ?rsvpOpen=1#dishes deep link from the
-  // per-event potluck page. We only consult the search params on
-  // mount so the user's manual tab picks are not overridden on
-  // every render. The hash anchor (#dishes) is read from
-  // window.location because Next.js does not expose it on the
-  // router's search params.
+  // per-event potluck page.
   useEffect(() => {
     if (!isOpen) return;
     const rsvpOpen = searchParams?.get('rsvpOpen') === '1';
@@ -231,22 +242,21 @@ export function RsvpBottomSheet({
   }, [isOpen]);
 
   // Seed drafts from the server snapshot only on the first load.
-  // Subsequent refetches (which the confirm/decline mutations
-  // trigger) must not clobber edits the user has made in between.
   useEffect(() => {
     if (!isOpen || hydrated) return;
     if (!formState) return;
-    // setState in effect: we are hydrating local form state from a
-    // server snapshot that arrived after the form opened. The
-    // hydration is gated on `hydrated` so it never runs twice.
     /* eslint-disable react-hooks/set-state-in-effect */
-    setDrafts(buildInitialDrafts(formState.members, formState.rsvp?.memberAttendances ?? []));
-    setHouseholdName(formState.householdName ?? '');
-    // FPP-34: hydrate the optional phone + consent from the server
-    // snapshot. The phone string is whatever the user has saved;
-    // consent is the boolean gate. Opening the contact section on
-    // hydrate would be presumptuous — we let the user opt in by
-    // clicking the "+ Add SMS updates" toggle when they want it.
+    setDrafts(
+      buildInitialDrafts(
+        formState.members,
+        formState.rsvp?.memberAttendances ?? [],
+        formState.userName,
+      ),
+    );
+    setHouseholdName(
+      formState.householdName ||
+        (formState.userName ? `${formState.userName}'s Household` : 'My Household'),
+    );
     setPhone(formState.phoneNumber ?? '');
     setSmsConsent(Boolean(formState.smsConsent));
     setShowContact(Boolean(formState.phoneNumber));
@@ -336,27 +346,17 @@ export function RsvpBottomSheet({
       setSubmitError(nameParsed.error.issues[0]?.message ?? 'Name is required');
       return;
     }
-    if (newMember.age.trim() === '') {
-      setSubmitError(null);
-      setDrafts((current) => [
-        ...current,
-        {
-          householdMemberId: null,
-          memberName: nameParsed.data,
-          memberAge: null,
-          attending: RsvpAttending.YES,
-          originalMemberName: null,
-        },
-      ]);
-      setNewMember({ name: '', age: '' });
-      setShowAddMember(false);
-      return;
+    const ageTrimmed = newMember.age.trim();
+    let ageValue: number | null = null;
+    if (ageTrimmed !== '') {
+      const num = Number(ageTrimmed);
+      if (Number.isNaN(num) || num < 0 || num > 120) {
+        setSubmitError('Age must be between 0 and 120.');
+        return;
+      }
+      ageValue = num;
     }
-    const ageValue = Number(newMember.age);
-    if (Number.isNaN(ageValue) || ageValue < 0 || ageValue > 120) {
-      setSubmitError('Age must be between 0 and 120.');
-      return;
-    }
+
     setSubmitError(null);
     setDrafts((current) => [
       ...current,
@@ -366,9 +366,10 @@ export function RsvpBottomSheet({
         memberAge: ageValue,
         attending: RsvpAttending.YES,
         originalMemberName: null,
+        saveToHousehold: newMember.saveToHousehold,
       },
     ]);
-    setNewMember({ name: '', age: '' });
+    setNewMember({ name: '', age: '', saveToHousehold: true });
     setShowAddMember(false);
   };
 
@@ -406,31 +407,18 @@ export function RsvpBottomSheet({
   const handleConfirm = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
-    // FPP-36 BoopPr finding F1: when the rename loop fails midway,
-    // earlier rows have already been persisted. Track them at the
-    // function scope so the catch block can surface what was
-    // renamed before the error. Each rename is recorded as an
-    // `from → to` pair so the summary stays disambiguated when
-    // two renames land on the same value (e.g. Alice → Alicia and
-    // Bob → Alicia both rename to "Alicia"). Reset on every
-    // confirm so a previous failure does not leak into a later
-    // successful submit.
     const renames: Array<{ from: string; to: string }> = [];
     const renameSummary = () => {
       if (renames.length === 0) return '';
       const list = renames.map((r) => `${r.from} → ${r.to}`).join(', ');
       return `Renamed ${renames.length} member${renames.length === 1 ? '' : 's'} (${list}) before the error. `;
     };
-    // The form is rendered behind a `if (!formState) return` gate,
-    // so `formState` is always non-null here. Narrow it once at
-    // the top so the rest of the function can use `formState`
-    // without an alias.
     if (!formState) {
       setIsSubmitting(false);
       return;
     }
     if (drafts.length === 0) {
-      setSubmitError('Add at least one household member before confirming.');
+      setSubmitError('Add at least one person before confirming.');
       setIsSubmitting(false);
       return;
     }
@@ -447,57 +435,79 @@ export function RsvpBottomSheet({
       return;
     }
     try {
-      // FPP-34: validate + persist the optional phone + consent
-      // before any RSVP write. Returns false on validation failure;
-      // the helper has already set the error message.
       if (!(await persistContactIfChanged())) {
         return;
       }
-      // FPP-80: when the caller belongs to a household, save any
-      // rename through `household.update` before the RSVP goes
-      // through. We use the same household-name Zod schema that the
-      // profile path uses so the empty-name rejection message is
-      // identical ("Household name is required"). Skipping the call
-      // when the value is unchanged avoids a needless round-trip.
-      if (formState.householdName !== null) {
-        const trimmed = householdName.trim();
-        const parsed = householdNameSchema.safeParse(trimmed);
-        if (!parsed.success) {
-          setSubmitError(parsed.error.issues[0]?.message ?? 'Household name is required');
-          setIsSubmitting(false);
-          return;
+
+      let effectiveHouseholdId = formState.householdId;
+      const trimmedHName = householdName.trim();
+
+      const parsedHName = householdNameSchema.safeParse(trimmedHName);
+      if (!parsedHName.success) {
+        setSubmitError(parsedHName.error.issues[0]?.message ?? 'Household name is required');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // If user does not have a household in DB, create one
+      if (!effectiveHouseholdId) {
+        const createHRes = await fetch('/api/onboarding/household', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: parsedHName.data }),
+        });
+        if (!createHRes.ok) {
+          const errData = (await createHRes.json().catch(() => ({}))) as { error?: string };
+          throw new Error(errData.error || 'Could not create household');
         }
-        if (parsed.data !== formState.householdName) {
-          await updateName.mutateAsync({
-            id: formState.householdId,
-            name: parsed.data,
+        const createHData = (await createHRes.json()) as { householdId: string };
+        effectiveHouseholdId = createHData.householdId;
+      } else if (formState.householdName !== null && parsedHName.data !== formState.householdName) {
+        await updateName.mutateAsync({
+          id: effectiveHouseholdId,
+          name: parsedHName.data,
+        });
+      }
+
+      // Save any new members to household if saveToHousehold is selected
+      const finalDrafts = [...drafts];
+      for (let i = 0; i < finalDrafts.length; i++) {
+        const draft = finalDrafts[i]!;
+        if (!draft.householdMemberId && draft.saveToHousehold && effectiveHouseholdId) {
+          const addMemRes = await fetch('/api/household-members', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              householdId: effectiveHouseholdId,
+              name: draft.memberName.trim(),
+              age: draft.memberAge,
+            }),
+          });
+          if (addMemRes.ok) {
+            const memberData = (await addMemRes.json()) as { id: string };
+            finalDrafts[i] = {
+              ...draft,
+              householdMemberId: memberData.id,
+              originalMemberName: draft.memberName.trim(),
+            };
+          }
+        } else if (draft.householdMemberId) {
+          if (draft.memberName === draft.originalMemberName) continue;
+          await updateMemberName.mutateAsync({
+            id: draft.householdMemberId,
+            name: draft.memberName,
+          });
+          renames.push({
+            from: draft.originalMemberName ?? draft.memberName,
+            to: draft.memberName,
           });
         }
       }
-      // FPP-36: persist renames to underlying household members
-      // before the confirm so the snapshot the server writes
-      // matches the live row. Each rename is independent: a
-      // failure on member N leaves the earlier rows persisted.
-      // We track the successes (see `renames` at the top of
-      // `handleConfirm`) so the failure message can tell the user
-      // exactly which rows made it through. Ad-hoc guests (id =
-      // null) skip this step.
-      const trimmedDrafts = drafts.map((d) => ({
+
+      const trimmedDrafts = finalDrafts.map((d) => ({
         ...d,
         memberName: attendeeNameSchema.parse(d.memberName),
       }));
-      for (const draft of trimmedDrafts) {
-        if (!draft.householdMemberId) continue;
-        if (draft.memberName === draft.originalMemberName) continue;
-        await updateMemberName.mutateAsync({
-          id: draft.householdMemberId,
-          name: draft.memberName,
-        });
-        renames.push({
-          from: draft.originalMemberName ?? draft.memberName,
-          to: draft.memberName,
-        });
-      }
       const result = await confirm.mutateAsync({
         eventId,
         memberAttendances: trimmedDrafts.map((d) => ({
@@ -510,9 +520,6 @@ export function RsvpBottomSheet({
       if (onConfirmed) {
         onConfirmed(result.id);
       }
-      // FPP-21: stay on the sheet and switch to the Dishes tab so
-      // the user can immediately claim a dish. The success banner
-      // confirms the RSVP without forcing a redirect.
       setShowSuccess(true);
       setActiveTab('dishes');
     } catch (err) {
@@ -547,6 +554,8 @@ export function RsvpBottomSheet({
       setIsSubmitting(false);
     }
   };
+
+  if (!isOpen) return null;
 
   // Show a retryable error state when the roster fetch fails.
   if (fetchError) {
@@ -691,41 +700,32 @@ export function RsvpBottomSheet({
             </p>
           </div>
 
-          {/*
-            FPP-80: household name input at the top of the form.
-            Hidden when the caller has no household (formState.householdName
-            is null) because there is nothing to rename. Saved on
-            submit via the same `household.update` procedure as the
-            profile path.
-          */}
-          {formState.householdName !== null && (
-            <div className="mt-8" data-testid="rsvp-household-name-field">
-              <label
-                htmlFor="rsvp-household-name"
-                className="text-foreground block text-sm font-medium"
-              >
-                Household name
-              </label>
-              <p className="text-muted-foreground mt-1 text-xs">
-                Update the name shown on your confirmation and across events.
-              </p>
-              <input
-                id="rsvp-household-name"
-                type="text"
-                value={householdName}
-                onChange={(e) => setHouseholdName(e.target.value)}
-                maxLength={HOUSEHOLD_NAME_MAX}
-                autoComplete="off"
-                placeholder="e.g. The Garcia Family"
-                className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
-              />
-            </div>
-          )}
+          <div className="mt-8" data-testid="rsvp-household-name-field">
+            <label
+              htmlFor="rsvp-household-name"
+              className="text-foreground block text-sm font-medium"
+            >
+              Household name
+            </label>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Name for your family or group on the roster and confirmations.
+            </p>
+            <input
+              id="rsvp-household-name"
+              type="text"
+              value={householdName}
+              onChange={(e) => setHouseholdName(e.target.value)}
+              maxLength={HOUSEHOLD_NAME_MAX}
+              autoComplete="off"
+              placeholder="e.g. The Garcia Family"
+              className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+            />
+          </div>
 
           {drafts.length === 0 ? (
             <div className="bg-sunlight/20 mt-8 rounded-2xl p-6 text-center">
               <p className="text-foreground text-base">
-                Your household has no members yet. Add one below to RSVP.
+                Your household has no members listed yet. Add one below to RSVP.
               </p>
             </div>
           ) : (
@@ -836,18 +836,21 @@ export function RsvpBottomSheet({
 
           {showAddMember ? (
             <div className="bg-secondary/40 mt-4 rounded-2xl p-4">
-              <h4 className="text-foreground text-sm font-semibold">Add a guest</h4>
+              <h4 className="text-foreground text-sm font-semibold">
+                {newMember.saveToHousehold ? 'Add household member' : 'Add one-time guest'}
+              </h4>
               <p className="text-muted-foreground mt-1 text-xs">
-                Guests are saved on this RSVP only. Add them to your household to keep them for
-                future events.
+                {newMember.saveToHousehold
+                  ? 'Saved to your permanent household roster for this and future events.'
+                  : 'Saved on this RSVP only without adding to your permanent household roster.'}
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_120px]">
                 <input
                   type="text"
                   value={newMember.name}
                   onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
-                  placeholder="Name"
-                  aria-label="Guest name"
+                  placeholder="Full name"
+                  aria-label={newMember.saveToHousehold ? 'Member name' : 'Guest name'}
                   className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                 />
                 <input
@@ -860,12 +863,24 @@ export function RsvpBottomSheet({
                   className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                 />
               </div>
-              <div className="mt-3 flex gap-2">
+              <label className="text-foreground mt-3 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={newMember.saveToHousehold}
+                  onChange={(e) =>
+                    setNewMember({ ...newMember, saveToHousehold: e.target.checked })
+                  }
+                  className="border-border text-terracotta focus:ring-foreground/20 h-4 w-4 rounded"
+                />
+                <span>Save to my household for future events</span>
+              </label>
+              <div className="mt-4 flex gap-2">
                 <button
                   type="button"
                   onClick={addAdHocMember}
                   disabled={!newMember.name.trim()}
                   className="rounded-pill bg-terracotta press px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+                  data-testid="rsvp-add-person-submit"
                 >
                   Add
                 </button>
@@ -873,7 +888,7 @@ export function RsvpBottomSheet({
                   type="button"
                   onClick={() => {
                     setShowAddMember(false);
-                    setNewMember({ name: '', age: '' });
+                    setNewMember({ name: '', age: '', saveToHousehold: true });
                     setSubmitError(null);
                   }}
                   className="rounded-pill text-muted-foreground hover:text-foreground px-3 py-2 text-sm font-medium"
@@ -883,13 +898,29 @@ export function RsvpBottomSheet({
               </div>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setShowAddMember(true)}
-              className="text-terracotta decoration-terracotta/30 hover:decoration-terracotta mt-3 text-sm font-semibold underline underline-offset-4 transition-colors"
-            >
-              + Add a one-time guest
-            </button>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setNewMember({ name: '', age: '', saveToHousehold: true });
+                  setShowAddMember(true);
+                }}
+                className="rounded-pill bg-terracotta/15 text-terracotta hover:bg-terracotta/25 press px-4 py-2 text-sm font-semibold transition-all"
+                data-testid="rsvp-add-member-button"
+              >
+                + Add household member
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewMember({ name: '', age: '', saveToHousehold: false });
+                  setShowAddMember(true);
+                }}
+                className="text-muted-foreground hover:text-foreground text-xs font-medium underline underline-offset-4"
+              >
+                + Add a one-time guest
+              </button>
+            </div>
           )}
 
           <p className="text-muted-foreground mt-5 text-xs">

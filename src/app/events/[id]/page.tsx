@@ -120,26 +120,13 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
   const now = new Date();
   const isPast = eventDate < now;
 
-  const [
-    confirmedHeadcount,
-    pendingInvitationCount,
-    userRsvp,
-    pendingInvitations,
-    userRole,
-    hosts,
-  ] = await Promise.all([
+  const [confirmedHeadcount, userRsvp, userRole, hosts] = await Promise.all([
     prisma.rSVP
       .aggregate({
         where: { eventId: id, status: 'CONFIRMED' },
         _sum: { headcount: true },
       })
       .then((res) => res._sum.headcount ?? 0),
-    prisma.invitation.count({
-      where: {
-        eventId: id,
-        status: { in: ['SENT', 'DELIVERED'] },
-      },
-    }),
     userId
       ? prisma.rSVP.findFirst({
           where: { eventId: id, userId },
@@ -162,20 +149,6 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
           },
         })
       : Promise.resolve(null),
-    userId
-      ? prisma.invitation.findMany({
-          where: {
-            eventId: id,
-            status: { in: ['SENT', 'DELIVERED'] },
-          },
-          select: {
-            id: true,
-            status: true,
-            user: { select: { name: true } },
-            household: { select: { name: true } },
-          },
-        })
-      : Promise.resolve([]),
     userId
       ? prisma.user
           .findUnique({ where: { id: userId }, select: { role: true } })
@@ -333,14 +306,6 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
               registrationFeeMinAge={event.registrationFeeMinAge}
               currency={event.currency}
               potluckSlots={event.potluckSlots}
-              pendingInvitations={pendingInvitations}
-              pendingInvitationCount={pendingInvitationCount}
-              // FPP-89: at least one pending invitation for this
-              // user drives the EventRsvpCard's "RSVP via your
-              // invitation" CTA. The PendingInvitationsCard above
-              // already lists them; the RSVP card points users to
-              // /my-events so they can open the wizard.
-              hasPendingInvitation={pendingInvitations.length > 0}
               existingRsvp={existingRsvpForCard}
               userRsvpStatus={existingRsvpForCard?.status ?? null}
               // FPP-65 / QUB-13.3: hosts list. Empty array when no

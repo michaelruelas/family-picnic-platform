@@ -61,6 +61,41 @@ spec:
                 secretKeyRef:
                   name: nextjs-secrets
                   key: auth-google-secret
+            - name: AUTH_APPLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: auth-apple-id
+            - name: AUTH_APPLE_TEAM_ID
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: auth-apple-team-id
+            - name: AUTH_APPLE_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: auth-apple-key-id
+            - name: AUTH_APPLE_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: auth-apple-private-key
+            - name: AUTH_FACEBOOK_ID
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: auth-facebook-id
+            - name: AUTH_FACEBOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: auth-facebook-secret
+            - name: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: google-maps-api-key
             - name: NEXTAUTH_SECRET
               valueFrom:
                 secretKeyRef:

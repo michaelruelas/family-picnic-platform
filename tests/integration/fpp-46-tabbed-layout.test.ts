@@ -135,12 +135,11 @@ describe('FPP-46: event overview tabbed layout', () => {
       expect(content).toMatch(/existingRsvp/);
     });
 
-    it('hosts the host block + potluck preview + meta strip + pending-invitation card', async () => {
+    it('hosts the host block + potluck preview + meta strip', async () => {
       const content = await fs.readFile(headerSectionPath, 'utf-8');
       expect(content).toContain('A note from the host');
       expect(content).toContain('eventDescription');
       expect(content).toContain('PotluckPreview');
-      expect(content).toContain('PendingInvitationsCard');
       expect(content).toContain('MetaStrip');
     });
   });

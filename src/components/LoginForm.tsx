@@ -2,6 +2,7 @@
 
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { SIGNED_IN_REDIRECT } from '~/lib/constants';
 
@@ -18,6 +19,9 @@ export default function LoginForm({
   enabledProviders,
   showBackLink = true,
 }: LoginFormProps) {
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams?.get('callbackUrl') || SIGNED_IN_REDIRECT;
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -29,7 +33,7 @@ export default function LoginForm({
       username,
       password,
       redirect: true,
-      callbackUrl: SIGNED_IN_REDIRECT,
+      callbackUrl,
     });
     if (result?.error) {
       setError('Invalid credentials');
@@ -113,7 +117,7 @@ export default function LoginForm({
           <div className="space-y-3">
             {enabledProviders.includes('google') && (
               <button
-                onClick={() => signIn('google', { callbackUrl: SIGNED_IN_REDIRECT })}
+                onClick={() => signIn('google', { callbackUrl })}
                 className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -139,7 +143,7 @@ export default function LoginForm({
             )}
             {enabledProviders.includes('apple') && (
               <button
-                onClick={() => signIn('apple', { callbackUrl: SIGNED_IN_REDIRECT })}
+                onClick={() => signIn('apple', { callbackUrl })}
                 className="rounded-pill border-foreground bg-foreground text-background press hover:bg-foreground/90 flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -153,7 +157,7 @@ export default function LoginForm({
             )}
             {enabledProviders.includes('facebook') && (
               <button
-                onClick={() => signIn('facebook', { callbackUrl: SIGNED_IN_REDIRECT })}
+                onClick={() => signIn('facebook', { callbackUrl })}
                 className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">

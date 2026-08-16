@@ -130,6 +130,35 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
   return fallback;
 }
 
+function CopyLinkButton({ eventId }: { eventId: string }) {
+  const toast = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const onClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const url = `${window.location.origin}/events/${eventId}/rsvp`;
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.addToast('success', 'Invitation link copied');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.addToast('error', 'Could not copy link');
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="border-border bg-card text-foreground/80 hover:bg-secondary hover:text-foreground rounded-lg border px-3 py-1 text-xs font-medium"
+      title="Copy universal invitation URL"
+    >
+      {copied ? 'Copied' : 'Copy Link'}
+    </button>
+  );
+}
+
 export default function EventsTable({
   initialEvents,
   mode = 'active',
@@ -264,6 +293,7 @@ export default function EventsTable({
               <RestoreButton eventId={row.id} />
             ) : (
               <>
+                <CopyLinkButton eventId={row.id} />
                 <EventActions eventId={row.id} status={row.status} />
                 {new Date(row.date).getTime() < Date.now() ? (
                   <ArchiveButton eventId={row.id} />

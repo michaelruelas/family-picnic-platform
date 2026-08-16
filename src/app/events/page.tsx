@@ -1,10 +1,19 @@
 import { prisma } from '~/lib/prisma';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { BreatheSection } from '~/components/ui/BreatheSection';
+import { getLatestEvent, shouldRedirectToLatestEvent } from '~/lib/events';
 
 export const dynamic = 'force-dynamic';
 
 export default async function EventsPage() {
+  if (shouldRedirectToLatestEvent()) {
+    const latestEvent = await getLatestEvent();
+    if (latestEvent) {
+      redirect(`/events/${latestEvent.id}`);
+    }
+  }
+
   const now = new Date();
 
   const [upcomingEvents, pastEvents] = await Promise.all([

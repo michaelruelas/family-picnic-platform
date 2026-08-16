@@ -13,6 +13,7 @@ dist/
 .env.production
 .env.development.local
 .env.dev
+.env.prod
 family-picnic-dev-secrets.txt
 
 # IDE

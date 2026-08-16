@@ -95,7 +95,7 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           <p
             class="text-muted-foreground mt-1 text-xs"
           >
-            Update the name shown on your confirmation and across events.
+            Name for your family or group on the roster and confirmations.
           </p>
           <input
             autocomplete="off"
@@ -207,12 +207,23 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
             </div>
           </li>
         </ul>
-        <button
-          class="text-terracotta decoration-terracotta/30 hover:decoration-terracotta mt-3 text-sm font-semibold underline underline-offset-4 transition-colors"
-          type="button"
+        <div
+          class="mt-4 flex flex-wrap items-center gap-3"
         >
-          + Add a one-time guest
-        </button>
+          <button
+            class="rounded-pill bg-terracotta/15 text-terracotta hover:bg-terracotta/25 press px-4 py-2 text-sm font-semibold transition-all"
+            data-testid="rsvp-add-member-button"
+            type="button"
+          >
+            + Add household member
+          </button>
+          <button
+            class="text-muted-foreground hover:text-foreground text-xs font-medium underline underline-offset-4"
+            type="button"
+          >
+            + Add a one-time guest
+          </button>
+        </div>
         <p
           class="text-muted-foreground mt-5 text-xs"
         >
@@ -353,7 +364,7 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           <p
             class="text-muted-foreground mt-1 text-xs"
           >
-            Update the name shown on your confirmation and across events.
+            Name for your family or group on the roster and confirmations.
           </p>
           <input
             autocomplete="off"
@@ -465,12 +476,23 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
             </div>
           </li>
         </ul>
-        <button
-          class="text-terracotta decoration-terracotta/30 hover:decoration-terracotta mt-3 text-sm font-semibold underline underline-offset-4 transition-colors"
-          type="button"
+        <div
+          class="mt-4 flex flex-wrap items-center gap-3"
         >
-          + Add a one-time guest
-        </button>
+          <button
+            class="rounded-pill bg-terracotta/15 text-terracotta hover:bg-terracotta/25 press px-4 py-2 text-sm font-semibold transition-all"
+            data-testid="rsvp-add-member-button"
+            type="button"
+          >
+            + Add household member
+          </button>
+          <button
+            class="text-muted-foreground hover:text-foreground text-xs font-medium underline underline-offset-4"
+            type="button"
+          >
+            + Add a one-time guest
+          </button>
+        </div>
         <p
           class="text-muted-foreground mt-5 text-xs"
         >

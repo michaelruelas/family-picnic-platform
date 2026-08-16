@@ -35,6 +35,7 @@ describe('Providers', () => {
   const originalSW = (navigator as { serviceWorker?: unknown }).serviceWorker;
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     if (originalSW) {
       Object.defineProperty(navigator, 'serviceWorker', {
         configurable: true,
@@ -54,7 +55,8 @@ describe('Providers', () => {
     expect(container.querySelector('[data-testid="child"]')).toBeTruthy();
   });
 
-  it('registers service worker when available', () => {
+  it('registers service worker when in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
     const registerMock = vi.fn().mockResolvedValue({} as never);
     Object.defineProperty(navigator, 'serviceWorker', {
       configurable: true,
@@ -68,7 +70,8 @@ describe('Providers', () => {
     expect(registerMock).toHaveBeenCalledWith('/sw.js');
   });
 
-  it('handles service worker registration failure', async () => {
+  it('handles service worker registration failure in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const registerMock = vi.fn().mockRejectedValue(new Error('SW failed') as never);
     Object.defineProperty(navigator, 'serviceWorker', {

@@ -40,6 +40,7 @@ describe('NavBarClient (FPP-85)', () => {
     '/login',
     '/events',
     '/events/abc-123',
+    '/events/abc-123/rsvp',
     '/events/abc-123/potluck',
     '/events/abc-123/photos',
     '/events/calendar',

@@ -158,6 +158,16 @@ describe('RsvpBottomSheet per-member attendance', () => {
     });
   });
 
+  it('adds a household member and persists them', async () => {
+    setRosterReady();
+    render(<RsvpBottomSheet {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /add household member/i }));
+    const memberNameInput = screen.getByLabelText(/member name/i);
+    fireEvent.change(memberNameInput, { target: { value: 'Grandma' } });
+    fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+    expect(screen.getByLabelText('Attendance for Grandma')).toBeInTheDocument();
+  });
+
   it('preserves a one-time guest through a confirm cycle', async () => {
     setRosterReady();
     render(<RsvpBottomSheet {...baseProps} />);
@@ -300,16 +310,17 @@ describe('RsvpBottomSheet per-member attendance', () => {
       expect(container).toMatchSnapshot();
     });
 
-    it('hides the household-name input when the caller has no household', () => {
+    it('renders the household-name input when the caller has no household yet', () => {
       mockFormState.data = {
-        householdId: 'user-1',
+        householdId: null,
         householdName: null,
-        members,
+        userName: 'Maria Garcia',
+        members: [],
         rsvp: null,
       };
       render(<RsvpBottomSheet {...baseProps} />);
-      expect(screen.queryByTestId('rsvp-household-name-field')).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/household name/i)).not.toBeInTheDocument();
+      expect(screen.getByTestId('rsvp-household-name-field')).toBeInTheDocument();
+      expect(screen.getByLabelText(/household name/i)).toBeInTheDocument();
     });
 
     it('rejects an empty name with the same Zod message as the profile path', async () => {

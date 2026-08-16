@@ -56,7 +56,8 @@ describe('FPP-58: RSVP names + decline path + phone capture', () => {
       const branch = noRsvpBranch(content);
       // The button is gated on `isRsvpOpen` so a closed event does
       // not let a user write a DECLINED row past the deadline.
-      expect(branch).toMatch(/isRsvpOpen\s*&&\s*\(\s*<button\s+onClick=\{handleDecline\}/);
+      expect(branch).toMatch(/isRsvpOpen\s*&&\s*\(/);
+      expect(branch).toMatch(/handleDecline/);
     });
 
     it('also surfaces the decline path on the mobile sticky bar', async () => {

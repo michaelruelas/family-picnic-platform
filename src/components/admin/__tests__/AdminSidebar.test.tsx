@@ -27,14 +27,13 @@ beforeEach(() => {
 });
 
 describe('AdminSidebar', () => {
-  it('renders all seven primary nav items', () => {
+  it('renders all six primary nav items', () => {
     render(<AdminSidebar />);
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Events')).toBeInTheDocument();
     // FPP-68 / QUB-12: top-level Past events link lives next to
     // Events so a host can jump straight to the archive view.
     expect(screen.getByText('Past events')).toBeInTheDocument();
-    expect(screen.getByText('Invitations')).toBeInTheDocument();
     expect(screen.getByText('Communications')).toBeInTheDocument();
     expect(screen.getByText('Charges')).toBeInTheDocument();
     expect(screen.getByText('Audit Log')).toBeInTheDocument();
@@ -60,12 +59,6 @@ describe('AdminSidebar', () => {
     // /admin/audit-log is not a parent of the events route.
     const audit = screen.getByTestId('admin-nav-audit-log');
     expect(audit.getAttribute('data-active')).toBe('false');
-  });
-
-  it('marks the invitations nav item active on the invitations list', () => {
-    mockPathname = '/admin/invitations';
-    render(<AdminSidebar />);
-    expect(screen.getByTestId('admin-nav-invitations').getAttribute('data-active')).toBe('true');
   });
 
   it('FPP-68: marks the Past events nav item active on /admin/events/past', () => {

@@ -56,3 +56,5 @@ export const HERO_IMAGES = {
 export const DEFAULT_CURRENCY = 'usd';
 
 export const SIGNED_IN_REDIRECT = '/events';
+
+export const APP_VERSION = '0.1.13';

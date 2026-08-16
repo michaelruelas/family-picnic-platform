@@ -7,6 +7,10 @@ vi.mock('next-auth/react', () => ({
   signIn: vi.fn(),
 }));
 
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock('next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode; href: string }) => (
     <a href={href}>{children}</a>

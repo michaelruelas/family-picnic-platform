@@ -12,7 +12,12 @@ OPENBAO_NAMESPACE="${OPENBAO_NAMESPACE:-security}"
 OPENBAO_POD="${OPENBAO_POD:-openbao-0}"
 
 bao_exec() {
-  kubectl -n "$OPENBAO_NAMESPACE" exec -i "$OPENBAO_POD" -- bao "$@"
+  local token="${BAO_TOKEN:-${VAULT_TOKEN:-}}"
+  if [ -n "$token" ]; then
+    kubectl -n "$OPENBAO_NAMESPACE" exec -i "$OPENBAO_POD" -- env BAO_TOKEN="$token" VAULT_TOKEN="$token" bao "$@"
+  else
+    kubectl -n "$OPENBAO_NAMESPACE" exec -i "$OPENBAO_POD" -- bao "$@"
+  fi
 }
 
 # bao_get_json <path>

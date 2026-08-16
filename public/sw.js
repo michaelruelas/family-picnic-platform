@@ -1,6 +1,5 @@
-const CACHE_NAME = 'family-picnic-v1';
+const CACHE_NAME = 'family-picnic-v2';
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/web-app-manifest-192x192.png',
   '/web-app-manifest-512x512.png',
@@ -34,14 +33,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.pathname.startsWith('/api/trpc/') || url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirstWithCacheFallback(request));
-    return;
-  }
-
+  // Next.js hashed static assets and static image files
   if (
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css') ||
+    url.pathname.startsWith('/_next/static/') ||
     url.pathname.endsWith('.png') ||
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.ico') ||
@@ -51,15 +45,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (
-    url.pathname === '/' ||
-    url.pathname.startsWith('/events') ||
-    url.pathname.startsWith('/potluck')
-  ) {
-    event.respondWith(staleWhileRevalidate(request));
-    return;
-  }
-
+  // All HTML navigation routes and API endpoints use network-first with cache fallback
   event.respondWith(networkFirstWithCacheFallback(request));
 });
 
@@ -78,24 +64,6 @@ async function cacheFirst(request) {
   } catch {
     return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
   }
-}
-
-async function staleWhileRevalidate(request) {
-  const cachedResponse = await caches.match(request);
-  const fetchPromise = fetch(request)
-    .then((networkResponse) => {
-      if (networkResponse.ok) {
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, networkResponse.clone());
-        });
-      }
-      return networkResponse;
-    })
-    .catch(() => {
-      return null;
-    });
-
-  return cachedResponse || fetchPromise || new Response('Offline', { status: 503 });
 }
 
 async function networkFirstWithCacheFallback(request) {

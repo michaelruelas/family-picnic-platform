@@ -7,6 +7,7 @@ import SlotGrid from '~/components/potluck/SlotGrid';
 import AdminShell from '~/components/admin/AdminShell';
 import ItineraryEditor from '~/components/event/ItineraryEditor';
 import EventAttachmentsEditor from '~/components/event/EventAttachmentsEditor';
+import ShareInvitationCard from '~/components/admin/ShareInvitationCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,6 +92,10 @@ export default async function EditEventPage({ params }: PageProps) {
       }
       description="Update the details for your family picnic"
     >
+      <div className="mb-8">
+        <ShareInvitationCard eventId={event.id} />
+      </div>
+
       <EventForm initialData={initialData} mode="edit" />
 
       <div className="mt-12">

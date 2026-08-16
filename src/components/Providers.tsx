@@ -10,9 +10,25 @@ import { ToastProvider } from './ui/Toast';
 export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch((err) => {
-        console.warn('Service worker registration failed:', err);
-      });
+      if (process.env.NODE_ENV === 'production') {
+        navigator.serviceWorker.register('/sw.js').catch((err) => {
+          console.warn('Service worker registration failed:', err);
+        });
+      } else {
+        // In development, automatically unregister active service workers and clear caches
+        navigator.serviceWorker.getRegistrations?.().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister();
+          }
+        });
+        if ('caches' in window) {
+          caches.keys().then((names) => {
+            for (const name of names) {
+              caches.delete(name);
+            }
+          });
+        }
+      }
     }
   }, []);
 

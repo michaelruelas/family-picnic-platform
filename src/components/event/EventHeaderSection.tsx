@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { EventRsvpCard } from './EventRsvpCard';
 import { EventLocationMap } from './EventLocationMap';
-import { SignInPrompt } from './SignInPrompt';
 import { EventDownloadsSection, type PublicEventAttachment } from './EventDownloadsSection';
 import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS } from '~/lib/constants';
 import type { RSVPStatus, RsvpAttending } from '~/lib/generated/enums';
@@ -49,22 +48,6 @@ export interface EventHeaderSectionProps {
   registrationFeeMinAge: number;
   currency: string;
   potluckSlots: PotluckSlot[];
-  pendingInvitations: {
-    id: string;
-    status: string;
-    user: { name: string | null } | null;
-    household: { name: string } | null;
-  }[];
-  pendingInvitationCount: number;
-  /**
-   * FPP-89: whether the logged-in caller has at least one
-   * pending invitation for this event. Drives the
-   * `EventRsvpCard`'s no-RSVP variant — pending invitation gets
-   * a "Open my invitations" CTA, no invitation gets a passive
-   * "waiting on your invitation" notice. The bottom sheet is no
-   * longer the primary RSVP entry on this page.
-   */
-  hasPendingInvitation: boolean;
   existingRsvp: {
     id: string;
     status: RSVPStatus;
@@ -134,9 +117,6 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
     registrationFeeMinAge,
     currency,
     potluckSlots,
-    pendingInvitations,
-    pendingInvitationCount,
-    hasPendingInvitation,
     existingRsvp,
     userRsvpStatus,
     hosts,
@@ -186,7 +166,6 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
         maxCapacity={maxCapacity}
         currentAttending={currentAttending}
         registrationFeeConfig={registrationFeeConfig}
-        hasPendingInvitation={hasPendingInvitation}
         existingRsvp={existingRsvp}
       />
 
@@ -204,18 +183,6 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
       <HostBlock description={eventDescription} maxCapacity={maxCapacity} hosts={hosts} />
 
       {attachments.length > 0 && <EventDownloadsSection attachments={attachments} />}
-
-      {isLoggedIn && pendingInvitations.length > 0 && (
-        <PendingInvitationsCard invitations={pendingInvitations} />
-      )}
-      {!isLoggedIn && pendingInvitationCount > 0 && (
-        <SignInPrompt
-          title={`${pendingInvitationCount} ${
-            pendingInvitationCount === 1 ? 'household is' : 'households are'
-          } still deciding`}
-          description="Sign in to see who has been invited and which families are still working out their plans."
-        />
-      )}
 
       {rsvpDeadline && rsvpDeadline > now && (
         <p className="text-muted-foreground -mt-4 text-sm">
@@ -356,50 +323,6 @@ function HostBlock({
           </ul>
         </div>
       )}
-    </div>
-  );
-}
-
-function PendingInvitationsCard({
-  invitations,
-}: {
-  invitations: {
-    id: string;
-    status: string;
-    user: { name: string | null } | null;
-    household: { name: string } | null;
-  }[];
-}) {
-  return (
-    <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
-      <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-        Awaiting replies
-      </p>
-      <h3 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight">
-        Pending invitations
-      </h3>
-      <p className="text-muted-foreground mt-2">
-        These guests have been invited but haven&apos;t responded yet
-      </p>
-      <ul className="mt-5 grid gap-2 sm:grid-cols-2">
-        {invitations.map((inv) => (
-          <li
-            key={inv.id}
-            className="bg-secondary flex items-center gap-3 rounded-2xl px-4 py-3 text-sm"
-          >
-            <span className="text-sunlight">⏳</span>
-            <span className="text-foreground font-medium">
-              {inv.household?.name || inv.user?.name || 'Unknown'}
-            </span>
-            {inv.status === 'SENT' && (
-              <span className="text-muted-foreground ml-auto text-xs">sent</span>
-            )}
-            {inv.status === 'DELIVERED' && (
-              <span className="text-muted-foreground ml-auto text-xs">delivered</span>
-            )}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

@@ -1284,6 +1284,7 @@ export const rsvpRouter = router({
         where: { id: ctx.session.user.id },
         select: {
           id: true,
+          name: true,
           householdId: true,
           phoneNumber: true,
           smsConsent: true,
@@ -1307,10 +1308,6 @@ export const rsvpRouter = router({
             memberAttendances: { orderBy: { createdAt: 'asc' } },
           },
         }),
-        // Only fetch the household row when the caller actually belongs
-        // to one. The `householdId ?? caller.id` fallback above uses the
-        // user id as a virtual roster key, but a real Household row by
-        // that id does not exist, so reading `household.name` would 404.
         caller.householdId
           ? prisma.household.findUnique({
               where: { id: caller.householdId },
@@ -1322,7 +1319,9 @@ export const rsvpRouter = router({
       return {
         members,
         rsvp,
+        userName: caller.name,
         householdId,
+        hasHousehold: Boolean(caller.householdId),
         householdName: household?.name ?? null,
         // FPP-34: phone + smsConsent feed the RSVP form's optional
         // SMS opt-in. Returned as a snapshot the client can hydrate

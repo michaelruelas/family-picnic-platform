@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions, getEnabledOAuthProviders } from '~/lib/auth';
 import { SIGNED_IN_REDIRECT } from '~/lib/constants';
+import { getLatestEvent } from '~/lib/events';
 import LoginForm from '~/components/LoginForm';
 
 export default async function UnauthenticatedPage({
@@ -12,6 +13,10 @@ export default async function UnauthenticatedPage({
   const session = await getServerSession(authOptions);
 
   if (session?.user?.id) {
+    const latestEvent = await getLatestEvent();
+    if (latestEvent) {
+      redirect(`/events/${latestEvent.id}`);
+    }
     redirect(SIGNED_IN_REDIRECT);
   }
 

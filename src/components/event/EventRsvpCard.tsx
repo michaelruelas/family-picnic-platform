@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useRsvpMutation } from '~/hooks';
 import { RSVPStatus, RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
@@ -34,14 +35,6 @@ interface EventRsvpCardProps {
    * card.
    */
   registrationFeeConfig?: { amountCents: number; minAge: number; currency: string } | null;
-  /**
-   * FPP-89: when the logged-in caller has a pending invitation
-   * for this event, the no-RSVP card swaps the primary "RSVP Now"
-   * CTA (which launches the bottom sheet) for a pointer to their
-   * invitation. The bottom sheet is no longer the primary RSVP
-   * entry point on the event page; the invitation wizard is.
-   */
-  hasPendingInvitation: boolean;
   existingRsvp: {
     id: string;
     status: RSVPStatus;
@@ -65,14 +58,10 @@ export function EventRsvpCard({
   maxCapacity,
   currentAttending,
   registrationFeeConfig,
-  hasPendingInvitation,
   existingRsvp,
 }: EventRsvpCardProps) {
   const { decline } = useRsvpMutation();
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+  const searchParams = useSearchParams();
   const isRsvpOpen = !isPast && (!rsvpDeadline || new Date(rsvpDeadline) > new Date());
   const isFull =
     maxCapacity !== null && maxCapacity !== undefined && maxCapacity - currentAttending <= 0;
@@ -81,6 +70,21 @@ export function EventRsvpCard({
     month: 'short',
     day: 'numeric',
   });
+
+  const shouldAutoOpen = Boolean(
+    searchParams?.get('rsvpOpen') === '1' && isLoggedIn && !isPast && isRsvpOpen,
+  );
+  const [isSheetOpen, setIsSheetOpen] = useState(shouldAutoOpen);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (shouldAutoOpen) {
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setIsSheetOpen(true);
+      /* eslint-enable react-hooks/set-state-in-effect */
+    }
+  }, [shouldAutoOpen]);
 
   const handleDecline = async () => {
     setIsSubmitting(true);
@@ -125,7 +129,7 @@ export function EventRsvpCard({
           Sign in to RSVP and let us know you&apos;re coming.
         </p>
         <a
-          href="/login"
+          href={`/login?callbackUrl=/events/${eventId}/rsvp`}
           className="rounded-pill bg-foreground text-background press hover:bg-foreground/90 mt-5 block w-full px-5 py-3 text-center font-semibold transition-all"
         >
           Sign in
@@ -270,17 +274,8 @@ export function EventRsvpCard({
     );
   }
 
-  // FPP-89: the bottom sheet is no longer the primary RSVP entry
-  // point on the event page. The invitation wizard is. For a
-  // logged-in user with no RSVP we surface two informational
-  // variants:
-  //   - has a pending invitation → point them at their invitation
-  //     email (the PendingInvitationsCard above already lists it)
-  //   - no invitation → "wait for the host to send one"
-  // The "Can't make it" decline path stays because it writes a
-  // DECLINED RSVP without an invitation, mirroring the prior
-  // behavior so users without a household can still opt out.
   if (!existingRsvp && !isPast) {
+    const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
     return (
       <>
         <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1">
@@ -288,34 +283,50 @@ export function EventRsvpCard({
             {formattedDate} · {location.split(',')[0]}
           </p>
           <h3 className="font-display text-foreground mt-2 text-2xl font-semibold">
-            {hasPendingInvitation ? 'RSVP via your invitation' : 'Waiting on your invitation'}
+            {isFull ? 'Join the waitlist' : 'Are you coming?'}
           </h3>
           <p className="text-muted-foreground mt-2 text-sm">
-            {hasPendingInvitation
-              ? 'The host has invited you — open the invitation link from your email or text to RSVP.'
-              : 'The host will send you a personal invitation link when RSVPs open. We do not accept RSVPs from this page.'}
+            {isFull
+              ? 'This event has reached full capacity. Join the waitlist and we will notify you if a spot opens up.'
+              : isRsvpOpen
+                ? 'Let us know if your household can make it to this gathering.'
+                : 'RSVPs are closed for this event.'}
           </p>
-          {hasPendingInvitation && (
-            <Link
-              href="/my-events"
-              className="rounded-pill border-border bg-card text-foreground press hover:border-foreground mt-5 block w-full border px-5 py-3 text-center text-sm font-semibold transition-all"
-              data-testid="rsvp-card-open-invitations"
-            >
-              Open my invitations
-            </Link>
+          {spotsRemaining !== null && spotsRemaining > 0 && isRsvpOpen && (
+            <p className="text-sage mt-2 text-sm font-medium">
+              {spotsRemaining} {spotsRemaining === 1 ? 'spot' : 'spots'} remaining
+            </p>
           )}
           {error && <p className="text-destructive mt-3 text-sm">{error}</p>}
           {isRsvpOpen && (
-            <button
-              onClick={handleDecline}
-              disabled={isSubmitting}
-              className="rounded-pill text-muted-foreground hover:text-destructive mt-3 w-full px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
-              data-testid="rsvp-card-decline-link"
-            >
-              {isSubmitting ? 'Updating...' : "Can't make it"}
-            </button>
+            <div className="mt-5 flex flex-col gap-2">
+              <button
+                onClick={() => setIsSheetOpen(true)}
+                className="rounded-pill bg-terracotta shadow-soft press w-full px-5 py-3 font-semibold text-white transition-all hover:bg-[#cf6c52]"
+                data-testid="rsvp-card-rsvp-button"
+              >
+                {isFull ? 'Join Waitlist' : 'RSVP Now'}
+              </button>
+              <button
+                onClick={handleDecline}
+                disabled={isSubmitting}
+                className="rounded-pill text-muted-foreground hover:text-destructive px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+                data-testid="rsvp-card-decline-link"
+              >
+                {isSubmitting ? 'Updating...' : "Can't make it"}
+              </button>
+            </div>
           )}
         </div>
+        <RsvpBottomSheet
+          isOpen={isSheetOpen}
+          onClose={() => setIsSheetOpen(false)}
+          eventId={eventId}
+          eventName={eventName}
+          maxCapacity={maxCapacity}
+          currentAttending={currentAttending}
+          registrationFeeConfig={registrationFeeConfig}
+        />
       </>
     );
   }
