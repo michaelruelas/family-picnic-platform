@@ -165,11 +165,15 @@ export function useHouseholdMemberNameMutation() {
   const utils = trpc.useUtils();
 
   const updateName = useMutation({
-    mutationFn: async (input: { id: string; name: string }) => {
+    mutationFn: async (input: { id: string; name: string; age?: number | null }) => {
+      const body: Record<string, unknown> = { name: input.name };
+      if (input.age !== undefined) {
+        body.age = input.age;
+      }
       const response = await fetch(`/api/household-members/${input.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: input.name }),
+        body: JSON.stringify(body),
       });
       if (!response.ok) {
         const errorBody = (await response.json().catch(() => null)) as {

@@ -51,6 +51,17 @@ interface AttendanceDraft {
   memberAge: number | null;
   attending: RsvpAttending;
   originalMemberName: string | null;
+  /**
+   * FPP-107: age as it was when the row hydrated from the server.
+   * The submit handler compares the current draft `memberAge`
+   * against this baseline to decide whether a household member's
+   * age needs a PATCH.
+   */
+  originalMemberAge: number | null;
+  /**
+   * When true, this new member will be persisted to the HouseholdMember
+   * table so they are retained for future event RSVPs.
+   */
   saveToHousehold?: boolean;
 }
 
@@ -77,6 +88,7 @@ function defaultAttendanceForNewMember(
     memberAge: age,
     attending: RsvpAttending.YES,
     originalMemberName: name,
+    originalMemberAge: age,
     saveToHousehold: true,
   };
 }
@@ -102,6 +114,7 @@ function buildInitialDrafts(
       memberAge: att.memberAgeSnapshot,
       attending: att.attending,
       originalMemberName: att.householdMemberId ? att.memberNameSnapshot : null,
+      originalMemberAge: att.householdMemberId ? att.memberAgeSnapshot : null,
       saveToHousehold: Boolean(att.householdMemberId),
     });
   }
@@ -119,6 +132,7 @@ function buildInitialDrafts(
         // household member name is not silently overwritten on hydrate.
         // The submit handler compares the draft against this baseline.
         originalMemberName: prior.originalMemberName ?? m.name,
+        originalMemberAge: prior.originalMemberAge ?? m.age,
         saveToHousehold: true,
       };
     }
@@ -145,6 +159,7 @@ function buildInitialDrafts(
       memberAge: null,
       attending: RsvpAttending.YES,
       originalMemberName: null,
+      originalMemberAge: null,
       saveToHousehold: true,
     });
   }
@@ -188,6 +203,9 @@ export function RsvpBottomSheet({
   const [showContact, setShowContact] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // FPP-107: tracks which member row is currently editing their age inline.
+  const [editingAgeIndex, setEditingAgeIndex] = useState<number | null>(null);
+  const [editingAgeValue, setEditingAgeValue] = useState('');
   // FPP-21: the bottom sheet now hosts a two-tab editor so the
   // user can manage potluck dishes from the same surface that
   // collects attendance. The Dishes tab is enabled only after the
@@ -219,6 +237,8 @@ export function RsvpBottomSheet({
       setSmsConsent(false);
       setShowContact(false);
       setSubmitError(null);
+      setEditingAgeIndex(null);
+      setEditingAgeValue('');
       setHouseholdName('');
       setHydrated(false);
       setActiveTab('attendance');
@@ -367,6 +387,7 @@ export function RsvpBottomSheet({
         memberAge: ageValue,
         attending: RsvpAttending.YES,
         originalMemberName: null,
+        originalMemberAge: null,
         saveToHousehold: newMember.saveToHousehold,
       },
     ]);
@@ -493,15 +514,22 @@ export function RsvpBottomSheet({
             };
           }
         } else if (draft.householdMemberId) {
-          if (draft.memberName === draft.originalMemberName) continue;
+          const nameChanged = draft.memberName !== draft.originalMemberName;
+          const ageChanged = draft.memberAge !== draft.originalMemberAge;
+          if (!nameChanged && !ageChanged) continue;
+          const patchBody: { name?: string; age?: number | null } = {};
+          if (nameChanged) patchBody.name = draft.memberName;
+          if (ageChanged) patchBody.age = draft.memberAge;
           await updateMemberName.mutateAsync({
             id: draft.householdMemberId,
-            name: draft.memberName,
+            ...patchBody,
           });
-          renames.push({
-            from: draft.originalMemberName ?? draft.memberName,
-            to: draft.memberName,
-          });
+          if (nameChanged) {
+            renames.push({
+              from: draft.originalMemberName ?? draft.memberName,
+              to: draft.memberName,
+            });
+          }
         }
       }
 
@@ -793,9 +821,76 @@ export function RsvpBottomSheet({
                             rowError ? 'border-destructive focus:border-destructive' : ''
                           }`}
                         />
-                        {draft.memberAge !== null && (
-                          <p className="text-muted-foreground mt-1 text-xs">
+                        {draft.householdMemberId && editingAgeIndex === index ? (
+                          <div className="mt-1 flex items-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              max="120"
+                              value={editingAgeValue}
+                              onChange={(e) => setEditingAgeValue(e.target.value)}
+                              onBlur={() => {
+                                const trimmed = editingAgeValue.trim();
+                                if (trimmed === '') {
+                                  setDrafts((current) =>
+                                    current.map((d, i) =>
+                                      i === index ? { ...d, memberAge: null } : d,
+                                    ),
+                                  );
+                                } else {
+                                  const num = Number(trimmed);
+                                  if (!Number.isNaN(num) && num >= 0 && num <= 120) {
+                                    setDrafts((current) =>
+                                      current.map((d, i) =>
+                                        i === index ? { ...d, memberAge: num } : d,
+                                      ),
+                                    );
+                                  }
+                                }
+                                setEditingAgeIndex(null);
+                                setEditingAgeValue('');
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  (e.target as HTMLInputElement).blur();
+                                }
+                                if (e.key === 'Escape') {
+                                  setEditingAgeIndex(null);
+                                  setEditingAgeValue('');
+                                }
+                              }}
+                              autoFocus
+                              className="border-border bg-card text-foreground w-20 rounded-lg border px-2 py-1 text-xs focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                              aria-label="Edit age"
+                            />
+                          </div>
+                        ) : draft.memberAge !== null ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingAgeValue(String(draft.memberAge));
+                              setEditingAgeIndex(index);
+                            }}
+                            className="text-muted-foreground hover:text-foreground mt-1 text-xs"
+                            aria-label="Edit age"
+                          >
                             {draft.memberAge} yrs
+                          </button>
+                        ) : draft.householdMemberId ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingAgeValue('');
+                              setEditingAgeIndex(index);
+                            }}
+                            className="text-muted-foreground hover:text-foreground mt-1 text-xs italic"
+                            aria-label="Set age"
+                          >
+                            Set age
+                          </button>
+                        ) : (
+                          <p className="text-muted-foreground mt-1 text-xs italic">
+                            Age not set
                           </p>
                         )}
                       </div>
