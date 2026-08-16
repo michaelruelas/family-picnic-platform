@@ -7,15 +7,7 @@ import { EventAnchorNav } from './EventAnchorNav';
 import { EventItinerarySection, type ItineraryItem } from './EventItinerarySection';
 import { EventAdditionalInfoSection } from './EventAdditionalInfoSection';
 import { EventGallerySection, type GalleryPhoto } from './EventGallerySection';
-
-export type EventTabKey = 'header' | 'itinerary' | 'additional-info' | 'gallery';
-
-export const EVENT_TAB_KEYS: readonly EventTabKey[] = [
-  'header',
-  'itinerary',
-  'additional-info',
-  'gallery',
-];
+import { EVENT_TAB_KEYS, type EventTabKey } from '~/lib/event-tabs';
 
 function isEventTabKey(value: string | null): value is EventTabKey {
   return value !== null && (EVENT_TAB_KEYS as readonly string[]).includes(value);
