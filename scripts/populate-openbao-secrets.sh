@@ -29,8 +29,8 @@
 #   SECRET_PREFIX      default: secret/family-picnic-${TARGET_ENV}
 #   LOCAL_OUTPUT       default: ./family-picnic-${TARGET_ENV}-secrets.txt
 #   ENV_DEV_OUTPUT     default: ./.env.dev
-#   APP_DOMAIN         default: family-picnic.dev.qubitquilt.dev (ignored unless TARGET_ENV=dev)
-#   PHOTOS_DOMAIN      default: photos.family-picnic.dev.qubitquilt.dev (ignored unless TARGET_ENV=dev)
+#   APP_DOMAIN         default: foliapicnic.com (ignored unless TARGET_ENV=dev)
+#   PHOTOS_DOMAIN      default: photos.foliapicnic.com (ignored unless TARGET_ENV=dev)
 
 set -euo pipefail
 
@@ -62,8 +62,8 @@ OPENBAO_POD="${OPENBAO_POD:-openbao-0}"
 SECRET_PREFIX="${SECRET_PREFIX:-secret/family-picnic-$TARGET_ENV}"
 LOCAL_OUTPUT="${LOCAL_OUTPUT:-./family-picnic-$TARGET_ENV-secrets.txt}"
 ENV_DEV_OUTPUT="${ENV_DEV_OUTPUT:-./.env.dev}"
-APP_DOMAIN="${APP_DOMAIN:-family-picnic.dev.qubitquilt.dev}"
-PHOTOS_DOMAIN="${PHOTOS_DOMAIN:-photos.family-picnic.dev.qubitquilt.dev}"
+APP_DOMAIN="${APP_DOMAIN:-foliapicnic.com}"
+PHOTOS_DOMAIN="${PHOTOS_DOMAIN:-photos.foliapicnic.com}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/openbao.sh

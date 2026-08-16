@@ -9,7 +9,7 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: Host(`family-picnic.dev.qubitquilt.dev`) && PathPrefix(`/`)
+      match: (Host(`foliapicnic.com`) || Host(`family-picnic.dev.qubitquilt.dev`)) && PathPrefix(`/`)
       services:
         - name: nextjs
           port: 80
@@ -26,7 +26,7 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: Host(`photos.family-picnic.dev.qubitquilt.dev`) && PathPrefix(`/`)
+      match: (Host(`photos.foliapicnic.com`) || Host(`photos.family-picnic.dev.qubitquilt.dev`)) && PathPrefix(`/`)
       services:
         - name: photoprism
           port: 8080

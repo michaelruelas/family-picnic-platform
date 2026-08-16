@@ -6,9 +6,9 @@ metadata:
     app.kubernetes.io/name: nextjs
     app.kubernetes.io/component: frontend
 data:
-  NEXTAUTH_URL: https://family-picnic.dev.qubitquilt.dev
+  NEXTAUTH_URL: https://foliapicnic.com
   NODE_ENV: production
-  NEXT_PUBLIC_APP_URL: https://family-picnic.dev.qubitquilt.dev
+  NEXT_PUBLIC_APP_URL: https://foliapicnic.com
   S3_BUCKET: family-picnic-photos
   S3_REGION: us-east-1
   S3_ENDPOINT: ''
