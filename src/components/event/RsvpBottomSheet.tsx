@@ -44,23 +44,20 @@ interface RsvpBottomSheetProps {
 }
 
 interface AttendanceDraft {
+  /** Stable key for React list rendering — never changes after creation */
+  _key: string;
   householdMemberId: string | null;
   memberName: string;
   memberAge: number | null;
   attending: RsvpAttending;
-  /**
-   * FPP-36: name as it was when the row hydrated from the server.
-   * The submit handler compares the current draft `memberName`
-   * against this baseline to decide whether a household member
-   * needs a PATCH. Ad-hoc guests (id = null) leave this empty
-   * because there is no row to write back to.
-   */
   originalMemberName: string | null;
-  /**
-   * When true, this new member will be persisted to the HouseholdMember
-   * table so they are retained for future event RSVPs.
-   */
   saveToHousehold?: boolean;
+}
+
+let _draftKeyCounter = 0;
+function nextDraftKey(): string {
+  _draftKeyCounter += 1;
+  return `draft-${_draftKeyCounter}`;
 }
 
 const ATTENDANCE_OPTIONS: RsvpAttending[] = [
@@ -75,6 +72,7 @@ function defaultAttendanceForNewMember(
   age: number | null,
 ): AttendanceDraft {
   return {
+    _key: nextDraftKey(),
     householdMemberId: memberId,
     memberName: name,
     memberAge: age,
@@ -99,6 +97,7 @@ function buildInitialDrafts(
     const key =
       att.householdMemberId ?? `name:${att.memberNameSnapshot}:${att.memberAgeSnapshot ?? ''}`;
     existing.set(key, {
+      _key: nextDraftKey(),
       householdMemberId: att.householdMemberId,
       memberName: att.memberNameSnapshot,
       memberAge: att.memberAgeSnapshot,
@@ -112,13 +111,11 @@ function buildInitialDrafts(
     const prior = existing.get(m.id);
     if (prior) {
       return {
+        _key: prior._key,
         householdMemberId: m.id,
         memberName: m.name,
         memberAge: m.age,
         attending: prior.attending,
-        // The snapshot wins on first hydrate so a later edit to the
-        // household member name is not silently overwritten. The
-        // submit handler compares against this baseline.
         originalMemberName: prior.originalMemberName ?? m.name,
         saveToHousehold: true,
       };
@@ -140,6 +137,7 @@ function buildInitialDrafts(
   // immediately appear in the attendance list.
   if (next.length === 0 && userName && userName.trim()) {
     next.push({
+      _key: nextDraftKey(),
       householdMemberId: null,
       memberName: userName.trim(),
       memberAge: null,
@@ -361,6 +359,7 @@ export function RsvpBottomSheet({
     setDrafts((current) => [
       ...current,
       {
+        _key: nextDraftKey(),
         householdMemberId: null,
         memberName: nameParsed.data,
         memberAge: ageValue,
@@ -760,7 +759,7 @@ export function RsvpBottomSheet({
                   draft.originalMemberName ?? safeLiveName ?? `slot ${index + 1}`;
                 return (
                   <li
-                    key={`${draft.householdMemberId ?? draft.memberName}-${index}`}
+                    key={draft._key}
                     className="border-border bg-card/40 flex flex-col gap-2 rounded-2xl border px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-3">
