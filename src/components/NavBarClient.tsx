@@ -1,6 +1,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { usePathname } from 'next/navigation';
@@ -39,8 +40,15 @@ export default function NavBarClient() {
     <nav className="border-border/60 bg-background/80 sticky top-0 z-30 border-b backdrop-blur-lg">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Link href="/" className="group flex items-center gap-2.5">
-          <div className="bg-terracotta shadow-soft flex h-10 w-10 items-center justify-center rounded-2xl text-lg transition-transform duration-300 group-hover:scale-105">
-            <span className="-mt-0.5">🏡</span>
+          <div className="shadow-soft h-10 w-10 overflow-hidden rounded-2xl transition-transform duration-300 group-hover:scale-105">
+            <Image
+              src="/folia-family-picnic-logo.png"
+              alt="Folia Family Picnic logo"
+              width={500}
+              height={500}
+              priority
+              className="h-full w-full object-contain"
+            />
           </div>
           <div className="hidden sm:block">
             <p className="font-display text-foreground text-lg leading-none font-semibold tracking-tight">

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -225,8 +226,15 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
           className="group flex items-center gap-2.5"
           onClick={onNavigate}
         >
-          <div className="bg-terracotta shadow-soft flex h-10 w-10 items-center justify-center rounded-2xl text-lg transition-transform group-hover:scale-105">
-            <span className="-mt-0.5">🏡</span>
+          <div className="shadow-soft h-10 w-10 overflow-hidden rounded-2xl transition-transform group-hover:scale-105">
+            <Image
+              src="/folia-family-picnic-logo.png"
+              alt="Folia Family Picnic logo"
+              width={500}
+              height={500}
+              priority
+              className="h-full w-full object-contain"
+            />
           </div>
           <div>
             <p className="font-display text-foreground text-base leading-none font-semibold tracking-tight">
