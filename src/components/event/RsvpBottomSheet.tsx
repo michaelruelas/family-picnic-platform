@@ -45,7 +45,7 @@ interface RsvpBottomSheetProps {
 
 interface AttendanceDraft {
   /** Stable key for React list rendering — never changes after creation */
-  _key: string;
+  draftKey: string;
   householdMemberId: string | null;
   memberName: string;
   memberAge: number | null;
@@ -54,10 +54,9 @@ interface AttendanceDraft {
   saveToHousehold?: boolean;
 }
 
-let _draftKeyCounter = 0;
-function nextDraftKey(): string {
-  _draftKeyCounter += 1;
-  return `draft-${_draftKeyCounter}`;
+/** Stable, unique key for React list rendering — generated once per draft */
+export function nextDraftKey(): string {
+  return crypto.randomUUID();
 }
 
 const ATTENDANCE_OPTIONS: RsvpAttending[] = [
@@ -72,7 +71,7 @@ function defaultAttendanceForNewMember(
   age: number | null,
 ): AttendanceDraft {
   return {
-    _key: nextDraftKey(),
+    draftKey: nextDraftKey(),
     householdMemberId: memberId,
     memberName: name,
     memberAge: age,
@@ -97,7 +96,7 @@ function buildInitialDrafts(
     const key =
       att.householdMemberId ?? `name:${att.memberNameSnapshot}:${att.memberAgeSnapshot ?? ''}`;
     existing.set(key, {
-      _key: nextDraftKey(),
+      draftKey: nextDraftKey(),
       householdMemberId: att.householdMemberId,
       memberName: att.memberNameSnapshot,
       memberAge: att.memberAgeSnapshot,
@@ -111,11 +110,14 @@ function buildInitialDrafts(
     const prior = existing.get(m.id);
     if (prior) {
       return {
-        _key: prior._key,
+        draftKey: prior.draftKey,
         householdMemberId: m.id,
         memberName: m.name,
         memberAge: m.age,
         attending: prior.attending,
+        // The snapshot wins on first hydrate so a later edit to the
+        // household member name is not silently overwritten. The
+        // submit handler compares against this baseline.
         originalMemberName: prior.originalMemberName ?? m.name,
         saveToHousehold: true,
       };
@@ -137,7 +139,7 @@ function buildInitialDrafts(
   // immediately appear in the attendance list.
   if (next.length === 0 && userName && userName.trim()) {
     next.push({
-      _key: nextDraftKey(),
+      draftKey: nextDraftKey(),
       householdMemberId: null,
       memberName: userName.trim(),
       memberAge: null,
@@ -359,7 +361,7 @@ export function RsvpBottomSheet({
     setDrafts((current) => [
       ...current,
       {
-        _key: nextDraftKey(),
+        draftKey: nextDraftKey(),
         householdMemberId: null,
         memberName: nameParsed.data,
         memberAge: ageValue,
@@ -759,7 +761,7 @@ export function RsvpBottomSheet({
                   draft.originalMemberName ?? safeLiveName ?? `slot ${index + 1}`;
                 return (
                   <li
-                    key={draft._key}
+                    key={draft.draftKey}
                     className="border-border bg-card/40 flex flex-col gap-2 rounded-2xl border px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-3">
