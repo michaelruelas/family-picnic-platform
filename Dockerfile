@@ -18,6 +18,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=prisma /app/src/lib/generated ./src/lib/generated
 COPY . .
+ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
 RUN rm -rf .next && NEXT_IGNORE_BUILD_ERRORS=true bun run build
 
 FROM base AS runner
