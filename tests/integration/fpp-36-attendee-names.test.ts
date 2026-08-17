@@ -135,8 +135,12 @@ describe('FPP-36: per-slot attendee names', () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
       expect(content).toContain('useHouseholdMemberNameMutation');
       expect(content).toContain('updateMemberName.mutateAsync');
-      // The rename should be skipped when the name has not changed.
-      expect(content).toMatch(/draft\.memberName\s*===\s*draft\.originalMemberName/);
+      // The PATCH should be skipped when neither the name nor the
+      // age has changed. FPP-107 tracks both baselines so an age-only
+      // edit (head of household setting their age) still PATCHes.
+      expect(content).toMatch(/const nameChanged = draft\.memberName !== draft\.originalMemberName;/);
+      expect(content).toMatch(/const ageChanged = draft\.memberAge !== draft\.originalMemberAge;/);
+      expect(content).toMatch(/if \(!nameChanged && !ageChanged\) continue;/);
     });
 
     // BoopPr finding F1: when a rename fails mid-loop, the error

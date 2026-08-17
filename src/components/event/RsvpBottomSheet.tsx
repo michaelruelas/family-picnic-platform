@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -206,6 +206,11 @@ export function RsvpBottomSheet({
   // FPP-107: tracks which member row is currently editing their age inline.
   const [editingAgeIndex, setEditingAgeIndex] = useState<number | null>(null);
   const [editingAgeValue, setEditingAgeValue] = useState('');
+  // FPP-107: Escape on the inline age input must cancel the edit, not
+  // commit an empty value. The flag is a ref so the blur handler (a
+  // closure over the render that mounted the input) always reads the
+  // latest value even after the keydown state updates land.
+  const ageEditCancelledRef = useRef(false);
   // FPP-21: the bottom sheet now hosts a two-tab editor so the
   // user can manage potluck dishes from the same surface that
   // collects attendance. The Dishes tab is enabled only after the
@@ -239,6 +244,7 @@ export function RsvpBottomSheet({
       setSubmitError(null);
       setEditingAgeIndex(null);
       setEditingAgeValue('');
+      ageEditCancelledRef.current = false;
       setHouseholdName('');
       setHydrated(false);
       setActiveTab('attendance');
@@ -821,7 +827,7 @@ export function RsvpBottomSheet({
                             rowError ? 'border-destructive focus:border-destructive' : ''
                           }`}
                         />
-                        {draft.householdMemberId && editingAgeIndex === index ? (
+                        {editingAgeIndex === index ? (
                           <div className="mt-1 flex items-center gap-1">
                             <input
                               type="number"
@@ -830,6 +836,12 @@ export function RsvpBottomSheet({
                               value={editingAgeValue}
                               onChange={(e) => setEditingAgeValue(e.target.value)}
                               onBlur={() => {
+                                if (ageEditCancelledRef.current) {
+                                  ageEditCancelledRef.current = false;
+                                  setEditingAgeIndex(null);
+                                  setEditingAgeValue('');
+                                  return;
+                                }
                                 const trimmed = editingAgeValue.trim();
                                 if (trimmed === '') {
                                   setDrafts((current) =>
@@ -855,6 +867,7 @@ export function RsvpBottomSheet({
                                   (e.target as HTMLInputElement).blur();
                                 }
                                 if (e.key === 'Escape') {
+                                  ageEditCancelledRef.current = true;
                                   setEditingAgeIndex(null);
                                   setEditingAgeValue('');
                                 }
