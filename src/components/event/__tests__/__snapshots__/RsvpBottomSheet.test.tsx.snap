@@ -227,7 +227,7 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           class="mt-4 flex flex-wrap items-center gap-3"
         >
           <button
-            class="rounded-sm bg-terracotta/15 text-terracotta hover:bg-terracotta/25 press px-4 py-2 text-sm font-semibold transition-all"
+            class="bg-terracotta/15 text-terracotta hover:bg-terracotta/25 press rounded-sm px-4 py-2 text-sm font-semibold transition-all"
             data-testid="rsvp-add-member-button"
             type="button"
           >
@@ -270,12 +270,12 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           See who is bringing what →
         </a>
         <button
-          class="rounded-sm bg-terracotta shadow-soft press mt-7 w-full px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+          class="bg-terracotta shadow-soft press mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
         >
           Confirm 2 guests
         </button>
         <button
-          class="rounded-sm text-muted-foreground hover:text-destructive mt-3 w-full px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+          class="text-muted-foreground hover:text-destructive mt-3 w-full rounded-sm px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
         >
           Can't make it
         </button>
@@ -512,7 +512,7 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           class="mt-4 flex flex-wrap items-center gap-3"
         >
           <button
-            class="rounded-sm bg-terracotta/15 text-terracotta hover:bg-terracotta/25 press px-4 py-2 text-sm font-semibold transition-all"
+            class="bg-terracotta/15 text-terracotta hover:bg-terracotta/25 press rounded-sm px-4 py-2 text-sm font-semibold transition-all"
             data-testid="rsvp-add-member-button"
             type="button"
           >
@@ -550,12 +550,12 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           See who is bringing what →
         </a>
         <button
-          class="rounded-sm bg-terracotta shadow-soft press mt-7 w-full px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+          class="bg-terracotta shadow-soft press mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
         >
           Confirm 2 guests
         </button>
         <button
-          class="rounded-sm text-muted-foreground hover:text-destructive mt-3 w-full px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+          class="text-muted-foreground hover:text-destructive mt-3 w-full rounded-sm px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
         >
           Can't make it
         </button>
