@@ -48,9 +48,11 @@ interface SlotListProps {
   readOnly?: boolean;
 }
 
+const DISPLAY_CATEGORY_ORDER = POTLUCK_CATEGORY_ORDER; // MAIN -> SIDE -> DESSERT -> DRINK -> OTHER
+
 function categoryOrderKey(category: string): number {
-  const idx = (POTLUCK_CATEGORY_ORDER as readonly string[]).indexOf(category);
-  return idx === -1 ? POTLUCK_CATEGORY_ORDER.length : idx;
+  const idx = (DISPLAY_CATEGORY_ORDER as readonly string[]).indexOf(category);
+  return idx === -1 ? DISPLAY_CATEGORY_ORDER.length : idx;
 }
 
 function remainingCapacity(slot: EventSlot): number | null {
