@@ -54,8 +54,8 @@ interface AttendanceDraft {
   saveToHousehold?: boolean;
 }
 
-/** Stable, unique key for React list rendering — generated once per draft */
-export function nextDraftKey(): string {
+/** Stable, unique key for a draft — see {@link draftKey} */
+function nextDraftKey(): string {
   return crypto.randomUUID();
 }
 
@@ -115,9 +115,9 @@ function buildInitialDrafts(
         memberName: m.name,
         memberAge: m.age,
         attending: prior.attending,
-        // The snapshot wins on first hydrate so a later edit to the
-        // household member name is not silently overwritten. The
-        // submit handler compares against this baseline.
+        // Prefer the snapshot over the live name so a later edit to the
+        // household member name is not silently overwritten on hydrate.
+        // The submit handler compares the draft against this baseline.
         originalMemberName: prior.originalMemberName ?? m.name,
         saveToHousehold: true,
       };
