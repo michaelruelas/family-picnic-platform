@@ -16,6 +16,8 @@ export const POTLUCK_CATEGORY_LABELS: Record<string, string> = {
   OTHER: 'Other Items',
 };
 
+export const POTLUCK_CATEGORY_ORDER = ['MAIN', 'SIDE', 'DESSERT', 'DRINK', 'OTHER'] as const;
+
 /**
  * FPP-54: the placeholder shown in the public list, admin grid, and
  * claim modal when a slot has no name. Format: `<article> <category> (any)`.

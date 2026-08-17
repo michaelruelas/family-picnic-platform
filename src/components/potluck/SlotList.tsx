@@ -3,7 +3,12 @@
 import { useMemo, useState } from 'react';
 import { Button, Input, Modal, Spinner } from '~/components/ui';
 import { useMyPotluckSignups, usePotluckSignupMutation, type MyPotluckSignup } from '~/hooks';
-import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS, slotDisplayName } from '~/lib/constants';
+import {
+  POTLUCK_CATEGORY_EMOJIS,
+  POTLUCK_CATEGORY_LABELS,
+  POTLUCK_CATEGORY_ORDER,
+  slotDisplayName,
+} from '~/lib/constants';
 import { SlotType } from '~/lib/generated/enums';
 
 export interface EventSlot {
@@ -43,11 +48,9 @@ interface SlotListProps {
   readOnly?: boolean;
 }
 
-const DISPLAY_CATEGORY_ORDER = ['MAIN', 'SIDE', 'DESSERT', 'DRINK', 'OTHER'] as const;
-
 function categoryOrderKey(category: string): number {
-  const idx = DISPLAY_CATEGORY_ORDER.indexOf(category as (typeof DISPLAY_CATEGORY_ORDER)[number]);
-  return idx === -1 ? DISPLAY_CATEGORY_ORDER.length : idx;
+  const idx = (POTLUCK_CATEGORY_ORDER as readonly string[]).indexOf(category);
+  return idx === -1 ? POTLUCK_CATEGORY_ORDER.length : idx;
 }
 
 function remainingCapacity(slot: EventSlot): number | null {

@@ -1,7 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
-import { POTLUCK_CATEGORY_EMOJIS, POTLUCK_CATEGORY_LABELS, slotDisplayName } from '~/lib/constants';
+import {
+  POTLUCK_CATEGORY_EMOJIS,
+  POTLUCK_CATEGORY_LABELS,
+  POTLUCK_CATEGORY_ORDER,
+  slotDisplayName,
+} from '~/lib/constants';
 
 export interface PotluckTableSignup {
   id: string;
@@ -48,11 +53,9 @@ interface TableRow {
   isCurrentUser: boolean;
 }
 
-const CATEGORY_ORDER = ['MAIN', 'SIDE', 'DESSERT', 'DRINK', 'OTHER'];
-
 function getCategoryOrder(category: string): number {
-  const index = CATEGORY_ORDER.indexOf(category);
-  return index === -1 ? CATEGORY_ORDER.length : index;
+  const index = (POTLUCK_CATEGORY_ORDER as readonly string[]).indexOf(category);
+  return index === -1 ? POTLUCK_CATEGORY_ORDER.length : index;
 }
 
 export default function PotluckTable({ slots, className = '', currentRsvpId }: PotluckTableProps) {

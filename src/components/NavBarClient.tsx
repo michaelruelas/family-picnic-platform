@@ -9,18 +9,17 @@ import { usePathname } from 'next/navigation';
 import { useMounted } from '~/hooks/useMounted';
 import { isAdminRole } from '~/lib/constants';
 
+interface NavItem {
+  href: string;
+  label: string;
+}
+
 export default function NavBarClient() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [prevPathname, setPrevPathname] = useState(pathname);
-
-  if (pathname !== prevPathname) {
-    setPrevPathname(pathname);
-    setMobileMenuOpen(false);
-  }
 
   const toggleTheme = () => {
     if (!mounted) return;
@@ -32,10 +31,28 @@ export default function NavBarClient() {
 
   const isAdmin = session?.user?.role ? isAdminRole(session.user.role) : false;
 
+  const publicNavItems: NavItem[] = [
+    { href: '/', label: 'Home' },
+    { href: '/events', label: 'Events' },
+  ];
+
+  const authenticatedNavItems: NavItem[] = session
+    ? [
+        { href: '/household', label: 'Household' },
+        { href: '/profile', label: 'Profile' },
+        { href: '/my-events', label: 'My Events' },
+        ...(isAdmin ? [{ href: '/admin/dashboard', label: 'Admin' }] : []),
+      ]
+    : [];
+
   return (
     <nav className="border-border/60 bg-background/80 sticky top-0 z-30 border-b backdrop-blur-lg">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <Link href="/" className="group flex items-center gap-2.5">
+        <Link
+          href="/"
+          onClick={() => setMobileMenuOpen(false)}
+          className="group flex items-center gap-2.5"
+        >
           <div className="shadow-soft h-10 w-10 overflow-hidden rounded-sm transition-transform duration-300 group-hover:scale-105">
             <Image
               src="/folia-family-picnic-logo.png"
@@ -55,8 +72,11 @@ export default function NavBarClient() {
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <div className="hidden gap-1 md:flex">
-            <NavLink href="/">Home</NavLink>
-            <NavLink href="/events">Events</NavLink>
+            {publicNavItems.map((item) => (
+              <NavLink key={item.href} href={item.href}>
+                {item.label}
+              </NavLink>
+            ))}
           </div>
           <button
             type="button"
@@ -105,32 +125,15 @@ export default function NavBarClient() {
             </span>
           ) : session ? (
             <div className="flex items-center gap-1.5">
-              <Link
-                href="/household"
-                className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
-              >
-                Household
-              </Link>
-              <Link
-                href="/profile"
-                className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
-              >
-                Profile
-              </Link>
-              <Link
-                href="/my-events"
-                className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
-              >
-                My Events
-              </Link>
-              {isAdmin && (
+              {authenticatedNavItems.map((item) => (
                 <Link
-                  href="/admin/dashboard"
+                  key={item.href}
+                  href={item.href}
                   className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
                 >
-                  Admin
+                  {item.label}
                 </Link>
-              )}
+              ))}
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
                 className="border-border bg-card text-foreground hover:border-foreground press rounded-sm border px-4 py-2 text-sm font-medium transition-all"
@@ -187,53 +190,29 @@ export default function NavBarClient() {
           data-testid="mobile-nav-menu"
         >
           <div className="flex flex-col gap-1 pb-3">
-            <Link
-              href="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
-            >
-              Home
-            </Link>
-            <Link
-              href="/events"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
-            >
-              Events
-            </Link>
+            {publicNavItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
           {session ? (
             <div className="flex flex-col gap-1 pt-3">
-              <Link
-                href="/household"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
-              >
-                Household
-              </Link>
-              <Link
-                href="/profile"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
-              >
-                Profile
-              </Link>
-              <Link
-                href="/my-events"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
-              >
-                My Events
-              </Link>
-              {isAdmin && (
+              {authenticatedNavItems.map((item) => (
                 <Link
-                  href="/admin/dashboard"
+                  key={item.href}
+                  href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
                 >
-                  Admin Dashboard
+                  {item.label}
                 </Link>
-              )}
+              ))}
             </div>
           ) : (
             <div className="pt-3">
