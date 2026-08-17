@@ -168,6 +168,7 @@ function appleProvider() {
   });
   return {
     ...base,
+    checks: [],
     get clientSecret() {
       return getAppleClientSecretForProvider();
     },
