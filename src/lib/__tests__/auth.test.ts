@@ -12,6 +12,7 @@ vi.mock('next-auth/providers/apple', () => ({
   default: vi.fn((config: Record<string, unknown>) => ({
     id: 'apple',
     name: 'Apple',
+    options: { ...config },
     ...config,
   })),
 }));
@@ -89,6 +90,23 @@ describe('authOptions configuration', () => {
     const googleProvider = authOptions.providers.find((p) => p.id === 'google') as any;
     expect(googleProvider.clientId).toBe('my-google-id');
     expect(googleProvider.clientSecret).toBe('my-google-secret');
+  });
+
+  it('configures Apple provider when Apple env vars are present', async () => {
+    vi.stubEnv('AUTH_APPLE_TEAM_ID', 'APPLE_TEAM_1');
+    vi.stubEnv('AUTH_APPLE_ID', 'com.foliapicnic.auth');
+    vi.stubEnv('AUTH_APPLE_KEY_ID', 'KEY_1');
+    vi.stubEnv(
+      'AUTH_APPLE_PRIVATE_KEY',
+      '-----BEGIN PRIVATE KEY-----\nMIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQg\n-----END PRIVATE KEY-----',
+    );
+    const { authOptions } = await import('../auth');
+    const apple = authOptions.providers.find((p) => p.id === 'apple') as any;
+    expect(apple).toBeDefined();
+    expect(apple.id).toBe('apple');
+    expect(apple.clientId).toBe('com.foliapicnic.auth');
+    expect(typeof apple.clientSecret).toBe('string');
+    expect(typeof apple.options.clientSecret).toBe('string');
   });
 
   it('has signIn page set to /login', async () => {
@@ -509,5 +527,28 @@ describe('dev credentials provider', () => {
       });
       expect(result).toBeNull();
     });
+  });
+});
+
+describe('getEnabledOAuthProviders', () => {
+  it('returns apple when Apple credentials are fully configured', async () => {
+    vi.stubEnv('AUTH_APPLE_TEAM_ID', 'APPLE_TEAM_1');
+    vi.stubEnv('AUTH_APPLE_ID', 'com.foliapicnic.auth');
+    vi.stubEnv('AUTH_APPLE_KEY_ID', 'KEY_1');
+    vi.stubEnv(
+      'AUTH_APPLE_PRIVATE_KEY',
+      '-----BEGIN PRIVATE KEY-----\nMIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQg\n-----END PRIVATE KEY-----',
+    );
+    const { getEnabledOAuthProviders } = await import('../auth');
+    expect(getEnabledOAuthProviders()).toContain('apple');
+  });
+
+  it('excludes apple when Apple credentials are missing', async () => {
+    delete process.env.AUTH_APPLE_TEAM_ID;
+    delete process.env.AUTH_APPLE_ID;
+    delete process.env.AUTH_APPLE_KEY_ID;
+    delete process.env.AUTH_APPLE_PRIVATE_KEY;
+    const { getEnabledOAuthProviders } = await import('../auth');
+    expect(getEnabledOAuthProviders()).not.toContain('apple');
   });
 });
