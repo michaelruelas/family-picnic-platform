@@ -10,6 +10,7 @@ import { formatAmount } from '~/lib/currency';
 import { sendRegistrationReceipt } from '~/lib/receipt';
 import { withSerializableRetry } from '~/lib/transaction-retry';
 import { randomUUID } from 'node:crypto';
+import { findOrCreateUserByEmail } from '~/lib/user-identity';
 import {
   forfeitInputSchema,
   listChargesInputSchema,
@@ -190,43 +191,16 @@ export const adminRouter = router({
         results.householdsCreated++;
 
         for (const member of household.members) {
-          const memberEmail = member.email.trim().toLowerCase();
-          const existingUser = await prisma.user.findFirst({
-            where: { email: { equals: memberEmail, mode: 'insensitive' }, deletedAt: null },
-          });
+          const { userId, created } = await findOrCreateUserByEmail(
+            member.email,
+            member.name,
+            newHousehold.id,
+          );
+          if (created) results.usersCreated++;
 
-          let userId: string | undefined;
-          if (existingUser) {
-            userId = existingUser.id;
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: { householdId: newHousehold.id },
-            });
-          } else {
-            const created = await prisma.user.create({
-              data: {
-                email: memberEmail,
-                name: member.name,
-                householdId: newHousehold.id,
-              },
-            });
-            userId = created.id;
-            results.usersCreated++;
-          }
-
-          if (!userId) continue;
-
-          // FPP-111: a user is linked to ONE account by email address.
-          // `rSVP.create` would insert a duplicate row when the user
-          // already has an RSVP for the event (e.g. re-importing the
-          // same CSV). Upsert on (eventId, userId) so an existing
-          // entry is updated instead of creating a new one.
           await prisma.rSVP.upsert({
             where: {
-              eventId_userId: {
-                eventId: input.eventId,
-                userId,
-              },
+              eventId_userId: { eventId: input.eventId, userId },
             },
             update: {
               householdId: newHousehold.id,

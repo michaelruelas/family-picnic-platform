@@ -186,12 +186,6 @@ export async function buildRosterAsNo(
 }
 
 interface ReplaceOptions {
-  /**
-   * When the caller wants to replace the entire roster (e.g. on a
-   * fresh confirm), pass `replace: true`. When the caller wants to
-   * flip a subset while preserving historical rows that the form
-   * did not include, pass `replace: false` (default).
-   */
   replace?: boolean;
 }
 
@@ -212,7 +206,7 @@ export async function persistResolvedAttendances(
   tx: Tx,
   rsvpId: string,
   rows: Array<Omit<ResolvedAttendanceRow, 'isHistorical'>>,
-  options: ReplaceOptions = {},
+  options: ReplaceOptions = { replace: true },
 ): Promise<void> {
   if (rows.length === 0 && !options.replace) return;
   if (options.replace) {
@@ -281,7 +275,7 @@ export async function persistResolvedAttendances(
 export async function resolveAndPersistAttendances(
   tx: Tx,
   input: PersistAttendanceInput,
-  options: ReplaceOptions = {},
+  options: ReplaceOptions = { replace: true },
 ): Promise<{
   rows: Array<Omit<ResolvedAttendanceRow, 'isHistorical'>>;
 }> {

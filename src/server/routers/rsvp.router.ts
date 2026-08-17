@@ -163,15 +163,11 @@ export const rsvpRouter = router({
           },
         });
         if (attendances.length > 0) {
-          await resolveAndPersistAttendances(
-            tx,
-            {
-              rsvpId: upserted.id,
-              householdId: caller.householdId,
-              attendances,
-            },
-            { replace: true },
-          );
+          await resolveAndPersistAttendances(tx, {
+            rsvpId: upserted.id,
+            householdId: caller.householdId,
+            attendances,
+          });
         }
         // Sync the registration fee so this entry point matches
         // `confirm` / `update` / `adminOverride`. The full snapshot
@@ -286,15 +282,11 @@ export const rsvpRouter = router({
             message: 'Mark attendance for at least one member',
           });
         }
-        await resolveAndPersistAttendances(
-          tx,
-          {
-            rsvpId: after.id,
-            householdId,
-            attendances,
-          },
-          { replace: true },
-        );
+        await resolveAndPersistAttendances(tx, {
+          rsvpId: after.id,
+          householdId,
+          attendances,
+        });
       }
 
       // Reload the persisted attendance snapshot for the fee calculation
@@ -518,15 +510,11 @@ export const rsvpRouter = router({
             message: 'Mark attendance for at least one member',
           });
         }
-        await resolveAndPersistAttendances(
-          tx,
-          {
-            rsvpId: upserted.id,
-            householdId,
-            attendances,
-          },
-          { replace: true },
-        );
+        await resolveAndPersistAttendances(tx, {
+          rsvpId: upserted.id,
+          householdId,
+          attendances,
+        });
       }
 
       // Reload the persisted attendance snapshot for the fee calculation
@@ -1054,15 +1042,11 @@ export const rsvpRouter = router({
               message: 'Mark attendance for at least one member',
             });
           }
-          await resolveAndPersistAttendances(
-            tx,
-            {
-              rsvpId: upserted.id,
-              householdId,
-              attendances,
-            },
-            { replace: true },
-          );
+          await resolveAndPersistAttendances(tx, {
+            rsvpId: upserted.id,
+            householdId,
+            attendances,
+          });
         } else if (input.status === RSVPStatus.DECLINED) {
           // FPP-102: when the admin declines without sending a new
           // attendance list (the modal hides the per-member grid on

@@ -146,6 +146,7 @@ export default function Modal({
           </svg>
         </button>
         <div
+          // 8rem = pt-9 + pb-10 + p-7 modal chrome budget
           className={`${title ? 'mt-4' : ''} max-h-[calc(100vh-8rem)] overflow-y-auto overscroll-contain`}
         >
           {children}

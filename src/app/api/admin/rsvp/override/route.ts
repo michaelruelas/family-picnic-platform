@@ -155,15 +155,11 @@ export async function POST(request: Request) {
         if (attendances.length === 0) {
           throw new Error('Mark attendance for at least one member');
         }
-        await resolveAndPersistAttendances(
-          tx,
-          {
-            rsvpId: upserted.id,
-            householdId,
-            attendances,
-          },
-          { replace: true },
-        );
+        await resolveAndPersistAttendances(tx, {
+          rsvpId: upserted.id,
+          householdId,
+          attendances,
+        });
       } else if (input.status === RSVPStatus.DECLINED) {
         // FPP-102: when the admin declines without sending a new
         // attendance list (the modal hides the per-member grid on

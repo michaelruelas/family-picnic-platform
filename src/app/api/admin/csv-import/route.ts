@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus } from '~/lib/generated/enums';
+import { RSVPStatus, Role } from '~/lib/generated/enums';
 import { z } from 'zod';
+import { findOrCreateUserByEmail } from '~/lib/user-identity';
 
 const CsvImportSchema = z.object({
   eventId: z.string(),
@@ -64,48 +65,17 @@ export async function POST(request: NextRequest) {
       results.householdsCreated++;
 
       for (const member of household.members) {
-        // FPP-111: normalize emails to lowercase so lookup/create stay
-        // consistent with the OAuth sign-in path. A mixed-case CSV
-        // email would otherwise create a duplicate account that the
-        // user later links to by email, leaving the orphan behind.
-        const memberEmail = member.email.trim().toLowerCase();
-        const existingUser = await prisma.user.findFirst({
-          where: { email: { equals: memberEmail, mode: 'insensitive' }, deletedAt: null },
-        });
+        const { userId, created } = await findOrCreateUserByEmail(
+          member.email,
+          member.name,
+          newHousehold.id,
+          'ADMIN_ADULT',
+        );
+        if (created) results.usersCreated++;
 
-        let userId: string | undefined;
-        if (existingUser) {
-          userId = existingUser.id;
-          await prisma.user.update({
-            where: { id: existingUser.id },
-            data: { householdId: newHousehold.id },
-          });
-        } else {
-          const created = await prisma.user.create({
-            data: {
-              email: memberEmail,
-              name: member.name,
-              householdId: newHousehold.id,
-              role: 'ADMIN_ADULT',
-            },
-          });
-          userId = created.id;
-          results.usersCreated++;
-        }
-
-        if (!userId) continue;
-
-        // FPP-111: a user is linked to ONE account by email address.
-        // `rSVP.create` would insert a duplicate row when the user
-        // already has an RSVP for the event (e.g. re-importing the
-        // same CSV). Upsert on (eventId, userId) so an existing
-        // entry is updated instead of creating a new one.
         await prisma.rSVP.upsert({
           where: {
-            eventId_userId: {
-              eventId,
-              userId,
-            },
+            eventId_userId: { eventId, userId },
           },
           update: {
             householdId: newHousehold.id,
