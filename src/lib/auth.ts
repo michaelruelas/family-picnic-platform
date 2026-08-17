@@ -6,7 +6,11 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from './prisma';
 import type { Role } from './generated/enums';
 import { findOrCreateUserByIdentity, isOAuthProvider, type OAuthProvider } from './user-identity';
-import { buildAppleClientSecret, readAppleClientSecretConfig } from './apple-client-secret';
+import {
+  getAppleClientSecret,
+  getAppleClientSecretCached,
+  readAppleClientSecretConfig,
+} from './apple-client-secret';
 
 // FPP-65 / QUB-13: role taxonomy after the FPP-65 audit.
 //   - SUPER_ADMIN: platform-level admin (renamed from ADMIN). Global
@@ -119,26 +123,27 @@ function devCredentialsProvider() {
 }
 
 const APPLE_CONFIG = readAppleClientSecretConfig();
-let cachedAppleClientSecret: string | null = null;
 let appleRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function refreshAppleClientSecret(): Promise<string | null> {
   if (!APPLE_CONFIG) return null;
   try {
-    const next = await buildAppleClientSecret(APPLE_CONFIG);
-    cachedAppleClientSecret = next;
+    const next = await getAppleClientSecret();
     if (appleRefreshTimer) clearTimeout(appleRefreshTimer);
-    // Refresh 1 minute before the 5-minute token expires.
+    // Refresh 15 minutes before the 1-hour token expires.
     appleRefreshTimer = setTimeout(
       () => {
         void refreshAppleClientSecret();
       },
-      4 * 60 * 1000,
+      45 * 60 * 1000,
     );
+    if (appleRefreshTimer && typeof appleRefreshTimer.unref === 'function') {
+      appleRefreshTimer.unref();
+    }
     return next;
   } catch (err) {
     console.error('[auth] Failed to refresh Apple client secret', err);
-    return cachedAppleClientSecret;
+    return getAppleClientSecretCached();
   }
 }
 
@@ -151,20 +156,26 @@ if (APPLE_CONFIG) {
   await refreshAppleClientSecret();
 }
 
+function getAppleClientSecretForProvider(): string {
+  return getAppleClientSecretCached() ?? '';
+}
+
 function appleProvider() {
   if (!APPLE_CONFIG) return null;
   const base = AppleProvider({
     clientId: APPLE_CONFIG.clientId,
-    clientSecret: cachedAppleClientSecret ?? '',
+    clientSecret: '',
   });
   return {
     ...base,
+    get clientSecret() {
+      return getAppleClientSecretForProvider();
+    },
     options: {
       ...base.options,
-      clientSecret: cachedAppleClientSecret ?? '',
-    },
-    get clientSecret() {
-      return cachedAppleClientSecret ?? '';
+      get clientSecret() {
+        return getAppleClientSecretForProvider();
+      },
     },
   };
 }
@@ -311,7 +322,7 @@ export { getServerSession } from 'next-auth';
 export function getEnabledOAuthProviders(): OAuthProvider[] {
   const providers: OAuthProvider[] = [];
   if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) providers.push('google');
-  if (APPLE_CONFIG) providers.push('apple');
+  if (APPLE_CONFIG || readAppleClientSecretConfig()) providers.push('apple');
   if (process.env.AUTH_FACEBOOK_ID && process.env.AUTH_FACEBOOK_SECRET) providers.push('facebook');
   return providers;
 }

@@ -26,18 +26,18 @@ additional accounts to the current user.
 
 ### Apple Client Secret
 
-Apple does not accept a static client secret — it must be a short-lived JWT signed with the
+Apple does not accept a static client secret — it must be a signed JWT signed with the
 Apple-issued ES256 private key (`.p8`). `src/lib/apple-client-secret.ts` builds the JWT with a
-5-minute expiry; the auth module caches it and refreshes every 4 minutes via `setTimeout`. The
-first build runs at module load via top-level await, so the cache is always populated before
-the first OAuth callback.
+1-hour expiry (a standard, safe assertion window); the auth module caches it and refreshes every
+45 minutes via `setTimeout`. The first build runs at module load via top-level await, so the cache
+is always populated before the first OAuth callback.
 
 ```typescript
 // Conceptual shape
 new SignJWT({})
   .setProtectedHeader({ alg: 'ES256', kid: keyId })
   .setIssuer(teamId)
-  .setExpirationTime(issuedAt + 5 * 60)
+  .setExpirationTime(issuedAt + 60 * 60)
   .setAudience('https://appleid.apple.com')
   .setSubject(clientId)
   .sign(privateKey);
