@@ -1,5 +1,6 @@
 import { prisma } from '~/lib/prisma';
 import { writeAuditLog } from '~/lib/audit';
+import type { Role } from '~/lib/generated/enums';
 
 export const SUPPORTED_OAUTH_PROVIDERS = ['google', 'apple', 'facebook'] as const;
 export type OAuthProvider = (typeof SUPPORTED_OAUTH_PROVIDERS)[number];
@@ -121,8 +122,8 @@ export async function findOrCreateUserByIdentity(
     return null;
   }
 
-  const activeByEmail = await prisma.user.findUnique({
-    where: { email, deletedAt: null },
+  const activeByEmail = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' }, deletedAt: null },
   });
   if (activeByEmail) {
     const created = await prisma.linkedIdentity.create({
@@ -155,8 +156,8 @@ export async function findOrCreateUserByIdentity(
     };
   }
 
-  const tombstone = await prisma.user.findUnique({
-    where: { email },
+  const tombstone = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
     select: { id: true, deletedAt: true },
   });
   if (tombstone?.deletedAt) {
@@ -277,6 +278,34 @@ export async function linkIdentityToCurrentUser(
     },
   });
   return { id: created.id, provider: link.provider };
+}
+
+export async function findOrCreateUserByEmail(
+  email: string,
+  name: string,
+  householdId: string,
+  role?: Role,
+): Promise<{ userId: string; created: boolean }> {
+  const normalized = email.trim().toLowerCase();
+  const existing = await prisma.user.findFirst({
+    where: { email: { equals: normalized, mode: 'insensitive' }, deletedAt: null },
+  });
+  if (existing) {
+    await prisma.user.update({
+      where: { id: existing.id },
+      data: { householdId },
+    });
+    return { userId: existing.id, created: false };
+  }
+  const created = await prisma.user.create({
+    data: {
+      email: normalized,
+      name,
+      householdId,
+      ...(role ? { role } : {}),
+    },
+  });
+  return { userId: created.id, created: true };
 }
 
 export class IdentityAlreadyLinkedError extends Error {

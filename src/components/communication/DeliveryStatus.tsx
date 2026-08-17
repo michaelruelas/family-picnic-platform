@@ -40,7 +40,7 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   return (
-    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${bg} ${text}`}>
+    <span className={`inline-flex rounded-sm px-2 py-1 text-xs font-medium ${bg} ${text}`}>
       {label}
     </span>
   );
@@ -50,7 +50,7 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="border-terracotta h-6 w-6 animate-spin rounded-full border-2 border-t-transparent" />
+        <div className="border-terracotta h-6 w-6 animate-spin rounded-sm border-2 border-t-transparent" />
         <span className="text-muted-foreground ml-2">Loading delivery status...</span>
       </div>
     );
@@ -58,7 +58,7 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
 
   if (logs.length === 0) {
     return (
-      <div className="bg-secondary rounded-xl p-8 text-center">
+      <div className="bg-secondary rounded-sm p-8 text-center">
         <div className="text-4xl">📭</div>
         <h3 className="text-foreground mt-2 text-lg font-medium">No Messages Sent</h3>
         <p className="text-muted-foreground mt-1">
@@ -80,33 +80,33 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-6 gap-2 text-center text-sm">
-        <div className="bg-secondary rounded-lg p-3">
+        <div className="bg-secondary rounded-sm p-3">
           <div className="text-foreground text-2xl font-bold">{summary.total}</div>
           <div className="text-muted-foreground">Total</div>
         </div>
-        <div className="bg-sunlight/30 rounded-lg p-3">
+        <div className="bg-sunlight/30 rounded-sm p-3">
           <div className="text-2xl font-bold text-[#a07c2f]">{summary.queued}</div>
           <div className="text-yellow-600">Queued</div>
         </div>
-        <div className="rounded-lg bg-blue-100 p-3">
+        <div className="rounded-sm bg-blue-100 p-3">
           <div className="text-2xl font-bold text-blue-700">{summary.sent}</div>
           <div className="text-blue-600">Sent</div>
         </div>
-        <div className="bg-sage/20 rounded-lg p-3">
+        <div className="bg-sage/20 rounded-sm p-3">
           <div className="text-sage text-2xl font-bold">{summary.delivered}</div>
           <div className="text-sage">Delivered</div>
         </div>
-        <div className="bg-destructive/15 rounded-lg p-3">
+        <div className="bg-destructive/15 rounded-sm p-3">
           <div className="text-destructive text-2xl font-bold">{summary.failed}</div>
           <div className="text-destructive">Failed</div>
         </div>
-        <div className="rounded-lg bg-gray-100 p-3">
+        <div className="rounded-sm bg-gray-100 p-3">
           <div className="text-2xl font-bold text-gray-700">{summary.unsubscribed}</div>
           <div className="text-gray-600">Unsubscribed</div>
         </div>
       </div>
 
-      <div className="border-border bg-card overflow-x-auto rounded-xl border">
+      <div className="border-border bg-card overflow-x-auto rounded-sm border">
         <table className="divide-border min-w-full divide-y">
           <thead className="bg-secondary/60">
             <tr>
@@ -139,7 +139,7 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
                   </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <span className="bg-secondary text-foreground/85 inline-flex rounded-full px-2 py-1 text-xs font-medium">
+                  <span className="bg-secondary text-foreground/85 inline-flex rounded-sm px-2 py-1 text-xs font-medium">
                     {log.channel}
                   </span>
                 </td>

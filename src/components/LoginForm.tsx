@@ -44,7 +44,7 @@ export default function LoginForm({
     <main className="bg-background flex min-h-screen items-center justify-center px-5 py-12">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="bg-terracotta shadow-soft mx-auto inline-flex h-16 w-16 items-center justify-center rounded-3xl text-3xl">
+          <div className="bg-terracotta shadow-soft mx-auto inline-flex h-16 w-16 items-center justify-center rounded-sm text-3xl">
             🏡
           </div>
           <h1 className="font-display text-foreground mt-5 text-4xl font-medium tracking-tight">
@@ -55,7 +55,7 @@ export default function LoginForm({
           </p>
         </div>
 
-        <div className="bg-card shadow-card ring-border/60 rounded-3xl p-8 ring-1">
+        <div className="bg-card shadow-card ring-border/60 rounded-sm p-8 ring-1">
           {devAuthEnabled && (
             <form onSubmit={handleDevLogin} className="space-y-4">
               <div>
@@ -70,7 +70,7 @@ export default function LoginForm({
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block min-h-12 w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block min-h-12 w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                   placeholder="Dev username"
                 />
               </div>
@@ -86,18 +86,18 @@ export default function LoginForm({
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block min-h-12 w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block min-h-12 w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                   placeholder="Dev password"
                 />
               </div>
               {error && (
-                <p className="bg-destructive/10 text-destructive ring-destructive/30 rounded-2xl px-4 py-3 text-sm ring-1">
+                <p className="bg-destructive/10 text-destructive ring-destructive/30 rounded-sm px-4 py-3 text-sm ring-1">
                   {error}
                 </p>
               )}
               <button
                 type="submit"
-                className="rounded-pill bg-foreground text-background press hover:bg-foreground/90 w-full px-5 py-3 font-semibold transition-all"
+                className="bg-foreground text-background press hover:bg-foreground/90 w-full rounded-sm px-5 py-3 font-semibold transition-all"
               >
                 Sign in (Dev)
               </button>
@@ -118,7 +118,7 @@ export default function LoginForm({
             {enabledProviders.includes('google') && (
               <button
                 onClick={() => signIn('google', { callbackUrl })}
-                className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
+                className="border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 rounded-sm border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                   <path
@@ -144,7 +144,7 @@ export default function LoginForm({
             {enabledProviders.includes('apple') && (
               <button
                 onClick={() => signIn('apple', { callbackUrl })}
-                className="rounded-pill border-foreground bg-foreground text-background press hover:bg-foreground/90 flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
+                className="border-foreground bg-foreground text-background press hover:bg-foreground/90 flex w-full items-center justify-center gap-3 rounded-sm border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                   <path
@@ -158,7 +158,7 @@ export default function LoginForm({
             {enabledProviders.includes('facebook') && (
               <button
                 onClick={() => signIn('facebook', { callbackUrl })}
-                className="rounded-pill border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 border px-5 py-3 font-semibold transition-all"
+                className="border-border bg-card text-foreground press hover:border-foreground flex w-full items-center justify-center gap-3 rounded-sm border px-5 py-3 font-semibold transition-all"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                   <path
@@ -172,7 +172,7 @@ export default function LoginForm({
           </div>
         </div>
 
-        <div className="bg-sunlight/20 ring-sunlight/40 mt-6 rounded-3xl p-6 ring-1">
+        <div className="bg-sunlight/20 ring-sunlight/40 mt-6 rounded-sm p-6 ring-1">
           <h2 className="font-display text-foreground text-lg font-semibold">
             Once you&apos;re in:
           </h2>

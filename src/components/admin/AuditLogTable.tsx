@@ -195,7 +195,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
             <select
               value={eventId}
               onChange={(e) => setEventId(e.target.value)}
-              className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+              className="border-border mt-1 rounded-sm border px-3 py-2 text-sm"
             >
               <option value="">All Events</option>
               {events.map((event) => (
@@ -210,7 +210,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
             <select
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
-              className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+              className="border-border mt-1 rounded-sm border px-3 py-2 text-sm"
             >
               <option value="">All Users</option>
               {users.map((user) => (
@@ -227,7 +227,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
               value={action}
               onChange={(e) => setAction(e.target.value)}
               placeholder="e.g., event.create"
-              className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+              className="border-border mt-1 rounded-sm border px-3 py-2 text-sm"
             />
           </div>
           <div>
@@ -235,7 +235,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
             <select
               value={subjectType}
               onChange={(e) => setSubjectType(e.target.value)}
-              className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+              className="border-border mt-1 rounded-sm border px-3 py-2 text-sm"
             >
               <option value="">All</option>
               {SUBJECT_TYPES.map((type) => (
@@ -252,7 +252,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
               value={subjectId}
               onChange={(e) => setSubjectId(e.target.value)}
               placeholder="e.g., rsvp id"
-              className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+              className="border-border mt-1 rounded-sm border px-3 py-2 text-sm"
             />
           </div>
           <div>
@@ -261,7 +261,7 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
               type="datetime-local"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+              className="border-border mt-1 rounded-sm border px-3 py-2 text-sm"
             />
           </div>
           <div>
@@ -270,14 +270,14 @@ export default function AuditLogTable({ initialLogs, events, users }: AuditLogTa
               type="datetime-local"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+              className="border-border mt-1 rounded-sm border px-3 py-2 text-sm"
             />
           </div>
           <button
             type="button"
             onClick={() => logsQuery.refetch()}
             disabled={logsQuery.isFetching}
-            className="bg-terracotta hover:bg-terracotta self-end rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="bg-terracotta hover:bg-terracotta self-end rounded-sm px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {logsQuery.isFetching ? 'Loading...' : 'Filter'}
           </button>

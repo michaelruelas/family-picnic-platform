@@ -16,7 +16,7 @@ describe('TimePicker', () => {
     render(<TimePicker label="Start time" name="start" value="" onChange={() => {}} />);
     const input = screen.getByLabelText('Start time');
     expect(input.className).toContain('min-h-12');
-    expect(input.className).toContain('rounded-pill');
+    expect(input.className).toContain('rounded-sm');
   });
 
   it('marks the field as required when requested', () => {

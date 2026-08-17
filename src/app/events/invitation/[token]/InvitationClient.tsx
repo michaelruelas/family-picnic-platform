@@ -105,7 +105,12 @@ export default function InvitationClient({
     () => (household?.members ?? []).filter((member) => memberAttendances[member.id] !== 'NO'),
     [household?.members, memberAttendances],
   );
+  // FPP-113: the per-attendee fee only counts YES attendees whose age
+  // is supplied and at or above the threshold. Mirror the canonical
+  // `calculateFee` in src/lib/fee.ts — MAYBE/NO members and members
+  // with no age on file must never trigger a charge.
   const amountCents = selectedMembers.reduce((total, member) => {
+    if (memberAttendances[member.id] !== 'YES') return total;
     if (member.age === null || member.age < event.registrationFeeMinAge) return total;
     return total + event.registrationFeeCents;
   }, 0);
@@ -181,7 +186,7 @@ export default function InvitationClient({
               aria-current={index === step ? 'step' : undefined}
             >
               <span
-                className={`block h-2 rounded-full ${index <= step ? 'bg-terracotta' : 'bg-secondary'}`}
+                className={`block h-2 rounded-sm ${index <= step ? 'bg-terracotta' : 'bg-secondary'}`}
               />
               <span className="text-muted-foreground mt-1 hidden text-xs sm:block">{label}</span>
             </button>
@@ -345,7 +350,7 @@ export default function InvitationClient({
                   key={option.label}
                   type="button"
                   onClick={() => setAttending(option.value)}
-                  className={`rounded-3xl border p-7 text-left text-xl font-semibold ${attending === option.value ? 'border-terracotta bg-terracotta/10' : 'border-border bg-card'}`}
+                  className={`rounded-sm border p-7 text-left text-xl font-semibold ${attending === option.value ? 'border-terracotta bg-terracotta/10' : 'border-border bg-card'}`}
                 >
                   {option.label}
                 </button>
@@ -373,7 +378,7 @@ export default function InvitationClient({
                       <p className="text-muted-foreground text-sm">Age {member.age}</p>
                     ) : null}
                   </div>
-                  <div className="bg-secondary grid grid-cols-3 rounded-xl p-1">
+                  <div className="bg-secondary grid grid-cols-3 rounded-sm p-1">
                     {(['YES', 'MAYBE', 'NO'] as const).map((value) => (
                       <button
                         key={value}
@@ -381,7 +386,7 @@ export default function InvitationClient({
                         onClick={() =>
                           setMemberAttendances((current) => ({ ...current, [member.id]: value }))
                         }
-                        className={`rounded-lg px-3 py-2 text-sm ${memberAttendances[member.id] === value ? 'bg-card shadow-sm' : ''}`}
+                        className={`rounded-sm px-3 py-2 text-sm ${memberAttendances[member.id] === value ? 'bg-card shadow-sm' : ''}`}
                       >
                         {value === 'YES' ? 'Going' : value === 'MAYBE' ? 'Maybe' : 'Not going'}
                       </button>
@@ -554,7 +559,7 @@ export default function InvitationClient({
           {step === 5 && !consume.isError && rsvpConfirmed ? (
             <Link
               href={`/events/${event.id}`}
-              className="bg-terracotta rounded-pill inline-flex min-h-12 items-center justify-center px-6 py-3 text-lg font-semibold text-white"
+              className="bg-terracotta inline-flex min-h-12 items-center justify-center rounded-sm px-6 py-3 text-lg font-semibold text-white"
             >
               Done — view event
             </Link>

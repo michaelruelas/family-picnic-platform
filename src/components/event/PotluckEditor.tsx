@@ -42,7 +42,7 @@ export default function PotluckEditor({
 
   if (slotsQuery.error) {
     return (
-      <div className="bg-destructive/10 text-destructive ring-destructive/30 rounded-2xl px-4 py-3 text-sm ring-1">
+      <div className="bg-destructive/10 text-destructive ring-destructive/30 rounded-sm px-4 py-3 text-sm ring-1">
         We could not load the menu. Try again from the potluck page.
       </div>
     );

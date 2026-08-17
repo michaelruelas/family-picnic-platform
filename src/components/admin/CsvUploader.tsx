@@ -127,7 +127,7 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
   };
 
   return (
-    <div className="border-border bg-card rounded-xl border p-4">
+    <div className="border-border bg-card rounded-sm border p-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-foreground text-lg font-semibold">Bulk CSV Import</h3>
@@ -137,7 +137,7 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
         </div>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white"
+          className="bg-terracotta hover:bg-terracotta rounded-sm px-4 py-2 font-medium text-white"
         >
           {isOpen ? 'Close' : 'Import CSV'}
         </button>
@@ -148,14 +148,14 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
           <div className="flex gap-2">
             <button
               onClick={handleDownloadSample}
-              className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-3 py-1.5 text-sm font-medium"
+              className="bg-secondary text-foreground/85 hover:bg-secondary rounded-sm px-3 py-1.5 text-sm font-medium"
             >
               Download Template
             </button>
           </div>
 
           <div
-            className={`relative rounded-lg border-2 border-dashed p-8 text-center ${
+            className={`relative rounded-sm border-2 border-dashed p-8 text-center ${
               dragActive ? 'border-terracotta bg-sunlight/20' : 'border-border'
             }`}
             onDragEnter={handleDrag}
@@ -200,7 +200,7 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
 
           {parseResult && (
             <div className="space-y-3">
-              <div className="bg-secondary/60 flex items-center justify-between rounded-lg p-3">
+              <div className="bg-secondary/60 flex items-center justify-between rounded-sm p-3">
                 <div className="text-sm">
                   <span className="text-foreground font-medium">{parseResult.totalRows}</span> rows
                   <span className="text-muted-foreground/70 mx-2">|</span>
@@ -226,7 +226,7 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
               </div>
 
               {parseResult.errors.length > 0 && (
-                <div className="border-destructive/30 bg-destructive/10 max-h-40 overflow-y-auto rounded-lg border p-3">
+                <div className="border-destructive/30 bg-destructive/10 max-h-40 overflow-y-auto rounded-sm border p-3">
                   <h4 className="text-foreground mb-2 text-sm font-medium">Errors</h4>
                   <ul className="space-y-1">
                     {parseResult.errors.map((err, i) => (
@@ -239,7 +239,7 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
               )}
 
               {parseResult.households.length > 0 && (
-                <div className="border-border max-h-60 overflow-y-auto rounded-lg border p-3">
+                <div className="border-border max-h-60 overflow-y-auto rounded-sm border p-3">
                   <h4 className="text-foreground/85 mb-2 text-sm font-medium">Preview</h4>
                   <ul className="space-y-2">
                     {parseResult.households.slice(0, 10).map((hh, i) => (
@@ -268,7 +268,7 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
 
               {importResult && (
                 <div
-                  className={`rounded-lg p-3 ${
+                  className={`rounded-sm p-3 ${
                     importResult.success
                       ? 'bg-sage/15 text-foreground'
                       : 'bg-destructive/10 text-foreground'
@@ -282,14 +282,14 @@ export default function CsvUploader({ eventId, onImportComplete }: CsvUploaderPr
                 <button
                   onClick={() => handleImport(true)}
                   disabled={importing || parseResult.errors.length > 0}
-                  className="bg-secondary text-foreground/85 hover:bg-secondary rounded-lg px-4 py-2 font-medium disabled:opacity-50"
+                  className="bg-secondary text-foreground/85 hover:bg-secondary rounded-sm px-4 py-2 font-medium disabled:opacity-50"
                 >
                   Dry Run
                 </button>
                 <button
                   onClick={() => handleImport(false)}
                   disabled={importing || parseResult.errors.length > 0}
-                  className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
+                  className="bg-terracotta hover:bg-terracotta rounded-sm px-4 py-2 font-medium text-white disabled:opacity-50"
                 >
                   {importing ? 'Importing...' : 'Import'}
                 </button>

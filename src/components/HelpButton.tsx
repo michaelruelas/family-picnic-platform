@@ -60,7 +60,7 @@ export default function HelpButton({ context = 'events', className = '' }: HelpB
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`bg-terracotta hover:bg-terracotta focus:ring-foreground/20 fixed right-6 bottom-6 flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white shadow-lg focus:ring-2 focus:ring-offset-2 focus:outline-none ${className}`}
+        className={`bg-terracotta hover:bg-terracotta focus:ring-foreground/20 fixed right-6 bottom-6 flex h-14 w-14 items-center justify-center rounded-sm text-2xl text-white shadow-lg focus:ring-2 focus:ring-offset-2 focus:outline-none ${className}`}
         aria-label="Open help"
       >
         ?
@@ -69,7 +69,7 @@ export default function HelpButton({ context = 'events', className = '' }: HelpB
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div
-            className="bg-card max-w-md rounded-xl p-6 shadow-xl"
+            className="bg-card max-w-md rounded-sm p-6 shadow-xl"
             role="dialog"
             aria-labelledby="help-title"
           >
@@ -91,7 +91,7 @@ export default function HelpButton({ context = 'events', className = '' }: HelpB
                 <button
                   key={key}
                   onClick={() => setSelectedContext(key)}
-                  className={`rounded-lg px-3 py-1 text-sm capitalize transition-colors ${
+                  className={`rounded-sm px-3 py-1 text-sm capitalize transition-colors ${
                     selectedContext === key
                       ? 'bg-terracotta/15 text-terracotta'
                       : 'bg-secondary text-muted-foreground hover:bg-secondary'
@@ -101,7 +101,7 @@ export default function HelpButton({ context = 'events', className = '' }: HelpB
                 </button>
               ))}
             </div>
-            <div className="bg-sunlight/20 mt-6 rounded-lg p-4">
+            <div className="bg-sunlight/20 mt-6 rounded-sm p-4">
               <p className="text-foreground text-sm">
                 <strong>Need more help?</strong> Contact your family admin or email
                 support@example.com

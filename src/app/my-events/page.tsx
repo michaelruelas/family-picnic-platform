@@ -96,7 +96,7 @@ export default async function MyEventsPage() {
       <p className="text-muted-foreground mt-2">Track your event RSVPs and potluck signups</p>
 
       {!hasAnyRSVPs ? (
-        <div className="bg-sunlight/20 mt-12 rounded-2xl p-8 text-center">
+        <div className="bg-sunlight/20 mt-12 rounded-sm p-8 text-center">
           <div className="text-5xl">📋</div>
           <h2 className="text-foreground mt-4 text-xl font-semibold">No RSVPs Yet</h2>
           <p className="text-terracotta mt-2">
@@ -104,7 +104,7 @@ export default async function MyEventsPage() {
           </p>
           <Link
             href="/events"
-            className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-lg px-6 py-3 text-white"
+            className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-sm px-6 py-3 text-white"
           >
             Browse Events
           </Link>
@@ -123,7 +123,7 @@ export default async function MyEventsPage() {
                     <Link
                       key={rsvp.id}
                       href={`/events/${rsvp.event.id}`}
-                      className="bg-card block rounded-xl p-6 shadow-sm transition-shadow hover:shadow-md"
+                      className="bg-card block rounded-sm p-6 shadow-sm transition-shadow hover:shadow-md"
                     >
                       <div className="flex items-start justify-between">
                         <div>
@@ -132,7 +132,7 @@ export default async function MyEventsPage() {
                               {rsvp.event.name}
                             </h3>
                             <span
-                              className={`rounded-full px-2 py-1 text-xs font-medium ${
+                              className={`rounded-sm px-2 py-1 text-xs font-medium ${
                                 rsvp.status === 'CONFIRMED'
                                   ? 'bg-sage/20 text-sage'
                                   : rsvp.status === 'DECLINED'
@@ -200,7 +200,7 @@ export default async function MyEventsPage() {
                     <Link
                       key={rsvp.id}
                       href={`/events/${rsvp.event.id}`}
-                      className="bg-card block rounded-xl p-6 opacity-80 shadow-sm transition-all hover:opacity-100 hover:shadow-md"
+                      className="bg-card block rounded-sm p-6 opacity-80 shadow-sm transition-all hover:opacity-100 hover:shadow-md"
                     >
                       <div className="flex items-start justify-between">
                         <div>
@@ -208,11 +208,11 @@ export default async function MyEventsPage() {
                             <h3 className="text-foreground text-xl font-semibold">
                               {rsvp.event.name}
                             </h3>
-                            <span className="bg-secondary text-muted-foreground rounded-full px-2 py-1 text-xs">
+                            <span className="bg-secondary text-muted-foreground rounded-sm px-2 py-1 text-xs">
                               Past
                             </span>
                             <span
-                              className={`rounded-full px-2 py-1 text-xs font-medium ${
+                              className={`rounded-sm px-2 py-1 text-xs font-medium ${
                                 rsvp.status === 'CONFIRMED'
                                   ? 'bg-sage/20 text-sage'
                                   : rsvp.status === 'DECLINED'
@@ -262,12 +262,12 @@ export default async function MyEventsPage() {
         </>
       )}
 
-      <div className="bg-terracotta/15 mt-12 rounded-2xl p-8 text-center">
+      <div className="bg-terracotta/15 mt-12 rounded-sm p-8 text-center">
         <h2 className="text-foreground text-xl font-semibold">Want to see more events?</h2>
         <p className="text-terracotta mt-2">Browse all upcoming family gatherings.</p>
         <Link
           href="/events"
-          className="bg-terracotta hover:bg-terracotta mt-4 inline-block rounded-lg px-6 py-3 text-white"
+          className="bg-terracotta hover:bg-terracotta mt-4 inline-block rounded-sm px-6 py-3 text-white"
         >
           View All Events
         </Link>

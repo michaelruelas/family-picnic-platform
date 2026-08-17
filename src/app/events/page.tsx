@@ -69,7 +69,7 @@ export default async function EventsPage() {
 
       {upcomingEvents.length === 0 && pastEvents.length === 0 ? (
         <BreatheSection>
-          <div className="bg-sunlight/20 ring-sunlight/40 mt-14 rounded-3xl p-16 text-center ring-1">
+          <div className="bg-sunlight/20 ring-sunlight/40 mt-14 rounded-sm p-16 text-center ring-1">
             <div className="text-6xl">🌅</div>
             <h2 className="font-display text-foreground mt-6 text-3xl font-semibold">
               No events on the calendar
@@ -100,7 +100,7 @@ export default async function EventsPage() {
                     <BreatheSection key={event.id} delay={idx * 60}>
                       <Link
                         href={`/events/${event.id}`}
-                        className="group bg-card shadow-card ring-border/60 hover-lift block overflow-hidden rounded-3xl ring-1 transition-all duration-300"
+                        className="group bg-card shadow-card ring-border/60 hover-lift block overflow-hidden rounded-sm ring-1 transition-all duration-300"
                       >
                         <div className="bg-sage/15 relative aspect-[5/3] overflow-hidden">
                           {event.mapImageUrl ? (
@@ -115,7 +115,7 @@ export default async function EventsPage() {
                               <span className="text-5xl">🌳</span>
                             </div>
                           )}
-                          <div className="bg-card/90 text-foreground shadow-soft absolute top-4 left-4 rounded-2xl px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
+                          <div className="bg-card/90 text-foreground shadow-soft absolute top-4 left-4 rounded-sm px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
                             {eventDate.toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -151,7 +151,7 @@ export default async function EventsPage() {
                             )}
                           </div>
                           {event.rsvpDeadline && new Date(event.rsvpDeadline) > now && (
-                            <div className="rounded-pill bg-sunlight/25 mt-4 inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-[#a07c2f]">
+                            <div className="bg-sunlight/25 mt-4 inline-flex items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-semibold text-[#a07c2f]">
                               <span>⏰</span> RSVP by{' '}
                               {new Date(event.rsvpDeadline).toLocaleDateString('en-US', {
                                 month: 'short',
@@ -182,7 +182,7 @@ export default async function EventsPage() {
                     <BreatheSection key={event.id} delay={idx * 60}>
                       <Link
                         href={`/events/${event.id}`}
-                        className="group bg-card shadow-card ring-border/60 hover-lift block overflow-hidden rounded-3xl opacity-80 ring-1 transition-all duration-300 hover:opacity-100"
+                        className="group bg-card shadow-card ring-border/60 hover-lift block overflow-hidden rounded-sm opacity-80 ring-1 transition-all duration-300 hover:opacity-100"
                       >
                         <div className="bg-muted relative aspect-[5/3] overflow-hidden">
                           {event.mapImageUrl ? (
@@ -197,7 +197,7 @@ export default async function EventsPage() {
                               <span className="text-5xl">🌳</span>
                             </div>
                           )}
-                          <div className="rounded-pill bg-foreground/80 text-background absolute top-4 left-4 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+                          <div className="bg-foreground/80 text-background absolute top-4 left-4 rounded-sm px-3 py-1 text-xs font-semibold backdrop-blur-sm">
                             Past
                           </div>
                         </div>

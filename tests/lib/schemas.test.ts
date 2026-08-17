@@ -97,13 +97,13 @@ describe('Potluck Schema', () => {
       expect(result.success).toBe(false);
     });
 
-    it('rejects empty dishName for signup', () => {
+    it('accepts empty dishName for signup', () => {
       const result = potluckSignupSchema.safeParse({
         slotId: 'slot-123',
         action: 'signup',
         dishName: '',
       });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it('applies defaults', () => {

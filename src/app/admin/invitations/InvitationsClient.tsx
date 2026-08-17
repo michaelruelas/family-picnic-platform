@@ -145,7 +145,7 @@ export default function AdminInvitationsClient({
             id="event-select"
             value={selectedEvent}
             onChange={(e) => handleEventChange(e.target.value)}
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg shadow-sm"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm shadow-sm"
           >
             <option value="">Select an event…</option>
             {events.map((event) => (
@@ -170,14 +170,14 @@ export default function AdminInvitationsClient({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by household name…"
-              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg shadow-sm"
+              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm shadow-sm"
             />
           </div>
         ) : null}
       </div>
 
       {selectedEvent && searchQuery ? (
-        <div className="border-border bg-card rounded-xl border p-4">
+        <div className="border-border bg-card rounded-sm border p-4">
           <h3 className="text-foreground/85 mb-3 text-sm font-medium">
             Matching Households ({filteredHouseholds.length})
           </h3>
@@ -185,7 +185,7 @@ export default function AdminInvitationsClient({
             {filteredHouseholds.map((household) => (
               <div
                 key={household.id}
-                className={`flex items-center justify-between rounded-lg border p-3 ${
+                className={`flex items-center justify-between rounded-sm border p-3 ${
                   selectedHousehold === household.id
                     ? 'border-terracotta bg-sunlight/20'
                     : 'border-border'
@@ -196,7 +196,7 @@ export default function AdminInvitationsClient({
                   type="button"
                   onClick={() => setSelectedHousehold(household.id)}
                   disabled={selectedHousehold === household.id}
-                  className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+                  className="bg-terracotta hover:bg-terracotta rounded-sm px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
                 >
                   {selectedHousehold === household.id ? 'Selected' : 'Select'}
                 </button>
@@ -212,7 +212,7 @@ export default function AdminInvitationsClient({
                 type="button"
                 onClick={() => void handleSendInvitation()}
                 disabled={sending}
-                className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
+                className="bg-terracotta hover:bg-terracotta rounded-sm px-4 py-2 font-medium text-white disabled:opacity-50"
               >
                 {sending ? 'Sending…' : 'Send Invitation'}
               </button>
@@ -233,7 +233,7 @@ export default function AdminInvitationsClient({
           />
         </div>
       ) : (
-        <div className="bg-secondary rounded-xl p-12 text-center">
+        <div className="bg-secondary rounded-sm p-12 text-center">
           <div className="text-5xl">📨</div>
           <h2 className="text-foreground mt-4 text-xl font-semibold">Select an event</h2>
           <p className="text-muted-foreground mt-2">

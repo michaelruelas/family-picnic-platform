@@ -304,7 +304,7 @@ export default function AdminRsvpModal({
   return (
     <Modal isOpen onClose={onClose} title={`${titlePrefix} · ${eventName}`} size="lg">
       <div className="space-y-5" data-testid="admin-rsvp-modal">
-        <div className="bg-secondary rounded-xl p-3">
+        <div className="bg-secondary rounded-sm p-3">
           <p className="text-foreground text-sm font-semibold">{householdLabel}</p>
           <p className="text-muted-foreground text-xs">
             {targetUser.name} · {targetUser.email}
@@ -319,7 +319,7 @@ export default function AdminRsvpModal({
 
         {isReadOnly ? (
           <div
-            className="bg-sunlight/20 text-foreground rounded-xl p-3 text-sm"
+            className="bg-sunlight/20 text-foreground rounded-sm p-3 text-sm"
             data-testid="admin-rsvp-readonly"
           >
             This event is cancelled. RSVPs are read-only.
@@ -338,7 +338,7 @@ export default function AdminRsvpModal({
                   role="radio"
                   aria-checked={selected}
                   onClick={() => setStatus(value)}
-                  className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-sm border px-3 py-2 text-sm font-medium transition-colors ${
                     selected
                       ? value === RSVPStatus.DECLINED
                         ? 'border-destructive bg-destructive/10 text-destructive'
@@ -368,7 +368,7 @@ export default function AdminRsvpModal({
               min="0"
               value={headcount}
               onChange={(e) => setHeadcount(safeCount(e.target.value))}
-              className="border-border focus:border-foreground bg-card block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+              className="border-border focus:border-foreground bg-card block w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
               data-testid="headcount-input"
             />
             <p className="text-muted-foreground mt-1 text-xs">
@@ -393,7 +393,7 @@ export default function AdminRsvpModal({
               onChange={(e) => setDeclineMessage(e.target.value)}
               maxLength={1000}
               rows={3}
-              className="border-border focus:border-foreground bg-card block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+              className="border-border focus:border-foreground bg-card block w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
               placeholder="Forwarded to the event owner"
               data-testid="decline-message"
             />
@@ -407,7 +407,7 @@ export default function AdminRsvpModal({
           <div>
             <p className="text-foreground mb-2 text-sm font-medium">Per-member attendance</p>
             <div
-              className="border-border bg-card overflow-hidden rounded-xl border"
+              className="border-border bg-card overflow-hidden rounded-sm border"
               data-testid="attendance-grid"
             >
               <table className="divide-border min-w-full divide-y">
@@ -474,7 +474,7 @@ export default function AdminRsvpModal({
           <button
             type="button"
             onClick={onClose}
-            className="bg-secondary text-foreground/85 rounded-lg px-4 py-2 text-sm font-medium"
+            className="bg-secondary text-foreground/85 rounded-sm px-4 py-2 text-sm font-medium"
             data-testid="cancel"
           >
             Cancel
@@ -483,7 +483,7 @@ export default function AdminRsvpModal({
             type="button"
             onClick={handleSave}
             disabled={isReadOnly || submitting}
-            className="bg-terracotta rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="bg-terracotta rounded-sm px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             data-testid="save"
           >
             {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Add RSVP'}

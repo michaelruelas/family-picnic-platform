@@ -132,7 +132,7 @@ export default async function AdminDashboardPage() {
   return (
     <AdminShell title="Admin Dashboard" description="Overview of all family picnic events">
       {rows.length === 0 ? (
-        <div className="bg-secondary rounded-2xl p-12 text-center">
+        <div className="bg-secondary rounded-sm p-12 text-center">
           <div className="text-5xl">📊</div>
           <h2 className="text-foreground mt-4 text-xl font-semibold">No Events Yet</h2>
           <p className="text-muted-foreground mt-2">
@@ -140,7 +140,7 @@ export default async function AdminDashboardPage() {
           </p>
           <Link
             href="/admin/events/new"
-            className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-lg px-6 py-2 font-medium text-white"
+            className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-sm px-6 py-2 font-medium text-white"
           >
             Create First Event
           </Link>

@@ -111,7 +111,7 @@ export default function FeaturedImageUpload({
   return (
     <div className="space-y-3">
       {currentUrl ? (
-        <div className="border-border overflow-hidden rounded-lg border">
+        <div className="border-border overflow-hidden rounded-sm border">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={currentUrl}
@@ -120,7 +120,7 @@ export default function FeaturedImageUpload({
           />
         </div>
       ) : (
-        <div className="border-border bg-secondary text-muted-foreground flex h-32 items-center justify-center rounded-lg border border-dashed text-xs">
+        <div className="border-border bg-secondary text-muted-foreground flex h-32 items-center justify-center rounded-sm border border-dashed text-xs">
           No featured image yet
         </div>
       )}
@@ -139,7 +139,7 @@ export default function FeaturedImageUpload({
           type="button"
           onClick={handlePick}
           disabled={isBusy}
-          className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="bg-terracotta hover:bg-terracotta rounded-sm px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {isBusy ? 'Uploading…' : currentUrl ? 'Replace image' : 'Upload image'}
         </button>
@@ -156,9 +156,9 @@ export default function FeaturedImageUpload({
       </div>
 
       {(isBusy || progress > 0) && status !== 'error' && status !== 'done' && (
-        <div className="bg-secondary h-1.5 w-full rounded-full">
+        <div className="bg-secondary h-1.5 w-full rounded-sm">
           <div
-            className="bg-sunlight/200 h-1.5 rounded-full transition-all"
+            className="bg-sunlight/200 h-1.5 rounded-sm transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>

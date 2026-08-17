@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus } from '~/lib/generated/enums';
+import { RSVPStatus, Role } from '~/lib/generated/enums';
 import { z } from 'zod';
+import { findOrCreateUserByEmail } from '~/lib/user-identity';
 
 const CsvImportSchema = z.object({
   eventId: z.string(),
@@ -64,41 +65,34 @@ export async function POST(request: NextRequest) {
       results.householdsCreated++;
 
       for (const member of household.members) {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: member.email },
+        const { userId, created } = await findOrCreateUserByEmail(
+          member.email,
+          member.name,
+          newHousehold.id,
+          'ADMIN_ADULT',
+        );
+        if (created) results.usersCreated++;
+
+        await prisma.rSVP.upsert({
+          where: {
+            eventId_userId: { eventId, userId },
+          },
+          update: {
+            householdId: newHousehold.id,
+            status: RSVPStatus.CONFIRMED,
+            headcount: member.headcount,
+            respondedAt: new Date(),
+          },
+          create: {
+            eventId,
+            userId,
+            householdId: newHousehold.id,
+            status: RSVPStatus.CONFIRMED,
+            headcount: member.headcount,
+            respondedAt: new Date(),
+          },
         });
-
-        if (existingUser) {
-          await prisma.user.update({
-            where: { id: existingUser.id },
-            data: { householdId: newHousehold.id },
-          });
-        } else {
-          await prisma.user.create({
-            data: {
-              email: member.email,
-              name: member.name,
-              householdId: newHousehold.id,
-              role: 'ADMIN_ADULT',
-            },
-          });
-          results.usersCreated++;
-        }
-
-        const freshUser = await prisma.user.findUnique({ where: { email: member.email } });
-        if (freshUser) {
-          await prisma.rSVP.create({
-            data: {
-              eventId,
-              userId: freshUser.id,
-              householdId: newHousehold.id,
-              status: RSVPStatus.CONFIRMED,
-              headcount: member.headcount,
-              respondedAt: new Date(),
-            },
-          });
-          results.rsvpsCreated++;
-        }
+        results.rsvpsCreated++;
       }
     }
 

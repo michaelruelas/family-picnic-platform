@@ -83,7 +83,7 @@ export function Calendar({ events }: CalendarProps) {
         <div className="flex items-center gap-4">
           <button
             onClick={prevMonth}
-            className="border-border text-foreground/85 hover:bg-secondary/60 active:bg-secondary bg-card rounded-lg border px-4 py-2 text-lg font-medium transition-colors"
+            className="border-border text-foreground/85 hover:bg-secondary/60 active:bg-secondary bg-card rounded-sm border px-4 py-2 text-lg font-medium transition-colors"
             aria-label="Previous month"
           >
             ‹
@@ -93,7 +93,7 @@ export function Calendar({ events }: CalendarProps) {
           </h2>
           <button
             onClick={nextMonth}
-            className="border-border text-foreground/85 hover:bg-secondary/60 active:bg-secondary bg-card rounded-lg border px-4 py-2 text-lg font-medium transition-colors"
+            className="border-border text-foreground/85 hover:bg-secondary/60 active:bg-secondary bg-card rounded-sm border px-4 py-2 text-lg font-medium transition-colors"
             aria-label="Next month"
           >
             ›
@@ -101,13 +101,13 @@ export function Calendar({ events }: CalendarProps) {
         </div>
         <button
           onClick={goToToday}
-          className="border-border text-muted-foreground hover:bg-secondary/60 active:bg-secondary bg-card rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
+          className="border-border text-muted-foreground hover:bg-secondary/60 active:bg-secondary bg-card rounded-sm border px-4 py-2 text-sm font-medium transition-colors"
         >
           Today
         </button>
       </div>
 
-      <div className="border-border bg-secondary grid grid-cols-7 gap-px overflow-hidden rounded-lg border">
+      <div className="border-border bg-secondary grid grid-cols-7 gap-px overflow-hidden rounded-sm border">
         {DAYS_OF_WEEK.map((day) => (
           <div
             key={day}
@@ -131,7 +131,7 @@ export function Calendar({ events }: CalendarProps) {
               className={`bg-card min-h-24 p-2 md:min-h-32 ${isCurrentDay ? 'ring-2 ring-green-500 ring-inset' : ''}`}
             >
               <div
-                className={`mb-1 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium ${
+                className={`mb-1 inline-flex h-7 w-7 items-center justify-center rounded-sm text-sm font-medium ${
                   isCurrentDay ? 'bg-sage text-white' : 'text-foreground/85'
                 }`}
               >

@@ -146,7 +146,7 @@ describe('UI Primitives Library', () => {
     it('supports escape key to close', async () => {
       const content = await fs.readFile(modalPath, 'utf-8');
       expect(content).toContain("e.key === 'Escape'");
-      expect(content).toContain('onClose()');
+      expect(content).toContain('onCloseRef.current()');
     });
 
     it('has focus management for accessibility', async () => {

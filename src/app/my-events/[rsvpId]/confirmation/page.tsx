@@ -9,7 +9,7 @@ import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 import { RsvpLastUpdated } from '~/components/event/RsvpLastUpdated';
 import { FeeTotalBlock } from '~/components/event/FeeTotalBlock';
-import { slotDisplayName } from '~/lib/constants';
+import { POTLUCK_CATEGORY_LABELS, slotDisplayName } from '~/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,7 +135,7 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <span
-              className={`rounded-pill inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold ${status.bg} ${status.color}`}
+              className={`inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold ${status.bg} ${status.color}`}
             >
               {rsvp.status === 'CONFIRMED' && <span>✓</span>}
               {status.label}
@@ -150,7 +150,7 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
 
       <BreatheSection className="mt-8">
         <div className="mx-auto max-w-3xl px-5">
-          <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
+          <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
@@ -163,7 +163,7 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
               {isRsvpEditable && (
                 <Link
                   href={`/events/${rsvp.event.id}`}
-                  className="rounded-pill border-border text-foreground hover:border-foreground border px-4 py-2 text-sm font-semibold"
+                  className="border-border text-foreground hover:border-foreground rounded-sm border px-4 py-2 text-sm font-semibold"
                 >
                   Edit RSVP
                 </Link>
@@ -250,7 +250,7 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
       {rsvp.status !== RSVPStatus.DECLINED && (
         <BreatheSection className="mt-8">
           <div className="mx-auto max-w-3xl px-5">
-            <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
+            <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9">
               <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
                 Potluck
               </p>
@@ -270,18 +270,38 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
                 </p>
               ) : (
                 <ul className="mt-5 space-y-2">
-                  {potluckClaims.map(({ slot, signup }) => (
-                    <li
-                      key={signup.id}
-                      className="bg-secondary/40 flex items-center justify-between rounded-2xl px-4 py-3 text-sm"
-                    >
-                      <span className="text-foreground font-medium">{signup.dishName}</span>
-                      <span className="text-muted-foreground text-xs">
-                        {slotDisplayName(slot)} · {signup.servings}{' '}
-                        {signup.servings === 1 ? 'serving' : 'servings'}
-                      </span>
-                    </li>
-                  ))}
+                  {potluckClaims.map(({ slot, signup }) => {
+                    const displayName = signup.dishName || slotDisplayName(slot);
+                    const categoryLabel =
+                      POTLUCK_CATEGORY_LABELS[
+                        slot.category as keyof typeof POTLUCK_CATEGORY_LABELS
+                      ] ?? slot.category;
+                    const details = [
+                      signup.dishName ? slotDisplayName(slot) : categoryLabel,
+                      `${signup.servings} ${signup.servings === 1 ? 'serving' : 'servings'}`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ');
+
+                    return (
+                      <li
+                        key={signup.id}
+                        className="bg-secondary/40 flex items-center justify-between gap-3 rounded-sm px-4 py-3 text-sm"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span className="text-foreground block truncate font-medium">
+                            {displayName}
+                          </span>
+                          <span className="text-muted-foreground block truncate text-xs">
+                            {details}
+                          </span>
+                        </div>
+                        <span className="bg-sage/20 text-sage inline-flex shrink-0 items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-semibold">
+                          <span>✓</span> Signed up
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -292,7 +312,7 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
       {rsvp.status === RSVPStatus.DECLINED && (
         <BreatheSection className="mt-8">
           <div className="mx-auto max-w-3xl px-5">
-            <div className="bg-secondary/40 rounded-3xl p-7 text-center md:p-9">
+            <div className="bg-secondary/40 rounded-sm p-7 text-center md:p-9">
               <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
                 Thanks for letting us know
               </p>
@@ -318,17 +338,19 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
       {(registration?.amountCents ?? 0) > 0 && registration && (
         <BreatheSection className="mt-8">
           <div className="mx-auto max-w-3xl px-5">
-            <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
+            <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9">
               <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Fee</p>
               <h2 className="font-display text-foreground mt-2 text-2xl font-semibold">
                 Payment total
               </h2>
-              <FeeTotalBlock
-                amountCents={registration.amountCents}
-                currency={registration.currency}
-                perAttendeeCents={rsvp.event.registrationFeeCents ?? undefined}
-                minAge={rsvp.event.registrationFeeMinAge}
-              />
+              <div className="mt-6">
+                <FeeTotalBlock
+                  amountCents={registration.amountCents}
+                  currency={registration.currency}
+                  perAttendeeCents={rsvp.event.registrationFeeCents ?? undefined}
+                  minAge={rsvp.event.registrationFeeMinAge}
+                />
+              </div>
             </div>
           </div>
         </BreatheSection>

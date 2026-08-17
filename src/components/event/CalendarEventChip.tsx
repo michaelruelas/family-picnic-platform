@@ -23,7 +23,7 @@ export function CalendarEventChip({ event }: CalendarEventChipProps) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className={`block rounded-md border px-2 py-1 text-xs font-medium transition-colors ${statusColors[event.status] || 'bg-gray-100 text-gray-800'}`}
+      className={`block rounded-sm border px-2 py-1 text-xs font-medium transition-colors ${statusColors[event.status] || 'bg-gray-100 text-gray-800'}`}
       title={event.name}
     >
       {event.name}

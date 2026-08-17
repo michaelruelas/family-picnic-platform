@@ -81,7 +81,7 @@ export function Tabs<TKey extends string>({
         role="tablist"
         aria-label={ariaLabel}
         aria-orientation="horizontal"
-        className={`border-border bg-card/60 inline-flex flex-wrap items-center gap-1 rounded-2xl border p-1 shadow-sm backdrop-blur ${listClassName}`}
+        className={`border-border bg-card/60 inline-flex flex-wrap items-center gap-1 rounded-sm border p-1 shadow-sm backdrop-blur ${listClassName}`}
       >
         {tabs.map((tab, i) => {
           const isActive = tab.key === value;
@@ -106,8 +106,8 @@ export function Tabs<TKey extends string>({
               data-active={isActive ? 'true' : 'false'}
               className={
                 isActive
-                  ? 'bg-foreground text-background rounded-xl px-4 py-2 text-sm font-semibold transition-colors'
-                  : 'text-muted-foreground hover:text-foreground rounded-xl px-4 py-2 text-sm font-medium transition-colors'
+                  ? 'bg-foreground text-background rounded-sm px-4 py-2 text-sm font-semibold transition-colors'
+                  : 'text-muted-foreground hover:text-foreground rounded-sm px-4 py-2 text-sm font-medium transition-colors'
               }
             >
               {tab.label}
@@ -120,24 +120,27 @@ export function Tabs<TKey extends string>({
         Panels are always rendered (with `hidden` on the inactive ones)
         so mobile anchor links can scroll to them and any stateful
         client components inside the panel survive tab switches.
+        `mt-8` keeps the active panel clear of the tablist above it.
       */}
-      {tabs.map((tab) => {
-        const isActive = tab.key === value;
-        const panelId = tab.panelId ?? `${idPrefix}-panel-${tab.key}`;
-        return (
-          <div
-            key={tab.key}
-            role="tabpanel"
-            id={panelId}
-            aria-labelledby={`${idPrefix}-${tab.key}`}
-            hidden={!isActive}
-            tabIndex={0}
-            className="focus:outline-none"
-          >
-            {tab.panel}
-          </div>
-        );
-      })}
+      <div className="mt-8">
+        {tabs.map((tab) => {
+          const isActive = tab.key === value;
+          const panelId = tab.panelId ?? `${idPrefix}-panel-${tab.key}`;
+          return (
+            <div
+              key={tab.key}
+              role="tabpanel"
+              id={panelId}
+              aria-labelledby={`${idPrefix}-${tab.key}`}
+              hidden={!isActive}
+              tabIndex={0}
+              className="focus:outline-none"
+            >
+              {tab.panel}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

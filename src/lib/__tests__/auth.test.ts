@@ -290,7 +290,7 @@ describe('authOptions session callback', () => {
     it('allows sign in for apple OAuth by creating a new user when missing', async () => {
       const { prisma } = await import('~/lib/prisma');
       vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
-      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
         return fn({
           user: {
@@ -330,7 +330,7 @@ describe('authOptions session callback', () => {
     it('allows sign in for facebook OAuth by linking to an existing user by email', async () => {
       const { prisma } = await import('~/lib/prisma');
       vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
-      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
         id: 'user-1',
         email: 'existing@example.com',
         name: 'Existing',

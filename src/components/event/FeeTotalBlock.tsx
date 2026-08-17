@@ -82,7 +82,7 @@ export function FeeTotalBlock({
   });
   return (
     <div
-      className="bg-sunlight/20 ring-sunlight/40 rounded-2xl px-4 py-3 text-sm ring-1"
+      className="bg-sunlight/20 ring-sunlight/40 rounded-sm px-4 py-3 text-sm ring-1"
       title={tooltip}
     >
       <p className="text-foreground flex items-center gap-2 font-semibold">

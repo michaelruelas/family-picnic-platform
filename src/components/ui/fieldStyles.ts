@@ -22,7 +22,7 @@ export const FOCUS_RING_DESTRUCTIVE = 'focus:shadow-[0_0_0_3px_rgba(196,69,54,0.
 
 export const fieldBaseClasses =
   'text-foreground placeholder:text-muted-foreground disabled:bg-muted disabled:text-muted-foreground ' +
-  'block min-h-12 w-full rounded-pill border bg-card px-4 py-3 text-base transition-all duration-200 ' +
+  'block min-h-12 w-full rounded-sm border bg-card px-4 py-3 text-base transition-all duration-200 ' +
   'focus:ring-0 focus:outline-none disabled:cursor-not-allowed';
 
 export function fieldStateClasses(error?: string): string {

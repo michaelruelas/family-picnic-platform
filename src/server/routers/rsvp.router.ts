@@ -133,8 +133,27 @@ export const rsvpRouter = router({
       const headcount = deriveHeadcount(attendances, input.headcount);
 
       const rsvp = await prisma.$transaction(async (tx) => {
-        const upserted = await tx.rSVP.create({
-          data: {
+        // FPP-111: each user links to ONE account by email address, so
+        // an RSVP must update the existing (eventId, userId) entry
+        // rather than create a fresh one. `create` would insert a
+        // duplicate row when the user already responded (e.g. a
+        // returning invitee), which breaks the confirm/update/decline
+        // single-entry invariant. `upsert`, mirroring the `confirm`
+        // procedure, updates in place when a row exists.
+        const upserted = await tx.rSVP.upsert({
+          where: {
+            eventId_userId: {
+              eventId: input.eventId,
+              userId: ctx.session.user.id,
+            },
+          },
+          update: {
+            householdId: caller.householdId,
+            status: RSVPStatus.CONFIRMED,
+            headcount,
+            respondedAt: new Date(),
+          },
+          create: {
             eventId: input.eventId,
             userId: ctx.session.user.id,
             householdId: caller.householdId,
@@ -270,11 +289,8 @@ export const rsvpRouter = router({
         });
       }
 
-      // Reload the FULL attendance snapshot for the fee calculation.
-      // `resolveAndPersistAttendances` with the default `replace: false`
-      // keeps historical rows in the DB, but only returns the rows
-      // from the input. We need the persisted set so omitted members
-      // still count toward the fee (B2 fix).
+      // Reload the persisted attendance snapshot for the fee calculation
+      // so the fee reflects the latest attendance rows.
       const snapshotForFee = await tx.rSVP.findUnique({
         where: { id: after.id },
         select: { memberAttendances: true },
@@ -501,11 +517,8 @@ export const rsvpRouter = router({
         });
       }
 
-      // Reload the FULL attendance snapshot for the fee calculation.
-      // `resolveAndPersistAttendances` with the default `replace: false`
-      // keeps historical rows in the DB, but only returns the rows
-      // from the input. We need the persisted set so omitted members
-      // still count toward the fee (B2 fix).
+      // Reload the persisted attendance snapshot for the fee calculation
+      // so the fee reflects the latest attendance rows.
       const snapshotForFee = await tx.rSVP.findUnique({
         where: { id: upserted.id },
         select: { memberAttendances: true },
@@ -1043,11 +1056,8 @@ export const rsvpRouter = router({
           await markAllAttendanceNo(tx, upserted.id);
         }
 
-        // Reload the FULL attendance snapshot for the fee calculation.
-        // `resolveAndPersistAttendances` with the default `replace: false`
-        // keeps historical rows in the DB, but only returns the rows
-        // from the input. We need the persisted set so omitted members
-        // still count toward the fee (B2 fix).
+        // Reload the persisted attendance snapshot for the fee calculation
+        // so the fee reflects the latest attendance rows.
         const snapshotForFee = await tx.rSVP.findUnique({
           where: { id: upserted.id },
           select: { memberAttendances: true },

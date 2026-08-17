@@ -68,9 +68,9 @@ export default function LinkedAccounts({ enabledProviders, sessionEmail }: Linke
   }
 
   return (
-    <div className="bg-card ring-border rounded-xl p-6 shadow-sm ring-1">
+    <div className="bg-card ring-border rounded-sm p-6 shadow-sm ring-1">
       <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-2xl">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-blue-100 text-2xl">
           🔗
         </div>
         <div className="flex-1">
@@ -83,7 +83,7 @@ export default function LinkedAccounts({ enabledProviders, sessionEmail }: Linke
       </div>
 
       {error && (
-        <div className="bg-destructive/10 text-destructive mt-4 rounded-lg p-3 text-sm">
+        <div className="bg-destructive/10 text-destructive mt-4 rounded-sm p-3 text-sm">
           {error}
         </div>
       )}
@@ -99,7 +99,7 @@ export default function LinkedAccounts({ enabledProviders, sessionEmail }: Linke
           {identities.map((identity) => (
             <li
               key={identity.id}
-              className="border-border flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
+              className="border-border flex items-center justify-between gap-4 rounded-sm border px-4 py-3"
             >
               <div className="min-w-0">
                 <p className="text-foreground font-medium">
@@ -141,7 +141,7 @@ export default function LinkedAccounts({ enabledProviders, sessionEmail }: Linke
                 type="button"
                 onClick={() => handleLink(provider)}
                 disabled={linkingProvider !== null}
-                className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-sm px-3 py-1.5 text-sm font-medium disabled:opacity-50"
               >
                 {linkingProvider === provider ? 'Opening...' : `Link ${PROVIDER_LABELS[provider]}`}
               </button>

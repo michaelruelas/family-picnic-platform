@@ -27,18 +27,18 @@ export default async function CalendarPage() {
         </div>
         <Link
           href="/events"
-          className="border-border text-foreground/85 hover:bg-secondary/60 bg-card rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
+          className="border-border text-foreground/85 hover:bg-secondary/60 bg-card rounded-sm border px-4 py-2 text-sm font-medium transition-colors"
         >
           List View
         </Link>
       </div>
 
-      <div className="bg-card rounded-xl p-6 shadow-sm">
+      <div className="bg-card rounded-sm p-6 shadow-sm">
         <Calendar events={events} />
       </div>
 
       {events.length === 0 && (
-        <div className="bg-sunlight/20 mt-8 rounded-2xl p-8 text-center">
+        <div className="bg-sunlight/20 mt-8 rounded-sm p-8 text-center">
           <div className="text-5xl">📅</div>
           <h2 className="text-foreground mt-4 text-xl font-semibold">No Events Yet</h2>
           <p className="text-terracotta mt-2">Check back soon for our next family gathering!</p>

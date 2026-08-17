@@ -7,7 +7,7 @@ interface ModalProps extends HTMLAttributes<HTMLDivElement> {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   variant?: 'default' | 'bottom-sheet';
 }
 
@@ -16,6 +16,10 @@ const sizeClasses = {
   md: 'max-w-md',
   lg: 'max-w-lg',
   xl: 'max-w-xl',
+  // FPP-115: the RSVP bottom sheet grows to fit 3-4 household
+  // members and the potluck list on wide displays. `2xl` widens the
+  // sheet while the caller still constrains it to the viewport.
+  '2xl': 'max-w-2xl',
 };
 
 export default function Modal({
@@ -31,31 +35,40 @@ export default function Modal({
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<Element | null>(null);
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
+  // Keep the latest onClose in a ref so the keydown handler has a
+  // stable identity across renders. If the handler were recreated on
+  // every render (because callers pass inline arrow functions), the
+  // focus effect below would re-run on every keystroke: its cleanup
+  // refocuses `previousActiveElement` and its setup refocuses the
+  // first focusable element, yanking focus out of whatever input the
+  // user is typing in.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
-      if (e.key === 'Tab' && modalRef.current) {
-        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        );
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onCloseRef.current();
+      return;
+    }
 
-        if (e.shiftKey && document.activeElement === firstElement) {
-          e.preventDefault();
-          lastElement?.focus();
-        } else if (!e.shiftKey && document.activeElement === lastElement) {
-          e.preventDefault();
-          firstElement?.focus();
-        }
+    if (e.key === 'Tab' && modalRef.current) {
+      const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement?.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement?.focus();
       }
-    },
-    [onClose],
-  );
+    }
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -103,12 +116,12 @@ export default function Modal({
         className={`relative w-full ${sizeClasses[size]} ${
           isBottomSheet
             ? 'animate-breathe-in rounded-t-[2rem] md:rounded-[2rem]'
-            : 'shadow-pop animate-breathe-in rounded-2xl'
+            : 'shadow-pop animate-breathe-in rounded-sm'
         } bg-card p-7 pt-9 pb-10 ${className} `}
         {...props}
       >
         {isBottomSheet && (
-          <div className="bg-muted absolute top-3 left-1/2 h-1.5 w-12 -translate-x-1/2 rounded-full md:hidden" />
+          <div className="bg-muted absolute top-3 left-1/2 h-1.5 w-12 -translate-x-1/2 rounded-sm md:hidden" />
         )}
         {title && (
           <h2
@@ -120,7 +133,7 @@ export default function Modal({
         )}
         <button
           onClick={onClose}
-          className="text-muted-foreground hover:bg-secondary hover:text-foreground absolute top-5 right-5 rounded-full p-1.5 transition-colors"
+          className="text-muted-foreground hover:bg-secondary hover:text-foreground absolute top-5 right-5 rounded-sm p-1.5 transition-colors"
           aria-label="Close modal"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -132,7 +145,12 @@ export default function Modal({
             />
           </svg>
         </button>
-        <div className={`${title ? 'mt-4' : ''}`}>{children}</div>
+        <div
+          // 8rem = pt-9 + pb-10 + p-7 modal chrome budget
+          className={`${title ? 'mt-4' : ''} max-h-[calc(100vh-8rem)] overflow-y-auto overscroll-contain`}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -183,7 +183,7 @@ export const potluckRouter = router({
     .input(
       z.object({
         slotId: z.string(),
-        dishName: z.string().min(1),
+        dishName: z.string().trim().default(''),
         servings: z.number().int().min(1).default(1),
         dietaryLabels: z.array(z.string()).default([]),
       }),
@@ -393,7 +393,7 @@ export const potluckRouter = router({
     .input(
       z.object({
         slotId: z.string(),
-        dishName: z.string().min(1),
+        dishName: z.string().trim().default(''),
         servings: z.number().int().min(1),
         dietaryLabels: z.array(z.string()),
       }),

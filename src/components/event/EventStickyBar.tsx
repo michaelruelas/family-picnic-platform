@@ -69,7 +69,7 @@ export function EventStickyBar({
           </div>
           <a
             href="/login"
-            className="rounded-pill bg-foreground text-background press px-6 py-3 text-sm font-semibold"
+            className="bg-foreground text-background press rounded-sm px-6 py-3 text-sm font-semibold"
           >
             Sign in
           </a>
@@ -101,18 +101,18 @@ export function EventStickyBar({
             <p className="text-muted-foreground truncate text-sm">{shortLocation}</p>
           </div>
           {isConfirmed ? (
-            <div className="rounded-pill bg-sage/20 text-sage inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold">
+            <div className="bg-sage/20 text-sage inline-flex items-center gap-1.5 rounded-sm px-5 py-2.5 text-sm font-semibold">
               <span>✓</span> RSVP&apos;d
             </div>
           ) : isDeclined ? (
-            <div className="rounded-pill bg-secondary text-muted-foreground inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold">
+            <div className="bg-secondary text-muted-foreground inline-flex items-center gap-1.5 rounded-sm px-5 py-2.5 text-sm font-semibold">
               Declined
             </div>
           ) : (
             <button
               onClick={() => setIsSheetOpen(true)}
               disabled={!isRsvpOpen}
-              className="rounded-pill bg-terracotta shadow-soft press px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+              className="bg-terracotta shadow-soft press rounded-sm px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
             >
               {isRsvpOpen ? (isFull ? 'Join Waitlist' : 'RSVP Now') : 'RSVP Closed'}
             </button>
@@ -124,7 +124,7 @@ export function EventStickyBar({
               type="button"
               onClick={handleStickyDecline}
               disabled={!canDecline}
-              className="text-muted-foreground hover:text-destructive rounded-full px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+              className="text-muted-foreground hover:text-destructive rounded-sm px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50"
               data-testid="rsvp-sticky-decline-link"
             >
               {isDeclining ? 'Updating...' : "Can't make it"}

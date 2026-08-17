@@ -10,6 +10,7 @@ import { formatAmount } from '~/lib/currency';
 import { sendRegistrationReceipt } from '~/lib/receipt';
 import { withSerializableRetry } from '~/lib/transaction-retry';
 import { randomUUID } from 'node:crypto';
+import { findOrCreateUserByEmail } from '~/lib/user-identity';
 import {
   forfeitInputSchema,
   listChargesInputSchema,
@@ -190,32 +191,26 @@ export const adminRouter = router({
         results.householdsCreated++;
 
         for (const member of household.members) {
-          const existingUser = await prisma.user.findUnique({
-            where: { email: member.email },
-          });
+          const { userId, created } = await findOrCreateUserByEmail(
+            member.email,
+            member.name,
+            newHousehold.id,
+          );
+          if (created) results.usersCreated++;
 
-          if (existingUser) {
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: { householdId: newHousehold.id },
-            });
-          } else {
-            await prisma.user.create({
-              data: {
-                email: member.email,
-                name: member.name,
-                householdId: newHousehold.id,
-              },
-            });
-            results.usersCreated++;
-          }
-
-          await prisma.rSVP.create({
-            data: {
+          await prisma.rSVP.upsert({
+            where: {
+              eventId_userId: { eventId: input.eventId, userId },
+            },
+            update: {
+              householdId: newHousehold.id,
+              status: RSVPStatus.CONFIRMED,
+              headcount: member.headcount,
+              respondedAt: new Date(),
+            },
+            create: {
               eventId: input.eventId,
-              userId:
-                existingUser?.id ||
-                (await prisma.user.findUnique({ where: { email: member.email } }))!.id,
+              userId,
               householdId: newHousehold.id,
               status: RSVPStatus.CONFIRMED,
               headcount: member.headcount,

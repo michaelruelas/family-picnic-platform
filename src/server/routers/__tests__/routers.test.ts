@@ -2967,7 +2967,10 @@ describe('rsvp.router', () => {
       rsvpDeadline: futureDate,
     });
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
-    mockPrisma.rSVP.create.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
+    // FPP-111: `create` must upsert on (eventId, userId) so a repeating
+    // user updates their existing RSVP instead of creating a duplicate.
+    mockPrisma.rSVP.upsert.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', memberAttendances: [] });
     mockPrisma.invitation.updateMany.mockResolvedValue({ count: 1 });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
@@ -2975,9 +2978,9 @@ describe('rsvp.router', () => {
     const caller = createCallerFactory(rsvpRouter)({ session: userSession });
     const result = await caller.create({ eventId: 'evt-1', headcount: 2 });
 
-    expect(mockPrisma.rSVP.create).toHaveBeenCalledWith(
+    expect(mockPrisma.rSVP.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ eventId: 'evt-1', status: 'CONFIRMED' }),
+        create: expect.objectContaining({ eventId: 'evt-1', status: 'CONFIRMED' }),
       }),
     );
     expect(result.status).toBe('CONFIRMED');
@@ -3045,7 +3048,8 @@ describe('rsvp.router', () => {
       currency: 'usd',
     });
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
-    mockPrisma.rSVP.create.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
+    mockPrisma.rSVP.upsert.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', memberAttendances: [] });
     mockPrisma.invitation.updateMany.mockResolvedValue({ count: 1 });
 
     const { rsvpRouter } = await import('~/server/routers/rsvp.router');
@@ -5194,11 +5198,11 @@ describe('admin.router', () => {
 
   it('csvImport creates households, users, and RSVPs from CSV data', async () => {
     mockPrisma.household.create.mockResolvedValue({ id: 'new-hh-1' });
-    mockPrisma.user.findUnique
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 'new-user-1', email: 'new@x.com' });
+    mockPrisma.user.findFirst.mockResolvedValue(null);
     mockPrisma.user.create.mockResolvedValue({ id: 'new-user-1' });
-    mockPrisma.rSVP.create.mockResolvedValue({ id: 'rsvp-1' });
+    // FPP-111: import links users by email and upserts the RSVP so a
+    // re-import never creates a duplicate entry.
+    mockPrisma.rSVP.upsert.mockResolvedValue({ id: 'rsvp-1' });
 
     const { adminRouter } = await import('~/server/routers/admin.router');
     const { createCallerFactory } = await import('~/lib/trpc');
@@ -5216,16 +5220,21 @@ describe('admin.router', () => {
     expect(result.householdsCreated).toBe(1);
     expect(result.usersCreated).toBe(1);
     expect(result.rsvpsCreated).toBe(1);
+    expect(mockPrisma.rSVP.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ eventId: 'evt-1', userId: 'new-user-1' }),
+      }),
+    );
   });
 
-  it('csvImport reuses existing users by email', async () => {
+  it('csvImport reuses existing users by email (case-insensitive FPP-111)', async () => {
     mockPrisma.household.create.mockResolvedValue({ id: 'new-hh-1' });
-    mockPrisma.user.findUnique.mockResolvedValueOnce({
+    mockPrisma.user.findFirst.mockResolvedValue({
       id: 'existing-user',
-      email: 'existing@x.com',
+      email: 'Existing@X.com',
     });
     mockPrisma.user.update.mockResolvedValue({ id: 'existing-user' });
-    mockPrisma.rSVP.create.mockResolvedValue({ id: 'rsvp-1' });
+    mockPrisma.rSVP.upsert.mockResolvedValue({ id: 'rsvp-1' });
 
     const { adminRouter } = await import('~/server/routers/admin.router');
     const { createCallerFactory } = await import('~/lib/trpc');
@@ -5243,10 +5252,23 @@ describe('admin.router', () => {
     expect(result.householdsCreated).toBe(1);
     expect(result.usersCreated).toBe(0);
     expect(result.rsvpsCreated).toBe(1);
+    expect(mockPrisma.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          email: { equals: 'existing@x.com', mode: 'insensitive' },
+          deletedAt: null,
+        }),
+      }),
+    );
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'existing-user' },
         data: { householdId: 'new-hh-1' },
+      }),
+    );
+    expect(mockPrisma.rSVP.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ eventId: 'evt-1', userId: 'existing-user' }),
       }),
     );
   });

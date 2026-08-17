@@ -198,18 +198,18 @@ export default function EventAttachmentsEditor({
     <div className="space-y-4" data-testid="event-attachments-editor">
       {error && (
         <div
-          className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm"
+          className="bg-destructive/10 text-destructive rounded-sm p-4 text-sm"
           data-testid="event-attachments-error"
         >
           {error}
         </div>
       )}
 
-      <div className="border-border bg-secondary/60 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 text-sm">
+      <div className="border-border bg-secondary/60 flex flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed px-4 py-6 text-sm">
         <p className="text-muted-foreground text-sm">
           Upload PDFs (directions, waivers, schedules). Max {PDF_MAX_BYTES / (1024 * 1024)} MB each.
         </p>
-        <label className="bg-terracotta hover:bg-terracotta inline-flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 font-medium text-white">
+        <label className="bg-terracotta hover:bg-terracotta inline-flex cursor-pointer items-center gap-2 rounded-sm px-4 py-2 font-medium text-white">
           <input
             ref={fileInputRef}
             type="file"
@@ -232,7 +232,7 @@ export default function EventAttachmentsEditor({
           {attachments.map((attachment) => (
             <li
               key={attachment.id}
-              className="border-border bg-card rounded-lg border p-4"
+              className="border-border bg-card rounded-sm border p-4"
               data-testid="event-attachments-item"
               data-attachment-id={attachment.id}
             >
@@ -243,21 +243,21 @@ export default function EventAttachmentsEditor({
                     value={renameValue}
                     onChange={(e) => setRenameValue(e.target.value)}
                     maxLength={PDF_MAX_FILENAME_LENGTH}
-                    className="border-border focus:border-terracotta focus:ring-foreground/20 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+                    className="border-border focus:border-terracotta focus:ring-foreground/20 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
                     aria-label="New filename"
                   />
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => saveRename(attachment.id)}
-                      className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-3 py-1 text-sm font-medium text-white"
+                      className="bg-terracotta hover:bg-terracotta flex-1 rounded-sm px-3 py-1 text-sm font-medium text-white"
                     >
                       Save
                     </button>
                     <button
                       type="button"
                       onClick={cancelRename}
-                      className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-3 py-1 text-sm font-medium"
+                      className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-sm px-3 py-1 text-sm font-medium"
                     >
                       Cancel
                     </button>
@@ -273,14 +273,14 @@ export default function EventAttachmentsEditor({
                     <button
                       type="button"
                       onClick={() => handleDelete(attachment.id)}
-                      className="bg-destructive hover:bg-destructive flex-1 rounded-lg px-3 py-1 text-sm font-medium text-white"
+                      className="bg-destructive hover:bg-destructive flex-1 rounded-sm px-3 py-1 text-sm font-medium text-white"
                     >
                       Confirm Delete
                     </button>
                     <button
                       type="button"
                       onClick={() => setDeleteConfirm(null)}
-                      className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-3 py-1 text-sm font-medium"
+                      className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-sm px-3 py-1 text-sm font-medium"
                     >
                       Cancel
                     </button>

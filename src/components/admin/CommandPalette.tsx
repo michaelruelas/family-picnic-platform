@@ -184,7 +184,7 @@ export default function CommandPalette() {
         onClick={() => setOpen(false)}
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
       />
-      <div className="bg-card border-border relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border shadow-xl">
+      <div className="bg-card border-border relative z-10 w-full max-w-lg overflow-hidden rounded-sm border shadow-xl">
         <Command label="Command palette" className="flex flex-col">
           <div className="border-border border-b px-4 py-3">
             <Command.Input
@@ -213,9 +213,9 @@ export default function CommandPalette() {
                     key={p.href}
                     value={`page:${p.label}`}
                     onSelect={() => navigate(p.href)}
-                    className="text-foreground aria-selected:bg-secondary flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 text-sm"
+                    className="text-foreground aria-selected:bg-secondary flex cursor-pointer items-start gap-3 rounded-sm px-3 py-2 text-sm"
                   >
-                    <span className="bg-terracotta/15 text-terracotta mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs">
+                    <span className="bg-terracotta/15 text-terracotta mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-xs">
                       →
                     </span>
                     <span className="flex-1">
@@ -239,9 +239,9 @@ export default function CommandPalette() {
                     key={e.id}
                     value={`event:${e.name}`}
                     onSelect={() => navigate(`/admin/events/${e.id}/edit`)}
-                    className="text-foreground aria-selected:bg-secondary flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm"
+                    className="text-foreground aria-selected:bg-secondary flex cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-sm"
                   >
-                    <span className="bg-sage/20 text-sage flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs">
+                    <span className="bg-sage/20 text-sage flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-xs">
                       📅
                     </span>
                     <span className="flex-1">
@@ -270,9 +270,9 @@ export default function CommandPalette() {
                     key={u.id}
                     value={`user:${u.name} ${u.email}`}
                     onSelect={() => navigate(`/admin/charges?user=${encodeURIComponent(u.email)}`)}
-                    className="text-foreground aria-selected:bg-secondary flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm"
+                    className="text-foreground aria-selected:bg-secondary flex cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-sm"
                   >
-                    <span className="bg-secondary text-foreground/85 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                    <span className="bg-secondary text-foreground/85 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-xs font-semibold">
                       {(u.name ?? u.email).slice(0, 1).toUpperCase()}
                     </span>
                     <span className="flex-1">

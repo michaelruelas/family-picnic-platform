@@ -43,10 +43,10 @@ export default function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center rounded-3xl py-16 text-center ${variantClasses[variant]} ${className}`}
+      className={`flex flex-col items-center justify-center rounded-sm py-16 text-center ${variantClasses[variant]} ${className}`}
       {...props}
     >
-      <div className="bg-card shadow-soft rounded-full p-5">
+      <div className="bg-card shadow-soft rounded-sm p-5">
         <svg
           className="text-muted-foreground h-10 w-10"
           fill="none"

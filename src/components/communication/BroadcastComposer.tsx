@@ -104,7 +104,7 @@ export default function BroadcastComposer({
           placeholder="Enter your message..."
           rows={4}
           disabled={disabled || sending}
-          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg shadow-sm"
+          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm shadow-sm"
         />
         <p className="text-muted-foreground mt-1 text-xs">
           {channel === 'SMS'
@@ -192,7 +192,7 @@ export default function BroadcastComposer({
             value={scheduledAt}
             onChange={(e) => setScheduledAt(e.target.value)}
             disabled={disabled || sending}
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg shadow-sm"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm shadow-sm"
           />
           <p className="text-muted-foreground mt-1 text-xs">
             Messages outside 8 AM - 9 PM will be deferred to the next available window.
@@ -201,11 +201,11 @@ export default function BroadcastComposer({
       )}
 
       {error && (
-        <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">{error}</div>
+        <div className="bg-destructive/10 text-destructive rounded-sm p-3 text-sm">{error}</div>
       )}
 
       {success && (
-        <div className="bg-sage/15 text-sage rounded-lg p-3 text-sm">
+        <div className="bg-sage/15 text-sage rounded-sm p-3 text-sm">
           Message queued successfully!
         </div>
       )}
@@ -214,7 +214,7 @@ export default function BroadcastComposer({
         <button
           type="submit"
           disabled={disabled || sending || !isValid}
-          className="bg-terracotta hover:bg-terracotta rounded-lg px-6 py-2 font-medium text-white disabled:opacity-50"
+          className="bg-terracotta hover:bg-terracotta rounded-sm px-6 py-2 font-medium text-white disabled:opacity-50"
         >
           {sending ? 'Queuing...' : sendImmediately ? 'Send Message' : 'Schedule Message'}
         </button>

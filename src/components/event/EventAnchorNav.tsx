@@ -42,7 +42,7 @@ export function EventAnchorNav({ items, value, onValueChange, ariaLabel }: Event
   return (
     <nav
       aria-label={ariaLabel}
-      className="border-border bg-card/60 no-scrollbar -mx-5 overflow-x-auto rounded-3xl border px-5 py-1.5 shadow-sm backdrop-blur"
+      className="border-border bg-card/60 no-scrollbar -mx-5 overflow-x-auto rounded-sm border px-5 py-1.5 shadow-sm backdrop-blur"
       data-testid="event-anchor-nav"
     >
       <ul className="flex items-center gap-1">
@@ -58,8 +58,8 @@ export function EventAnchorNav({ items, value, onValueChange, ariaLabel }: Event
                 data-active={isActive ? 'true' : 'false'}
                 className={
                   isActive
-                    ? 'bg-foreground text-background inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-colors'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition-colors'
+                    ? 'bg-foreground text-background inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2.5 text-sm font-semibold transition-colors'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2.5 text-sm font-medium transition-colors'
                 }
               >
                 {item.label}

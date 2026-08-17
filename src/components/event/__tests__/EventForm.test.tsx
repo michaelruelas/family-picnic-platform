@@ -223,7 +223,7 @@ describe('EventForm', () => {
     it('uses a pill input with a 48px minimum tap target', () => {
       render(<EventForm mode="create" />);
       const dateInput = screen.getByLabelText(/event date/i);
-      expect(dateInput.className).toContain('rounded-pill');
+      expect(dateInput.className).toContain('rounded-sm');
       expect(dateInput.className).toContain('min-h-12');
     });
   });

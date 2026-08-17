@@ -113,8 +113,8 @@ describe('CSV Import Implementation', () => {
   it('csv-import route creates households, users, and RSVPs', async () => {
     const content = await fs.readFile(csvImportRoutePath, 'utf-8');
     expect(content).toContain('household.create');
-    expect(content).toContain('user.create');
-    expect(content).toContain('rSVP.create');
+    expect(content).toContain('findOrCreateUserByEmail');
+    expect(content).toContain('rSVP.upsert');
     expect(content).toContain('householdsCreated');
     expect(content).toContain('usersCreated');
     expect(content).toContain('rsvpsCreated');

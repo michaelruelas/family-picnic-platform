@@ -221,7 +221,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
 
   return (
     <main className="bg-background pb-32">
-      <BreatheSection className="relative h-[55vh] min-h-[420px] w-full overflow-hidden md:h-[60vh]">
+      <BreatheSection className="relative h-[55vh] min-h-[420px] w-full overflow-hidden md:h-[40vh]">
         {/* FPP-60: hero precedence is featuredImageUrl -> mapImageUrl
             -> default gradient. The featured image is whatever the
             host uploaded through the admin form; the map preview is
@@ -244,8 +244,8 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
         )}
         <div className="from-foreground/40 absolute inset-0 bg-gradient-to-t via-transparent to-transparent" />
         <div className="absolute top-5 right-5 left-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="rounded-pill shadow-soft inline-flex items-center gap-2 border border-white/40 bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur-md">
-            <span className="bg-sunlight h-2 w-2 rounded-full shadow-[0_0_10px_#f2cc8f]" />
+          <div className="shadow-soft inline-flex items-center gap-2 rounded-sm border border-white/40 bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur-md">
+            <span className="bg-sunlight h-2 w-2 rounded-sm shadow-[0_0_10px_#f2cc8f]" />
             {event.status === 'PUBLISHED'
               ? 'Invitation Open'
               : event.status === 'CANCELLED'
@@ -253,7 +253,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
                 : event.status.charAt(0) + event.status.slice(1).toLowerCase()}
           </div>
           {isPast && (
-            <div className="rounded-pill bg-foreground/80 text-background px-4 py-2 text-sm font-medium backdrop-blur-md">
+            <div className="bg-foreground/80 text-background rounded-sm px-4 py-2 text-sm font-medium backdrop-blur-md">
               Past gathering
             </div>
           )}

@@ -91,7 +91,7 @@ function EventTabsContent({
     () => [
       {
         key: 'header' as const,
-        label: 'Header',
+        label: 'Overview',
         panel: headerPanel,
       },
       {
@@ -179,14 +179,14 @@ function EventTabsFallback({
 }: EventTabsProps) {
   return (
     <div className="space-y-12">
-      <div className="border-border bg-card/60 inline-flex flex-wrap items-center gap-1 rounded-2xl border p-1 text-sm opacity-60 shadow-sm backdrop-blur">
-        <span className="bg-foreground text-background rounded-xl px-4 py-2 font-semibold">
+      <div className="border-border bg-card/60 inline-flex flex-wrap items-center gap-1 rounded-sm border p-1 text-sm opacity-60 shadow-sm backdrop-blur">
+        <span className="bg-foreground text-background rounded-sm px-4 py-2 font-semibold">
           {labelFor(initialTab)}
         </span>
         {EVENT_TAB_KEYS.filter((k) => k !== initialTab).map((k) => (
           <span
             key={k}
-            className="text-muted-foreground rounded-xl px-4 py-2 font-medium"
+            className="text-muted-foreground rounded-sm px-4 py-2 font-medium"
             aria-hidden="true"
           >
             {labelFor(k)}
@@ -194,7 +194,7 @@ function EventTabsFallback({
         ))}
       </div>
       <div className="space-y-12">
-        <section aria-label="Header">{headerPanel}</section>
+        <section aria-label="Overview">{headerPanel}</section>
         <section aria-label="Itinerary">
           <EventItinerarySection items={itineraryItems} />
         </section>
@@ -217,7 +217,7 @@ function EventTabsFallback({
 function labelFor(key: EventTabKey): string {
   switch (key) {
     case 'header':
-      return 'Header';
+      return 'Overview';
     case 'itinerary':
       return 'Itinerary';
     case 'additional-info':

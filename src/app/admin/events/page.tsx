@@ -59,13 +59,13 @@ export default async function AdminEventsPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/admin/events/past"
-            className="border-border bg-card text-foreground/85 hover:bg-secondary/60 rounded-lg border px-4 py-2 text-sm font-medium"
+            className="border-border bg-card text-foreground/85 hover:bg-secondary/60 rounded-sm border px-4 py-2 text-sm font-medium"
           >
             Past events
           </Link>
           <Link
             href="/admin/events/new"
-            className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 font-medium text-white"
+            className="bg-terracotta hover:bg-terracotta rounded-sm px-4 py-2 font-medium text-white"
           >
             + New Event
           </Link>

@@ -39,7 +39,7 @@ export default function EventSubNav({ eventId, dishCount, photoCount, active }: 
   return (
     <nav
       aria-label="Event sections"
-      className="border-border bg-card/60 mx-auto max-w-6xl rounded-3xl border px-2 py-1.5 shadow-sm backdrop-blur"
+      className="border-border bg-card/60 mx-auto max-w-6xl rounded-sm border px-2 py-1.5 shadow-sm backdrop-blur"
       data-testid="event-sub-nav"
     >
       <ul className="flex items-center gap-1">
@@ -54,8 +54,8 @@ export default function EventSubNav({ eventId, dishCount, photoCount, active }: 
                 data-active={isActive ? 'true' : 'false'}
                 className={
                   isActive
-                    ? 'bg-foreground text-background flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-colors'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition-colors'
+                    ? 'bg-foreground text-background flex items-center justify-center gap-2 rounded-sm px-4 py-2.5 text-sm font-semibold transition-colors'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary flex items-center justify-center gap-2 rounded-sm px-4 py-2.5 text-sm font-medium transition-colors'
                 }
               >
                 <span>{tab.label}</span>
@@ -63,8 +63,8 @@ export default function EventSubNav({ eventId, dishCount, photoCount, active }: 
                   <span
                     className={
                       isActive
-                        ? 'bg-background/20 text-background rounded-pill px-2 py-0.5 text-xs font-semibold'
-                        : 'bg-secondary text-muted-foreground rounded-pill px-2 py-0.5 text-xs font-semibold'
+                        ? 'bg-background/20 text-background rounded-sm px-2 py-0.5 text-xs font-semibold'
+                        : 'bg-secondary text-muted-foreground rounded-sm px-2 py-0.5 text-xs font-semibold'
                     }
                   >
                     {tab.count}

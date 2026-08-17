@@ -16,7 +16,7 @@ export default function Error({
 
   return (
     <main className="mx-auto max-w-2xl px-5 py-24">
-      <div className="bg-card shadow-card ring-border/60 rounded-3xl p-12 text-center ring-1">
+      <div className="bg-card shadow-card ring-border/60 rounded-sm p-12 text-center ring-1">
         <div className="text-7xl">🌧️</div>
         <h1 className="font-display text-foreground mt-6 text-4xl font-semibold tracking-tight">
           A little rain on the picnic
@@ -28,13 +28,13 @@ export default function Error({
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button
             onClick={reset}
-            className="rounded-pill bg-terracotta shadow-soft press px-7 py-3 font-semibold text-white hover:bg-[#cf6c52]"
+            className="bg-terracotta shadow-soft press rounded-sm px-7 py-3 font-semibold text-white hover:bg-[#cf6c52]"
           >
             Try Again
           </button>
           <Link
             href="/"
-            className="rounded-pill border-border bg-card text-foreground press hover:border-foreground border px-7 py-3 font-semibold"
+            className="border-border bg-card text-foreground press hover:border-foreground rounded-sm border px-7 py-3 font-semibold"
           >
             Go Home
           </Link>

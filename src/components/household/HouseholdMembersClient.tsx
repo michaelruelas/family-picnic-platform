@@ -135,7 +135,7 @@ export default function HouseholdMembersClient({
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-3 py-1 text-sm font-medium"
+            className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-sm px-3 py-1 text-sm font-medium"
           >
             + Add Member
           </button>
@@ -153,10 +153,10 @@ export default function HouseholdMembersClient({
             return (
               <li
                 key={member.id}
-                className="border-border flex items-center justify-between rounded-lg border p-3"
+                className="border-border flex items-center justify-between rounded-sm border p-3"
               >
                 <div className="flex items-center gap-3">
-                  <div className="bg-terracotta/15 text-terracotta flex h-10 w-10 items-center justify-center rounded-full font-medium">
+                  <div className="bg-terracotta/15 text-terracotta flex h-10 w-10 items-center justify-center rounded-sm font-medium">
                     {member.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex flex-col">
@@ -164,7 +164,7 @@ export default function HouseholdMembersClient({
                       <span className="text-foreground font-medium">{member.name}</span>
                       {backfilled && (
                         <span
-                          className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
+                          className="rounded-sm bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
                           title="Edit to confirm the imported name and age"
                         >
                           {backfillLabel(member)}
@@ -206,14 +206,14 @@ export default function HouseholdMembersClient({
       {showForm && (
         <form
           onSubmit={submit}
-          className="border-border bg-secondary/60 mt-6 rounded-lg border p-4"
+          className="border-border bg-secondary/60 mt-6 rounded-sm border p-4"
         >
           <h3 className="text-foreground text-lg font-medium">
             {editingId ? 'Edit Member' : 'Add Member'}
           </h3>
 
           {error && (
-            <div className="bg-destructive/10 text-destructive mt-3 rounded-lg p-3 text-sm">
+            <div className="bg-destructive/10 text-destructive mt-3 rounded-sm p-3 text-sm">
               {error}
             </div>
           )}
@@ -230,7 +230,7 @@ export default function HouseholdMembersClient({
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
                 placeholder="Full name"
-                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />
             </div>
 
@@ -246,7 +246,7 @@ export default function HouseholdMembersClient({
                 value={form.age}
                 onChange={(e) => setForm({ ...form, age: e.target.value })}
                 placeholder="Age in years"
-                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />
             </div>
           </div>
@@ -262,7 +262,7 @@ export default function HouseholdMembersClient({
               rows={2}
               maxLength={500}
               placeholder="Allergies, preferences, anything to remember"
-              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             />
           </div>
 
@@ -270,7 +270,7 @@ export default function HouseholdMembersClient({
             <button
               type="submit"
               disabled={submitting}
-              className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
+              className="bg-terracotta hover:bg-terracotta flex-1 rounded-sm px-4 py-2 font-medium text-white disabled:opacity-50"
             >
               {submitting ? 'Saving...' : editingId ? 'Save Changes' : 'Add Member'}
             </button>
@@ -278,7 +278,7 @@ export default function HouseholdMembersClient({
               type="button"
               onClick={reset}
               disabled={submitting}
-              className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-4 py-2 font-medium disabled:opacity-50"
+              className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-sm px-4 py-2 font-medium disabled:opacity-50"
             >
               Cancel
             </button>

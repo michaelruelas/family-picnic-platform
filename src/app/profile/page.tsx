@@ -58,7 +58,7 @@ export default async function ProfilePage() {
       </BreatheSection>
 
       <BreatheSection className="mt-12">
-        <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
+        <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9">
           <ProfileClient user={user} initialDependents={user.managedDependents} />
         </div>
       </BreatheSection>
@@ -68,9 +68,9 @@ export default async function ProfilePage() {
       </BreatheSection>
 
       <BreatheSection className="mt-8">
-        <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
+        <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9">
           <div className="flex items-start gap-4">
-            <div className="bg-sunlight/30 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl">
+            <div className="bg-sunlight/30 flex h-12 w-12 shrink-0 items-center justify-center rounded-sm text-2xl">
               🎨
             </div>
             <div className="flex-1">
@@ -87,7 +87,7 @@ export default async function ProfilePage() {
       </BreatheSection>
 
       <BreatheSection className="mt-8">
-        <div className="bg-secondary rounded-3xl p-7">
+        <div className="bg-secondary rounded-sm p-7">
           <h2 className="font-display text-foreground text-xl font-semibold">Account Info</h2>
           <dl className="mt-4 space-y-3 text-sm">
             <div className="flex items-center justify-between">

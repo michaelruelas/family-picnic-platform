@@ -595,9 +595,9 @@ export function RsvpBottomSheet({
   // Show a retryable error state when the roster fetch fails.
   if (fetchError) {
     return (
-      <Modal isOpen={isOpen} onClose={onClose} size="lg" variant="bottom-sheet">
+      <Modal isOpen={isOpen} onClose={onClose} size="2xl" variant="bottom-sheet">
         <div className="py-8 text-center">
-          <div className="bg-destructive/10 mx-auto flex h-20 w-20 items-center justify-center rounded-full">
+          <div className="bg-destructive/10 mx-auto flex h-20 w-20 items-center justify-center rounded-sm">
             <svg
               className="text-destructive h-10 w-10"
               fill="none"
@@ -623,14 +623,14 @@ export function RsvpBottomSheet({
             onClick={() => {
               void refetch();
             }}
-            className="rounded-pill bg-terracotta shadow-soft press mt-6 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
+            className="bg-terracotta shadow-soft press mt-6 rounded-sm px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
           >
             Try again
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-pill text-muted-foreground hover:text-foreground mt-2 block w-full px-5 py-2.5 text-sm font-medium"
+            className="text-muted-foreground hover:text-foreground mt-2 block w-full rounded-sm px-5 py-2.5 text-sm font-medium"
           >
             Close
           </button>
@@ -645,9 +645,9 @@ export function RsvpBottomSheet({
   // data arrives.
   if (isLoading || !formState) {
     return (
-      <Modal isOpen={isOpen} onClose={onClose} size="lg" variant="bottom-sheet">
+      <Modal isOpen={isOpen} onClose={onClose} size="2xl" variant="bottom-sheet">
         <div className="py-8 text-center" aria-busy="true">
-          <div className="bg-secondary mx-auto flex h-16 w-16 animate-pulse items-center justify-center rounded-full" />
+          <div className="bg-secondary mx-auto flex h-16 w-16 animate-pulse items-center justify-center rounded-sm" />
           <h3 className="font-display text-foreground mt-6 text-2xl font-semibold">
             Loading your household&hellip;
           </h3>
@@ -660,15 +660,20 @@ export function RsvpBottomSheet({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="lg" variant="bottom-sheet">
+    <Modal isOpen={isOpen} onClose={onClose} size="2xl" variant="bottom-sheet">
       {/*
         FPP-21: two-tab editor. The Attendance tab collects the
         household roster; the Dishes tab embeds PotluckEditor so
         the user can claim a slot without leaving the sheet. The
         Dishes tab is enabled only after the RSVP is confirmed.
+
+        FPP-115: the tab bar is sticky at the top of the scroll
+        container so a household with many members can always flip
+        back to edit attendance without scrolling to the top. The
+        sheet body itself is viewport-constrained and scrolls.
       */}
       <div
-        className="border-border bg-secondary/40 mx-auto mb-5 flex w-full max-w-md rounded-2xl border p-1"
+        className="border-border bg-secondary/40 sticky top-0 z-10 mx-auto mb-5 flex w-full max-w-md rounded-sm border p-1"
         role="tablist"
         aria-label="RSVP sections"
         data-testid="rsvp-tabs"
@@ -681,8 +686,8 @@ export function RsvpBottomSheet({
           onClick={() => setActiveTab('attendance')}
           className={
             activeTab === 'attendance'
-              ? 'bg-card text-foreground flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition-colors'
-              : 'text-muted-foreground hover:text-foreground flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors'
+              ? 'bg-card text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-semibold transition-colors'
+              : 'text-muted-foreground hover:text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-medium transition-colors'
           }
         >
           Attendance
@@ -695,8 +700,8 @@ export function RsvpBottomSheet({
           onClick={() => setActiveTab('dishes')}
           className={
             activeTab === 'dishes'
-              ? 'bg-card text-foreground flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition-colors'
-              : 'text-muted-foreground hover:text-foreground flex-1 rounded-xl px-4 py-2 text-sm font-medium transition-colors'
+              ? 'bg-card text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-semibold transition-colors'
+              : 'text-muted-foreground hover:text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-medium transition-colors'
           }
         >
           Dishes
@@ -705,11 +710,11 @@ export function RsvpBottomSheet({
 
       {showSuccess && (
         <div
-          className="bg-sage/15 ring-sage/30 mb-5 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm ring-1"
+          className="bg-sage/15 ring-sage/30 mb-5 flex items-center gap-3 rounded-sm px-4 py-3 text-sm ring-1"
           data-testid="rsvp-success-banner"
           role="status"
         >
-          <span className="bg-sage/30 text-sage flex h-7 w-7 items-center justify-center rounded-full font-bold">
+          <span className="bg-sage/30 text-sage flex h-7 w-7 items-center justify-center rounded-sm font-bold">
             ✓
           </span>
           <div className="min-w-0 flex-1">
@@ -753,18 +758,18 @@ export function RsvpBottomSheet({
               maxLength={HOUSEHOLD_NAME_MAX}
               autoComplete="off"
               placeholder="e.g. The Garcia Family"
-              className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+              className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
             />
           </div>
 
           {drafts.length === 0 ? (
-            <div className="bg-sunlight/20 mt-8 rounded-2xl p-6 text-center">
+            <div className="bg-sunlight/20 mt-8 rounded-sm p-6 text-center">
               <p className="text-foreground text-base">
                 Your household has no members listed yet. Add one below to RSVP.
               </p>
             </div>
           ) : (
-            <ul className="mt-8 space-y-2">
+            <ul className="mt-8 grid gap-2 sm:grid-cols-2">
               {drafts.map((draft, index) => {
                 const rowError = nameErrors.find((e) => e.index === index)?.message;
                 // FPP-36: source the accessible name from the
@@ -796,39 +801,36 @@ export function RsvpBottomSheet({
                 return (
                   <li
                     key={draft.draftKey}
-                    className="border-border bg-card/40 flex flex-col gap-2 rounded-2xl border px-4 py-3"
+                    className="border-border bg-card/40 flex flex-col gap-2 rounded-sm border px-4 py-3"
                   >
+                    <div>
+                      <input
+                        type="text"
+                        aria-label={`Name for ${accessibleName}`}
+                        value={draft.memberName}
+                        onChange={(e) => updateMemberNameDraft(index, e.target.value)}
+                        onBlur={() => trimMemberNameDraft(index)}
+                        maxLength={ATTENDEE_NAME_MAX}
+                        autoComplete="off"
+                        placeholder="Name"
+                        data-testid="rsvp-attendee-name"
+                        className={`border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block w-full rounded-sm border px-3 py-2 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none ${
+                          rowError ? 'border-destructive focus:border-destructive' : ''
+                        }`}
+                      />
+                      {rowError && (
+                        <p
+                          className="text-destructive mt-1 text-xs"
+                          data-testid="rsvp-attendee-name-error"
+                        >
+                          {rowError}
+                        </p>
+                      )}
+                    </div>
                     <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        {/*
-                          FPP-36: every adult and child slot gets a
-                          required name input. We keep the input
-                          uncontrolled-style by binding to the draft
-                          state so the value survives re-renders.
-                          The `maxLength` matches
-                          ATTENDEE_NAME_MAX so the browser blocks
-                          oversized input before the user can paste
-                          a too-long string. `onBlur` strips trailing
-                          whitespace so the visible value matches
-                          what gets persisted (Finding 4 of the FPP-36
-                          review).
-                        */}
-                        <input
-                          type="text"
-                          aria-label={`Name for ${accessibleName}`}
-                          value={draft.memberName}
-                          onChange={(e) => updateMemberNameDraft(index, e.target.value)}
-                          onBlur={() => trimMemberNameDraft(index)}
-                          maxLength={ATTENDEE_NAME_MAX}
-                          autoComplete="off"
-                          placeholder="Name"
-                          data-testid="rsvp-attendee-name"
-                          className={`border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground block w-full rounded-xl border px-3 py-2 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none ${
-                            rowError ? 'border-destructive focus:border-destructive' : ''
-                          }`}
-                        />
+                      <div className="min-w-0">
                         {editingAgeIndex === index ? (
-                          <div className="mt-1 flex items-center gap-1">
+                          <div className="flex items-center gap-1 text-xs">
                             <input
                               type="number"
                               min="0"
@@ -873,7 +875,7 @@ export function RsvpBottomSheet({
                                 }
                               }}
                               autoFocus
-                              className="border-border bg-card text-foreground w-20 rounded-lg border px-2 py-1 text-xs focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                              className="border-border bg-card text-foreground w-20 rounded-sm border px-2 py-1 focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                               aria-label="Edit age"
                             />
                           </div>
@@ -884,57 +886,49 @@ export function RsvpBottomSheet({
                               setEditingAgeValue(String(draft.memberAge));
                               setEditingAgeIndex(index);
                             }}
-                            className="text-muted-foreground hover:text-foreground mt-1 text-xs"
+                            className="text-muted-foreground hover:text-foreground text-xs"
                             aria-label="Edit age"
                           >
                             {draft.memberAge} yrs
                           </button>
-                        ) : draft.householdMemberId ? (
+                        ) : (
                           <button
                             type="button"
                             onClick={() => {
                               setEditingAgeValue('');
                               setEditingAgeIndex(index);
                             }}
-                            className="text-muted-foreground hover:text-foreground mt-1 text-xs italic"
+                            className="text-muted-foreground hover:text-foreground text-xs italic"
                             aria-label="Set age"
                           >
                             Set age
                           </button>
-                        ) : (
-                          <p className="text-muted-foreground mt-1 text-xs italic">Age not set</p>
                         )}
                       </div>
-                      <select
-                        aria-label={`Attendance for ${accessibleName}`}
-                        value={draft.attending}
-                        onChange={(e) => updateAttendance(index, e.target.value as RsvpAttending)}
-                        className="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
-                      >
-                        {ATTENDANCE_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {attendingLabel(opt)}
-                          </option>
-                        ))}
-                      </select>
-                      {!draft.householdMemberId && (
-                        <button
-                          type="button"
-                          onClick={() => removeMember(index)}
-                          className="text-muted-foreground hover:text-destructive text-xs"
+                      <div className="flex shrink-0 items-center gap-3">
+                        <select
+                          aria-label={`Attendance for ${accessibleName}`}
+                          value={draft.attending}
+                          onChange={(e) => updateAttendance(index, e.target.value as RsvpAttending)}
+                          className="border-border bg-card text-foreground focus:border-foreground min-h-10 rounded-sm border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                         >
-                          Remove
-                        </button>
-                      )}
+                          {ATTENDANCE_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {attendingLabel(opt)}
+                            </option>
+                          ))}
+                        </select>
+                        {!draft.householdMemberId && (
+                          <button
+                            type="button"
+                            onClick={() => removeMember(index)}
+                            className="text-muted-foreground hover:text-destructive text-xs"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    {rowError && (
-                      <p
-                        className="text-destructive text-xs"
-                        data-testid="rsvp-attendee-name-error"
-                      >
-                        {rowError}
-                      </p>
-                    )}
                   </li>
                 );
               })}
@@ -942,7 +936,7 @@ export function RsvpBottomSheet({
           )}
 
           {showAddMember ? (
-            <div className="bg-secondary/40 mt-4 rounded-2xl p-4">
+            <div className="bg-secondary/40 mt-4 rounded-sm p-4">
               <h4 className="text-foreground text-sm font-semibold">
                 {newMember.saveToHousehold ? 'Add household member' : 'Add one-time guest'}
               </h4>
@@ -958,7 +952,7 @@ export function RsvpBottomSheet({
                   onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
                   placeholder="Full name"
                   aria-label={newMember.saveToHousehold ? 'Member name' : 'Guest name'}
-                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground rounded-sm border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                 />
                 <input
                   type="number"
@@ -967,7 +961,7 @@ export function RsvpBottomSheet({
                   value={newMember.age}
                   onChange={(e) => setNewMember({ ...newMember, age: e.target.value })}
                   placeholder="Age"
-                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground rounded-2xl border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground rounded-sm border px-3 py-2 text-sm focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                 />
               </div>
               <label className="text-foreground mt-3 flex items-center gap-2 text-sm">
@@ -986,7 +980,7 @@ export function RsvpBottomSheet({
                   type="button"
                   onClick={addAdHocMember}
                   disabled={!newMember.name.trim()}
-                  className="rounded-pill bg-terracotta press px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+                  className="bg-terracotta press rounded-sm px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
                   data-testid="rsvp-add-person-submit"
                 >
                   Add
@@ -998,7 +992,7 @@ export function RsvpBottomSheet({
                     setNewMember({ name: '', age: '', saveToHousehold: true });
                     setSubmitError(null);
                   }}
-                  className="rounded-pill text-muted-foreground hover:text-foreground px-3 py-2 text-sm font-medium"
+                  className="text-muted-foreground hover:text-foreground rounded-sm px-3 py-2 text-sm font-medium"
                 >
                   Cancel
                 </button>
@@ -1012,7 +1006,7 @@ export function RsvpBottomSheet({
                   setNewMember({ name: '', age: '', saveToHousehold: true });
                   setShowAddMember(true);
                 }}
-                className="rounded-pill bg-terracotta/15 text-terracotta hover:bg-terracotta/25 press px-4 py-2 text-sm font-semibold transition-all"
+                className="bg-terracotta/15 text-terracotta hover:bg-terracotta/25 press rounded-sm px-4 py-2 text-sm font-semibold transition-all"
                 data-testid="rsvp-add-member-button"
               >
                 + Add household member
@@ -1035,7 +1029,7 @@ export function RsvpBottomSheet({
           </p>
 
           {showFeeLine && (
-            <div className="bg-sunlight/15 ring-sunlight/30 mt-3 rounded-2xl px-4 py-3 text-sm ring-1">
+            <div className="bg-sunlight/15 ring-sunlight/30 mt-3 rounded-sm px-4 py-3 text-sm ring-1">
               <span className="text-foreground font-semibold">
                 Registration fee: {formatAmount(feeBreakdown.amountCents, feeCurrency)}
               </span>
@@ -1070,7 +1064,7 @@ export function RsvpBottomSheet({
                 {phone ? 'Edit SMS updates (phone saved)' : '+ Get SMS updates (optional)'}
               </button>
             ) : (
-              <div className="bg-secondary/40 mt-1 rounded-2xl p-4">
+              <div className="bg-secondary/40 mt-1 rounded-sm p-4">
                 <label htmlFor="rsvp-phone" className="text-foreground block text-sm font-medium">
                   Mobile phone
                 </label>
@@ -1086,7 +1080,7 @@ export function RsvpBottomSheet({
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+15551234567"
                   data-testid="rsvp-phone-input"
-                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-2xl border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
                 />
                 <label className="text-foreground mt-4 flex items-start gap-2 text-sm">
                   <input
@@ -1111,7 +1105,7 @@ export function RsvpBottomSheet({
           </div>
 
           {submitError && (
-            <p className="bg-destructive/10 text-destructive ring-destructive/30 mt-4 rounded-2xl px-4 py-3 text-sm ring-1">
+            <p className="bg-destructive/10 text-destructive ring-destructive/30 mt-4 rounded-sm px-4 py-3 text-sm ring-1">
               {submitError}
             </p>
           )}
@@ -1128,7 +1122,7 @@ export function RsvpBottomSheet({
           <button
             onClick={handleConfirm}
             disabled={isSubmitting || yesCount === 0 || hasInvalidNames}
-            className="rounded-pill bg-terracotta shadow-soft press mt-7 w-full px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+            className="bg-terracotta shadow-soft press mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
           >
             {isSubmitting
               ? 'Saving...'
@@ -1140,7 +1134,7 @@ export function RsvpBottomSheet({
           <button
             onClick={handleDecline}
             disabled={isSubmitting}
-            className="rounded-pill text-muted-foreground hover:text-destructive mt-3 w-full px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+            className="text-muted-foreground hover:text-destructive mt-3 w-full rounded-sm px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
           >
             Can&apos;t make it
           </button>
@@ -1165,7 +1159,7 @@ export function RsvpBottomSheet({
               <button
                 type="button"
                 onClick={() => setActiveTab('attendance')}
-                className="rounded-pill bg-terracotta press mt-5 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
+                className="bg-terracotta press mt-5 rounded-sm px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
               >
                 Go to Attendance
               </button>

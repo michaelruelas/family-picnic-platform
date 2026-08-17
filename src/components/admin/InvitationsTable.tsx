@@ -125,7 +125,7 @@ export default function InvitationsTable({ initialInvitations }: InvitationsTabl
         enableSorting: true,
         cell: ({ row }) => (
           <span
-            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_PALETTE[row.status] ?? 'bg-secondary text-foreground/85'}`}
+            className={`inline-block rounded-sm px-2 py-0.5 text-xs font-medium ${STATUS_PALETTE[row.status] ?? 'bg-secondary text-foreground/85'}`}
           >
             {row.status}
           </span>
@@ -183,7 +183,7 @@ export default function InvitationsTable({ initialInvitations }: InvitationsTabl
                 e.stopPropagation();
                 void copyToken(row.token!);
               }}
-              className="bg-secondary hover:bg-secondary/80 text-foreground/85 rounded-md px-2 py-1 font-mono text-xs"
+              className="bg-secondary hover:bg-secondary/80 text-foreground/85 rounded-sm px-2 py-1 font-mono text-xs"
               aria-label={`Copy invitation token ${truncatedToken(row.token)}`}
             >
               {truncatedToken(row.token)}
@@ -210,7 +210,7 @@ export default function InvitationsTable({ initialInvitations }: InvitationsTabl
                   void resend(row.id);
                 }}
                 disabled={busyId === row.id}
-                className="rounded-lg bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 disabled:opacity-50"
+                className="rounded-sm bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 disabled:opacity-50"
               >
                 {busyId === row.id ? 'Sending…' : 'Resend'}
               </button>

@@ -180,7 +180,7 @@ export default function UploadButton({
       />
 
       <div
-        className="border-sunlight/50 bg-sunlight/20 hover:bg-terracotta/15 relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-colors hover:border-amber-400"
+        className="border-sunlight/50 bg-sunlight/20 hover:bg-terracotta/15 relative flex flex-col items-center justify-center rounded-sm border-2 border-dashed p-6 transition-colors hover:border-amber-400"
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       >
@@ -197,7 +197,7 @@ export default function UploadButton({
         <button
           onClick={handlePick}
           disabled={isUploading}
-          className="bg-terracotta hover:bg-terracotta mt-4 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+          className="bg-terracotta hover:bg-terracotta mt-4 rounded-sm px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
         >
           {isUploading ? 'Uploading...' : 'Select Photos'}
         </button>
@@ -208,16 +208,16 @@ export default function UploadButton({
           {uploadingFiles.map((uploadingFile) => (
             <div
               key={uploadingFile.id}
-              className="bg-secondary/60 flex items-center gap-3 rounded-lg p-3"
+              className="bg-secondary/60 flex items-center gap-3 rounded-sm p-3"
             >
               <div className="flex-1">
                 <p className="text-foreground/85 truncate text-sm font-medium">
                   {uploadingFile.file.name}
                 </p>
                 <div className="mt-1 flex items-center gap-2">
-                  <div className="bg-secondary h-1.5 flex-1 rounded-full">
+                  <div className="bg-secondary h-1.5 flex-1 rounded-sm">
                     <div
-                      className={`h-1.5 rounded-full transition-all ${
+                      className={`h-1.5 rounded-sm transition-all ${
                         uploadingFile.status === 'error'
                           ? 'bg-destructive/100'
                           : uploadingFile.status === 'done'

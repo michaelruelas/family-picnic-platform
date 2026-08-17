@@ -90,7 +90,7 @@ export function PeopleTableDemo() {
         </p>
       </header>
       {selected ? (
-        <div className="bg-sunlight/20 rounded-xl p-3 text-sm">
+        <div className="bg-sunlight/20 rounded-sm p-3 text-sm">
           <strong>Selected:</strong> {selected.name} ({selected.email}) — age {selected.age}
           <button
             type="button"
@@ -142,7 +142,7 @@ export function ChargesTableDemo() {
       enableHiding: false,
       cell: ({ value }) => (
         <span
-          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusPalette[value as Charge['status']]}`}
+          className={`inline-block rounded-sm px-2 py-0.5 text-xs font-medium ${statusPalette[value as Charge['status']]}`}
         >
           {String(value)}
         </span>

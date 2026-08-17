@@ -41,9 +41,9 @@ describe('Card', () => {
     expect(screen.getByText('Test').className).toContain('bg-card');
   });
 
-  it('uses rounded-2xl by default', () => {
+  it('uses rounded-sm by default', () => {
     render(<Card>Test</Card>);
-    expect(screen.getByText('Test').className).toContain('rounded-2xl');
+    expect(screen.getByText('Test').className).toContain('rounded-sm');
   });
 
   it('CardHeader renders with correct structure', () => {

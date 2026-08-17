@@ -65,7 +65,7 @@ export default function EventActions({ eventId, status }: EventActionsProps) {
           type="button"
           onClick={handlePublish}
           disabled={isPublishing}
-          className="rounded-lg bg-green-100 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-200 disabled:opacity-50"
+          className="rounded-sm bg-green-100 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-200 disabled:opacity-50"
         >
           {isPublishing ? 'Publishing...' : 'Publish'}
         </button>
@@ -75,7 +75,7 @@ export default function EventActions({ eventId, status }: EventActionsProps) {
           type="button"
           onClick={handleClose}
           disabled={isClosing}
-          className="rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
+          className="rounded-sm bg-red-100 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
         >
           {isClosing ? 'Closing...' : 'Close RSVPs'}
         </button>
@@ -85,7 +85,7 @@ export default function EventActions({ eventId, status }: EventActionsProps) {
           type="button"
           onClick={handleReopen}
           disabled={isReopening}
-          className="rounded-lg bg-green-100 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-200 disabled:opacity-50"
+          className="rounded-sm bg-green-100 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-200 disabled:opacity-50"
         >
           {isReopening ? 'Re-opening...' : 'Re-open RSVPs'}
         </button>
@@ -95,7 +95,7 @@ export default function EventActions({ eventId, status }: EventActionsProps) {
           type="button"
           onClick={handleCancel}
           disabled={isCancelling}
-          className="rounded-lg bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+          className="rounded-sm bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
         >
           {isCancelling ? 'Cancelling...' : 'Cancel Event'}
         </button>
