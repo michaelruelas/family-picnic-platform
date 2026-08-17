@@ -44,23 +44,19 @@ interface RsvpBottomSheetProps {
 }
 
 interface AttendanceDraft {
+  /** Stable key for React list rendering — never changes after creation */
+  draftKey: string;
   householdMemberId: string | null;
   memberName: string;
   memberAge: number | null;
   attending: RsvpAttending;
-  /**
-   * FPP-36: name as it was when the row hydrated from the server.
-   * The submit handler compares the current draft `memberName`
-   * against this baseline to decide whether a household member
-   * needs a PATCH. Ad-hoc guests (id = null) leave this empty
-   * because there is no row to write back to.
-   */
   originalMemberName: string | null;
-  /**
-   * When true, this new member will be persisted to the HouseholdMember
-   * table so they are retained for future event RSVPs.
-   */
   saveToHousehold?: boolean;
+}
+
+/** Stable, unique key for a draft — see {@link draftKey} */
+function nextDraftKey(): string {
+  return crypto.randomUUID();
 }
 
 const ATTENDANCE_OPTIONS: RsvpAttending[] = [
@@ -75,6 +71,7 @@ function defaultAttendanceForNewMember(
   age: number | null,
 ): AttendanceDraft {
   return {
+    draftKey: nextDraftKey(),
     householdMemberId: memberId,
     memberName: name,
     memberAge: age,
@@ -99,6 +96,7 @@ function buildInitialDrafts(
     const key =
       att.householdMemberId ?? `name:${att.memberNameSnapshot}:${att.memberAgeSnapshot ?? ''}`;
     existing.set(key, {
+      draftKey: nextDraftKey(),
       householdMemberId: att.householdMemberId,
       memberName: att.memberNameSnapshot,
       memberAge: att.memberAgeSnapshot,
@@ -112,13 +110,14 @@ function buildInitialDrafts(
     const prior = existing.get(m.id);
     if (prior) {
       return {
+        draftKey: prior.draftKey,
         householdMemberId: m.id,
         memberName: m.name,
         memberAge: m.age,
         attending: prior.attending,
-        // The snapshot wins on first hydrate so a later edit to the
-        // household member name is not silently overwritten. The
-        // submit handler compares against this baseline.
+        // Prefer the snapshot over the live name so a later edit to the
+        // household member name is not silently overwritten on hydrate.
+        // The submit handler compares the draft against this baseline.
         originalMemberName: prior.originalMemberName ?? m.name,
         saveToHousehold: true,
       };
@@ -140,6 +139,7 @@ function buildInitialDrafts(
   // immediately appear in the attendance list.
   if (next.length === 0 && userName && userName.trim()) {
     next.push({
+      draftKey: nextDraftKey(),
       householdMemberId: null,
       memberName: userName.trim(),
       memberAge: null,
@@ -361,6 +361,7 @@ export function RsvpBottomSheet({
     setDrafts((current) => [
       ...current,
       {
+        draftKey: nextDraftKey(),
         householdMemberId: null,
         memberName: nameParsed.data,
         memberAge: ageValue,
@@ -760,7 +761,7 @@ export function RsvpBottomSheet({
                   draft.originalMemberName ?? safeLiveName ?? `slot ${index + 1}`;
                 return (
                   <li
-                    key={`${draft.householdMemberId ?? draft.memberName}-${index}`}
+                    key={draft.draftKey}
                     className="border-border bg-card/40 flex flex-col gap-2 rounded-2xl border px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-3">
