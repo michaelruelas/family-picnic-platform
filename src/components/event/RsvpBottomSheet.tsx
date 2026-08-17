@@ -902,9 +902,7 @@ export function RsvpBottomSheet({
                             Set age
                           </button>
                         ) : (
-                          <p className="text-muted-foreground mt-1 text-xs italic">
-                            Age not set
-                          </p>
+                          <p className="text-muted-foreground mt-1 text-xs italic">Age not set</p>
                         )}
                       </div>
                       <select
