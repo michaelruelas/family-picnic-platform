@@ -30,6 +30,7 @@ describe('LoginForm', () => {
   it('renders welcome message and Google sign-in', () => {
     render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} />);
     expect(screen.getByText('Welcome back')).toBeInTheDocument();
+    expect(screen.getByAltText('Folia Family Picnic logo')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /continue with google/i })).toBeInTheDocument();
   });
 

@@ -1,41 +1,36 @@
 'use client';
 
+import { useState } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { usePathname } from 'next/navigation';
 import { useMounted } from '~/hooks/useMounted';
-
-const PUBLIC_NAV_PATTERNS: readonly RegExp[] = [
-  /^\/$/,
-  /^\/login$/,
-  /^\/events$/,
-  /^\/events\/calendar$/,
-  /^\/events\/invitation\/[^/]+$/,
-  /^\/events\/[^/]+$/,
-  /^\/events\/[^/]+\/rsvp$/,
-  /^\/events\/[^/]+\/potluck$/,
-  /^\/events\/[^/]+\/photos$/,
-];
-
-function isPublicNavRoute(pathname: string): boolean {
-  const normalized = pathname.length > 1 ? pathname.replace(/\/+$/, '') : '/';
-  return PUBLIC_NAV_PATTERNS.some((pattern) => pattern.test(normalized));
-}
+import { isAdminRole } from '~/lib/auth';
 
 export default function NavBarClient() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setMobileMenuOpen(false);
+  }
 
   const toggleTheme = () => {
     if (!mounted) return;
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
 
-  if (isPublicNavRoute(pathname)) return null;
+  const normalized = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  if (normalized === '/login') return null;
+
+  const isAdmin = session?.user?.role ? isAdminRole(session.user.role) : false;
 
   return (
     <nav className="border-border/60 bg-background/80 sticky top-0 z-30 border-b backdrop-blur-lg">
@@ -45,8 +40,8 @@ export default function NavBarClient() {
             <Image
               src="/folia-family-picnic-logo.png"
               alt="Folia Family Picnic logo"
-              width={500}
-              height={500}
+              width={40}
+              height={40}
               priority
               className="h-full w-full object-contain"
             />
@@ -111,10 +106,10 @@ export default function NavBarClient() {
           ) : session ? (
             <div className="flex items-center gap-1.5">
               <Link
-                href="/my-events"
+                href="/household"
                 className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
               >
-                My Events
+                Household
               </Link>
               <Link
                 href="/profile"
@@ -122,6 +117,20 @@ export default function NavBarClient() {
               >
                 Profile
               </Link>
+              <Link
+                href="/my-events"
+                className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
+              >
+                My Events
+              </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin/dashboard"
+                  className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
+                >
+                  Admin
+                </Link>
+              )}
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
                 className="border-border bg-card text-foreground hover:border-foreground press rounded-sm border px-4 py-2 text-sm font-medium transition-all"
@@ -137,8 +146,108 @@ export default function NavBarClient() {
               Sign In
             </Link>
           )}
+
+          {/* Mobile hamburger menu button */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileMenuOpen}
+            className="border-border bg-card text-foreground hover:bg-secondary press flex h-10 w-10 items-center justify-center rounded-sm border transition-all md:hidden"
+          >
+            {mobileMenuOpen ? (
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.8}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.8}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
         </div>
       </div>
+
+      {/* Mobile navigation drawer / dropdown */}
+      {mobileMenuOpen && (
+        <div
+          className="border-border/60 bg-background/95 divide-border/60 divide-y border-t px-5 py-4 md:hidden"
+          data-testid="mobile-nav-menu"
+        >
+          <div className="flex flex-col gap-1 pb-3">
+            <Link
+              href="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
+            >
+              Home
+            </Link>
+            <Link
+              href="/events"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
+            >
+              Events
+            </Link>
+          </div>
+          {session ? (
+            <div className="flex flex-col gap-1 pt-3">
+              <Link
+                href="/household"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
+              >
+                Household
+              </Link>
+              <Link
+                href="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
+              >
+                Profile
+              </Link>
+              <Link
+                href="/my-events"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
+              >
+                My Events
+              </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-foreground hover:bg-secondary rounded-sm px-3 py-2 text-sm font-medium transition-colors"
+                >
+                  Admin Dashboard
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="pt-3">
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="bg-foreground text-background hover:bg-foreground/90 block w-full rounded-sm px-4 py-2.5 text-center text-sm font-semibold transition-all"
+              >
+                Sign In
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

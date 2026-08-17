@@ -10,6 +10,7 @@ import { BreatheSection } from '~/components/ui/BreatheSection';
 import { RsvpLastUpdated } from '~/components/event/RsvpLastUpdated';
 import { FeeTotalBlock } from '~/components/event/FeeTotalBlock';
 import { POTLUCK_CATEGORY_LABELS, slotDisplayName } from '~/lib/constants';
+import PotluckTable from '~/components/potluck/PotluckTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,9 +47,31 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
               id: true,
               name: true,
               category: true,
+              slotType: true,
+              maxSignups: true,
+              currentSignups: true,
               signups: {
-                where: { rsvpId },
-                select: { id: true, dishName: true, servings: true },
+                where: { rsvp: { status: 'CONFIRMED' } },
+                select: {
+                  id: true,
+                  dishName: true,
+                  servings: true,
+                  dietaryLabels: true,
+                  rsvpId: true,
+                  rsvp: {
+                    select: {
+                      id: true,
+                      userId: true,
+                      user: {
+                        select: {
+                          id: true,
+                          name: true,
+                          household: { select: { name: true } },
+                        },
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -100,7 +123,7 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
   // rule without claiming a specific multiplier for this snapshot.
 
   const potluckClaims = rsvp.event.potluckSlots.flatMap((slot) =>
-    slot.signups.map((signup) => ({ slot, signup })),
+    slot.signups.filter((signup) => signup.rsvpId === rsvpId).map((signup) => ({ slot, signup })),
   );
 
   const statusLabel: Record<RSVPStatus, { label: string; bg: string; color: string }> = {
@@ -257,7 +280,12 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
               <h2 className="font-display text-foreground mt-2 text-2xl font-semibold">
                 What you&apos;re bringing
               </h2>
-              {potluckClaims.length === 0 ? (
+              {rsvp.status === RSVPStatus.WAITLISTED ? (
+                <p className="text-muted-foreground mt-3 text-sm">
+                  You&apos;re currently on the waitlist. Once your RSVP is confirmed, you&apos;ll be
+                  able to claim a dish for the potluck.
+                </p>
+              ) : potluckClaims.length === 0 ? (
                 <p className="text-muted-foreground mt-3 text-sm">
                   Nothing claimed yet. You can sign up for a dish on the{' '}
                   <Link
@@ -305,6 +333,14 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
                 </ul>
               )}
             </div>
+          </div>
+        </BreatheSection>
+      )}
+
+      {rsvp.status !== RSVPStatus.DECLINED && (
+        <BreatheSection className="mt-8">
+          <div className="mx-auto max-w-3xl px-5">
+            <PotluckTable slots={rsvp.event.potluckSlots} currentRsvpId={rsvp.id} />
           </div>
         </BreatheSection>
       )}
