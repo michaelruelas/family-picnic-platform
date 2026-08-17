@@ -69,4 +69,3 @@ export function isSuperAdminRole(role: string | null | undefined): boolean {
 export function isAdminRole(role: string | null | undefined): boolean {
   return role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT';
 }
-
