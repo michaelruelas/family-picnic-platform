@@ -129,12 +129,14 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
                   type="text"
                   value="Alice"
                 />
-                <p
-                  class="text-muted-foreground mt-1 text-xs"
+                <button
+                  aria-label="Edit age"
+                  class="text-muted-foreground hover:text-foreground mt-1 text-xs"
+                  type="button"
                 >
                   35
                    yrs
-                </p>
+                </button>
               </div>
               <select
                 aria-label="Attendance for Alice"
@@ -177,12 +179,14 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
                   type="text"
                   value="Ben"
                 />
-                <p
-                  class="text-muted-foreground mt-1 text-xs"
+                <button
+                  aria-label="Edit age"
+                  class="text-muted-foreground hover:text-foreground mt-1 text-xs"
+                  type="button"
                 >
                   8
                    yrs
-                </p>
+                </button>
               </div>
               <select
                 aria-label="Attendance for Ben"
@@ -398,12 +402,14 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
                   type="text"
                   value="Alice"
                 />
-                <p
-                  class="text-muted-foreground mt-1 text-xs"
+                <button
+                  aria-label="Edit age"
+                  class="text-muted-foreground hover:text-foreground mt-1 text-xs"
+                  type="button"
                 >
                   35
                    yrs
-                </p>
+                </button>
               </div>
               <select
                 aria-label="Attendance for Alice"
@@ -446,12 +452,14 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
                   type="text"
                   value="Ben"
                 />
-                <p
-                  class="text-muted-foreground mt-1 text-xs"
+                <button
+                  aria-label="Edit age"
+                  class="text-muted-foreground hover:text-foreground mt-1 text-xs"
+                  type="button"
                 >
                   8
                    yrs
-                </p>
+                </button>
               </div>
               <select
                 aria-label="Attendance for Ben"

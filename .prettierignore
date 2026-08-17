@@ -6,6 +6,9 @@ dist/
 .turbo/
 coverage/
 
+# Vitest snapshots (auto-generated, no parser for .snap extension)
+__snapshots__/
+
 # Audit outputs (also in .gitignore)
 audits/
 

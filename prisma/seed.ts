@@ -126,6 +126,26 @@ async function main() {
   console.log('====================');
   console.log('');
 
+  // Seed household members (roster) for each household's account holder.
+  // FPP-107: the head of household (the user who received the invite)
+  // must have a HouseholdMember row so they appear in the RSVP form
+  // and can set their age for registration fee calculation.
+  await prisma.householdMember.create({
+    data: { householdId: garciaHousehold.id, name: mariaGarcia.name },
+  });
+  await prisma.householdMember.create({
+    data: { householdId: garciaHousehold.id, name: carlosGarcia.name },
+  });
+  await prisma.householdMember.create({
+    data: { householdId: thompsonHousehold.id, name: lisaThompson.name },
+  });
+  await prisma.householdMember.create({
+    data: { householdId: thompsonHousehold.id, name: bobThompson.name },
+  });
+  await prisma.householdMember.create({
+    data: { householdId: patelHousehold.id, name: priyaPatel.name },
+  });
+
   const dependent = await prisma.dependent.create({
     data: {
       name: 'Sofia Garcia',
