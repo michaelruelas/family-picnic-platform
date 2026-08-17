@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { usePathname } from 'next/navigation';
 import { useMounted } from '~/hooks/useMounted';
-import { isAdminRole } from '~/lib/auth';
+import { isAdminRole } from '~/lib/constants';
 
 export default function NavBarClient() {
   const pathname = usePathname();

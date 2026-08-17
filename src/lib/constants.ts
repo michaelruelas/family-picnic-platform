@@ -58,3 +58,15 @@ export const DEFAULT_CURRENCY = 'usd';
 export const SIGNED_IN_REDIRECT = '/events';
 
 export const APP_VERSION = '0.1.13';
+
+export const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN_ADULT'] as const;
+export const SUPER_ADMIN_ROLES = ['SUPER_ADMIN'] as const;
+
+export function isSuperAdminRole(role: string | null | undefined): boolean {
+  return role === 'SUPER_ADMIN';
+}
+
+export function isAdminRole(role: string | null | undefined): boolean {
+  return role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT';
+}
+
