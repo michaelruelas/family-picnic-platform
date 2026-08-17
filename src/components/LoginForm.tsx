@@ -1,6 +1,7 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -44,8 +45,15 @@ export default function LoginForm({
     <main className="bg-background flex min-h-screen items-center justify-center px-5 py-12">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="bg-terracotta shadow-soft mx-auto inline-flex h-16 w-16 items-center justify-center rounded-sm text-3xl">
-            🏡
+          <div className="shadow-soft mx-auto inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-sm">
+            <Image
+              src="/folia-family-picnic-logo.png"
+              alt="Folia Family Picnic logo"
+              width={64}
+              height={64}
+              priority
+              className="h-full w-full object-contain"
+            />
           </div>
           <h1 className="font-display text-foreground mt-5 text-4xl font-medium tracking-tight">
             Welcome back

@@ -16,6 +16,8 @@ export const POTLUCK_CATEGORY_LABELS: Record<string, string> = {
   OTHER: 'Other Items',
 };
 
+export const POTLUCK_CATEGORY_ORDER = ['MAIN', 'SIDE', 'DESSERT', 'DRINK', 'OTHER'] as const;
+
 /**
  * FPP-54: the placeholder shown in the public list, admin grid, and
  * claim modal when a slot has no name. Format: `<article> <category> (any)`.
@@ -58,3 +60,14 @@ export const DEFAULT_CURRENCY = 'usd';
 export const SIGNED_IN_REDIRECT = '/events';
 
 export const APP_VERSION = '0.1.13';
+
+export const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN_ADULT'] as const;
+export const SUPER_ADMIN_ROLES = ['SUPER_ADMIN'] as const;
+
+export function isSuperAdminRole(role: string | null | undefined): boolean {
+  return role === 'SUPER_ADMIN';
+}
+
+export function isAdminRole(role: string | null | undefined): boolean {
+  return role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT';
+}
