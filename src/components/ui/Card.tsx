@@ -36,7 +36,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={`rounded-2xl ${variantClasses[variant]} ${paddingClasses[padding]} ${hover ? 'hover-lift' : ''} ${className} `}
+        className={`rounded-sm ${variantClasses[variant]} ${paddingClasses[padding]} ${hover ? 'hover-lift' : ''} ${className} `}
         {...props}
       >
         {children}

@@ -181,7 +181,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       nextDisabled={!householdMode}
     >
       {error && (
-        <div className="bg-destructive/10 text-destructive mb-4 rounded-lg p-3 text-sm">
+        <div className="bg-destructive/10 text-destructive mb-4 rounded-sm p-3 text-sm">
           {error}
         </div>
       )}
@@ -192,7 +192,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
           <div className="flex flex-col gap-4">
             <button
               onClick={() => setHouseholdMode('create')}
-              className="border-border hover:border-terracotta hover:bg-sunlight/20 flex items-center gap-4 rounded-lg border-2 p-6 text-left"
+              className="border-border hover:border-terracotta hover:bg-sunlight/20 flex items-center gap-4 rounded-sm border-2 p-6 text-left"
             >
               <span className="text-3xl">🏠</span>
               <div>
@@ -206,7 +206,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
             {households.length > 0 && (
               <button
                 onClick={() => setHouseholdMode('join')}
-                className="border-border hover:border-terracotta hover:bg-sunlight/20 flex items-center gap-4 rounded-lg border-2 p-6 text-left"
+                className="border-border hover:border-terracotta hover:bg-sunlight/20 flex items-center gap-4 rounded-sm border-2 p-6 text-left"
               >
                 <span className="text-3xl">👨‍👩‍👧‍👦</span>
                 <div>
@@ -239,13 +239,13 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
               value={newHouseholdName}
               onChange={(e) => setNewHouseholdName(e.target.value)}
               placeholder="The Johnson Family"
-              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-4 py-3 text-lg shadow-sm focus:ring-1 focus:outline-none"
+              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-4 py-3 text-lg shadow-sm focus:ring-1 focus:outline-none"
             />
           </div>
           <button
             onClick={handleCreateHousehold}
             disabled={!newHouseholdName.trim() || isLoading}
-            className="bg-terracotta hover:bg-terracotta w-full rounded-lg px-6 py-3 text-lg font-medium text-white disabled:opacity-50"
+            className="bg-terracotta hover:bg-terracotta w-full rounded-sm px-6 py-3 text-lg font-medium text-white disabled:opacity-50"
           >
             {isLoading ? 'Creating...' : 'Create Household'}
           </button>
@@ -266,7 +266,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
             <select
               value={selectedHouseholdId || ''}
               onChange={(e) => setSelectedHouseholdId(e.target.value || null)}
-              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-4 py-3 text-lg shadow-sm focus:ring-1 focus:outline-none"
+              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-4 py-3 text-lg shadow-sm focus:ring-1 focus:outline-none"
             >
               <option value="">Select a household...</option>
               {households.map((h) => (
@@ -279,7 +279,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
           <button
             onClick={handleJoinHousehold}
             disabled={!selectedHouseholdId || isLoading}
-            className="bg-terracotta hover:bg-terracotta w-full rounded-lg px-6 py-3 text-lg font-medium text-white disabled:opacity-50"
+            className="bg-terracotta hover:bg-terracotta w-full rounded-sm px-6 py-3 text-lg font-medium text-white disabled:opacity-50"
           >
             {isLoading ? 'Joining...' : 'Join Household'}
           </button>
@@ -301,7 +301,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       isLoading={isLoading}
     >
       {error && (
-        <div className="bg-destructive/10 text-destructive mb-4 rounded-lg p-3 text-sm">
+        <div className="bg-destructive/10 text-destructive mb-4 rounded-sm p-3 text-sm">
           {error}
         </div>
       )}
@@ -311,7 +311,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
           {familyMembers.map((member, index) => (
             <li
               key={index}
-              className="bg-secondary/60 flex items-center justify-between rounded-lg p-3"
+              className="bg-secondary/60 flex items-center justify-between rounded-sm p-3"
             >
               <div className="flex items-center gap-3">
                 <span className="text-lg">{member.isChild ? '👶' : '👤'}</span>
@@ -337,7 +337,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       )}
 
       {showFamilyForm ? (
-        <div className="border-border bg-secondary/60 rounded-lg border p-4">
+        <div className="border-border bg-secondary/60 rounded-sm border p-4">
           <h3 className="text-foreground mb-4 text-lg font-medium">Add Family Member</h3>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
@@ -347,7 +347,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
                 value={newFamilyMember.name}
                 onChange={(e) => setNewFamilyMember({ ...newFamilyMember, name: e.target.value })}
                 placeholder="Full name"
-                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />
             </div>
             <div>
@@ -360,7 +360,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
                     relationship: e.target.value as typeof newFamilyMember.relationship,
                   })
                 }
-                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               >
                 <option value="SPOUSE">Spouse</option>
                 <option value="CHILD">Child</option>
@@ -377,7 +377,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
                 value={newFamilyMember.age}
                 onChange={(e) => setNewFamilyMember({ ...newFamilyMember, age: e.target.value })}
                 placeholder="Age in years"
-                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+                className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />
             </div>
             <div className="flex items-end">
@@ -398,7 +398,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
             <button
               onClick={handleAddFamilyMember}
               disabled={!newFamilyMember.name.trim()}
-              className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
+              className="bg-terracotta hover:bg-terracotta flex-1 rounded-sm px-4 py-2 font-medium text-white disabled:opacity-50"
             >
               Add Member
             </button>
@@ -407,7 +407,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
                 setShowFamilyForm(false);
                 setNewFamilyMember({ name: '', relationship: 'SPOUSE', age: '', isChild: false });
               }}
-              className="border-border text-foreground/85 hover:bg-secondary/60 flex-1 rounded-lg border px-4 py-2 font-medium"
+              className="border-border text-foreground/85 hover:bg-secondary/60 flex-1 rounded-sm border px-4 py-2 font-medium"
             >
               Cancel
             </button>
@@ -416,7 +416,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       ) : (
         <button
           onClick={() => setShowFamilyForm(true)}
-          className="border-border text-muted-foreground hover:border-terracotta hover:text-terracotta flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 text-lg font-medium"
+          className="border-border text-muted-foreground hover:border-terracotta hover:text-terracotta flex w-full items-center justify-center gap-2 rounded-sm border-2 border-dashed p-4 text-lg font-medium"
         >
           + Add Family Member
         </button>
@@ -436,7 +436,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       isLoading={isLoading}
     >
       {error && (
-        <div className="bg-destructive/10 text-destructive mb-4 rounded-lg p-3 text-sm">
+        <div className="bg-destructive/10 text-destructive mb-4 rounded-sm p-3 text-sm">
           {error}
         </div>
       )}
@@ -476,7 +476,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
               onClick={() =>
                 setCommunicationPreference(option.value as typeof communicationPreference)
               }
-              className={`flex w-full items-center gap-4 rounded-lg border-2 p-4 text-left transition-colors ${
+              className={`flex w-full items-center gap-4 rounded-sm border-2 p-4 text-left transition-colors ${
                 communicationPreference === option.value
                   ? 'border-terracotta bg-sunlight/20'
                   : 'border-border hover:border-border'
@@ -498,12 +498,12 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
   );
 
   return (
-    <div className="bg-secondary/60 ring-border rounded-xl p-6 shadow-sm ring-1">
+    <div className="bg-secondary/60 ring-border rounded-sm p-6 shadow-sm ring-1">
       <div className="mb-6 flex items-center justify-between">
         {STEPS.map((step, index) => (
           <div key={step.key} className="flex items-center">
             <div
-              className={`flex h-10 w-10 items-center justify-center rounded-full text-lg font-bold ${
+              className={`flex h-10 w-10 items-center justify-center rounded-sm text-lg font-bold ${
                 index <= currentStepIndex
                   ? 'bg-terracotta text-white'
                   : 'bg-secondary text-muted-foreground'

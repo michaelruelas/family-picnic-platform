@@ -308,11 +308,15 @@ export async function POST(request: Request) {
                 });
 
                 if (attendances.length > 0) {
-                  await resolveAndPersistAttendances(tx, {
-                    rsvpId: waitlisted.id,
-                    householdId,
-                    attendances,
-                  });
+                  await resolveAndPersistAttendances(
+                    tx,
+                    {
+                      rsvpId: waitlisted.id,
+                      householdId,
+                      attendances,
+                    },
+                    { replace: true },
+                  );
                 }
 
                 // Sync the registration fee so this entry point matches
@@ -629,11 +633,15 @@ export async function POST(request: Request) {
             });
 
             if (attendances.length > 0) {
-              await resolveAndPersistAttendances(tx, {
-                rsvpId: updatedRsvp.id,
-                householdId,
-                attendances,
-              });
+              await resolveAndPersistAttendances(
+                tx,
+                {
+                  rsvpId: updatedRsvp.id,
+                  householdId,
+                  attendances,
+                },
+                { replace: true },
+              );
             }
 
             // Sync the registration fee so this REST entry point

@@ -261,7 +261,7 @@ export default function EventAdminsClient({
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="bg-terracotta/15 text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                    <span className="bg-terracotta/15 text-foreground rounded-sm px-2.5 py-0.5 text-xs font-medium">
                       Host
                     </span>
                     {!isCurrentUser(host) && (
@@ -300,7 +300,7 @@ export default function EventAdminsClient({
 
             {hostResults.length > 0 && (
               <ul
-                className="border-border bg-card absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border shadow-lg"
+                className="border-border bg-card absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-sm border shadow-lg"
                 data-testid="host-search-results"
               >
                 {hostResults.map((user) => {
@@ -345,7 +345,7 @@ export default function EventAdminsClient({
                 {selectedHosts.map((user) => (
                   <li
                     key={user.id}
-                    className="bg-terracotta/15 text-foreground rounded-pill flex items-center gap-2 px-3 py-1 text-sm"
+                    className="bg-terracotta/15 text-foreground flex items-center gap-2 rounded-sm px-3 py-1 text-sm"
                   >
                     <span>{user.name}</span>
                     <button
@@ -402,7 +402,7 @@ export default function EventAdminsClient({
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="bg-secondary text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                    <span className="bg-secondary text-foreground rounded-sm px-2.5 py-0.5 text-xs font-medium">
                       {admin.role}
                     </span>
                     {!isCurrentUser(admin) && (
@@ -453,7 +453,7 @@ export default function EventAdminsClient({
           {searchError && <p className="text-destructive text-sm">{searchError}</p>}
 
           {searchResult && (
-            <div className="border-border bg-secondary/60 rounded-lg border p-4">
+            <div className="border-border bg-secondary/60 rounded-sm border p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-foreground font-medium">{searchResult.name}</p>
@@ -465,7 +465,7 @@ export default function EventAdminsClient({
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="bg-terracotta/15 text-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+                  <span className="bg-terracotta/15 text-foreground rounded-sm px-2.5 py-0.5 text-xs font-medium">
                     {role}
                   </span>
                   <Button

@@ -99,7 +99,7 @@ export default async function EventPhotosPage({ params }: PageProps) {
         )}
 
         {event.photos.length === 0 ? (
-          <div className="bg-secondary mt-10 rounded-3xl p-12 text-center">
+          <div className="bg-secondary mt-10 rounded-sm p-12 text-center">
             <div className="text-5xl">📷</div>
             <h3 className="font-display text-foreground mt-4 text-2xl font-semibold">
               No photos yet

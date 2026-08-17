@@ -20,7 +20,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Family Picnic — A Place for Our People',
+  title: 'Folia Picnic — Fun, Food, and Memories',
   description:
     'A private family engagement hub for our annual picnic — RSVP, potluck coordination, photo sharing, and family communication.',
   appleWebApp: {

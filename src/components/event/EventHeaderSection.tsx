@@ -270,14 +270,14 @@ function HostBlock({
   hosts: { id: string; name: string; email: string; phoneNumber: string | null }[];
 }) {
   return (
-    <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9">
+    <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9">
       <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">The welcome</p>
       <h3 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
         A note from the host
       </h3>
       <p className="text-foreground/80 mt-5 text-lg leading-relaxed">{description}</p>
       {maxCapacity && (
-        <div className="bg-sunlight/20 text-foreground ring-sunlight/40 mt-6 rounded-2xl px-5 py-4 text-sm ring-1">
+        <div className="bg-sunlight/20 text-foreground ring-sunlight/40 mt-6 rounded-sm px-5 py-4 text-sm ring-1">
           <span className="font-semibold">Heads up:</span> We can host up to {maxCapacity} people.
           Reserve your spot early.
         </div>
@@ -296,7 +296,7 @@ function HostBlock({
             {hosts.map((host) => (
               <li
                 key={host.id}
-                className="bg-secondary flex items-start gap-3 rounded-2xl px-4 py-3"
+                className="bg-secondary flex items-start gap-3 rounded-sm px-4 py-3"
               >
                 <span className="text-terracotta text-lg" aria-hidden>
                   👤
@@ -359,7 +359,7 @@ function PotluckPreview({
       </div>
 
       {Object.keys(slotsByCategory).length === 0 ? (
-        <div className="bg-sunlight/20 ring-sunlight/40 mt-6 rounded-3xl p-12 text-center ring-1">
+        <div className="bg-sunlight/20 ring-sunlight/40 mt-6 rounded-sm p-12 text-center ring-1">
           <div className="text-5xl">🍽️</div>
           <h4 className="font-display text-foreground mt-4 text-2xl font-semibold">
             The menu is still being planned
@@ -389,7 +389,7 @@ function PotluckPreview({
           </div>
           <Link
             href={`/events/${eventId}/potluck`}
-            className="rounded-pill bg-foreground text-background press hover:bg-foreground/90 inline-flex w-fit items-center gap-2 px-5 py-2.5 text-sm font-semibold transition-all"
+            className="bg-foreground text-background press hover:bg-foreground/90 inline-flex w-fit items-center gap-2 rounded-sm px-5 py-2.5 text-sm font-semibold transition-all"
             data-testid="event-detail-potluck-cta"
           >
             {userRsvpConfirmed ? 'Manage your dishes' : 'Browse the potluck menu'}
@@ -424,9 +424,9 @@ function PotluckCategoryCard({
   const hiddenDishesCount = dishes.length - visibleDishes.length;
 
   return (
-    <div className="bg-card shadow-card ring-border/60 w-[260px] shrink-0 rounded-3xl p-6 ring-1 md:w-[280px]">
+    <div className="bg-card shadow-card ring-border/60 w-[260px] shrink-0 rounded-sm p-6 ring-1 md:w-[280px]">
       <span
-        className={`rounded-pill inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold tracking-wider uppercase ${chipColor}`}
+        className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-semibold tracking-wider uppercase ${chipColor}`}
       >
         <span>{POTLUCK_CATEGORY_EMOJIS[category] || '📦'}</span>
         {POTLUCK_CATEGORY_LABELS[category] || category}
@@ -471,9 +471,9 @@ function AddDishCard({ eventId }: { eventId: string }) {
   return (
     <Link
       href={`/events/${eventId}/potluck`}
-      className="border-sage/40 hover:bg-sage/5 flex w-[260px] shrink-0 flex-col items-center justify-center rounded-3xl border-2 border-dashed bg-transparent p-6 text-center transition-colors md:w-[280px]"
+      className="border-sage/40 hover:bg-sage/5 flex w-[260px] shrink-0 flex-col items-center justify-center rounded-sm border-2 border-dashed bg-transparent p-6 text-center transition-colors md:w-[280px]"
     >
-      <div className="bg-sage/15 flex h-12 w-12 items-center justify-center rounded-full text-2xl">
+      <div className="bg-sage/15 flex h-12 w-12 items-center justify-center rounded-sm text-2xl">
         🍴
       </div>
       <h4 className="font-display text-foreground mt-3 text-lg font-semibold">Bring a dish</h4>

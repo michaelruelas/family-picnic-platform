@@ -262,7 +262,7 @@ describe('ItineraryEditor', () => {
       const timeInput = screen.getByLabelText(/time/i);
       expect(timeInput.tagName).toBe('INPUT');
       expect(timeInput).toHaveAttribute('type', 'time');
-      expect(timeInput.className).toContain('rounded-pill');
+      expect(timeInput.className).toContain('rounded-sm');
       expect(timeInput.className).toContain('min-h-12');
     });
 

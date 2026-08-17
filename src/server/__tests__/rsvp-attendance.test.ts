@@ -313,6 +313,67 @@ describe('rsvp-attendance service', () => {
         }),
       );
     });
+
+    it('FPP-111: deletes existing rows and recreates when replace: true is set', async () => {
+      prismaMock.rsvpMemberAttendance.deleteMany.mockResolvedValue({ count: 2 });
+      prismaMock.rsvpMemberAttendance.findUnique.mockResolvedValue(null);
+      await persistResolvedAttendances(
+        prismaMock as unknown as Tx,
+        'r-1',
+        [
+          {
+            householdMemberId: 'a',
+            memberName: 'A',
+            memberAge: 30,
+            attending: RsvpAttending.YES,
+          },
+        ],
+        { replace: true },
+      );
+      expect(prismaMock.rsvpMemberAttendance.deleteMany).toHaveBeenCalledWith({
+        where: { rsvpId: 'r-1' },
+      });
+      expect(prismaMock.rsvpMemberAttendance.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            rsvpId: 'r-1',
+            householdMemberId: 'a',
+            attending: RsvpAttending.YES,
+          }),
+        }),
+      );
+    });
+
+    it('FPP-111: cleans up removed ad-hoc guests when replace: true is set with fewer rows', async () => {
+      prismaMock.rsvpMemberAttendance.deleteMany.mockResolvedValue({ count: 3 });
+      prismaMock.rsvpMemberAttendance.findFirst.mockResolvedValue(null);
+      await persistResolvedAttendances(
+        prismaMock as unknown as Tx,
+        'r-1',
+        [
+          {
+            householdMemberId: null,
+            memberName: 'Remaining Guest',
+            memberAge: 25,
+            attending: RsvpAttending.YES,
+          },
+        ],
+        { replace: true },
+      );
+      expect(prismaMock.rsvpMemberAttendance.deleteMany).toHaveBeenCalledWith({
+        where: { rsvpId: 'r-1' },
+      });
+      expect(prismaMock.rsvpMemberAttendance.create).toHaveBeenCalledTimes(1);
+      expect(prismaMock.rsvpMemberAttendance.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            rsvpId: 'r-1',
+            householdMemberId: null,
+            memberNameSnapshot: 'Remaining Guest',
+          }),
+        }),
+      );
+    });
   });
 
   describe('resolveAndPersistAttendances', () => {
@@ -328,6 +389,28 @@ describe('rsvp-attendance service', () => {
         attendances: [{ householdMemberId: 'a', memberName: 'A', attending: RsvpAttending.YES }],
       });
       expect(result.rows).toHaveLength(1);
+      expect(prismaMock.rsvpMemberAttendance.create).toHaveBeenCalled();
+    });
+
+    it('FPP-111: forwards replace: true to persistResolvedAttendances', async () => {
+      prismaMock.householdMember.findMany.mockResolvedValue([
+        { id: 'a', name: 'A', age: 30, deletedAt: null },
+      ]);
+      prismaMock.rsvpMemberAttendance.deleteMany.mockResolvedValue({ count: 2 });
+      prismaMock.rsvpMemberAttendance.findUnique.mockResolvedValue(null);
+      const result = await resolveAndPersistAttendances(
+        prismaMock as unknown as Tx,
+        {
+          rsvpId: 'r-1',
+          householdId: 'h-1',
+          attendances: [{ householdMemberId: 'a', memberName: 'A', attending: RsvpAttending.YES }],
+        },
+        { replace: true },
+      );
+      expect(result.rows).toHaveLength(1);
+      expect(prismaMock.rsvpMemberAttendance.deleteMany).toHaveBeenCalledWith({
+        where: { rsvpId: 'r-1' },
+      });
       expect(prismaMock.rsvpMemberAttendance.create).toHaveBeenCalled();
     });
 

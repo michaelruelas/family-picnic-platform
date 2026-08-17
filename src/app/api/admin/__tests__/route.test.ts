@@ -4,13 +4,13 @@ import { resetPrismaMock } from 'tests/helpers/route';
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 
 const prismaMock = vi.hoisted(() => ({
-  user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
+  user: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
   event: { findUnique: vi.fn() },
   adminAuditLog: { findMany: vi.fn(), create: vi.fn() },
   // FPP-50: domain-event audit log table queried alongside AdminAuditLog.
   auditLog: { findMany: vi.fn() },
   household: { create: vi.fn() },
-  rSVP: { create: vi.fn() },
+  rSVP: { create: vi.fn(), upsert: vi.fn() },
 }));
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
 
@@ -179,14 +179,15 @@ describe('POST /api/admin/csv-import', () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'SUPER_ADMIN' } } as never);
     prismaMock.event.findUnique.mockResolvedValue({ id: 'e-1' } as never);
     prismaMock.household.create.mockResolvedValue({ id: 'h-1' } as never);
-    prismaMock.user.findUnique
+    // First member: new user (findFirst → null, create → { id: 'u-new' })
+    // Second member: existing user (findFirst → { id: 'u-existing' })
+    prismaMock.user.findFirst
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 'u-new' } as never)
-      .mockResolvedValueOnce({ id: 'u-existing' } as never)
       .mockResolvedValueOnce({ id: 'u-existing' } as never);
     prismaMock.user.create.mockResolvedValue({ id: 'u-new' } as never);
     prismaMock.user.update.mockResolvedValue({} as never);
-    prismaMock.rSVP.create.mockResolvedValue({} as never);
+    // FPP-111: import uses upsert so re-import never duplicates an RSVP
+    prismaMock.rSVP.upsert.mockResolvedValue({} as never);
     prismaMock.adminAuditLog.create.mockResolvedValue({} as never);
     const res = await POSTCsv(
       makeNextReq(
@@ -210,6 +211,7 @@ describe('POST /api/admin/csv-import', () => {
     expect(prismaMock.household.create).toHaveBeenCalledTimes(1);
     expect(prismaMock.user.create).toHaveBeenCalledTimes(1);
     expect(prismaMock.user.update).toHaveBeenCalledTimes(1);
+    expect(prismaMock.rSVP.upsert).toHaveBeenCalledTimes(2);
   });
 
   it('returns 500 on unexpected error', async () => {

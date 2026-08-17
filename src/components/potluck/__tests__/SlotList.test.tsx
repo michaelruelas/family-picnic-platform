@@ -187,7 +187,7 @@ describe('SlotList', () => {
     });
   });
 
-  it('rejects an empty dish name', async () => {
+  it('allows submitting with an empty dish name', async () => {
     render(
       <SlotList
         eventId="evt-1"
@@ -199,8 +199,11 @@ describe('SlotList', () => {
     );
     fireEvent.click(screen.getByTestId('potluck-claim-s-1'));
     fireEvent.click(await screen.findByTestId('potluck-claim-submit'));
-    expect(await screen.findByTestId('potluck-claim-error')).toBeInTheDocument();
-    expect(mockSignup.mutateAsync).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockSignup.mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ dishName: '' }),
+      );
+    });
   });
 
   it('updates an existing signup when the user re-opens the modal', async () => {

@@ -38,7 +38,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
   return (
     <li className="relative">
       <div
-        className={`flex flex-wrap items-center gap-2 rounded-lg p-3 transition-colors ${
+        className={`flex flex-wrap items-center gap-2 rounded-sm p-3 transition-colors ${
           level === 0 ? 'border-sunlight/40 bg-sunlight/20 border' : 'border-border bg-card border'
         } hover:shadow-sm`}
         style={{ marginLeft: level > 0 ? '1.5rem' : 0 }}
@@ -87,7 +87,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
 
       {showDetails && (
         <div
-          className="border-border bg-card rounded-lg border p-4"
+          className="border-border bg-card rounded-sm border p-4"
           style={{ marginLeft: level > 0 ? '1.5rem' : 0, marginTop: '0.5rem' }}
         >
           {node.users.length > 0 && (
@@ -99,7 +99,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
                     key={user.id}
                     className="text-muted-foreground flex items-center gap-2 text-sm"
                   >
-                    <span className="h-2 w-2 rounded-full bg-amber-400" />
+                    <span className="h-2 w-2 rounded-sm bg-amber-400" />
                     {user.name}
                     <span className="text-muted-foreground/70 text-xs">({user.email})</span>
                   </li>
@@ -118,7 +118,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
                     className="text-muted-foreground flex items-center gap-2 text-sm"
                   >
                     <span
-                      className={`h-2 w-2 rounded-full ${dep.isChild ? 'bg-blue-400' : 'bg-green-400'}`}
+                      className={`h-2 w-2 rounded-sm ${dep.isChild ? 'bg-blue-400' : 'bg-green-400'}`}
                     />
                     {dep.name}
                     <span className="text-muted-foreground/70 text-xs">
@@ -151,7 +151,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
 export default function FamilyTree({ households }: FamilyTreeProps) {
   if (households.length === 0) {
     return (
-      <div className="bg-secondary rounded-xl p-8 text-center">
+      <div className="bg-secondary rounded-sm p-8 text-center">
         <div className="text-4xl">🌳</div>
         <h3 className="text-foreground/85 mt-4 text-lg font-medium">No Households Yet</h3>
         <p className="text-muted-foreground mt-2 text-sm">

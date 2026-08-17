@@ -17,7 +17,7 @@ export default function Spinner({ size = 'md', label, className = '', ...props }
   return (
     <div className={`flex items-center justify-center gap-3 ${className}`} {...props}>
       <span
-        className={`${sizeClasses[size]} text-terracotta animate-spin rounded-full border-current border-t-transparent`}
+        className={`${sizeClasses[size]} text-terracotta animate-spin rounded-sm border-current border-t-transparent`}
       />
       {label && <span className="text-muted-foreground text-base">{label}</span>}
     </div>
@@ -40,7 +40,7 @@ export function LoadingOverlay({
 
   return (
     <div className={`relative ${className}`} {...props}>
-      <div className="bg-background/80 pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl backdrop-blur-sm">
+      <div className="bg-background/80 pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-sm backdrop-blur-sm">
         {spinner || <Spinner size="lg" />}
       </div>
       {children}

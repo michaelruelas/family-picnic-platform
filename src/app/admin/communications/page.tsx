@@ -91,7 +91,7 @@ export default async function AdminCommunicationsPage({
           initialLogs={logs}
         />
       ) : (
-        <div className="bg-secondary rounded-xl p-12 text-center">
+        <div className="bg-secondary rounded-sm p-12 text-center">
           <div className="text-5xl">📢</div>
           <h2 className="text-foreground mt-4 text-xl font-semibold">No Event Selected</h2>
           <p className="text-muted-foreground mt-2">

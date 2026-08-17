@@ -186,9 +186,9 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card space-y-6 rounded-xl p-6 shadow-sm">
+    <form onSubmit={handleSubmit} className="bg-card space-y-6 rounded-sm p-6 shadow-sm">
       {error && (
-        <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>
+        <div className="bg-destructive/10 text-destructive rounded-sm p-4 text-sm">{error}</div>
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -203,7 +203,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             value={formData.name}
             onChange={handleChange}
             required
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="Annual Family Picnic"
           />
         </div>
@@ -258,7 +258,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             value={formData.maxCapacity ?? ''}
             onChange={handleChange}
             min="1"
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="Leave empty for unlimited"
           />
         </div>
@@ -273,7 +273,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             name="mapImageUrl"
             value={formData.mapImageUrl}
             onChange={handleChange}
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="https://..."
           />
           <p className="text-muted-foreground mt-1 text-xs">
@@ -298,7 +298,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
               name="featuredImageUrl"
               value={formData.featuredImageUrl ?? ''}
               onChange={handleChange}
-              className="border-border focus:border-terracotta focus:ring-foreground/20 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+              className="border-border focus:border-terracotta focus:ring-foreground/20 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               placeholder="https://..."
             />
             {mode === 'edit' && initialData?.id && (
@@ -331,7 +331,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             onChange={handleChange}
             min="0"
             step="0.01"
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="Leave empty for free events"
           />
           <p className="text-muted-foreground mt-1 text-xs">
@@ -356,7 +356,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
             min="0"
             max="120"
             step="1"
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="0"
           />
           <p className="text-muted-foreground mt-1 text-xs">
@@ -376,7 +376,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
           value={formData.description}
           onChange={handleChange}
           rows={4}
-          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           placeholder="Join us for our annual family picnic..."
         />
       </div>
@@ -385,14 +385,14 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
+          className="bg-terracotta hover:bg-terracotta flex-1 rounded-sm px-4 py-2 font-medium text-white disabled:opacity-50"
         >
           {isSubmitting ? 'Saving...' : mode === 'create' ? 'Create Event' : 'Save Changes'}
         </button>
         <button
           type="button"
           onClick={() => router.push('/admin/events')}
-          className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-4 py-2 font-medium"
+          className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-sm px-4 py-2 font-medium"
         >
           Cancel
         </button>

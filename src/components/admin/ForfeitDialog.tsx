@@ -47,7 +47,7 @@ export default function ForfeitDialog({
             onChange={(e) => setReason(e.target.value)}
             rows={2}
             maxLength={500}
-            className="border-border mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+            className="border-border mt-1 w-full rounded-sm border px-3 py-2 text-sm"
             placeholder="no-show, cancelled, etc."
           />
         </label>
@@ -58,7 +58,7 @@ export default function ForfeitDialog({
           <button
             type="button"
             onClick={onClose}
-            className="bg-secondary text-foreground/85 rounded-lg px-4 py-2 text-sm font-medium"
+            className="bg-secondary text-foreground/85 rounded-sm px-4 py-2 text-sm font-medium"
           >
             Cancel
           </button>
@@ -71,7 +71,7 @@ export default function ForfeitDialog({
               })
             }
             disabled={forfeit.isPending}
-            className="bg-destructive rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="bg-destructive rounded-sm px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             data-testid="forfeit-submit"
           >
             {forfeit.isPending ? 'Forfeiting…' : 'Forfeit registration'}

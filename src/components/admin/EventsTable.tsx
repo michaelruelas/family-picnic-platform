@@ -75,7 +75,7 @@ function ArchiveButton({ eventId }: { eventId: string }) {
       type="button"
       onClick={onClick}
       disabled={busy}
-      className="rounded-lg bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-200 disabled:opacity-50"
+      className="rounded-sm bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-200 disabled:opacity-50"
     >
       {busy ? 'Archiving...' : 'Archive'}
     </button>
@@ -109,7 +109,7 @@ function RestoreButton({ eventId }: { eventId: string }) {
       type="button"
       onClick={onClick}
       disabled={busy}
-      className="bg-sage/20 text-sage hover:bg-sage/30 rounded-lg px-3 py-1 text-xs font-medium disabled:opacity-50"
+      className="bg-sage/20 text-sage hover:bg-sage/30 rounded-sm px-3 py-1 text-xs font-medium disabled:opacity-50"
     >
       {busy ? 'Restoring...' : 'Restore'}
     </button>
@@ -151,7 +151,7 @@ function CopyLinkButton({ eventId }: { eventId: string }) {
     <button
       type="button"
       onClick={onClick}
-      className="border-border bg-card text-foreground/80 hover:bg-secondary hover:text-foreground rounded-lg border px-3 py-1 text-xs font-medium"
+      className="border-border bg-card text-foreground/80 hover:bg-secondary hover:text-foreground rounded-sm border px-3 py-1 text-xs font-medium"
       title="Copy universal invitation URL"
     >
       {copied ? 'Copied' : 'Copy Link'}
@@ -302,7 +302,7 @@ export default function EventsTable({
             )}
             <Link
               href={`/admin/events/${row.id}/edit`}
-              className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-3 py-1 text-xs font-medium"
+              className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-sm px-3 py-1 text-xs font-medium"
             >
               Edit
             </Link>

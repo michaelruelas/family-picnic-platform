@@ -73,7 +73,7 @@ export default function RecipientSelector({
             onSelectedIdsChange([]);
           }}
           disabled={disabled}
-          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg shadow-sm"
+          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm shadow-sm"
         >
           <option value="ALL">All Households</option>
           <option value="NOT_RESPONDED">Not Responded (RSVP pending)</option>
@@ -95,12 +95,12 @@ export default function RecipientSelector({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={`Search by ${recipientType === 'HOUSEHOLD' ? 'household' : 'name or email'}...`}
               disabled={disabled}
-              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg shadow-sm"
+              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm shadow-sm"
             />
           </div>
 
           {recipientType === 'HOUSEHOLD' && (
-            <div className="border-border bg-secondary/60 max-h-48 overflow-y-auto rounded-lg border p-3">
+            <div className="border-border bg-secondary/60 max-h-48 overflow-y-auto rounded-sm border p-3">
               {filteredHouseholds.length === 0 ? (
                 <p className="text-muted-foreground text-center">No households found</p>
               ) : (
@@ -108,7 +108,7 @@ export default function RecipientSelector({
                   {filteredHouseholds.map((household) => (
                     <label
                       key={household.id}
-                      className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 ${
+                      className={`flex cursor-pointer items-center justify-between rounded-sm border p-3 ${
                         selectedIds.includes(household.id)
                           ? 'border-terracotta bg-sunlight/20'
                           : 'border-border bg-card'
@@ -130,7 +130,7 @@ export default function RecipientSelector({
           )}
 
           {recipientType === 'INDIVIDUAL' && (
-            <div className="border-border bg-secondary/60 max-h-48 overflow-y-auto rounded-lg border p-3">
+            <div className="border-border bg-secondary/60 max-h-48 overflow-y-auto rounded-sm border p-3">
               {filteredUsers.length === 0 ? (
                 <p className="text-muted-foreground text-center">No users found</p>
               ) : (
@@ -138,7 +138,7 @@ export default function RecipientSelector({
                   {filteredUsers.map((user) => (
                     <label
                       key={user.id}
-                      className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 ${
+                      className={`flex cursor-pointer items-center justify-between rounded-sm border p-3 ${
                         selectedIds.includes(user.id)
                           ? 'border-terracotta bg-sunlight/20'
                           : 'border-border bg-card'

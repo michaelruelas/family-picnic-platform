@@ -151,7 +151,7 @@ export default function MembersTable({
         enableSorting: true,
         cell: ({ row }) => (
           <span
-            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ATTENDING_PALETTE[row.attending] ?? 'bg-secondary text-foreground/85'}`}
+            className={`inline-block rounded-sm px-2 py-0.5 text-xs font-medium ${ATTENDING_PALETTE[row.attending] ?? 'bg-secondary text-foreground/85'}`}
           >
             {attendingLabel(row.attending)}
           </span>
@@ -164,7 +164,7 @@ export default function MembersTable({
         enableSorting: true,
         cell: ({ row }) => (
           <span
-            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${RSVP_PALETTE[row.rsvpStatus] ?? 'bg-secondary text-foreground/85'}`}
+            className={`inline-block rounded-sm px-2 py-0.5 text-xs font-medium ${RSVP_PALETTE[row.rsvpStatus] ?? 'bg-secondary text-foreground/85'}`}
           >
             {rsvpStatusLabel(row.rsvpStatus)}
           </span>
@@ -235,7 +235,7 @@ export default function MembersTable({
 
   return (
     <div className="space-y-4">
-      <div className="border-border bg-card flex flex-wrap items-start justify-between gap-3 rounded-xl p-5 shadow-sm">
+      <div className="border-border bg-card flex flex-wrap items-start justify-between gap-3 rounded-sm p-5 shadow-sm">
         <div>
           <p className="text-muted-foreground text-sm font-semibold tracking-widest uppercase">
             Admin · Members
@@ -250,7 +250,7 @@ export default function MembersTable({
               <button
                 type="button"
                 onClick={() => setPickerOpen((v) => !v)}
-                className="bg-sage text-sage-foreground rounded-lg px-3 py-1.5 text-sm font-medium hover:bg-[#6fa18a]"
+                className="bg-sage text-sage-foreground rounded-sm px-3 py-1.5 text-sm font-medium hover:bg-[#6fa18a]"
                 data-testid="add-rsvp-button"
                 aria-haspopup="menu"
                 aria-expanded={pickerOpen}
@@ -259,7 +259,7 @@ export default function MembersTable({
               </button>
               {pickerOpen ? (
                 <div
-                  className="border-border bg-card absolute right-0 z-20 mt-1 w-80 rounded-xl border p-2 shadow-lg"
+                  className="border-border bg-card absolute right-0 z-20 mt-1 w-80 rounded-sm border p-2 shadow-lg"
                   data-testid="add-rsvp-picker"
                   role="menu"
                 >
@@ -272,7 +272,7 @@ export default function MembersTable({
                         key={household.userId}
                         type="button"
                         onClick={() => openAdd(household)}
-                        className="hover:bg-secondary flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-2 text-left text-sm"
+                        className="hover:bg-secondary flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-left text-sm"
                         role="menuitem"
                         data-testid={`add-rsvp-option-${household.userId}`}
                       >
@@ -291,7 +291,7 @@ export default function MembersTable({
           ) : null}
           <Link
             href={`/admin/events/${eventId}/edit`}
-            className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-3 py-1.5 text-sm font-medium"
+            className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-sm px-3 py-1.5 text-sm font-medium"
           >
             Back to event
           </Link>
@@ -299,19 +299,19 @@ export default function MembersTable({
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-card rounded-xl p-4 shadow-sm">
+        <div className="bg-card rounded-sm p-4 shadow-sm">
           <p className="text-muted-foreground text-xs">Going</p>
           <p className="text-sage mt-1 text-2xl font-semibold tabular-nums">
             {counts[RsvpAttending.YES]}
           </p>
         </div>
-        <div className="bg-card rounded-xl p-4 shadow-sm">
+        <div className="bg-card rounded-sm p-4 shadow-sm">
           <p className="text-muted-foreground text-xs">Maybe</p>
           <p className="mt-1 text-2xl font-semibold text-[#a07c2f] tabular-nums">
             {counts[RsvpAttending.MAYBE]}
           </p>
         </div>
-        <div className="bg-card rounded-xl p-4 shadow-sm">
+        <div className="bg-card rounded-sm p-4 shadow-sm">
           <p className="text-muted-foreground text-xs">Not going</p>
           <p className="text-destructive mt-1 text-2xl font-semibold tabular-nums">
             {counts[RsvpAttending.NO]}

@@ -21,8 +21,8 @@ export function SignInPrompt({
   };
 
   return (
-    <div className={`shadow-card rounded-3xl p-8 text-center ring-1 ${variantClasses[variant]}`}>
-      <div className="bg-card shadow-soft mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl">
+    <div className={`shadow-card rounded-sm p-8 text-center ring-1 ${variantClasses[variant]}`}>
+      <div className="bg-card shadow-soft mx-auto inline-flex h-12 w-12 items-center justify-center rounded-sm">
         <svg
           className="text-terracotta h-6 w-6"
           fill="none"
@@ -46,7 +46,7 @@ export function SignInPrompt({
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <Link
           href="/login"
-          className="rounded-pill bg-terracotta shadow-soft press px-6 py-3 font-semibold text-white transition-all hover:scale-[1.02] hover:bg-[#cf6c52]"
+          className="bg-terracotta shadow-soft press rounded-sm px-6 py-3 font-semibold text-white transition-all hover:scale-[1.02] hover:bg-[#cf6c52]"
         >
           Sign in
         </Link>

@@ -23,7 +23,7 @@ export default function EventSelect({ events, selectedEventId }: EventSelectProp
       onChange={(e) => {
         router.push(`/admin/communications?event=${e.target.value}`);
       }}
-      className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full max-w-md rounded-lg shadow-sm"
+      className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full max-w-md rounded-sm shadow-sm"
     >
       <option value="">Select an event...</option>
       {events.map((event) => (

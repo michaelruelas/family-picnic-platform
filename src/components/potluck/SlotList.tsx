@@ -118,10 +118,6 @@ export default function SlotList({
   const submitClaim = async () => {
     if (!claimSlot) return;
     const trimmed = dishName.trim();
-    if (trimmed === '') {
-      setError('Tell us what you are bringing so others can coordinate.');
-      return;
-    }
     setError(null);
     try {
       if (claimMySignup) {
@@ -155,7 +151,7 @@ export default function SlotList({
 
   if (slots.length === 0) {
     return (
-      <div className="bg-sunlight/20 ring-sunlight/40 rounded-3xl p-12 text-center ring-1">
+      <div className="bg-sunlight/20 ring-sunlight/40 rounded-sm p-12 text-center ring-1">
         <div className="text-5xl">🍽️</div>
         <h3 className="font-display text-foreground mt-4 text-2xl font-semibold">
           The menu is still being planned
@@ -170,21 +166,21 @@ export default function SlotList({
   return (
     <>
       {!userId ? (
-        <div className="bg-sunlight/20 ring-sunlight/40 mb-6 rounded-2xl px-5 py-4 text-sm ring-1">
+        <div className="bg-sunlight/20 ring-sunlight/40 mb-6 rounded-sm px-5 py-4 text-sm ring-1">
           <p className="text-foreground">
             <span className="font-semibold">Sign in</span> to claim a dish. You can bring one thing
             from every open category.
           </p>
         </div>
       ) : !hasRsvp ? (
-        <div className="bg-sunlight/20 ring-sunlight/40 mb-6 rounded-2xl px-5 py-4 text-sm ring-1">
+        <div className="bg-sunlight/20 ring-sunlight/40 mb-6 rounded-sm px-5 py-4 text-sm ring-1">
           <p className="text-foreground">
             <span className="font-semibold">RSVP first.</span> Once you have confirmed attendance
             you can claim potluck dishes.
           </p>
         </div>
       ) : !isRsvpConfirmed ? (
-        <div className="bg-secondary mb-6 rounded-2xl px-5 py-4 text-sm">
+        <div className="bg-secondary mb-6 rounded-sm px-5 py-4 text-sm">
           <p className="text-foreground/85">
             Your RSVP is not confirmed. Update it on the event page to claim dishes.
           </p>
@@ -192,7 +188,7 @@ export default function SlotList({
       ) : null}
 
       {error && (
-        <div className="bg-destructive/10 text-destructive ring-destructive/30 mb-4 rounded-2xl px-4 py-3 text-sm ring-1">
+        <div className="bg-destructive/10 text-destructive ring-destructive/30 mb-4 rounded-sm px-4 py-3 text-sm ring-1">
           {error}
         </div>
       )}
@@ -202,7 +198,7 @@ export default function SlotList({
           <section key={category} aria-labelledby={`cat-${category}`}>
             <div className="flex items-center gap-3">
               <span
-                className="bg-card ring-border/60 inline-flex h-10 w-10 items-center justify-center rounded-full text-xl ring-1"
+                className="bg-card ring-border/60 inline-flex h-10 w-10 items-center justify-center rounded-sm text-xl ring-1"
                 aria-hidden="true"
               >
                 {POTLUCK_CATEGORY_EMOJIS[category] ?? '🍴'}
@@ -227,7 +223,7 @@ export default function SlotList({
                 return (
                   <li
                     key={slot.id}
-                    className="bg-card shadow-card ring-border/60 rounded-2xl p-5 ring-1"
+                    className="bg-card shadow-card ring-border/60 rounded-sm p-5 ring-1"
                     data-testid={`potluck-slot-${slot.id}`}
                     data-slot-mine={isMine ? 'true' : 'false'}
                     data-slot-full={full ? 'true' : 'false'}
@@ -253,7 +249,7 @@ export default function SlotList({
                       </div>
                       {isMine ? (
                         <span
-                          className="bg-sage/20 text-sage rounded-pill inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold"
+                          className="bg-sage/20 text-sage inline-flex items-center gap-1 rounded-sm px-3 py-1 text-xs font-semibold"
                           data-testid="yours-badge"
                         >
                           <span>✓</span> Yours
@@ -328,7 +324,7 @@ export default function SlotList({
       >
         {claimSlot ? (
           <div className="space-y-4">
-            <div className="bg-secondary/60 rounded-2xl px-4 py-3">
+            <div className="bg-secondary/60 rounded-sm px-4 py-3">
               <p className="text-foreground font-semibold">{slotDisplayName(claimSlot)}</p>
               <p className="text-muted-foreground text-xs">
                 {POTLUCK_CATEGORY_LABELS[claimSlot.category] ?? claimSlot.category}
@@ -349,7 +345,7 @@ export default function SlotList({
                 id="potluck-claim-dish"
                 value={dishName}
                 onChange={(e) => setDishName(e.target.value)}
-                placeholder="e.g. Mac and cheese"
+                placeholder="e.g. Mac and cheese (optional)"
                 maxLength={80}
                 className="mt-3"
                 data-testid="potluck-claim-dish-input"
@@ -357,7 +353,7 @@ export default function SlotList({
             </div>
             {error && (
               <p
-                className="bg-destructive/10 text-destructive ring-destructive/30 rounded-2xl px-4 py-3 text-sm ring-1"
+                className="bg-destructive/10 text-destructive ring-destructive/30 rounded-sm px-4 py-3 text-sm ring-1"
                 data-testid="potluck-claim-error"
                 role="alert"
               >

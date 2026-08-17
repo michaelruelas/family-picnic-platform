@@ -70,7 +70,7 @@ export default async function PastEventsPage() {
       actions={
         <Link
           href="/admin/events"
-          className="border-border bg-card text-foreground/85 hover:bg-secondary/60 rounded-lg border px-4 py-2 text-sm font-medium"
+          className="border-border bg-card text-foreground/85 hover:bg-secondary/60 rounded-sm border px-4 py-2 text-sm font-medium"
         >
           ← Back to active events
         </Link>

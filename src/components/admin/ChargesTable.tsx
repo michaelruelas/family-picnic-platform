@@ -81,7 +81,7 @@ function ActionsCell({ row, isPending, onRefund, onForfeit, onResend }: ActionsC
         <button
           type="button"
           onClick={() => onRefund(row)}
-          className="bg-terracotta hover:bg-terracotta rounded-lg px-3 py-1.5 text-xs font-medium text-white"
+          className="bg-terracotta hover:bg-terracotta rounded-sm px-3 py-1.5 text-xs font-medium text-white"
         >
           Refund
         </button>
@@ -90,7 +90,7 @@ function ActionsCell({ row, isPending, onRefund, onForfeit, onResend }: ActionsC
         <button
           type="button"
           onClick={() => onForfeit(row)}
-          className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium"
+          className="bg-secondary text-foreground/85 rounded-sm px-3 py-1.5 text-xs font-medium"
         >
           Forfeit
         </button>
@@ -100,7 +100,7 @@ function ActionsCell({ row, isPending, onRefund, onForfeit, onResend }: ActionsC
           type="button"
           onClick={() => onResend({ chargeId: row.id })}
           disabled={isPending}
-          className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+          className="bg-secondary text-foreground/85 rounded-sm px-3 py-1.5 text-xs font-medium disabled:opacity-50"
         >
           {isPending ? 'Sending…' : 'Resend receipt'}
         </button>
@@ -305,7 +305,7 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
               <select
                 value={eventId}
                 onChange={(e) => setEventId(e.target.value)}
-                className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+                className="border-border mt-1 rounded-sm border px-3 py-2 text-sm"
               >
                 <option value="">All events</option>
                 {events.map((e) => (
@@ -320,7 +320,7 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as ChargeStatus | '')}
-                className="border-border mt-1 rounded-lg border px-3 py-2 text-sm"
+                className="border-border mt-1 rounded-sm border px-3 py-2 text-sm"
               >
                 <option value="">All</option>
                 <option value="SUCCEEDED">Succeeded</option>
@@ -336,7 +336,7 @@ export default function ChargesTable({ initialCharges, events }: ChargesTablePro
               type="button"
               onClick={refresh}
               disabled={listCharges.isFetching}
-              className="bg-secondary text-foreground/85 self-end rounded-lg px-4 py-2 text-sm font-medium"
+              className="bg-secondary text-foreground/85 self-end rounded-sm px-4 py-2 text-sm font-medium"
             >
               {listCharges.isFetching ? 'Loading…' : 'Apply filter'}
             </button>
@@ -392,7 +392,7 @@ function ChargeStatusBadge({ status }: { status: ChargeStatus }) {
   };
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${palette[status] ?? 'bg-secondary'}`}
+      className={`inline-block rounded-sm px-2 py-0.5 text-xs font-medium ${palette[status] ?? 'bg-secondary'}`}
     >
       {status.replace(/_/g, ' ')}
     </span>
@@ -409,7 +409,7 @@ function RegistrationStatusBadge({ status }: { status: RegistrationStatus }) {
   };
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${palette[status] ?? 'bg-secondary'}`}
+      className={`inline-block rounded-sm px-2 py-0.5 text-xs font-medium ${palette[status] ?? 'bg-secondary'}`}
     >
       {status}
     </span>

@@ -283,7 +283,7 @@ export default function DataTable<TData extends RowData>({
   return (
     <div className={`space-y-4 ${className}`} data-testid="data-table">
       {(toolbar || showColumnToggle) && (
-        <div className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-xl p-3 shadow-sm">
+        <div className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-sm p-3 shadow-sm">
           <div className="flex flex-1 flex-wrap items-center gap-3">{toolbar}</div>
           {showColumnToggle ? (
             <ColumnToggle
@@ -298,7 +298,7 @@ export default function DataTable<TData extends RowData>({
         </div>
       )}
 
-      <div className="bg-card overflow-x-auto rounded-xl shadow-sm">
+      <div className="bg-card overflow-x-auto rounded-sm shadow-sm">
         {loading ? (
           <div className="p-12" data-testid="data-table-loading">
             <Spinner size="lg" label="Loading…" />
@@ -458,7 +458,7 @@ function ColumnToggle({
         onClick={onToggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium"
+        className="bg-secondary text-foreground/85 rounded-sm px-3 py-1.5 text-xs font-medium"
         data-testid="column-toggle"
       >
         Columns
@@ -466,13 +466,13 @@ function ColumnToggle({
       {open ? (
         <div
           role="menu"
-          className="border-border bg-card absolute right-0 z-20 mt-1 w-56 rounded-xl border p-2 shadow-lg"
+          className="border-border bg-card absolute right-0 z-20 mt-1 w-56 rounded-sm border p-2 shadow-lg"
           data-testid="column-toggle-menu"
         >
           {columns.map((col) => (
             <label
               key={col.id}
-              className="hover:bg-secondary flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm"
+              className="hover:bg-secondary flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
             >
               <input
                 type="checkbox"
@@ -499,7 +499,7 @@ function PaginationControls<TData extends RowData>({
   const canPrev = table.getCanPreviousPage();
   const canNext = table.getCanNextPage();
   return (
-    <div className="bg-card flex items-center justify-between rounded-xl px-4 py-3 text-sm shadow-sm">
+    <div className="bg-card flex items-center justify-between rounded-sm px-4 py-3 text-sm shadow-sm">
       <span className="text-muted-foreground" data-testid="pagination-summary">
         Page {pageIndex + 1} of {pageCount}
       </span>
@@ -508,7 +508,7 @@ function PaginationControls<TData extends RowData>({
           type="button"
           onClick={() => table.setPageIndex(0)}
           disabled={!canPrev}
-          className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+          className="bg-secondary text-foreground/85 rounded-sm px-3 py-1.5 text-xs font-medium disabled:opacity-50"
           aria-label="First page"
         >
           «
@@ -517,7 +517,7 @@ function PaginationControls<TData extends RowData>({
           type="button"
           onClick={() => table.previousPage()}
           disabled={!canPrev}
-          className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+          className="bg-secondary text-foreground/85 rounded-sm px-3 py-1.5 text-xs font-medium disabled:opacity-50"
           aria-label="Previous page"
         >
           ‹ Prev
@@ -526,7 +526,7 @@ function PaginationControls<TData extends RowData>({
           type="button"
           onClick={() => table.nextPage()}
           disabled={!canNext}
-          className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+          className="bg-secondary text-foreground/85 rounded-sm px-3 py-1.5 text-xs font-medium disabled:opacity-50"
           aria-label="Next page"
         >
           Next ›
@@ -535,7 +535,7 @@ function PaginationControls<TData extends RowData>({
           type="button"
           onClick={() => table.setPageIndex(pageCount - 1)}
           disabled={!canNext}
-          className="bg-secondary text-foreground/85 rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+          className="bg-secondary text-foreground/85 rounded-sm px-3 py-1.5 text-xs font-medium disabled:opacity-50"
           aria-label="Last page"
         >
           »

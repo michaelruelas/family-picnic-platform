@@ -53,7 +53,7 @@ export default async function OnboardingPage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-8 text-center">
-        <div className="bg-terracotta/15 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+        <div className="bg-terracotta/15 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-sm">
           <span className="text-3xl">🎉</span>
         </div>
         <h1 className="text-foreground text-3xl font-bold">Welcome to Family Picnic!</h1>

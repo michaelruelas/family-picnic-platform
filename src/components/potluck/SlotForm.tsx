@@ -84,13 +84,13 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card space-y-4 rounded-xl p-4 shadow-sm">
+    <form onSubmit={handleSubmit} className="bg-card space-y-4 rounded-sm p-4 shadow-sm">
       <h3 className="text-foreground text-lg font-semibold">
         {initialData ? 'Edit Potluck Slot' : 'Add Potluck Slot'}
       </h3>
 
       {error && (
-        <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">{error}</div>
+        <div className="bg-destructive/10 text-destructive rounded-sm p-3 text-sm">{error}</div>
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -105,7 +105,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
             onChange={handleChange}
             required
             disabled={!!initialData}
-            className="border-border focus:border-terracotta focus:ring-foreground/20 disabled:bg-secondary disabled:text-muted-foreground mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 disabled:bg-secondary disabled:text-muted-foreground mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           >
             <option value="MAIN">Main Dishes</option>
             <option value="SIDE">Side Dishes</option>
@@ -127,7 +127,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
             value={formData.name}
             onChange={handleChange}
             placeholder='e.g., "A dessert" — leave blank to open a category slot'
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           />
         </div>
 
@@ -173,7 +173,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
               required
               min="1"
               max="100"
-              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             />
           </div>
         )}
@@ -183,7 +183,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
+          className="bg-terracotta hover:bg-terracotta flex-1 rounded-sm px-4 py-2 font-medium text-white disabled:opacity-50"
         >
           {isSubmitting ? 'Saving...' : initialData ? 'Update Slot' : 'Add Slot'}
         </button>
@@ -191,7 +191,7 @@ export default function SlotForm({ eventId, initialData, onSuccess, onCancel }: 
           <button
             type="button"
             onClick={onCancel}
-            className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-4 py-2 font-medium"
+            className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-sm px-4 py-2 font-medium"
           >
             Cancel
           </button>

@@ -24,7 +24,7 @@ export default function PaymentForm(props: PaymentFormProps) {
 
   if (!stripePromise) {
     return (
-      <div className="bg-card rounded-xl p-6 shadow-sm">
+      <div className="bg-card rounded-sm p-6 shadow-sm">
         <p className="text-foreground">Loading payment form…</p>
       </div>
     );
@@ -104,7 +104,7 @@ function PaymentFormInner(props: PaymentFormProps) {
 
   if (createIntent.isPending && !clientSecret) {
     return (
-      <div className="bg-card rounded-xl p-8 shadow-sm">
+      <div className="bg-card rounded-sm p-8 shadow-sm">
         <Spinner />
         <p className="text-muted-foreground mt-3">Preparing secure payment…</p>
       </div>
@@ -113,14 +113,14 @@ function PaymentFormInner(props: PaymentFormProps) {
 
   if (createIntent.isError) {
     return (
-      <div className="bg-card rounded-xl p-6 shadow-sm">
+      <div className="bg-card rounded-sm p-6 shadow-sm">
         <p className="text-destructive">
           {error ?? 'Could not start the payment. Please try again or contact an admin.'}
         </p>
         <button
           type="button"
           onClick={() => createIntent.mutate({ eventId: props.eventId })}
-          className="bg-terracotta hover:bg-terracotta mt-4 rounded-lg px-4 py-2 text-sm font-medium text-white"
+          className="bg-terracotta hover:bg-terracotta mt-4 rounded-sm px-4 py-2 text-sm font-medium text-white"
         >
           Retry
         </button>
@@ -131,7 +131,7 @@ function PaymentFormInner(props: PaymentFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-card space-y-6 rounded-xl p-6 shadow-sm"
+      className="bg-card space-y-6 rounded-sm p-6 shadow-sm"
       data-testid="payment-form"
     >
       <div className="border-border flex items-baseline justify-between border-b pb-4">
@@ -152,7 +152,7 @@ function PaymentFormInner(props: PaymentFormProps) {
       <button
         type="submit"
         disabled={!stripe || !elements || submitting || !clientSecret}
-        className="bg-terracotta hover:bg-terracotta w-full rounded-lg px-6 py-3 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+        className="bg-terracotta hover:bg-terracotta w-full rounded-sm px-6 py-3 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? 'Processing…' : `Pay ${formatAmount(props.amountCents, props.currency)}`}
       </button>

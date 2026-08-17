@@ -82,7 +82,7 @@ export default async function HouseholdPage() {
     return (
       <main className="mx-auto max-w-2xl px-4 py-12">
         <h1 className="text-foreground text-3xl font-bold">My Household</h1>
-        <div className="bg-sunlight/20 mt-8 rounded-xl p-8 text-center">
+        <div className="bg-sunlight/20 mt-8 rounded-sm p-8 text-center">
           <div className="text-5xl">🏠</div>
           <h2 className="text-foreground mt-4 text-xl font-semibold">No Household Yet</h2>
           <p className="text-terracotta mt-2">
@@ -134,14 +134,14 @@ export default async function HouseholdPage() {
         </div>
         <Link
           href="/household/tree"
-          className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-4 py-2 text-sm font-medium"
+          className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-sm px-4 py-2 text-sm font-medium"
         >
           View Family Tree
         </Link>
       </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">
-        <div className="bg-card ring-border rounded-xl p-6 shadow-sm ring-1">
+        <div className="bg-card ring-border rounded-sm p-6 shadow-sm ring-1">
           <h2 className="text-foreground text-lg font-semibold">Account Holders</h2>
           <p className="text-muted-foreground mt-1 text-sm">Adults with login access</p>
 
@@ -151,7 +151,7 @@ export default async function HouseholdPage() {
             <ul className="mt-4 space-y-3">
               {household.users.map((member) => (
                 <li key={member.id} className="flex items-center gap-3">
-                  <div className="bg-terracotta/15 text-terracotta flex h-10 w-10 items-center justify-center rounded-full font-medium">
+                  <div className="bg-terracotta/15 text-terracotta flex h-10 w-10 items-center justify-center rounded-sm font-medium">
                     {member.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
@@ -164,7 +164,7 @@ export default async function HouseholdPage() {
           )}
         </div>
 
-        <div className="bg-card ring-border rounded-xl p-6 shadow-sm ring-1">
+        <div className="bg-card ring-border rounded-sm p-6 shadow-sm ring-1">
           <h2 className="text-foreground text-lg font-semibold">Cumulative RSVP Headcount</h2>
           <p className="text-muted-foreground mt-1 text-sm">Total attendees from your household</p>
 
@@ -197,11 +197,11 @@ export default async function HouseholdPage() {
         </div>
       </div>
 
-      <div className="bg-card ring-border mt-8 rounded-xl p-6 shadow-sm ring-1">
+      <div className="bg-card ring-border mt-8 rounded-sm p-6 shadow-sm ring-1">
         <HouseholdMembersClient householdId={household.id} initialMembers={household.members} />
       </div>
 
-      <div className="bg-card ring-border mt-8 rounded-xl p-6 shadow-sm ring-1">
+      <div className="bg-card ring-border mt-8 rounded-sm p-6 shadow-sm ring-1">
         <HouseholdClient initialDependents={household.dependents} />
       </div>
     </main>

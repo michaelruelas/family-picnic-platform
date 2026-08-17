@@ -19,7 +19,7 @@ export function EventLocationMap({ lat, lng, location }: EventLocationMapProps) 
   const embedUrl = getEmbedUrl(lat, lng);
 
   return (
-    <div className="bg-card shadow-card ring-border/60 overflow-hidden rounded-3xl ring-1">
+    <div className="bg-card shadow-card ring-border/60 overflow-hidden rounded-sm ring-1">
       <div className="aspect-[21/9] w-full">
         <iframe
           title={`Map of ${location}`}
@@ -38,7 +38,7 @@ export function EventLocationMap({ lat, lng, location }: EventLocationMapProps) 
           href={directionsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-terracotta hover:bg-terracotta/90 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+          className="bg-terracotta hover:bg-terracotta/90 rounded-sm px-4 py-2 text-sm font-medium text-white transition-colors"
         >
           Get directions
         </a>

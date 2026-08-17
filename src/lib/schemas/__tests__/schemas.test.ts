@@ -430,21 +430,21 @@ describe('potluckSignupInputSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('fails when dishName is missing', () => {
-    const result = potluckSignupInputSchema.safeParse({
+  it('defaults dishName to empty string when missing', () => {
+    const result = potluckSignupInputSchema.parse({
       slotId: 'slot-1',
       servings: 2,
     });
-    expect(result.success).toBe(false);
+    expect(result.dishName).toBe('');
   });
 
-  it('fails when dishName is empty after trim', () => {
-    const result = potluckSignupInputSchema.safeParse({
+  it('defaults dishName to empty string when empty after trim', () => {
+    const result = potluckSignupInputSchema.parse({
       slotId: 'slot-1',
       dishName: '   ',
       servings: 2,
     });
-    expect(result.success).toBe(false);
+    expect(result.dishName).toBe('');
   });
 
   it('fails when slotId is missing', () => {

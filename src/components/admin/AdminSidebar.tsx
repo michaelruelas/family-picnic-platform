@@ -206,7 +206,7 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
           className="group flex items-center gap-2.5"
           onClick={onNavigate}
         >
-          <div className="shadow-soft h-10 w-10 overflow-hidden rounded-2xl transition-transform group-hover:scale-105">
+          <div className="shadow-soft h-10 w-10 overflow-hidden rounded-sm transition-transform group-hover:scale-105">
             <Image
               src="/folia-family-picnic-logo.png"
               alt="Folia Family Picnic logo"
@@ -235,7 +235,7 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
               onClick={onNavigate}
               data-testid={`admin-nav-${item.href.split('/').pop()}`}
               data-active={active}
-              className={`group flex items-start gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
+              className={`group flex items-start gap-3 rounded-sm px-3 py-2.5 text-sm transition-colors ${
                 active
                   ? 'bg-terracotta/15 text-terracotta font-semibold'
                   : 'text-foreground/80 hover:bg-secondary hover:text-foreground'
@@ -279,7 +279,7 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: '/' })}
-          className="border-border bg-card text-foreground hover:bg-secondary w-full rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+          className="border-border bg-card text-foreground hover:bg-secondary w-full rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors"
         >
           Sign out
         </button>

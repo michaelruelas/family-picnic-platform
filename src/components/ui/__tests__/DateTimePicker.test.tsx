@@ -24,7 +24,7 @@ describe('DateTimePicker', () => {
     render(<DateTimePicker label="Event Date" name="date" value="" onChange={() => {}} />);
     const input = screen.getByLabelText('Event Date');
     expect(input.className).toContain('min-h-12');
-    expect(input.className).toContain('rounded-pill');
+    expect(input.className).toContain('rounded-sm');
   });
 
   it('passes min and max to the underlying input as ISO strings', () => {

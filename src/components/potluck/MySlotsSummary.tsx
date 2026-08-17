@@ -30,7 +30,7 @@ export default function MySlotsSummary({
   if (!userId) {
     return (
       <div
-        className="bg-sunlight/20 ring-sunlight/40 rounded-2xl p-5 ring-1"
+        className="bg-sunlight/20 ring-sunlight/40 rounded-sm p-5 ring-1"
         data-testid="my-slots-summary"
         data-my-slots-state="signed-out"
       >
@@ -44,7 +44,7 @@ export default function MySlotsSummary({
   if (!hasRsvp) {
     return (
       <div
-        className="bg-sunlight/20 ring-sunlight/40 rounded-2xl p-5 ring-1"
+        className="bg-sunlight/20 ring-sunlight/40 rounded-sm p-5 ring-1"
         data-testid="my-slots-summary"
         data-my-slots-state="no-rsvp"
       >
@@ -58,7 +58,7 @@ export default function MySlotsSummary({
   if (!isRsvpConfirmed) {
     return (
       <div
-        className="bg-secondary rounded-2xl p-5"
+        className="bg-secondary rounded-sm p-5"
         data-testid="my-slots-summary"
         data-my-slots-state="not-confirmed"
       >
@@ -71,7 +71,7 @@ export default function MySlotsSummary({
 
   return (
     <section
-      className={`bg-card shadow-card ring-border/60 rounded-3xl p-5 ring-1 md:p-6 ${
+      className={`bg-card shadow-card ring-border/60 rounded-sm p-5 ring-1 md:p-6 ${
         compact ? '' : 'md:p-7'
       }`}
       aria-label="My potluck signups"
@@ -110,7 +110,7 @@ export default function MySlotsSummary({
           {signups.map((signup) => (
             <li
               key={signup.id}
-              className="bg-secondary/40 flex items-center justify-between gap-3 rounded-2xl px-4 py-3"
+              className="bg-secondary/40 flex items-center justify-between gap-3 rounded-sm px-4 py-3"
               data-testid={`my-slot-row-${signup.slotId}`}
             >
               <div className="min-w-0">
@@ -130,7 +130,7 @@ export default function MySlotsSummary({
                   void cancelSignup.mutateAsync({ slotId: signup.slotId });
                 }}
                 disabled={cancelSignup.isPending}
-                className="text-muted-foreground hover:text-destructive shrink-0 rounded-lg px-2 py-1 text-sm font-medium transition-colors disabled:opacity-50"
+                className="text-muted-foreground hover:text-destructive shrink-0 rounded-sm px-2 py-1 text-sm font-medium transition-colors disabled:opacity-50"
                 data-testid="my-slot-drop"
                 aria-label={`Drop ${signup.dishName}`}
               >
@@ -143,12 +143,12 @@ export default function MySlotsSummary({
 
       {!compact && (
         <p className="text-muted-foreground mt-4 text-xs">
-          Manage dishes on the{' '}
+          Manage your dishes from the{' '}
           <Link
-            href={`/events/${eventId}/potluck`}
+            href={`/events/${eventId}?rsvpOpen=1#dishes`}
             className="text-terracotta underline underline-offset-4"
           >
-            potluck page
+            event page
           </Link>
           .
         </p>

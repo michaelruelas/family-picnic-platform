@@ -121,8 +121,8 @@ export async function findOrCreateUserByIdentity(
     return null;
   }
 
-  const activeByEmail = await prisma.user.findUnique({
-    where: { email, deletedAt: null },
+  const activeByEmail = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' }, deletedAt: null },
   });
   if (activeByEmail) {
     const created = await prisma.linkedIdentity.create({
@@ -155,8 +155,8 @@ export async function findOrCreateUserByIdentity(
     };
   }
 
-  const tombstone = await prisma.user.findUnique({
-    where: { email },
+  const tombstone = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
     select: { id: true, deletedAt: true },
   });
   if (tombstone?.deletedAt) {

@@ -21,7 +21,7 @@ export function EventDownloadsSection({ attachments }: EventDownloadsSectionProp
 
   return (
     <section
-      className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1 md:p-9"
+      className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9"
       data-testid="event-downloads-section"
     >
       <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Downloads</p>
@@ -40,7 +40,7 @@ export function EventDownloadsSection({ attachments }: EventDownloadsSectionProp
           >
             <a
               href={`/api/public/event-attachments/${attachment.id}/download`}
-              className="bg-secondary text-foreground hover:bg-sunlight/20 flex items-center gap-3 rounded-2xl px-4 py-3 transition-colors"
+              className="bg-secondary text-foreground hover:bg-sunlight/20 flex items-center gap-3 rounded-sm px-4 py-3 transition-colors"
               rel="noopener"
               download={attachment.filename}
             >

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useRsvpMutation } from '~/hooks';
@@ -74,15 +74,21 @@ export function EventRsvpCard({
   const shouldAutoOpen = Boolean(
     searchParams?.get('rsvpOpen') === '1' && isLoggedIn && !isPast && isRsvpOpen,
   );
-  const [isSheetOpen, setIsSheetOpen] = useState(shouldAutoOpen);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // FPP-115: EventTabs renders this card twice (desktop tab panel +
+  // mobile stacked section); the hidden copy is `display:none`.
+  // offsetParent is null for hidden elements, so only the visible
+  // instance auto-opens the RSVP sheet — prevents duplicate modals
+  // when landing on /events/[id]?rsvpOpen=1#dishes.
+  const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (shouldAutoOpen) {
-      /* eslint-disable react-hooks/set-state-in-effect */
-      setIsSheetOpen(true);
-      /* eslint-enable react-hooks/set-state-in-effect */
+      if (cardRef.current?.offsetParent != null) {
+        setIsSheetOpen(true);
+      }
     }
   }, [shouldAutoOpen]);
 
@@ -100,7 +106,7 @@ export function EventRsvpCard({
 
   if (isPast) {
     return (
-      <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1">
+      <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1">
         <p className="text-muted-foreground text-sm font-semibold tracking-widest uppercase">
           Past event
         </p>
@@ -118,7 +124,7 @@ export function EventRsvpCard({
 
   if (!isLoggedIn) {
     return (
-      <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1">
+      <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1">
         <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
           {formattedDate} · {location.split(',')[0]}
         </p>
@@ -130,7 +136,7 @@ export function EventRsvpCard({
         </p>
         <a
           href={`/login?callbackUrl=/events/${eventId}/rsvp`}
-          className="rounded-pill bg-foreground text-background press hover:bg-foreground/90 mt-5 block w-full px-5 py-3 text-center font-semibold transition-all"
+          className="bg-foreground text-background press hover:bg-foreground/90 mt-5 block w-full rounded-sm px-5 py-3 text-center font-semibold transition-all"
         >
           Sign in
         </a>
@@ -145,13 +151,13 @@ export function EventRsvpCard({
 
     return (
       <>
-        <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1">
+        <div ref={cardRef} className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1">
           <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
             {formattedDate} · {location.split(',')[0]}
           </p>
           {isConfirmed && (
             <>
-              <div className="rounded-pill bg-sage/20 text-sage mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold">
+              <div className="bg-sage/20 text-sage mt-4 inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold">
                 <span>✓</span> You&apos;re in!
               </div>
               <h3 className="font-display text-foreground mt-3 text-2xl font-semibold">
@@ -162,7 +168,7 @@ export function EventRsvpCard({
                 way
               </p>
               {(existingRsvp.registrationFeeCents ?? 0) > 0 && (
-                <div className="bg-sunlight/20 ring-sunlight/40 mt-3 rounded-2xl px-4 py-3 text-sm ring-1">
+                <div className="bg-sunlight/20 ring-sunlight/40 mt-3 rounded-sm px-4 py-3 text-sm ring-1">
                   <span className="text-foreground font-semibold">
                     Registration fee:{' '}
                     {formatAmount(
@@ -201,23 +207,23 @@ export function EventRsvpCard({
                 <div className="mt-5 flex flex-col gap-2">
                   <button
                     onClick={() => setIsSheetOpen(true)}
-                    className="rounded-pill bg-terracotta press px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
+                    className="bg-terracotta press rounded-sm px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
                     data-testid="rsvp-card-edit-link"
                   >
                     Edit attendance &amp; dishes
                   </button>
                   <Link
                     href={`/my-events/${existingRsvp.id}/confirmation`}
-                    className="rounded-pill border-border bg-card text-foreground press hover:border-foreground border px-4 py-2.5 text-center text-sm font-semibold transition-all"
+                    className="border-border bg-card text-foreground press hover:border-foreground rounded-sm border px-4 py-2.5 text-center text-sm font-semibold transition-all"
                   >
                     View confirmation
                   </Link>
                   <button
                     onClick={handleDecline}
                     disabled={isSubmitting}
-                    className="rounded-pill text-muted-foreground hover:text-destructive px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+                    className="text-muted-foreground hover:text-destructive rounded-sm px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
                   >
-                    {isSubmitting ? 'Updating...' : 'Can&apos;t make it'}
+                    {isSubmitting ? 'Updating...' : "Can't make it"}
                   </button>
                 </div>
               )}
@@ -225,7 +231,7 @@ export function EventRsvpCard({
           )}
           {isDeclined && (
             <>
-              <div className="rounded-pill bg-secondary text-muted-foreground mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold">
+              <div className="bg-secondary text-muted-foreground mt-4 inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold">
                 You declined
               </div>
               <h3 className="font-display text-foreground mt-3 text-2xl font-semibold">
@@ -239,7 +245,7 @@ export function EventRsvpCard({
                 <button
                   onClick={() => setIsSheetOpen(true)}
                   disabled={isFull}
-                  className="rounded-pill bg-terracotta shadow-soft press mt-5 w-full px-5 py-3 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+                  className="bg-terracotta shadow-soft press mt-5 w-full rounded-sm px-5 py-3 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
                 >
                   {isFull ? 'Event is full' : 'RSVP again'}
                 </button>
@@ -248,7 +254,7 @@ export function EventRsvpCard({
           )}
           {isWaitlisted && (
             <>
-              <div className="rounded-pill bg-sunlight/30 mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-[#a07c2f]">
+              <div className="bg-sunlight/30 mt-4 inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold text-[#a07c2f]">
                 On the waitlist
               </div>
               <h3 className="font-display text-foreground mt-3 text-2xl font-semibold">
@@ -278,7 +284,7 @@ export function EventRsvpCard({
     const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
     return (
       <>
-        <div className="bg-card shadow-card ring-border/60 rounded-3xl p-7 ring-1">
+        <div ref={cardRef} className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1">
           <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
             {formattedDate} · {location.split(',')[0]}
           </p>
@@ -302,7 +308,7 @@ export function EventRsvpCard({
             <div className="mt-5 flex flex-col gap-2">
               <button
                 onClick={() => setIsSheetOpen(true)}
-                className="rounded-pill bg-terracotta shadow-soft press w-full px-5 py-3 font-semibold text-white transition-all hover:bg-[#cf6c52]"
+                className="bg-terracotta shadow-soft press w-full rounded-sm px-5 py-3 font-semibold text-white transition-all hover:bg-[#cf6c52]"
                 data-testid="rsvp-card-rsvp-button"
               >
                 {isFull ? 'Join Waitlist' : 'RSVP Now'}
@@ -310,7 +316,7 @@ export function EventRsvpCard({
               <button
                 onClick={handleDecline}
                 disabled={isSubmitting}
-                className="rounded-pill text-muted-foreground hover:text-destructive px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+                className="text-muted-foreground hover:text-destructive rounded-sm px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
                 data-testid="rsvp-card-decline-link"
               >
                 {isSubmitting ? 'Updating...' : "Can't make it"}

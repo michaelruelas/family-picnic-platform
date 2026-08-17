@@ -10,12 +10,12 @@ export default function Loading() {
         <div className="bg-secondary h-6 w-44 rounded" />
         <div className="mt-4 space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-card rounded-xl p-6 shadow-sm">
+            <div key={i} className="bg-card rounded-sm p-6 shadow-sm">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <div className="bg-secondary h-6 w-48 rounded" />
-                    <div className="bg-secondary h-6 w-20 rounded-full" />
+                    <div className="bg-secondary h-6 w-20 rounded-sm" />
                   </div>
                   <div className="bg-secondary h-4 w-64 rounded" />
                 </div>
@@ -34,13 +34,13 @@ export default function Loading() {
         <div className="bg-secondary h-6 w-36 rounded" />
         <div className="mt-4 space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-card rounded-xl p-6 opacity-75 shadow-sm">
+            <div key={i} className="bg-card rounded-sm p-6 opacity-75 shadow-sm">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <div className="bg-secondary h-6 w-48 rounded" />
-                    <div className="bg-secondary h-6 w-16 rounded-full" />
-                    <div className="bg-secondary h-6 w-20 rounded-full" />
+                    <div className="bg-secondary h-6 w-16 rounded-sm" />
+                    <div className="bg-secondary h-6 w-20 rounded-sm" />
                   </div>
                   <div className="bg-secondary h-4 w-64 rounded" />
                 </div>
@@ -55,7 +55,7 @@ export default function Loading() {
         </div>
       </section>
 
-      <div className="bg-secondary mt-12 rounded-2xl p-8">
+      <div className="bg-secondary mt-12 rounded-sm p-8">
         <div className="bg-secondary mx-auto h-6 w-56 rounded" />
         <div className="bg-secondary mx-auto mt-2 h-4 w-64 rounded" />
         <div className="bg-secondary mx-auto mt-4 h-10 w-40 rounded" />

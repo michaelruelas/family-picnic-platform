@@ -147,18 +147,18 @@ export default async function HouseholdTreePage() {
         </p>
       </div>
 
-      <div className="bg-card ring-border rounded-xl p-6 shadow-sm ring-1">
+      <div className="bg-card ring-border rounded-sm p-6 shadow-sm ring-1">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-foreground text-lg font-semibold">Household Network</h2>
           <div className="text-muted-foreground flex items-center gap-4 text-xs">
             <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-amber-400" /> Adults
+              <span className="h-2 w-2 rounded-sm bg-amber-400" /> Adults
             </span>
             <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-blue-400" /> Children
+              <span className="h-2 w-2 rounded-sm bg-blue-400" /> Children
             </span>
             <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-green-400" /> Other Dependents
+              <span className="h-2 w-2 rounded-sm bg-green-400" /> Other Dependents
             </span>
           </div>
         </div>

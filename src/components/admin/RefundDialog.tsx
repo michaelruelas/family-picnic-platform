@@ -42,7 +42,7 @@ export default function RefundDialog({
           </p>
         </div>
 
-        <div className="bg-secondary rounded-lg p-3 text-sm">
+        <div className="bg-secondary rounded-sm p-3 text-sm">
           <div className="flex justify-between">
             <span>Original charge</span>
             <span>{formatAmount(charge.amountCents, charge.currency)}</span>
@@ -66,7 +66,7 @@ export default function RefundDialog({
             step="0.01"
             value={amountDollars}
             onChange={(e) => setAmountDollars(e.target.value)}
-            className="border-border mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+            className="border-border mt-1 w-full rounded-sm border px-3 py-2 text-sm"
             data-testid="refund-amount-input"
           />
           <span className="text-muted-foreground mt-1 block text-xs">
@@ -81,7 +81,7 @@ export default function RefundDialog({
             onChange={(e) => setReason(e.target.value)}
             rows={2}
             maxLength={500}
-            className="border-border mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+            className="border-border mt-1 w-full rounded-sm border px-3 py-2 text-sm"
             placeholder="requested_by_customer, duplicate, etc."
           />
         </label>
@@ -92,7 +92,7 @@ export default function RefundDialog({
           <button
             type="button"
             onClick={onClose}
-            className="bg-secondary text-foreground/85 rounded-lg px-4 py-2 text-sm font-medium"
+            className="bg-secondary text-foreground/85 rounded-sm px-4 py-2 text-sm font-medium"
           >
             Cancel
           </button>
@@ -106,7 +106,7 @@ export default function RefundDialog({
               })
             }
             disabled={!valid || refund.isPending}
-            className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="bg-terracotta hover:bg-terracotta rounded-sm px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             data-testid="refund-submit"
           >
             {refund.isPending

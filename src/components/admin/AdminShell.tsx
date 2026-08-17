@@ -53,7 +53,7 @@ export default function AdminShell({ children, title, description, actions }: Ad
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open navigation"
-            className="border-border bg-card text-foreground hover:bg-secondary rounded-lg border p-2"
+            className="border-border bg-card text-foreground hover:bg-secondary rounded-sm border p-2"
             data-testid="admin-drawer-toggle"
           >
             <svg

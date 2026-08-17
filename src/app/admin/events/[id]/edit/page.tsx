@@ -148,7 +148,7 @@ export default async function EditEventPage({ params }: PageProps) {
           </div>
           <a
             href={`/admin/events/${event.id}/members`}
-            className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-lg px-4 py-2 text-sm font-medium"
+            className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-sm px-4 py-2 text-sm font-medium"
           >
             View members
           </a>
@@ -163,7 +163,7 @@ export default async function EditEventPage({ params }: PageProps) {
           </div>
           <a
             href={`/admin/events/${event.id}/edit/admins`}
-            className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 text-sm font-medium text-white"
+            className="bg-terracotta hover:bg-terracotta rounded-sm px-4 py-2 text-sm font-medium text-white"
           >
             Manage Admins
           </a>

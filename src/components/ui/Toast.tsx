@@ -140,7 +140,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 
   return (
     <div
-      className={`shadow-pop flex max-w-md min-w-[300px] items-center gap-3 rounded-2xl p-4 ring-1 ${styles.bg} ${styles.ring} `}
+      className={`shadow-pop flex max-w-md min-w-[300px] items-center gap-3 rounded-sm p-4 ring-1 ${styles.bg} ${styles.ring} `}
       role="alert"
       aria-live="polite"
       aria-atomic="true"
@@ -149,7 +149,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       <p className={`flex-1 text-base font-medium ${styles.text}`}>{message}</p>
       <button
         onClick={onDismiss}
-        className={`rounded-full p-1.5 transition-colors hover:bg-black/5 ${styles.text}`}
+        className={`rounded-sm p-1.5 transition-colors hover:bg-black/5 ${styles.text}`}
         aria-label="Dismiss"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

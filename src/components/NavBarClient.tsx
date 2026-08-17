@@ -41,7 +41,7 @@ export default function NavBarClient() {
     <nav className="border-border/60 bg-background/80 sticky top-0 z-30 border-b backdrop-blur-lg">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Link href="/" className="group flex items-center gap-2.5">
-          <div className="shadow-soft h-10 w-10 overflow-hidden rounded-2xl transition-transform duration-300 group-hover:scale-105">
+          <div className="shadow-soft h-10 w-10 overflow-hidden rounded-sm transition-transform duration-300 group-hover:scale-105">
             <Image
               src="/folia-family-picnic-logo.png"
               alt="Folia Family Picnic logo"
@@ -72,7 +72,7 @@ export default function NavBarClient() {
                 : 'Toggle theme'
             }
             title="Toggle light/dark — manage in Profile → Appearance"
-            className="border-border bg-card text-foreground hover:border-foreground/50 hover:bg-secondary rounded-pill press flex h-10 w-10 items-center justify-center border transition-all"
+            className="border-border bg-card text-foreground hover:border-foreground/50 hover:bg-secondary press flex h-10 w-10 items-center justify-center rounded-sm border transition-all"
           >
             {mounted && resolvedTheme === 'dark' ? (
               <svg
@@ -105,26 +105,26 @@ export default function NavBarClient() {
             )}
           </button>
           {status === 'loading' ? (
-            <span className="rounded-pill bg-secondary text-muted-foreground px-4 py-2 text-sm font-medium opacity-50">
+            <span className="bg-secondary text-muted-foreground rounded-sm px-4 py-2 text-sm font-medium opacity-50">
               ...
             </span>
           ) : session ? (
             <div className="flex items-center gap-1.5">
               <Link
                 href="/my-events"
-                className="rounded-pill text-muted-foreground hover:text-foreground hidden px-3 py-2 text-sm font-medium transition-colors md:inline"
+                className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
               >
                 My Events
               </Link>
               <Link
                 href="/profile"
-                className="rounded-pill text-muted-foreground hover:text-foreground hidden px-3 py-2 text-sm font-medium transition-colors md:inline"
+                className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
               >
                 Profile
               </Link>
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
-                className="rounded-pill border-border bg-card text-foreground hover:border-foreground press border px-4 py-2 text-sm font-medium transition-all"
+                className="border-border bg-card text-foreground hover:border-foreground press rounded-sm border px-4 py-2 text-sm font-medium transition-all"
               >
                 Sign Out
               </button>
@@ -132,7 +132,7 @@ export default function NavBarClient() {
           ) : (
             <Link
               href="/login"
-              className="rounded-pill bg-foreground text-background hover:bg-foreground/90 press px-5 py-2 text-sm font-semibold transition-all"
+              className="bg-foreground text-background hover:bg-foreground/90 press rounded-sm px-5 py-2 text-sm font-semibold transition-all"
             >
               Sign In
             </Link>
@@ -147,7 +147,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   return (
     <Link
       href={href}
-      className="rounded-pill text-foreground/80 hover:bg-secondary hover:text-foreground px-4 py-2 text-sm font-medium transition-colors"
+      className="text-foreground/80 hover:bg-secondary hover:text-foreground rounded-sm px-4 py-2 text-sm font-medium transition-colors"
     >
       {children}
     </Link>

@@ -44,9 +44,9 @@ export function ThemeToggle() {
   if (!mounted) {
     return (
       <div className="space-y-3">
-        <div className="shimmer h-20 w-full rounded-3xl" />
-        <div className="shimmer h-20 w-full rounded-3xl" />
-        <div className="shimmer h-20 w-full rounded-3xl" />
+        <div className="shimmer h-20 w-full rounded-sm" />
+        <div className="shimmer h-20 w-full rounded-sm" />
+        <div className="shimmer h-20 w-full rounded-sm" />
       </div>
     );
   }
@@ -68,14 +68,14 @@ export function ThemeToggle() {
             role="radio"
             aria-checked={isActive}
             onClick={() => setTheme(opt.value)}
-            className={`group press flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all ${
+            className={`group press flex w-full items-center gap-4 rounded-sm border p-4 text-left transition-all ${
               isActive
                 ? 'border-terracotta bg-terracotta/10 shadow-soft'
                 : 'border-border bg-card hover:border-foreground/40'
             }`}
           >
             <div
-              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl transition-colors ${
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-sm text-2xl transition-colors ${
                 isActive ? 'bg-terracotta shadow-soft text-white' : 'bg-secondary text-foreground'
               }`}
               aria-hidden
@@ -88,12 +88,12 @@ export function ThemeToggle() {
                   {opt.label}
                 </span>
                 {opt.value === 'system' && (
-                  <span className="rounded-pill bg-secondary text-muted-foreground px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase">
+                  <span className="bg-secondary text-muted-foreground rounded-sm px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase">
                     Auto
                   </span>
                 )}
                 {isSystemEffective && opt.value !== 'system' && (
-                  <span className="rounded-pill bg-sage/20 text-sage px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase">
+                  <span className="bg-sage/20 text-sage rounded-sm px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase">
                     Active
                   </span>
                 )}
@@ -101,7 +101,7 @@ export function ThemeToggle() {
               <p className="text-muted-foreground mt-0.5 text-sm">{opt.description}</p>
             </div>
             <div
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border-2 transition-colors ${
                 isActive ? 'border-terracotta bg-terracotta' : 'border-border bg-card'
               }`}
               aria-hidden

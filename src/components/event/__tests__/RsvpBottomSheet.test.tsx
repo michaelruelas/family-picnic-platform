@@ -196,6 +196,32 @@ describe('RsvpBottomSheet per-member attendance', () => {
     });
   });
 
+  it('lets the head of household (ad-hoc row) set their age', async () => {
+    // FPP-113 / head-of-household: when the caller has no household
+    // members yet, the sheet seeds a row for the user's own name with
+    // `householdMemberId: null`. That row must offer the same "Set
+    // age" affordance as roster members so the fee can be computed.
+    mockFormState.data = {
+      householdId: null,
+      householdName: null,
+      members: [],
+      rsvp: null,
+      userName: 'Maria Garcia',
+      hasHousehold: false,
+    };
+    render(<RsvpBottomSheet {...baseProps} />);
+    const nameInput = screen.getByLabelText(/name for maria garcia/i) as HTMLInputElement;
+    expect(nameInput).toBeInTheDocument();
+    const setAgeButton = screen.getByRole('button', { name: /set age/i });
+    fireEvent.click(setAgeButton);
+    const ageInput = screen.getByLabelText(/edit age/i) as HTMLInputElement;
+    fireEvent.change(ageInput, { target: { value: '40' } });
+    fireEvent.keyDown(ageInput, { key: 'Enter' });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /edit age/i })).toHaveTextContent('40 yrs');
+    });
+  });
+
   it("calls the decline mutation when the user clicks Can't make it", async () => {
     setRosterReady();
     render(<RsvpBottomSheet {...baseProps} />);

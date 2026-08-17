@@ -4,6 +4,7 @@ vi.mock('~/lib/prisma', () => ({
   prisma: {
     user: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
     },
     linkedIdentity: {
@@ -86,7 +87,7 @@ describe('findOrCreateUserByIdentity', () => {
           action: 'auth.signIn.succeeded',
         }),
       });
-      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.user.findFirst).not.toHaveBeenCalled();
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
@@ -145,7 +146,7 @@ describe('findOrCreateUserByIdentity', () => {
           newValue: expect.objectContaining({ reason: 'email_missing' }),
         }),
       });
-      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.user.findFirst).not.toHaveBeenCalled();
     });
   });
 
@@ -153,7 +154,7 @@ describe('findOrCreateUserByIdentity', () => {
     it('links a new LinkedIdentity to the existing user and audits matchedBy=email', async () => {
       const { prisma } = await import('~/lib/prisma');
       vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
-      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
         id: 'user-1',
         email: 'existing@example.com',
         name: 'Existing',
@@ -202,8 +203,8 @@ describe('findOrCreateUserByIdentity', () => {
     it('refuses and audits email_tombstoned', async () => {
       const { prisma } = await import('~/lib/prisma');
       vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
-      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(null);
-      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
         id: 'user-tomb',
         deletedAt: new Date(),
       } as never);
@@ -231,8 +232,8 @@ describe('findOrCreateUserByIdentity', () => {
     it('creates user + LinkedIdentity in a transaction and audits userCreated=true', async () => {
       const { prisma } = await import('~/lib/prisma');
       vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
-      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(null);
-      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
       vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
         return fn({
           user: {
@@ -279,8 +280,8 @@ describe('findOrCreateUserByIdentity', () => {
     it('normalizes the email (trim + lowercase) before lookup', async () => {
       const { prisma } = await import('~/lib/prisma');
       vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
-      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(null);
-      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
       vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
         return fn({
           user: {
@@ -310,11 +311,11 @@ describe('findOrCreateUserByIdentity', () => {
         emailSnapshot: '  Mixed@Example.COM  ',
       });
 
-      expect(prisma.user.findUnique).toHaveBeenNthCalledWith(1, {
-        where: { email: 'mixed@example.com', deletedAt: null },
+      expect(prisma.user.findFirst).toHaveBeenNthCalledWith(1, {
+        where: { email: { equals: 'mixed@example.com', mode: 'insensitive' }, deletedAt: null },
       });
-      expect(prisma.user.findUnique).toHaveBeenNthCalledWith(2, {
-        where: { email: 'mixed@example.com' },
+      expect(prisma.user.findFirst).toHaveBeenNthCalledWith(2, {
+        where: { email: { equals: 'mixed@example.com', mode: 'insensitive' } },
         select: { id: true, deletedAt: true },
       });
     });
@@ -417,6 +418,8 @@ describe('linkIdentityToCurrentUser', () => {
   it('throws when the user is missing or soft-deleted', async () => {
     const { prisma } = await import('~/lib/prisma');
     vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+    // linkIdentityToCurrentUser resolves the target by id via findUnique,
+    // so only that mock needs to return null here.
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
 
     const { linkIdentityToCurrentUser } = await import('../user-identity');

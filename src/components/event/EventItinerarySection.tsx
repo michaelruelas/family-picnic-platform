@@ -57,13 +57,13 @@ export function EventItinerarySection({ items }: EventItinerarySectionProps) {
           {items.map((item) => (
             <li
               key={item.id}
-              className="bg-card shadow-card ring-border/60 flex items-center gap-5 rounded-2xl p-5 ring-1"
+              className="bg-card shadow-card ring-border/60 flex items-center gap-5 rounded-sm p-5 ring-1"
               data-testid="event-itinerary-item"
             >
               {item.time ? (
                 <ItineraryTimeBadge time={item.time} />
               ) : (
-                <div className="bg-secondary flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl">
+                <div className="bg-secondary flex h-16 w-16 shrink-0 items-center justify-center rounded-sm">
                   <span className="text-muted-foreground text-xs font-semibold tracking-widest uppercase">
                     Soon
                   </span>
@@ -89,7 +89,7 @@ function ItineraryTimeBadge({ time }: { time: string }) {
   // string (e.g. "10:00") just renders as one block.
   const [numeric, meridian] = time.split(/\s+/);
   return (
-    <div className="bg-sage/15 flex shrink-0 flex-col items-center justify-center rounded-2xl px-4 py-3 text-center">
+    <div className="bg-sage/15 flex shrink-0 flex-col items-center justify-center rounded-sm px-4 py-3 text-center">
       <span className="font-display text-foreground text-lg font-semibold">{numeric}</span>
       {meridian && <span className="text-muted-foreground text-xs font-semibold">{meridian}</span>}
     </div>

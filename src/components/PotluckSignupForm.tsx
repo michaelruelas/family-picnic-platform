@@ -119,7 +119,7 @@ export default function PotluckSignupForm({
 
   if (!userId) {
     return (
-      <span className="bg-secondary text-muted-foreground rounded-lg px-3 py-2 text-sm">
+      <span className="bg-secondary text-muted-foreground rounded-sm px-3 py-2 text-sm">
         Sign in to sign up
       </span>
     );
@@ -142,14 +142,14 @@ export default function PotluckSignupForm({
                 setDietaryLabels(userSignup.dietaryLabels.join(', '));
                 setIsExpanded(true);
               }}
-              className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 mt-1 rounded-lg px-3 py-1 text-sm font-medium"
+              className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 mt-1 rounded-sm px-3 py-1 text-sm font-medium"
             >
               Edit
             </button>
           ) : (
             <button
               onClick={() => setIsExpanded(false)}
-              className="bg-secondary text-muted-foreground hover:bg-secondary mt-1 rounded-lg px-3 py-1 text-sm font-medium"
+              className="bg-secondary text-muted-foreground hover:bg-secondary mt-1 rounded-sm px-3 py-1 text-sm font-medium"
             >
               Cancel
             </button>
@@ -157,7 +157,7 @@ export default function PotluckSignupForm({
         </div>
 
         {isExpanded && (
-          <div className="border-border bg-secondary/60 mt-3 rounded-lg border p-3">
+          <div className="border-border bg-secondary/60 mt-3 rounded-sm border p-3">
             <h4 className="text-foreground text-sm font-medium">Edit Your Signup</h4>
             {error && (
               <div className="bg-destructive/10 text-destructive mt-2 rounded p-2 text-sm">
@@ -173,7 +173,7 @@ export default function PotluckSignupForm({
                   value={dishName}
                   onChange={(e) => setDishName(e.target.value)}
                   placeholder="What are you bringing?"
-                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
                 />
               </div>
 
@@ -182,7 +182,7 @@ export default function PotluckSignupForm({
                 <select
                   value={servings}
                   onChange={(e) => setServings(Number(e.target.value))}
-                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                     <option key={n} value={n}>
@@ -201,22 +201,22 @@ export default function PotluckSignupForm({
                   value={dietaryLabels}
                   onChange={(e) => setDietaryLabels(e.target.value)}
                   placeholder="vegetarian, gluten-free, nut-free"
-                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
+                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
                 />
               </div>
 
               <div className="flex gap-2">
                 <button
                   onClick={() => handleSubmit('signup')}
-                  disabled={isSubmitting || !dishName.trim()}
-                  className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+                  disabled={isSubmitting}
+                  className="bg-terracotta hover:bg-terracotta flex-1 rounded-sm px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
                 >
                   {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
                 <button
                   onClick={() => handleSubmit('cancel')}
                   disabled={isSubmitting}
-                  className="bg-destructive/15 text-destructive hover:bg-destructive/20 rounded-lg px-3 py-1 text-sm font-medium disabled:opacity-50"
+                  className="bg-destructive/15 text-destructive hover:bg-destructive/20 rounded-sm px-3 py-1 text-sm font-medium disabled:opacity-50"
                 >
                   Remove
                 </button>
@@ -230,7 +230,7 @@ export default function PotluckSignupForm({
 
   if (isFull) {
     return (
-      <span className="bg-secondary text-muted-foreground rounded-lg px-3 py-2 text-sm">Full</span>
+      <span className="bg-secondary text-muted-foreground rounded-sm px-3 py-2 text-sm">Full</span>
     );
   }
 
@@ -238,7 +238,7 @@ export default function PotluckSignupForm({
     return (
       <button
         onClick={() => setIsExpanded(true)}
-        className="bg-terracotta hover:bg-terracotta rounded-lg px-4 py-2 text-sm font-medium text-white"
+        className="bg-terracotta hover:bg-terracotta rounded-sm px-4 py-2 text-sm font-medium text-white"
       >
         Sign Up
       </button>
@@ -246,7 +246,7 @@ export default function PotluckSignupForm({
   }
 
   return (
-    <div className="border-border bg-secondary/60 mt-3 rounded-lg border p-3">
+    <div className="border-border bg-secondary/60 mt-3 rounded-sm border p-3">
       <h4 className="text-foreground text-sm font-medium">Sign Up for {slotDisplayName(slot)}</h4>
       {error && (
         <div className="bg-destructive/10 text-destructive mt-2 rounded p-2 text-sm">{error}</div>
@@ -260,7 +260,7 @@ export default function PotluckSignupForm({
             value={dishName}
             onChange={(e) => setDishName(e.target.value)}
             placeholder="What are you bringing?"
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
           />
         </div>
 
@@ -269,7 +269,7 @@ export default function PotluckSignupForm({
           <select
             value={servings}
             onChange={(e) => setServings(Number(e.target.value))}
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
           >
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <option key={n} value={n}>
@@ -288,22 +288,22 @@ export default function PotluckSignupForm({
             value={dietaryLabels}
             onChange={(e) => setDietaryLabels(e.target.value)}
             placeholder="vegetarian, gluten-free, nut-free"
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-2 py-1 text-sm shadow-sm focus:ring-1 focus:outline-none"
           />
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={() => handleSubmit('signup')}
-            disabled={isSubmitting || !dishName.trim()}
-            className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+            disabled={isSubmitting}
+            className="bg-terracotta hover:bg-terracotta flex-1 rounded-sm px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
           >
             {isSubmitting ? 'Signing up...' : 'Sign Up'}
           </button>
           <button
             onClick={() => setIsExpanded(false)}
             disabled={isSubmitting}
-            className="bg-secondary text-muted-foreground hover:bg-secondary rounded-lg px-3 py-1 text-sm font-medium disabled:opacity-50"
+            className="bg-secondary text-muted-foreground hover:bg-secondary rounded-sm px-3 py-1 text-sm font-medium disabled:opacity-50"
           >
             Cancel
           </button>

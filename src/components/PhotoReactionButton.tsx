@@ -63,7 +63,7 @@ export default function PhotoReactionButton({
 
   if (compact) {
     return (
-      <div className="flex items-center gap-1 rounded-full bg-black/50 p-1 backdrop-blur-sm">
+      <div className="flex items-center gap-1 rounded-sm bg-black/50 p-1 backdrop-blur-sm">
         {AVAILABLE_REACTIONS.slice(0, 3).map((emoji) => {
           const count = reactionCounts[emoji] || 0;
           const isSelected = userReactions.includes(emoji);
@@ -73,7 +73,7 @@ export default function PhotoReactionButton({
               key={emoji}
               onClick={() => handleReaction(emoji)}
               disabled={!userId || isSubmitting}
-              className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs transition-all ${
+              className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs transition-all ${
                 isSelected ? 'scale-110 bg-white/30' : 'hover:bg-white/20'
               } ${!userId ? 'cursor-default opacity-50' : 'cursor-pointer'}`}
               title={userId ? `${emoji} (${count})` : 'Sign in to react'}
@@ -88,7 +88,7 @@ export default function PhotoReactionButton({
   }
 
   return (
-    <div className="flex items-center gap-1 rounded-full bg-black/50 p-1 backdrop-blur-sm">
+    <div className="flex items-center gap-1 rounded-sm bg-black/50 p-1 backdrop-blur-sm">
       {AVAILABLE_REACTIONS.map((emoji) => {
         const count = reactionCounts[emoji] || 0;
         const isSelected = userReactions.includes(emoji);
@@ -98,7 +98,7 @@ export default function PhotoReactionButton({
             key={emoji}
             onClick={() => handleReaction(emoji)}
             disabled={!userId || isSubmitting}
-            className={`flex items-center gap-1 rounded-full px-2 py-1 text-sm transition-all ${
+            className={`flex items-center gap-1 rounded-sm px-2 py-1 text-sm transition-all ${
               isSelected ? 'scale-110 bg-white/30' : 'hover:bg-white/20'
             } ${!userId ? 'cursor-default opacity-50' : 'cursor-pointer'}`}
             title={userId ? `${emoji} (${count})` : 'Sign in to react'}

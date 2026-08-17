@@ -281,11 +281,12 @@ export async function persistResolvedAttendances(
 export async function resolveAndPersistAttendances(
   tx: Tx,
   input: PersistAttendanceInput,
+  options: ReplaceOptions = {},
 ): Promise<{
   rows: Array<Omit<ResolvedAttendanceRow, 'isHistorical'>>;
 }> {
   const { rows } = await resolveAttendancesForHousehold(tx, input.householdId, input.attendances);
-  await persistResolvedAttendances(tx, input.rsvpId, rows);
+  await persistResolvedAttendances(tx, input.rsvpId, rows, options);
   return { rows };
 }
 

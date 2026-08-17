@@ -58,7 +58,7 @@ export function EventAdditionalInfoSection({ body }: EventAdditionalInfoSectionP
  */
 function AdditionalInfoBody({ body }: { body: string }) {
   return (
-    <div className="bg-card shadow-card ring-border/60 mt-6 space-y-3 rounded-3xl p-7 text-base leading-relaxed ring-1 md:p-9">
+    <div className="bg-card shadow-card ring-border/60 mt-6 space-y-3 rounded-sm p-7 text-base leading-relaxed ring-1 md:p-9">
       {body.split(/\n{2,}/).map((paragraph, idx) => {
         const trimmedParagraph = paragraph.trim();
         if (!trimmedParagraph) return null;
@@ -127,7 +127,7 @@ function renderInline(text: string) {
       render: (m) => (
         <code
           key={`c-${key++}`}
-          className="bg-secondary text-foreground rounded-md px-1.5 py-0.5 font-mono text-sm"
+          className="bg-secondary text-foreground rounded-sm px-1.5 py-0.5 font-mono text-sm"
         >
           {m[1]}
         </code>

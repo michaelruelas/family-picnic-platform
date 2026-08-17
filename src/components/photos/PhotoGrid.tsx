@@ -48,7 +48,7 @@ export default function PhotoGrid({
         {photos.map((photo) => (
           <div
             key={photo.id}
-            className="group bg-secondary relative aspect-square cursor-pointer overflow-hidden rounded-lg"
+            className="group bg-secondary relative aspect-square cursor-pointer overflow-hidden rounded-sm"
             onClick={() => setSelectedPhoto(photo)}
           >
             <Image
@@ -92,7 +92,7 @@ export default function PhotoGrid({
               alt={selectedPhoto.caption || `${eventName} photo`}
               width={1200}
               height={800}
-              className="max-h-[85vh] w-auto rounded-lg object-contain"
+              className="max-h-[85vh] w-auto rounded-sm object-contain"
             />
             {selectedPhoto.caption && (
               <p className="mt-4 text-center text-white">{selectedPhoto.caption}</p>

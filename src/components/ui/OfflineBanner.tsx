@@ -10,7 +10,7 @@ export default function OfflineBanner() {
   }
 
   return (
-    <div className="bg-sunlight text-foreground shadow-pop fixed right-4 bottom-4 left-4 z-50 rounded-2xl px-5 py-3 text-center text-sm font-medium md:left-auto md:max-w-md">
+    <div className="bg-sunlight text-foreground shadow-pop fixed right-4 bottom-4 left-4 z-50 rounded-sm px-5 py-3 text-center text-sm font-medium md:left-auto md:max-w-md">
       <div className="flex items-center justify-center gap-2">
         <svg
           className="h-5 w-5"

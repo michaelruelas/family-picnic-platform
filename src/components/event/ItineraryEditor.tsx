@@ -242,7 +242,7 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
 
   if (items.length === 0 && !showAddForm) {
     return (
-      <div className="bg-sunlight/20 rounded-xl p-8 text-center">
+      <div className="bg-sunlight/20 rounded-sm p-8 text-center">
         <div className="text-5xl">📋</div>
         <h3 className="text-foreground mt-4 text-xl font-semibold">No Itinerary Items Yet</h3>
         <p className="text-terracotta mt-2">
@@ -250,7 +250,7 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
         </p>
         <button
           onClick={() => setShowAddForm(true)}
-          className="bg-terracotta hover:bg-terracotta mt-4 rounded-lg px-6 py-2 font-medium text-white"
+          className="bg-terracotta hover:bg-terracotta mt-4 rounded-sm px-6 py-2 font-medium text-white"
         >
           Add First Item
         </button>
@@ -261,7 +261,7 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
   return (
     <div className="space-y-4">
       {error && (
-        <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>
+        <div className="bg-destructive/10 text-destructive rounded-sm p-4 text-sm">{error}</div>
       )}
 
       {showAddForm && (
@@ -271,7 +271,7 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
       {!showAddForm && (
         <button
           onClick={() => setShowAddForm(true)}
-          className="border-border bg-secondary/60 text-muted-foreground hover:bg-sunlight/20 hover:text-terracotta flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-sm font-medium hover:border-amber-400"
+          className="border-border bg-secondary/60 text-muted-foreground hover:bg-sunlight/20 hover:text-terracotta flex w-full items-center justify-center gap-2 rounded-sm border-2 border-dashed px-4 py-3 text-sm font-medium hover:border-amber-400"
           data-testid="itinerary-add-button"
         >
           <span className="text-lg">+</span> Add Itinerary Item
@@ -289,7 +289,7 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
             onDragEnd={onDragEnd}
             data-testid="itinerary-editor-item"
             data-itinerary-id={item.id}
-            className={`border-border bg-card rounded-lg border p-4 transition-shadow ${
+            className={`border-border bg-card rounded-sm border p-4 transition-shadow ${
               draggingId === item.id ? 'opacity-50 shadow-md' : ''
             } ${pendingReorder ? 'opacity-90' : ''}`}
           >
@@ -312,13 +312,13 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleDelete(item.id)}
-                    className="bg-destructive hover:bg-destructive flex-1 rounded-lg px-3 py-1 text-sm font-medium text-white"
+                    className="bg-destructive hover:bg-destructive flex-1 rounded-sm px-3 py-1 text-sm font-medium text-white"
                   >
                     Confirm Delete
                   </button>
                   <button
                     onClick={() => setDeleteConfirm(null)}
-                    className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-3 py-1 text-sm font-medium"
+                    className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-sm px-3 py-1 text-sm font-medium"
                   >
                     Cancel
                   </button>
@@ -333,7 +333,7 @@ export default function ItineraryEditor({ eventId, initialItems }: ItineraryEdit
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     {item.time ? (
-                      <span className="bg-sage/20 text-foreground rounded-pill px-2.5 py-1 text-xs font-semibold tracking-wide">
+                      <span className="bg-sage/20 text-foreground rounded-sm px-2.5 py-1 text-xs font-semibold tracking-wide">
                         {formatItineraryTime(item.time)}
                       </span>
                     ) : (
@@ -423,7 +423,7 @@ function ItineraryItemForm({ mode, initial, onSubmit, onCancel }: ItineraryItemF
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-card space-y-3 rounded-xl p-4 shadow-sm"
+      className="bg-card space-y-3 rounded-sm p-4 shadow-sm"
       data-testid={mode === 'add' ? 'itinerary-add-form' : 'itinerary-edit-form'}
     >
       <h3 className="text-foreground text-lg font-semibold">
@@ -453,7 +453,7 @@ function ItineraryItemForm({ mode, initial, onSubmit, onCancel }: ItineraryItemF
             onChange={handleChange}
             required
             maxLength={200}
-            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+            className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
             placeholder="Setup & Early Arrival"
           />
         </div>
@@ -470,7 +470,7 @@ function ItineraryItemForm({ mode, initial, onSubmit, onCancel }: ItineraryItemF
           onChange={handleChange}
           maxLength={2000}
           rows={3}
-          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-lg border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           placeholder="Unloading coolers and firing up the grill."
         />
       </div>
@@ -479,14 +479,14 @@ function ItineraryItemForm({ mode, initial, onSubmit, onCancel }: ItineraryItemF
         <button
           type="submit"
           disabled={submitting}
-          className="bg-terracotta hover:bg-terracotta flex-1 rounded-lg px-4 py-2 font-medium text-white disabled:opacity-50"
+          className="bg-terracotta hover:bg-terracotta flex-1 rounded-sm px-4 py-2 font-medium text-white disabled:opacity-50"
         >
           {submitting ? 'Saving...' : mode === 'add' ? 'Add Item' : 'Save Changes'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-lg px-4 py-2 font-medium"
+          className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-sm px-4 py-2 font-medium"
         >
           Cancel
         </button>

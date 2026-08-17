@@ -57,7 +57,7 @@ export default async function CheckoutPage({ params }: Props) {
         </p>
         <a
           href={`/events/${event.id}`}
-          className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-lg px-6 py-2 font-medium text-white"
+          className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-sm px-6 py-2 font-medium text-white"
         >
           Back to event
         </a>
@@ -90,7 +90,7 @@ export default async function CheckoutPage({ params }: Props) {
         </p>
         <a
           href={`/events/${event.id}`}
-          className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-lg px-6 py-2 font-medium text-white"
+          className="bg-terracotta hover:bg-terracotta mt-6 inline-block rounded-sm px-6 py-2 font-medium text-white"
         >
           View event
         </a>

@@ -129,7 +129,7 @@ export default async function EventPotluckPage({ params }: PageProps) {
         </div>
         {userId && (
           <div
-            className="bg-sunlight/20 ring-sunlight/40 mt-6 flex flex-col gap-3 rounded-2xl px-5 py-4 text-sm ring-1 sm:flex-row sm:items-center sm:justify-between"
+            className="bg-sunlight/20 ring-sunlight/40 mt-6 flex flex-col gap-3 rounded-sm px-5 py-4 text-sm ring-1 sm:flex-row sm:items-center sm:justify-between"
             data-testid="potluck-readonly-banner"
           >
             <p className="text-foreground">
@@ -138,7 +138,7 @@ export default async function EventPotluckPage({ params }: PageProps) {
             </p>
             <Link
               href={`/events/${event.id}?rsvpOpen=1#dishes`}
-              className="rounded-pill bg-foreground text-background press hover:bg-foreground/90 inline-flex items-center justify-center px-4 py-2 text-sm font-semibold transition-all"
+              className="bg-foreground text-background press hover:bg-foreground/90 inline-flex items-center justify-center rounded-sm px-4 py-2 text-sm font-semibold transition-all"
               data-testid="potluck-edit-my-dishes"
             >
               Edit my dishes
@@ -148,7 +148,7 @@ export default async function EventPotluckPage({ params }: PageProps) {
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_320px]">
           <div className="order-2 lg:order-1">
             {!isEventPublished || isPast ? (
-              <div className="bg-secondary/40 rounded-3xl p-10 text-center">
+              <div className="bg-secondary/40 rounded-sm p-10 text-center">
                 <div className="text-4xl">🕒</div>
                 <h2 className="font-display text-foreground mt-3 text-2xl font-semibold">
                   Potluck signups are closed

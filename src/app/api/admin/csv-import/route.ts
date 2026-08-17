@@ -64,41 +64,65 @@ export async function POST(request: NextRequest) {
       results.householdsCreated++;
 
       for (const member of household.members) {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: member.email },
+        // FPP-111: normalize emails to lowercase so lookup/create stay
+        // consistent with the OAuth sign-in path. A mixed-case CSV
+        // email would otherwise create a duplicate account that the
+        // user later links to by email, leaving the orphan behind.
+        const memberEmail = member.email.trim().toLowerCase();
+        const existingUser = await prisma.user.findFirst({
+          where: { email: { equals: memberEmail, mode: 'insensitive' }, deletedAt: null },
         });
 
+        let userId: string | undefined;
         if (existingUser) {
+          userId = existingUser.id;
           await prisma.user.update({
             where: { id: existingUser.id },
             data: { householdId: newHousehold.id },
           });
         } else {
-          await prisma.user.create({
+          const created = await prisma.user.create({
             data: {
-              email: member.email,
+              email: memberEmail,
               name: member.name,
               householdId: newHousehold.id,
               role: 'ADMIN_ADULT',
             },
           });
+          userId = created.id;
           results.usersCreated++;
         }
 
-        const freshUser = await prisma.user.findUnique({ where: { email: member.email } });
-        if (freshUser) {
-          await prisma.rSVP.create({
-            data: {
+        if (!userId) continue;
+
+        // FPP-111: a user is linked to ONE account by email address.
+        // `rSVP.create` would insert a duplicate row when the user
+        // already has an RSVP for the event (e.g. re-importing the
+        // same CSV). Upsert on (eventId, userId) so an existing
+        // entry is updated instead of creating a new one.
+        await prisma.rSVP.upsert({
+          where: {
+            eventId_userId: {
               eventId,
-              userId: freshUser.id,
-              householdId: newHousehold.id,
-              status: RSVPStatus.CONFIRMED,
-              headcount: member.headcount,
-              respondedAt: new Date(),
+              userId,
             },
-          });
-          results.rsvpsCreated++;
-        }
+          },
+          update: {
+            householdId: newHousehold.id,
+            status: RSVPStatus.CONFIRMED,
+            headcount: member.headcount,
+            respondedAt: new Date(),
+          },
+          create: {
+            eventId,
+            userId,
+            householdId: newHousehold.id,
+            status: RSVPStatus.CONFIRMED,
+            headcount: member.headcount,
+            respondedAt: new Date(),
+          },
+        });
+        results.rsvpsCreated++;
       }
     }
 
