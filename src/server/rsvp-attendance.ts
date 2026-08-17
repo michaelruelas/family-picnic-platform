@@ -10,6 +10,18 @@ type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 export type MemberAttendanceInput = z.infer<typeof rsvpMemberAttendanceInputSchema>;
 
 /**
+ * Client input with `undefined` collapsed to `null`, produced by
+ * `dedupeAndValidate`. Downstream code reads only this shape, so
+ * `householdMemberId` and `memberAge` are never `undefined`.
+ */
+interface NormalizedMemberAttendanceInput {
+  householdMemberId: string | null;
+  memberName: string;
+  memberAge: number | null;
+  attending: RsvpAttending;
+}
+
+/**
  * The validated, server-trusted shape that downstream code (audit
  * log, headcount derivation, attendance diffs) consumes. Names and
  * ages are always sourced from the database; the client-supplied
@@ -37,41 +49,46 @@ export interface PersistAttendanceInput {
  * The schema is already enforced by Zod, but duplicates are caught
  * here because the database unique index is a per-row guard, not a
  * payload-shape guard.
+ *
+ * Duplicate detection keys on `householdMemberId` only. Ad-hoc guests
+ * (id = null) intentionally bypass the check so one RSVP can carry
+ * several guests in the same payload.
  */
 function dedupeAndValidate(
   attendances: MemberAttendanceInput[],
-): Map<string | null, MemberAttendanceInput> {
+): NormalizedMemberAttendanceInput[] {
   if (attendances.length === 0) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
       message: 'Mark attendance for at least one member',
     });
   }
-  const seen = new Map<string | null, MemberAttendanceInput>();
+  const seenIds = new Set<string>();
+  const out: NormalizedMemberAttendanceInput[] = [];
   for (const att of attendances) {
-    const key = att.householdMemberId ?? null;
-    if (seen.has(key)) {
-      throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: 'Duplicate attendance entry for the same member',
-      });
-    }
     if (att.householdMemberId !== null && att.householdMemberId !== undefined) {
-      if (typeof att.householdMemberId !== 'string' || att.householdMemberId.length === 0) {
+      if (seenIds.has(att.householdMemberId)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Duplicate attendance entry for the same member',
+        });
+      }
+      if (att.householdMemberId.length === 0) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'householdMemberId must be a non-empty string or null',
         });
       }
+      seenIds.add(att.householdMemberId);
     }
-    seen.set(key, {
+    out.push({
       householdMemberId: att.householdMemberId ?? null,
       memberName: att.memberName,
       memberAge: att.memberAge ?? null,
       attending: att.attending,
     });
   }
-  return seen;
+  return out;
 }
 
 /**
@@ -93,7 +110,7 @@ export async function resolveAttendancesForHousehold(
   rows: Array<Omit<ResolvedAttendanceRow, 'isHistorical'>>;
 }> {
   const dedup = dedupeAndValidate(attendances);
-  const memberIds = Array.from(dedup.keys()).filter((k): k is string => typeof k === 'string');
+  const memberIds = dedup.map((a) => a.householdMemberId).filter((k): k is string => k !== null);
 
   const members =
     memberIds.length > 0
@@ -105,8 +122,8 @@ export async function resolveAttendancesForHousehold(
   const memberById = new Map(members.map((m) => [m.id, m]));
 
   const rows: Array<Omit<ResolvedAttendanceRow, 'isHistorical'>> = [];
-  for (const [key, att] of dedup) {
-    if (key === null) {
+  for (const att of dedup) {
+    if (att.householdMemberId === null) {
       // Ad-hoc guest. The client is the only source of truth for the
       // name and age. We still trim and clamp so a malicious client
       // cannot write arbitrary text into the snapshot.
@@ -122,7 +139,8 @@ export async function resolveAttendancesForHousehold(
       continue;
     }
 
-    const member = memberById.get(key);
+    const memberId = att.householdMemberId;
+    const member = memberById.get(memberId);
     if (!member) {
       throw new TRPCError({
         code: 'BAD_REQUEST',

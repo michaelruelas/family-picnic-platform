@@ -192,6 +192,49 @@ describe('rsvp-attendance service', () => {
       });
     });
 
+    it('allows multiple ad-hoc guests in the same list', async () => {
+      prismaMock.householdMember.findMany.mockResolvedValue([]);
+      const { rows } = await resolveAttendancesForHousehold(prismaMock as unknown as Tx, 'h-1', [
+        {
+          householdMemberId: null,
+          memberName: 'Guest A',
+          memberAge: 30,
+          attending: RsvpAttending.YES,
+        },
+        {
+          householdMemberId: null,
+          memberName: 'Guest B',
+          memberAge: null,
+          attending: RsvpAttending.NO,
+        },
+        {
+          householdMemberId: null,
+          memberName: 'Guest C',
+          memberAge: 10,
+          attending: RsvpAttending.MAYBE,
+        },
+      ]);
+      expect(rows).toHaveLength(3);
+      expect(rows[0]).toMatchObject({
+        householdMemberId: null,
+        memberName: 'Guest A',
+        memberAge: 30,
+        attending: RsvpAttending.YES,
+      });
+      expect(rows[1]).toMatchObject({
+        householdMemberId: null,
+        memberName: 'Guest B',
+        memberAge: null,
+        attending: RsvpAttending.NO,
+      });
+      expect(rows[2]).toMatchObject({
+        householdMemberId: null,
+        memberName: 'Guest C',
+        memberAge: 10,
+        attending: RsvpAttending.MAYBE,
+      });
+    });
+
     // FPP-36 review finding 1: the ad-hoc clamp must use the
     // shared `ATTENDEE_NAME_MAX` constant so the cap and the
     // schema stay in sync when the limit is bumped.
@@ -286,6 +329,48 @@ describe('rsvp-attendance service', () => {
       });
       expect(result.rows).toHaveLength(1);
       expect(prismaMock.rsvpMemberAttendance.create).toHaveBeenCalled();
+    });
+
+    it('round-trips multiple ad-hoc guests through the full pipeline', async () => {
+      prismaMock.householdMember.findMany.mockResolvedValue([]);
+      prismaMock.rsvpMemberAttendance.findFirst.mockResolvedValue(null);
+      const result = await resolveAndPersistAttendances(prismaMock as unknown as Tx, {
+        rsvpId: 'r-1',
+        householdId: 'h-1',
+        attendances: [
+          {
+            householdMemberId: null,
+            memberName: 'Guest A',
+            memberAge: 30,
+            attending: RsvpAttending.YES,
+          },
+          {
+            householdMemberId: null,
+            memberName: 'Guest B',
+            memberAge: null,
+            attending: RsvpAttending.NO,
+          },
+        ],
+      });
+      expect(result.rows).toHaveLength(2);
+      expect(prismaMock.rsvpMemberAttendance.create).toHaveBeenCalledTimes(2);
+      const [first, second] = prismaMock.rsvpMemberAttendance.create.mock.calls.map(
+        (c) => c[0].data,
+      );
+      expect(first).toMatchObject({
+        rsvpId: 'r-1',
+        householdMemberId: null,
+        memberNameSnapshot: 'Guest A',
+        memberAgeSnapshot: 30,
+        attending: RsvpAttending.YES,
+      });
+      expect(second).toMatchObject({
+        rsvpId: 'r-1',
+        householdMemberId: null,
+        memberNameSnapshot: 'Guest B',
+        memberAgeSnapshot: null,
+        attending: RsvpAttending.NO,
+      });
     });
   });
 
