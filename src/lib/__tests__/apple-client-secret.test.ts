@@ -5,6 +5,7 @@ import {
   readAppleClientSecretConfig,
   buildAppleClientSecret,
   getAppleClientSecret,
+  getAppleClientSecretCached,
   formatApplePrivateKey,
   resetAppleClientSecretCache,
   DEFAULT_APPLE_SECRET_EXPIRATION_SECONDS,
@@ -180,5 +181,20 @@ describe('buildAppleClientSecret and getAppleClientSecret', () => {
     const token2 = await getAppleClientSecret();
 
     expect(token1).toBe(token2);
+  });
+
+  it('getAppleClientSecretCached returns null before initialization and cached value after', async () => {
+    expect(getAppleClientSecretCached()).toBeNull();
+
+    vi.stubEnv('AUTH_APPLE_TEAM_ID', 'APPLE_TEAM_10');
+    vi.stubEnv('AUTH_APPLE_ID', 'com.foliapicnic.auth');
+    vi.stubEnv('AUTH_APPLE_KEY_ID', 'APPLE_KEY_10');
+    vi.stubEnv('AUTH_APPLE_PRIVATE_KEY', testPrivateKeyPem);
+
+    const generated = await getAppleClientSecret();
+    expect(getAppleClientSecretCached()).toBe(generated);
+
+    resetAppleClientSecretCache();
+    expect(getAppleClientSecretCached()).toBeNull();
   });
 });

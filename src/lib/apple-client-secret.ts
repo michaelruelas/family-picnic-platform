@@ -97,34 +97,38 @@ export function resetAppleClientSecretCache(): void {
   inflight = null;
 }
 
-export async function getAppleClientSecret(
-  configOverride?: AppleClientSecretConfig | null,
-): Promise<string> {
-  const config = configOverride ?? readAppleClientSecretConfig();
+/**
+ * Returns the currently cached Apple client secret JWT synchronously,
+ * or null if uninitialized or expired.
+ */
+export function getAppleClientSecretCached(): string | null {
+  if (cachedSecret && cachedSecret.expiresAt > Date.now()) {
+    return cachedSecret.value;
+  }
+  return null;
+}
+
+export async function getAppleClientSecret(): Promise<string> {
+  const config = readAppleClientSecretConfig();
   if (!config) {
     throw new Error(
       'Apple OAuth is not configured. Set AUTH_APPLE_TEAM_ID, AUTH_APPLE_ID, AUTH_APPLE_KEY_ID, and AUTH_APPLE_PRIVATE_KEY.',
     );
   }
-  if (!configOverride && cachedSecret && cachedSecret.expiresAt > Date.now()) {
+  if (cachedSecret && cachedSecret.expiresAt > Date.now()) {
     return cachedSecret.value;
   }
-  if (!configOverride && inflight) return inflight;
-  const promise = buildAppleClientSecret(config)
+  if (inflight) return inflight;
+  inflight = buildAppleClientSecret(config)
     .then((value) => {
-      if (!configOverride) {
-        cachedSecret = {
-          value,
-          expiresAt: Date.now() + SECRET_CACHE_TTL_MS,
-        };
-      }
+      cachedSecret = {
+        value,
+        expiresAt: Date.now() + SECRET_CACHE_TTL_MS,
+      };
       return value;
     })
     .finally(() => {
-      if (!configOverride) {
-        inflight = null;
-      }
+      inflight = null;
     });
-  if (!configOverride) inflight = promise;
-  return promise;
+  return inflight;
 }

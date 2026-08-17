@@ -6,7 +6,11 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from './prisma';
 import type { Role } from './generated/enums';
 import { findOrCreateUserByIdentity, isOAuthProvider, type OAuthProvider } from './user-identity';
-import { getAppleClientSecret, readAppleClientSecretConfig } from './apple-client-secret';
+import {
+  getAppleClientSecret,
+  getAppleClientSecretCached,
+  readAppleClientSecretConfig,
+} from './apple-client-secret';
 
 // FPP-65 / QUB-13: role taxonomy after the FPP-65 audit.
 //   - SUPER_ADMIN: platform-level admin (renamed from ADMIN). Global
@@ -119,14 +123,12 @@ function devCredentialsProvider() {
 }
 
 const APPLE_CONFIG = readAppleClientSecretConfig();
-let cachedAppleClientSecret: string | null = null;
 let appleRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function refreshAppleClientSecret(): Promise<string | null> {
   if (!APPLE_CONFIG) return null;
   try {
-    const next = await getAppleClientSecret(APPLE_CONFIG);
-    cachedAppleClientSecret = next;
+    const next = await getAppleClientSecret();
     if (appleRefreshTimer) clearTimeout(appleRefreshTimer);
     // Refresh 15 minutes before the 1-hour token expires.
     appleRefreshTimer = setTimeout(
@@ -141,7 +143,7 @@ async function refreshAppleClientSecret(): Promise<string | null> {
     return next;
   } catch (err) {
     console.error('[auth] Failed to refresh Apple client secret', err);
-    return cachedAppleClientSecret;
+    return getAppleClientSecretCached();
   }
 }
 
@@ -154,21 +156,25 @@ if (APPLE_CONFIG) {
   await refreshAppleClientSecret();
 }
 
+function getAppleClientSecretForProvider(): string {
+  return getAppleClientSecretCached() ?? '';
+}
+
 function appleProvider() {
   if (!APPLE_CONFIG) return null;
   const base = AppleProvider({
     clientId: APPLE_CONFIG.clientId,
-    clientSecret: cachedAppleClientSecret ?? '',
+    clientSecret: '',
   });
   return {
     ...base,
     get clientSecret() {
-      return cachedAppleClientSecret ?? '';
+      return getAppleClientSecretForProvider();
     },
     options: {
       ...base.options,
       get clientSecret() {
-        return cachedAppleClientSecret ?? '';
+        return getAppleClientSecretForProvider();
       },
     },
   };
