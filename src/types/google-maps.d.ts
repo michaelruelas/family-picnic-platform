@@ -42,7 +42,7 @@ declare namespace google {
         displayName?: string;
         location?: LatLng;
         viewport?: LatLngBoundsLiteral;
-        placeId?: string;
+        id?: string;
       }
 
       class PlacePrediction {

@@ -42,7 +42,7 @@ export function LocationAutocomplete({
       const { placePrediction } = event as google.maps.places.GmpSelectEvent;
       const place = placePrediction.toPlace();
       await place.fetchFields({
-        fields: ['formattedAddress', 'location', 'placeId'],
+        fields: ['formattedAddress', 'location', 'id'],
       });
       if (!place.location) return;
       setGeoSelected(true);
@@ -50,7 +50,7 @@ export function LocationAutocomplete({
         location: place.formattedAddress || '',
         lat: place.location.lat(),
         lng: place.location.lng(),
-        placeId: place.placeId || null,
+        placeId: place.id || null,
       });
     });
   }, [scriptLoaded, onChange]);
