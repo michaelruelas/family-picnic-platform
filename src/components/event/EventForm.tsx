@@ -12,11 +12,11 @@ import RichTextEditor from './RichTextEditor';
 interface EventFormData {
   name: string;
   date: string;
+  // FPP-145 follow-up: form holds the location data as TWO fields:
+  //   customLocationName: host-typed display title (primary location string)
+  //   location:          Google Places formatted address (secondary, for the map)
+  // The two are decoupled — typing in one does not clear the other.
   location: string;
-  // FPP-145: optional host-defined display name for the location,
-  // surfaced on the public event page in place of `location` when
-  // set. Useful for adding context (camp name, meeting spot, site)
-  // that Google Places doesn't know about.
   customLocationName?: string;
   lat: number | null;
   lng: number | null;
@@ -81,7 +81,11 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     registrationFeeMinAge: initialMinAge,
   });
 
-  const handleLocationChange = useCallback(
+  const handleCustomNameChange = useCallback((value: string) => {
+    setFormData((prev) => ({ ...prev, customLocationName: value }));
+  }, []);
+
+  const handleResolvedChange = useCallback(
     (data: {
       location: string;
       lat: number | null;
@@ -107,11 +111,28 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     const minAgeParsed = minAgeRaw ? Number(minAgeRaw) : 0;
     const registrationFeeMinAge =
       Number.isFinite(minAgeParsed) && minAgeParsed >= 0 ? Math.floor(minAgeParsed) : 0;
-    const { registrationFeeDollars, registrationFeeMinAge: _omit, ...rest } = formData;
+    const {
+      registrationFeeDollars,
+      registrationFeeMinAge: _omit,
+      location,
+      customLocationName,
+      ...rest
+    } = formData;
     void registrationFeeDollars;
     void _omit;
+    // FPP-145 follow-up: the `location` column is non-null in the DB.
+    // When the host types a custom name without picking from Google,
+    // fall back to that name so the required string is still set.
+    // The public page will surface both fields via customLocationName
+    // ?? location so the UI never has to reach for this fallback.
+    const effectiveLocation = location || customLocationName || '';
     return {
       ...rest,
+      location: effectiveLocation,
+      // FPP-145: empty string clears the column so the public page
+      // falls back to the resolved Google address. Matches the
+      // additionalInfo / featuredImageUrl clear-by-empty contract.
+      customLocationName: customLocationName?.trim() ? customLocationName : undefined,
       maxCapacity:
         rest.maxCapacity === undefined || rest.maxCapacity === null
           ? undefined
@@ -221,41 +242,13 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
         </div>
 
         <div className="md:col-span-2">
-          <label htmlFor="location" className="text-foreground/85 block text-sm font-medium">
-            Location *
-          </label>
           <LocationAutocomplete
-            value={formData.location}
+            customNameValue={formData.customLocationName ?? ''}
+            resolvedAddress={formData.location}
             hasGeocodedAddress={formData.lat !== null && formData.lng !== null}
-            onChange={handleLocationChange}
+            onCustomNameChange={handleCustomNameChange}
+            onResolvedChange={handleResolvedChange}
           />
-          {/* FPP-145: optional display-name override. Sits directly
-              under the Google Places autocomplete so the host sees
-              both fields in one location column. The string they
-              type here is what guests see on the public event page —
-              `location` (the Google formatted address) stays pinned
-              on the embedded map regardless. */}
-          <div className="mt-4">
-            <label
-              htmlFor="customLocationName"
-              className="text-foreground/85 block text-sm font-medium"
-            >
-              Custom Display Name (optional)
-            </label>
-            <input
-              type="text"
-              id="customLocationName"
-              name="customLocationName"
-              value={formData.customLocationName ?? ''}
-              onChange={handleChange}
-              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-              placeholder="Shaver Lake - Camp Edison Tannenager Site"
-            />
-            <p className="text-muted-foreground mt-1 text-xs">
-              Shown to guests on the event page in place of the resolved address. Useful for context
-              Google doesn&apos;t know about — camp names, meeting spots, building numbers, sites.
-            </p>
-          </div>
         </div>
 
         <div>

@@ -23,7 +23,21 @@ export interface EventHeaderSectionProps {
   eventName: string;
   eventDescription: string;
   eventDate: Date;
+  /**
+   * FPP-145 follow-up: location display primary line. The host-typed
+   * display title (event.customLocationName) when set, otherwise the
+   * Google Places formatted address (event.location).
+   */
   eventLocation: string;
+  /**
+   * FPP-145 follow-up: location display secondary line. The Google
+   * Places formatted address (event.location) is rendered below the
+   * primary line when it differs from the custom title so guests
+   * see both — the polished display string plus the canonical
+   * address Google Maps directions rely on. Pass an empty string to
+   * suppress the second line.
+   */
+  eventResolvedLocation?: string;
   eventLat: number | null;
   eventLng: number | null;
   isPast: boolean;
@@ -85,6 +99,11 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
     eventDescription,
     eventDate,
     eventLocation,
+    // FPP-145 follow-up: the Google Places resolved address is the
+    // authoritative string for the embedded map iframe's accessible
+    // title and visible label — guests get directions via Google
+    // Maps using this exact text, not the host's custom title.
+    eventResolvedLocation,
     eventLat,
     eventLng,
     isPast,
@@ -143,11 +162,29 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
           <span className="text-border hidden sm:inline" aria-hidden="true">
             ·
           </span>
-          <span className="flex items-center gap-2">
+          <span className="flex items-baseline gap-2">
             <span className="text-sage" aria-hidden="true">
               📍
             </span>
-            <span className="text-foreground font-semibold">{eventLocation}</span>
+            {/* FPP-145 follow-up: stacked location display. The host's
+                custom title renders as the primary line (bold); the
+                Google Places resolved address shows as a muted second
+                line when it differs from the custom title so guests
+                see both — the polished display string and the
+                canonical address Google Maps directions use. */}
+            <span className="flex flex-col">
+              <span className="text-foreground font-semibold">{eventLocation}</span>
+              {eventResolvedLocation &&
+                eventResolvedLocation.trim() !== '' &&
+                eventResolvedLocation !== eventLocation && (
+                  <span
+                    className="text-muted-foreground text-sm font-normal"
+                    data-testid="event-location-resolved-subline"
+                  >
+                    {eventResolvedLocation}
+                  </span>
+                )}
+            </span>
           </span>
         </div>
         {/* FPP-144: secondary "fact strip" directly under the event main
@@ -176,7 +213,17 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
       />
 
       {eventLat !== null && eventLng !== null && (
-        <EventLocationMap lat={eventLat} lng={eventLng} location={eventLocation} />
+        // FPP-145 follow-up: the embedded map uses the Google
+        // resolved address for its iframe title + visible label.
+        // The map's lat/lng are independent of the host's custom
+        // title, so directions still go to the right pin even when
+        // the host's polished title differs from the canonical
+        // Google address.
+        <EventLocationMap
+          lat={eventLat}
+          lng={eventLng}
+          location={eventResolvedLocation ?? eventLocation}
+        />
       )}
 
       <HostBlock description={eventDescription} maxCapacity={maxCapacity} hosts={hosts} />

@@ -321,13 +321,14 @@ export default async function EventDetailPage({ params }: Props) {
               eventName={event.name}
               eventDescription={event.description}
               eventDate={eventDate}
-              // FPP-145: surface the host-defined display name on the
-              // public event page when set. `event.location` keeps the
-              // Google formatted address used by the embedded map; the
-              // custom name adds context (camp, site, meeting spot).
-              // The map iframe uses lat/lng for directions so the
-              // custom display string only changes the visible label.
+              // FPP-145 follow-up: the public meta strip stacks the
+              // host's custom title (when set) on top and the Google
+              // Places resolved address underneath, so guests see
+              // both. The embedded map iframe title/labels still use
+              // the resolved address (Google Maps directions key on
+              // it) while the map's lat/lng pin never changes.
               eventLocation={event.customLocationName ?? event.location}
+              eventResolvedLocation={event.location}
               eventLat={event.lat}
               eventLng={event.lng}
               isPast={isPast}

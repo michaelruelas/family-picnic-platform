@@ -29,7 +29,11 @@ describe('EventForm', () => {
       id: 'e-1',
       name: 'Annual Picnic',
       date: '2026-08-15T10:00',
-      location: 'Central Park',
+      // FPP-145 follow-up: the host-typed display title lives in
+      // customLocationName. `location` now holds the Google-resolved
+      // address and is shown alongside it on the public page.
+      location: 'Central Park, NY',
+      customLocationName: 'Central Park',
       lat: null,
       lng: null,
       placeId: null,
@@ -40,7 +44,8 @@ describe('EventForm', () => {
     };
     render(<EventForm mode="edit" initialData={initialData} />);
     expect(screen.getByLabelText(/event name/i)).toHaveValue('Annual Picnic');
-    expect(screen.getByLabelText(/location/i)).toHaveValue('Central Park');
+    // The primary location input now exposes the customLocationName.
+    expect(screen.getByLabelText(/location name/i)).toHaveValue('Central Park');
     expect(screen.getByLabelText(/event date/i)).toHaveValue('2026-08-15T10:00');
   });
 
@@ -135,11 +140,16 @@ describe('EventForm', () => {
     });
   });
 
-  it('shows hint when location is typed without autocomplete selection', () => {
+  it('shows a pin-on-map hint when only the custom name is filled', () => {
     render(<EventForm mode="create" />);
-    const input = screen.getByLabelText(/location/i);
-    fireEvent.change(input, { target: { value: 'Park' } });
-    expect(screen.getByText(/enable the map/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/location name/i), {
+      target: { value: 'Park' },
+    });
+    // FPP-145 follow-up: typing in the custom name (without picking
+    // a Google address) surfaces a hint nudging the host toward the
+    // map widget — but stays optional since a host may legitimately
+    // only want the display title.
+    expect(screen.getByText(/pin this on the map/i)).toBeInTheDocument();
   });
 
   it('shows error when API returns failure', async () => {
@@ -441,16 +451,17 @@ describe('EventForm', () => {
     });
   });
 
-  // FPP-145: optional custom display-name column lives directly under
-  // the Google Places autocomplete. Empty string clears the field so
-  // the public page falls back to the resolved Google address.
-  describe('FPP-145 custom location name field', () => {
-    it('renders the custom display name input in create mode', () => {
+  // FPP-145 follow-up: the host-typed location title is the PRIMARY
+  // field on the form. Google Places autocomplete (the "Pin on map"
+  // widget) sits below it and only fills lat/lng/placeId — it never
+  // overwrites the host's typed text.
+  describe('FPP-145 location name field', () => {
+    it('renders the location name input in create mode', () => {
       render(<EventForm mode="create" />);
-      expect(screen.getByLabelText(/custom display name/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/location name/i)).toBeInTheDocument();
     });
 
-    it('pre-fills the custom display name in edit mode', () => {
+    it('pre-fills the location name in edit mode', () => {
       const initialData = {
         id: 'e-1',
         name: 'Annual Picnic',
@@ -463,7 +474,7 @@ describe('EventForm', () => {
         description: '',
       };
       render(<EventForm mode="edit" initialData={initialData} />);
-      expect(screen.getByLabelText(/custom display name/i)).toHaveValue(
+      expect(screen.getByLabelText(/location name/i)).toHaveValue(
         'Shaver Lake - Camp Edison Tannenager Site',
       );
     });
@@ -478,8 +489,7 @@ describe('EventForm', () => {
       fireEvent.change(screen.getByLabelText(/event date/i), {
         target: { value: '2026-08-15T10:00' },
       });
-      fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
-      fireEvent.change(screen.getByLabelText(/custom display name/i), {
+      fireEvent.change(screen.getByLabelText(/location name/i), {
         target: { value: 'Camp Edison Site 12' },
       });
       const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
