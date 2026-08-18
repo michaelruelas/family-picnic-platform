@@ -107,7 +107,10 @@ describe('MySlotsSummary', () => {
     expect(screen.getByText('Brownies')).toBeInTheDocument();
   });
 
-  it('drops a slot when the drop button is clicked', async () => {
+  it('drops a single signup row by id when the drop button is clicked', async () => {
+    // Multi-claim: the row's drop button targets the signup row by
+    // its `id`, not by `slotId`. The same slot can hold several rows
+    // from the caller and each one drops independently.
     mockMySignups.push({
       id: 'ps-1',
       slotId: 's-1',
@@ -118,10 +121,42 @@ describe('MySlotsSummary', () => {
       slot: { id: 's-1', name: 'Side 1', category: 'SIDE', slotType: 'LIMITED' },
     });
     render(<MySlotsSummary eventId="evt-1" userId="u-1" hasRsvp={true} isRsvpConfirmed={true} />);
+    const row = screen.getByTestId('my-slot-row-s-1-ps-1');
+    expect(row).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('my-slot-drop'));
     await waitFor(() => {
-      expect(mockCancelSignup.mutateAsync).toHaveBeenCalledWith({ slotId: 's-1' });
+      expect(mockCancelSignup.mutateAsync).toHaveBeenCalledWith({ signupId: 'ps-1' });
     });
+  });
+
+  it('renders one row per signup when the caller has multiple signups on the same slot', () => {
+    // Two distinct dish names on the same slot (e.g. "Other: Cups"
+    // and "Other: Napkins") appear as separate rows, each with its
+    // own drop affordance keyed by signupId.
+    mockMySignups.push(
+      {
+        id: 'ps-cups',
+        slotId: 's-other',
+        dishName: 'Cups',
+        servings: 1,
+        dietaryLabels: [],
+        claimedAt: new Date(),
+        slot: { id: 's-other', name: null, category: 'OTHER', slotType: 'UNLIMITED' },
+      },
+      {
+        id: 'ps-napkins',
+        slotId: 's-other',
+        dishName: 'Napkins',
+        servings: 1,
+        dietaryLabels: [],
+        claimedAt: new Date(),
+        slot: { id: 's-other', name: null, category: 'OTHER', slotType: 'UNLIMITED' },
+      },
+    );
+    render(<MySlotsSummary eventId="evt-1" userId="u-1" hasRsvp={true} isRsvpConfirmed={true} />);
+    expect(screen.getByTestId('my-slot-row-s-other-ps-cups')).toBeInTheDocument();
+    expect(screen.getByTestId('my-slot-row-s-other-ps-napkins')).toBeInTheDocument();
+    expect(screen.getByText(/You are bringing 2 dishes/i)).toBeInTheDocument();
   });
 
   it('hides the manage-dishes footer when rendered in compact mode', () => {
@@ -149,7 +184,7 @@ describe('MySlotsSummary', () => {
         slot: { id: 's-1', name: null, category: 'DESSERT', slotType: 'LIMITED' },
       });
       render(<MySlotsSummary eventId="evt-1" userId="u-1" hasRsvp isRsvpConfirmed />);
-      const row = screen.getByTestId('my-slot-row-s-1');
+      const row = screen.getByTestId('my-slot-row-s-1-ps-1');
       // Category is shown, slot name is not.
       expect(row.textContent).toMatch(/Desserts/);
       // The category label is the last text in the meta line; no

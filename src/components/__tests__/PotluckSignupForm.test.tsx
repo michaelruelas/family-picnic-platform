@@ -112,9 +112,10 @@ describe('PotluckSignupForm', () => {
     render(<PotluckSignupForm slot={slot} userId="u-1" />);
     fireEvent.click(screen.getByRole('button', { name: /edit/i }));
     fireEvent.click(screen.getByRole('button', { name: /remove/i }));
+    // Multi-claim: cancel targets the signup row by its `id`.
     await waitFor(() => {
       expect(mockCancelSignup.mutate).toHaveBeenCalledWith(
-        expect.objectContaining({ slotId: 's-1' }),
+        expect.objectContaining({ signupId: 'ps-1' }),
         expect.any(Object),
       );
     });

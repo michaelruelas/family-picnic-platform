@@ -111,7 +111,7 @@ export default function MySlotsSummary({
             <li
               key={signup.id}
               className="bg-secondary/40 flex items-center justify-between gap-3 rounded-sm px-4 py-3"
-              data-testid={`my-slot-row-${signup.slotId}`}
+              data-testid={`my-slot-row-${signup.slotId}-${signup.id}`}
             >
               <div className="min-w-0">
                 <p className="text-foreground truncate font-semibold">{signup.dishName}</p>
@@ -127,11 +127,15 @@ export default function MySlotsSummary({
               <button
                 type="button"
                 onClick={() => {
-                  void cancelSignup.mutateAsync({ slotId: signup.slotId });
+                  // Multi-claim: cancel targets a single signup row by
+                  // its `id`. The same slot can hold several rows from
+                  // this caller with different dish names.
+                  void cancelSignup.mutateAsync({ signupId: signup.id });
                 }}
                 disabled={cancelSignup.isPending}
                 className="text-muted-foreground hover:text-destructive shrink-0 rounded-sm px-2 py-1 text-sm font-medium transition-colors disabled:opacity-50"
                 data-testid="my-slot-drop"
+                data-signup-id={signup.id}
                 aria-label={`Drop ${signup.dishName}`}
               >
                 {cancelSignup.isPending ? 'Dropping…' : 'Drop'}

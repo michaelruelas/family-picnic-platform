@@ -69,8 +69,14 @@ function isSlotFull(slot: EventSlot): boolean {
   return remaining !== null && remaining <= 0;
 }
 
-function findMySignup(slot: EventSlot, mySignups: MyPotluckSignup[]): MyPotluckSignup | null {
-  return mySignups.find((s) => s.slotId === slot.id) ?? null;
+/**
+ * Multi-claim: returns every signup row the caller owns on this slot,
+ * not just the first one. A household can bring several distinct
+ * items in the same category (e.g. "Other: Cups" + "Other: Napkins"),
+ * each backed by its own PotluckSignup row.
+ */
+function findMySignups(slot: EventSlot, mySignups: MyPotluckSignup[]): MyPotluckSignup[] {
+  return mySignups.filter((s) => s.slotId === slot.id);
 }
 
 export default function SlotList({
@@ -87,7 +93,10 @@ export default function SlotList({
   });
   const { signup, updateSignup, cancelSignup } = usePotluckSignupMutation();
 
+  // The claim modal targets either an existing signup (edit) or a
+  // fresh claim on a slot. `editSignupId` is null for new claims.
   const [claimSlotId, setClaimSlotId] = useState<string | null>(null);
+  const [editSignupId, setEditSignupId] = useState<string | null>(null);
   const [dishName, setDishName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -103,23 +112,33 @@ export default function SlotList({
       .map(([category, list]) => ({ category, slots: list }));
   }, [slots]);
 
-  const claimedSlotIds = useMemo(() => new Set(mySignups.map((s) => s.slotId)), [mySignups]);
-
   const claimSlot = claimSlotId ? (slots.find((s) => s.id === claimSlotId) ?? null) : null;
-  const claimMySignup = claimSlot ? findMySignup(claimSlot, mySignups) : null;
-  const claimIsEdit = !!claimMySignup;
-  const claimIsFull = claimSlot ? isSlotFull(claimSlot) && !claimIsEdit : false;
+  const mySignupsOnClaimSlot = claimSlot ? findMySignups(claimSlot, mySignups) : [];
+  const claimEditSignup = editSignupId
+    ? (mySignupsOnClaimSlot.find((s) => s.id === editSignupId) ?? null)
+    : null;
+  const claimIsEdit = !!claimEditSignup;
+  const claimIsFull = claimSlot
+    ? isSlotFull(claimSlot) && mySignupsOnClaimSlot.length === 0
+    : false;
 
-  const openClaim = (slotId: string) => {
+  const openNewClaim = (slotId: string) => {
     setError(null);
-    const slot = slots.find((s) => s.id === slotId);
-    const existing = slot ? findMySignup(slot, mySignups) : null;
-    setDishName(existing?.dishName ?? '');
+    setEditSignupId(null);
+    setDishName('');
     setClaimSlotId(slotId);
+  };
+
+  const openEditClaim = (signupRow: MyPotluckSignup) => {
+    setError(null);
+    setEditSignupId(signupRow.id);
+    setDishName(signupRow.dishName);
+    setClaimSlotId(signupRow.slotId);
   };
 
   const closeClaim = () => {
     setClaimSlotId(null);
+    setEditSignupId(null);
     setDishName('');
     setError(null);
   };
@@ -129,12 +148,12 @@ export default function SlotList({
     const trimmed = dishName.trim();
     setError(null);
     try {
-      if (claimMySignup) {
+      if (claimEditSignup) {
         await updateSignup.mutateAsync({
-          slotId: claimSlot.id,
+          signupId: claimEditSignup.id,
           dishName: trimmed,
-          servings: claimMySignup.servings,
-          dietaryLabels: claimMySignup.dietaryLabels,
+          servings: claimEditSignup.servings,
+          dietaryLabels: claimEditSignup.dietaryLabels,
         });
       } else {
         await signup.mutateAsync({
@@ -150,9 +169,9 @@ export default function SlotList({
     }
   };
 
-  const handleDrop = async (slotId: string) => {
+  const handleDrop = async (signupId: string) => {
     try {
-      await cancelSignup.mutateAsync({ slotId });
+      await cancelSignup.mutateAsync({ signupId });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not drop that dish.');
     }
@@ -227,14 +246,19 @@ export default function SlotList({
               {categorySlots.map((slot) => {
                 const full = isSlotFull(slot);
                 const remaining = remainingCapacity(slot);
-                const isMine = claimedSlotIds.has(slot.id);
-                const disabled = !userId || !isRsvpConfirmed || (full && !isMine);
+                const mySignupsOnSlot = findMySignups(slot, mySignups);
+                const hasMine = mySignupsOnSlot.length > 0;
+                // The new-claim button is disabled only when the slot is
+                // full. Existing signups on this slot do not block a
+                // multi-claim — the household can bring several distinct
+                // items in the same category.
+                const newClaimDisabled = !userId || !isRsvpConfirmed || (full && !hasMine);
                 return (
                   <li
                     key={slot.id}
                     className="bg-card shadow-card ring-border/60 rounded-sm p-5 ring-1"
                     data-testid={`potluck-slot-${slot.id}`}
-                    data-slot-mine={isMine ? 'true' : 'false'}
+                    data-slot-mine={hasMine ? 'true' : 'false'}
                     data-slot-full={full ? 'true' : 'false'}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -256,7 +280,7 @@ export default function SlotList({
                               }`}
                         </p>
                       </div>
-                      {isMine ? (
+                      {hasMine ? (
                         <span
                           className="bg-sage/20 text-sage inline-flex items-center gap-1 rounded-sm px-3 py-1 text-xs font-semibold"
                           data-testid="yours-badge"
@@ -292,39 +316,70 @@ export default function SlotList({
                       </ul>
                     )}
 
+                    {/* Multi-claim: list the caller's own signups on
+                      this slot one row at a time, each with edit and
+                      drop affordances. The "Claim another dish"
+                      button below adds a fresh row when there's room. */}
+                    {!readOnly && hasMine ? (
+                      <ul className="mt-3 space-y-1" data-testid={`potluck-my-signups-${slot.id}`}>
+                        {mySignupsOnSlot.map((my) => (
+                          <li
+                            key={my.id}
+                            className="bg-secondary/60 flex items-center justify-between gap-2 rounded-sm px-3 py-2 text-xs"
+                            data-testid={`potluck-my-signup-${my.id}`}
+                          >
+                            <span className="text-foreground truncate font-medium">
+                              {my.dishName || '(no name)'}
+                            </span>
+                            <div className="flex shrink-0 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openEditClaim(my)}
+                                disabled={!isRsvpConfirmed}
+                                className="text-foreground/80 hover:text-foreground rounded-sm px-2 py-0.5 font-semibold underline-offset-4 hover:underline disabled:opacity-50"
+                                data-testid={`potluck-edit-signup-${my.id}`}
+                                aria-label={`Edit ${my.dishName || 'dish'}`}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDrop(my.id)}
+                                disabled={cancelSignup.isPending}
+                                className="text-muted-foreground hover:text-destructive rounded-sm px-2 py-0.5 font-semibold underline-offset-4 hover:underline disabled:opacity-50"
+                                data-testid={`potluck-drop-signup-${my.id}`}
+                                aria-label={`Drop ${my.dishName || 'dish'}`}
+                              >
+                                Drop
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+
                     <div className="mt-4 flex gap-2">
-                      {readOnly ? null : isMine ? (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openClaim(slot.id)}
-                            disabled={!isRsvpConfirmed}
-                            data-testid={`potluck-edit-${slot.id}`}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDrop(slot.id)}
-                            disabled={cancelSignup.isPending}
-                            data-testid={`potluck-drop-${slot.id}`}
-                          >
-                            {cancelSignup.isPending ? 'Dropping…' : 'Drop'}
-                          </Button>
-                        </>
-                      ) : (
+                      {!readOnly && !hasMine ? (
                         <Button
                           variant="primary"
                           size="sm"
-                          onClick={() => openClaim(slot.id)}
-                          disabled={disabled}
+                          onClick={() => openNewClaim(slot.id)}
+                          disabled={newClaimDisabled}
                           data-testid={`potluck-claim-${slot.id}`}
                         >
                           {full ? 'Full' : 'Claim this dish'}
                         </Button>
-                      )}
+                      ) : !readOnly ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openNewClaim(slot.id)}
+                          disabled={newClaimDisabled}
+                          data-testid={`potluck-claim-another-${slot.id}`}
+                        >
+                          {full ? 'Slot is full' : 'Claim another dish'}
+                        </Button>
+                      ) : null}
                     </div>
                   </li>
                 );

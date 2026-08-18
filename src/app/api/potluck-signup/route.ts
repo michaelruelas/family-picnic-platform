@@ -24,29 +24,23 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
       }
 
-      let slotId: string | undefined;
-
       try {
         const body = await request.json();
-        const { slotId: reqSlotId, action, dishName, servings, dietaryLabels } = body;
-        slotId = reqSlotId;
+        const { action } = body;
 
-        if (!slotId || !action) {
-          return NextResponse.json(
-            { error: 'slotId and action are required', code: 'BAD_REQUEST' },
-            { status: 400 },
-          );
-        }
-
+        // Multi-claim: the REST contract mirrors the tRPC procedures.
+        // `signup` is keyed by `slotId` (creates a new row each call);
+        // `cancel` is keyed by `signupId` so it can target one of
+        // several rows the caller may own on the same slot.
         if (action === 'signup') {
           const signupResult = z
             .object({
-              slotId: z.string().min(1),
+              slotId: z.string().min(1, 'Slot ID is required'),
               dishName: z.string().min(1, 'Dish name is required').trim().min(1),
               servings: z.number().int().min(1).default(1),
               dietaryLabels: z.array(z.string()).default([]),
             })
-            .safeParse({ slotId, dishName, servings, dietaryLabels });
+            .safeParse(body);
 
           if (!signupResult.success) {
             const errors = signupResult.error.issues.map((i) => i.message);
@@ -58,9 +52,9 @@ export async function POST(request: Request) {
         } else if (action === 'cancel') {
           const cancelResult = z
             .object({
-              slotId: z.string().min(1),
+              signupId: z.string().min(1, 'Signup ID is required'),
             })
-            .safeParse({ slotId });
+            .safeParse(body);
 
           if (!cancelResult.success) {
             const errors = cancelResult.error.issues.map((i) => i.message);
@@ -76,22 +70,6 @@ export async function POST(request: Request) {
           );
         }
 
-        const slot = await prisma.potluckSlot.findUnique({
-          where: { id: slotId },
-          include: { event: true },
-        });
-
-        if (!slot) {
-          return NextResponse.json({ error: 'Slot not found', code: 'NOT_FOUND' }, { status: 404 });
-        }
-
-        if (slot.event.status !== EventStatus.PUBLISHED) {
-          return NextResponse.json(
-            { error: 'Event is not accepting potluck signups', code: 'BAD_REQUEST' },
-            { status: 400 },
-          );
-        }
-
         const user = await prisma.user.findUnique({
           where: { id: session.user.id },
         });
@@ -100,100 +78,86 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'User not found', code: 'NOT_FOUND' }, { status: 404 });
         }
 
-        const rsvp = await prisma.rSVP.findUnique({
-          where: {
-            eventId_userId: {
-              eventId: slot.eventId,
-              userId: session.user.id,
-            },
-          },
-        });
-
-        if (!rsvp || rsvp.status !== RSVPStatus.CONFIRMED) {
-          return NextResponse.json(
-            { error: 'You must have a confirmed RSVP to sign up for potluck', code: 'BAD_REQUEST' },
-            { status: 400 },
-          );
-        }
-
         if (action === 'signup') {
-          if (!dishName || dishName.trim() === '') {
+          const { slotId, dishName, servings, dietaryLabels } = body as {
+            slotId: string;
+            dishName: string;
+            servings?: number;
+            dietaryLabels?: string[];
+          };
+
+          const slot = await prisma.potluckSlot.findUnique({
+            where: { id: slotId },
+            include: { event: true },
+          });
+
+          if (!slot) {
             return NextResponse.json(
-              { error: 'Dish name is required', code: 'BAD_REQUEST' },
+              { error: 'Slot not found', code: 'NOT_FOUND' },
+              { status: 404 },
+            );
+          }
+
+          if (slot.event.status !== EventStatus.PUBLISHED) {
+            return NextResponse.json(
+              { error: 'Event is not accepting potluck signups', code: 'BAD_REQUEST' },
               { status: 400 },
             );
           }
 
-          const existingSignup = await prisma.potluckSignup.findUnique({
+          const rsvp = await prisma.rSVP.findUnique({
             where: {
-              slotId_rsvpId: {
-                slotId: slotId!,
-                rsvpId: rsvp.id,
+              eventId_userId: {
+                eventId: slot.eventId,
+                userId: session.user.id,
               },
             },
           });
+
+          if (!rsvp || rsvp.status !== RSVPStatus.CONFIRMED) {
+            return NextResponse.json(
+              {
+                error: 'You must have a confirmed RSVP to sign up for potluck',
+                code: 'BAD_REQUEST',
+              },
+              { status: 400 },
+            );
+          }
 
           if (slot.slotType === 'LIMITED') {
             const maxSignups = slot.maxSignups || 0;
             await prisma.$transaction(
               async (tx) => {
                 const currentSignups = await tx.potluckSignup.count({
-                  where: { slotId: slotId! },
+                  where: { slotId },
                 });
-                const effectiveCount = existingSignup ? currentSignups - 1 : currentSignups;
-                if (effectiveCount >= maxSignups) {
+                if (currentSignups >= maxSignups) {
                   throw new Error('Slot is full');
                 }
-                if (existingSignup) {
-                  await tx.potluckSignup.update({
-                    where: { id: existingSignup.id },
-                    data: {
-                      dishName: dishName.trim(),
-                      servings: servings || 1,
-                      dietaryLabels: dietaryLabels || [],
-                    },
-                  });
-                } else {
-                  await tx.potluckSignup.create({
-                    data: {
-                      slotId: slotId!,
-                      rsvpId: rsvp.id,
-                      dishName: dishName.trim(),
-                      servings: servings || 1,
-                      dietaryLabels: dietaryLabels || [],
-                    },
-                  });
-                  await tx.potluckSlot.update({
-                    where: { id: slotId! },
-                    data: { currentSignups: { increment: 1 } },
-                  });
-                }
+                await tx.potluckSignup.create({
+                  data: {
+                    slotId,
+                    rsvpId: rsvp.id,
+                    dishName: dishName.trim(),
+                    servings: servings || 1,
+                    dietaryLabels: dietaryLabels || [],
+                  },
+                });
+                await tx.potluckSlot.update({
+                  where: { id: slotId },
+                  data: { currentSignups: { increment: 1 } },
+                });
               },
               {
                 isolationLevel: 'Serializable',
               },
             );
-            return NextResponse.json({
-              success: true,
-              action: existingSignup ? 'updated' : 'created',
-            });
-          }
-
-          if (existingSignup) {
-            await prisma.potluckSignup.update({
-              where: { id: existingSignup.id },
-              data: {
-                dishName: dishName.trim(),
-                servings: servings || 1,
-                dietaryLabels: dietaryLabels || [],
-              },
-            });
-            return NextResponse.json({ success: true, action: 'updated' });
+            return NextResponse.json({ success: true, action: 'created' });
           }
 
           await prisma.potluckSignup.create({
             data: {
-              slotId: slotId!,
+              slotId,
               rsvpId: rsvp.id,
               dishName: dishName.trim(),
               servings: servings || 1,
@@ -204,38 +168,53 @@ export async function POST(request: Request) {
           return NextResponse.json({ success: true, action: 'created' });
         }
 
-        if (action === 'cancel') {
-          const existingSignup = await prisma.potluckSignup.findUnique({
-            where: {
-              slotId_rsvpId: {
-                slotId: slotId!,
-                rsvpId: rsvp.id,
-              },
-            },
-          });
+        // action === 'cancel'
+        const { signupId } = body as { signupId: string };
 
-          if (!existingSignup) {
-            return NextResponse.json(
-              { error: 'Signup not found', code: 'NOT_FOUND' },
-              { status: 404 },
-            );
-          }
+        const signup = await prisma.potluckSignup.findUnique({
+          where: { id: signupId },
+          include: { slot: true },
+        });
 
-          await prisma.potluckSignup.delete({
-            where: { id: existingSignup.id },
-          });
-
-          await prisma.potluckSlot.update({
-            where: { id: slotId! },
-            data: { currentSignups: { decrement: 1 } },
-          });
-
-          return NextResponse.json({ success: true, action: 'cancelled' });
+        if (!signup) {
+          return NextResponse.json(
+            { error: 'Signup not found', code: 'NOT_FOUND' },
+            { status: 404 },
+          );
         }
 
-        return NextResponse.json({ error: 'Invalid action', code: 'BAD_REQUEST' }, { status: 400 });
+        // Verify the caller owns the signup. REST mirrors the tRPC
+        // contract: walking through the signup → slot → RSVP is the
+        // authoritative check; we don't trust client-supplied slotId.
+        const rsvp = await prisma.rSVP.findUnique({
+          where: {
+            eventId_userId: {
+              eventId: signup.slot.eventId,
+              userId: session.user.id,
+            },
+          },
+          select: { id: true },
+        });
+
+        if (!rsvp || rsvp.id !== signup.rsvpId) {
+          return NextResponse.json(
+            { error: 'Signup not found', code: 'NOT_FOUND' },
+            { status: 404 },
+          );
+        }
+
+        await prisma.potluckSignup.delete({
+          where: { id: signup.id },
+        });
+
+        await prisma.potluckSlot.update({
+          where: { id: signup.slotId },
+          data: { currentSignups: { decrement: 1 } },
+        });
+
+        return NextResponse.json({ success: true, action: 'cancelled' });
       } catch (error) {
-        log.error({ err: error, slotId }, 'Potluck signup error');
+        log.error({ err: error }, 'Potluck signup error');
         if (error instanceof Error && error.message === 'Slot is full') {
           return NextResponse.json(
             { error: 'This slot is full', code: 'CONFLICT' },

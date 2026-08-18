@@ -121,38 +121,38 @@ model Household {
   updatedAt         DateTime  @updatedAt
   deletedAt         DateTime?
 
-  parent           Household?  @relation("HouseholdTree", fields: [parentHouseholdId], references: [id])
-  children         Household[] @relation("HouseholdTree")
-  users            User[]
-  invitations      Invitation[]
-  photos           Photo[]
-  members          HouseholdMember[]
+  parent      Household?        @relation("HouseholdTree", fields: [parentHouseholdId], references: [id])
+  children    Household[]       @relation("HouseholdTree")
+  users       User[]
+  invitations Invitation[]
+  photos      Photo[]
+  members     HouseholdMember[]
 
   @@index([parentHouseholdId])
   @@index([deletedAt])
 }
 
 model HouseholdMember {
-  id          String    @id @default(cuid())
-  householdId String
-  name        String
+  id           String    @id @default(cuid())
+  householdId  String
+  name         String
   // FPP-122: age is now required on every household member. It drives
   // the per-attendee registration fee in the RSVP flow, so a NULL
   // would silently drop the member from the fee calculation. Backfill
   // applied in migration 20260817090000_fpp122_require_age.
-  age         Int
+  age          Int
   // Optional relationship to the account holder (e.g. SPOUSE,
   // CHILD, PARENT). Kept as a free-form string so the onboarding
   // wizard can store user input without a Prisma enum migration
   // when the picker list grows. QUB-21 removes dietary fields
   // from this scope; relationship is structural.
   relationship String?
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
-  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  household       Household              @relation(fields: [householdId], references: [id], onDelete: Cascade)
   rsvpAttendances RsvpMemberAttendance[]
 
   @@index([householdId])
@@ -160,21 +160,21 @@ model HouseholdMember {
 }
 
 model RsvpMemberAttendance {
-  id                   String        @id @default(cuid())
-  rsvpId               String
-  householdMemberId    String?
+  id                 String        @id @default(cuid())
+  rsvpId             String
+  householdMemberId  String?
   // Snapshots preserve the member's name/age at the time of the RSVP
   // so a later member edit or delete does not rewrite the saved
   // confirmation. memberNameSnapshot is required; memberAgeSnapshot
   // is optional to match the underlying HouseholdMember model.
-  memberNameSnapshot   String
-  memberAgeSnapshot    Int?
-  attending            RsvpAttending @default(YES)
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  memberNameSnapshot String
+  memberAgeSnapshot  Int?
+  attending          RsvpAttending @default(YES)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  rsvp    RSVP             @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
-  member  HouseholdMember? @relation(fields: [householdMemberId], references: [id], onDelete: SetNull)
+  rsvp   RSVP             @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
+  member HouseholdMember? @relation(fields: [householdMemberId], references: [id], onDelete: SetNull)
 
   @@unique([rsvpId, householdMemberId])
   @@index([rsvpId])
@@ -183,39 +183,39 @@ model RsvpMemberAttendance {
 }
 
 model User {
-  id                     String                 @id @default(cuid())
-  email                  String                 @unique
-  name                   String
-  role                   Role                   @default(ADULT)
-  householdId            String?
+  id                      String                  @id @default(cuid())
+  email                   String                  @unique
+  name                    String
+  role                    Role                    @default(ADULT)
+  householdId             String?
   communicationPreference CommunicationPreference @default(EMAIL)
-  phoneNumber            String?
-  smsConsent             Boolean                @default(false)
-  smsConsentAt           DateTime?
-  smsConsentIp           String?
-  onboardingCompletedAt  DateTime?
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
-  deletedAt              DateTime?
-  devPassword            String?
+  phoneNumber             String?
+  smsConsent              Boolean                 @default(false)
+  smsConsentAt            DateTime?
+  smsConsentIp            String?
+  onboardingCompletedAt   DateTime?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  deletedAt               DateTime?
+  devPassword             String?
 
-  household          Household?        @relation(fields: [householdId], references: [id])
-  invitations        Invitation[]      @relation("UserInvitations")
-  invitedByMe        Invitation[]     @relation("InvitedByUser")
-  rsvps              RSVP[]
-  uploadedPhotos     Photo[]
-  sentCommunications CommunicationLog[] @relation("SentByUser")
-  receivedCommunications CommunicationLog[] @relation("ReceivedByUser")
-  scheduledBroadcasts  ScheduledBroadcast[] @relation("ScheduledByUser")
-  photoReactions     PhotoReaction[]
-  adminAuditLogs     AdminAuditLog[]
-  auditLogs          AuditLog[]
-  eventAdmins        EventAdmin[]
-  registrations      Registration[]
-  refundsIssued      Refund[]          @relation("RefundIssuer")
-  linkedIdentities   LinkedIdentity[]
+  household              Household?           @relation(fields: [householdId], references: [id])
+  invitations            Invitation[]         @relation("UserInvitations")
+  invitedByMe            Invitation[]         @relation("InvitedByUser")
+  rsvps                  RSVP[]
+  uploadedPhotos         Photo[]
+  sentCommunications     CommunicationLog[]   @relation("SentByUser")
+  receivedCommunications CommunicationLog[]   @relation("ReceivedByUser")
+  scheduledBroadcasts    ScheduledBroadcast[] @relation("ScheduledByUser")
+  photoReactions         PhotoReaction[]
+  adminAuditLogs         AdminAuditLog[]
+  auditLogs              AuditLog[]
+  eventAdmins            EventAdmin[]
+  registrations          Registration[]
+  refundsIssued          Refund[]             @relation("RefundIssuer")
+  linkedIdentities       LinkedIdentity[]
   // FPP-43: PDF attachments uploaded by this user.
-  uploadedAttachments EventAttachment[]
+  uploadedAttachments    EventAttachment[]
 
   @@index([householdId])
   @@index([role])
@@ -224,39 +224,39 @@ model User {
 }
 
 model Event {
-  id           String     @id @default(cuid())
-  name         String
-  date         DateTime
-  location     String
-  lat          Float?
-  lng          Float?
-  placeId      String?
-  mapImageUrl  String?
+  id                    String      @id @default(cuid())
+  name                  String
+  date                  DateTime
+  location              String
+  lat                   Float?
+  lng                   Float?
+  placeId               String?
+  mapImageUrl           String?
   // FPP-60: optional per-event hero image. When set, the public event
   // page renders it in place of the static map fallback (or default
   // gradient). Stored as a public URL once the upload PUT lands in
   // S3. Existing events backfill with NULL so the prior map fallback
   // keeps rendering until the host sets an image.
-  featuredImageUrl String?
-  description  String
+  featuredImageUrl      String?
+  description           String
   // FPP-136: optional markdown/freeform additional info for the event.
   // Displayed in the dedicated "Additional Info" tab alongside PDF attachments.
-  additionalInfo String?
-  rsvpDeadline DateTime?
-  maxCapacity  Int?
+  additionalInfo        String?
+  rsvpDeadline          DateTime?
+  maxCapacity           Int?
   // Optional per-attendee fee. When null, registration is free and no
   // Stripe flow is shown. Amounts are in the smallest currency unit
   // (cents for USD) to avoid floating-point drift.
-  registrationFeeCents Int?       @default(0)
-  currency             String     @default("usd")
+  registrationFeeCents  Int?        @default(0)
+  currency              String      @default("usd")
   // Minimum age (inclusive) for an attendee to owe the per-attendee fee.
   // Attendees with a known age strictly below this threshold are free.
   // Attendees with `age = null` are skipped (the fee calc treats them as
   // non-qualifying so a missing snapshot never silently bills the user).
   // Default 0 means "every attendee pays", which matches the FPP-47
   // behavior that shipped before per-attendee age logic existed.
-  registrationFeeMinAge Int       @default(0)
-  status       EventStatus @default(DRAFT)
+  registrationFeeMinAge Int         @default(0)
+  status                EventStatus @default(DRAFT)
   // FPP-68 / QUB-12: archive flag. When non-null, the event is
   // hidden from the active admin event list and surfaced under
   // "Past events" instead. Distinct from the `status` enum
@@ -270,25 +270,25 @@ model Event {
   // null. The admin "Past events" view surfaces both
   // `archivedAt IS NOT NULL` AND rows whose `date < now` so legacy
   // events are still discoverable. See FPP-68 acceptance criteria.
-  archivedAt   DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  archivedAt            DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 
-  invitations        Invitation[]
-  rsvps              RSVP[]
-  potluckSlots       PotluckSlot[]
-  communications     CommunicationLog[]
+  invitations         Invitation[]
+  rsvps               RSVP[]
+  potluckSlots        PotluckSlot[]
+  communications      CommunicationLog[]
   scheduledBroadcasts ScheduledBroadcast[]
-  photos             Photo[]
-  adminAuditLogs     AdminAuditLog[]
-  admins             EventAdmin[]
-  registrations      Registration[]
-  itineraryItems     ItineraryItem[]
+  photos              Photo[]
+  adminAuditLogs      AdminAuditLog[]
+  admins              EventAdmin[]
+  registrations       Registration[]
+  itineraryItems      ItineraryItem[]
   // FPP-43: PDF attachments hosted in the S3-compatible bucket.
   // The DB row owns the metadata (filename, size, scan status);
   // the bucket owns the bytes. Cascade-delete so removing an event
   // cleans up its attachments in one shot.
-  attachments        EventAttachment[]
+  attachments         EventAttachment[]
 
   @@index([status])
   @@index([date])
@@ -341,20 +341,20 @@ model ItineraryItem {
 // — for the first ship we log a stub and immediately set SKIPPED so
 // downloads are not blocked behind an unfinished worker.
 model EventAttachment {
-  id               String                  @id @default(cuid())
+  id               String               @id @default(cuid())
   eventId          String
   uploadedByUserId String
   // S3 object key (no bucket prefix). Re-derived at download time to
   // mint a fresh presigned URL; never rendered to the page directly.
-  key              String                  @unique
+  key              String               @unique
   // Human-readable filename shown on the public page (and used as the
   // download `Content-Disposition` filename on the presigned URL).
   filename         String
-  contentType      String                  @default("application/pdf")
+  contentType      String               @default("application/pdf")
   sizeBytes        Int
-  virusScanStatus  AttachmentScanStatus    @default(PENDING)
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
+  virusScanStatus  AttachmentScanStatus @default(PENDING)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   event      Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   uploadedBy User  @relation(fields: [uploadedByUserId], references: [id], onDelete: Cascade)
@@ -390,10 +390,10 @@ model Invitation {
   expiresAt       DateTime?
   sentAt          DateTime?
 
-  event       Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user        User?      @relation("UserInvitations", fields: [userId], references: [id])
-  household   Household? @relation(fields: [householdId], references: [id])
-  invitedBy   User       @relation("InvitedByUser", fields: [invitedByUserId], references: [id])
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User?      @relation("UserInvitations", fields: [userId], references: [id])
+  household Household? @relation(fields: [householdId], references: [id])
+  invitedBy User       @relation("InvitedByUser", fields: [invitedByUserId], references: [id])
 
   @@unique([eventId, userId])
   @@unique([eventId, householdId])
@@ -424,9 +424,9 @@ model RSVP {
   // CommunicationLog row so the note actually reaches them.
   declineMessage   String?    @db.Text
 
-  event          Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  potluckSignups PotluckSignup[]
+  event             Event                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  potluckSignups    PotluckSignup[]
   memberAttendances RsvpMemberAttendance[]
 
   @@unique([eventId, userId])
@@ -438,7 +438,7 @@ model RSVP {
 }
 
 model PotluckSlot {
-  id             String         @id @default(cuid())
+  id             String          @id @default(cuid())
   eventId        String
   category       PotluckCategory
   // FPP-54: slot name is optional. Admins may leave it blank to create
@@ -447,10 +447,10 @@ model PotluckSlot {
   name           String?
   slotType       SlotType
   maxSignups     Int?
-  currentSignups Int            @default(0)
+  currentSignups Int             @default(0)
 
-  event    Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  signups  PotluckSignup[]
+  event   Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  signups PotluckSignup[]
 
   @@index([eventId])
   @@index([category])
@@ -468,17 +468,21 @@ model PotluckSignup {
   slot PotluckSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
   rsvp RSVP        @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
 
-  @@unique([slotId, rsvpId])
+  // Multi-claim per RSVP: a household can bring several distinct items
+  // in the same category slot. Each signup row is uniquely identified
+  // by its `id`; the human-readable disambiguator is `dishName`.
+  // Capacity on `PotluckSlot.maxSignups` still counts every signup
+  // against the slot.
   @@index([slotId])
   @@index([rsvpId])
 }
 
 model CommunicationLog {
-  id               String               @id @default(cuid())
-  eventId          String
-  sentByUserId     String
-  recipientUserId  String?
-  channel          CommunicationChannel
+  id              String               @id @default(cuid())
+  eventId         String
+  sentByUserId    String
+  recipientUserId String?
+  channel         CommunicationChannel
   // FPP-88 review: disambiguates the `body` payload. FPP-88
   // introduced the `body` column for two distinct purposes
   // (invitation URL, decline note). The `kind` column tells
@@ -486,30 +490,30 @@ model CommunicationLog {
   // queue reader can branch without sniffing the body. Defaults
   // to BROADCAST so pre-FPP-88 rows and unrelated broadcast
   // writes keep working without a code change.
-  kind             CommunicationLogKind  @default(BROADCAST)
-  messageId        String?
-  toPhoneNumber    String?
-  fromPhoneNumber  String?
-  status           CommunicationStatus  @default(QUEUED)
-  errorCode        String?
-  errorMessage     String?
-  attemptedAt      DateTime             @default(now())
-  deliveredAt      DateTime?
+  kind            CommunicationLogKind @default(BROADCAST)
+  messageId       String?
+  toPhoneNumber   String?
+  fromPhoneNumber String?
+  status          CommunicationStatus  @default(QUEUED)
+  errorCode       String?
+  errorMessage    String?
+  attemptedAt     DateTime             @default(now())
+  deliveredAt     DateTime?
   // FPP-88: payload body. Shape depends on `kind`:
   //   - INVITATION:    `<baseUrl>/events/invitation/<token>`
   //   - DECLINE_NOTE:  free-form note text
   //   - BROADCAST:     whatever the broadcast writer stored
   // Nullable for pre-FPP-88 rows.
-  body             String?              @db.Text
+  body            String?              @db.Text
   // FPP-101: number of times this row has been re-queued by the
   // retry-failed-comms script. Starts at 0 on creation; incremented
   // on every retry. The worker does not auto-retry; the admin runs
   // `bun run comms:retry-failed` to bump it.
-  retryCount       Int                  @default(0)
+  retryCount      Int                  @default(0)
 
-  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  sentBy    User    @relation("SentByUser", fields: [sentByUserId], references: [id], onDelete: Cascade)
-  recipient User?   @relation("ReceivedByUser", fields: [recipientUserId], references: [id])
+  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sentBy    User  @relation("SentByUser", fields: [sentByUserId], references: [id], onDelete: Cascade)
+  recipient User? @relation("ReceivedByUser", fields: [recipientUserId], references: [id])
 
   @@index([eventId])
   @@index([recipientUserId])
@@ -530,9 +534,9 @@ model Photo {
   createdAt        DateTime  @default(now())
   deletedAt        DateTime?
 
-  event      Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  uploadedBy User           @relation(fields: [uploadedByUserId], references: [id], onDelete: Cascade)
-  household  Household      @relation(fields: [householdId], references: [id])
+  event      Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  uploadedBy User            @relation(fields: [uploadedByUserId], references: [id], onDelete: Cascade)
+  household  Household       @relation(fields: [householdId], references: [id])
   reactions  PhotoReaction[]
 
   @@index([eventId])
@@ -668,22 +672,22 @@ enum RefundStatus {
 }
 
 model ScheduledBroadcast {
-  id             String                    @id @default(cuid())
-  eventId        String
-  sentByUserId   String
-  message        String
-  channel        CommunicationChannel
-  recipientType  String
-  recipientIds   Json?
-  scheduledAt    DateTime
-  status         ScheduledBroadcastStatus  @default(PENDING)
-  processedAt    DateTime?
-  errorMessage   String?
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  id            String                   @id @default(cuid())
+  eventId       String
+  sentByUserId  String
+  message       String
+  channel       CommunicationChannel
+  recipientType String
+  recipientIds  Json?
+  scheduledAt   DateTime
+  status        ScheduledBroadcastStatus @default(PENDING)
+  processedAt   DateTime?
+  errorMessage  String?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
 
-  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  sentBy  User  @relation("ScheduledByUser", fields: [sentByUserId], references: [id], onDelete: Cascade)
+  event  Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sentBy User  @relation("ScheduledByUser", fields: [sentByUserId], references: [id], onDelete: Cascade)
 
   @@index([eventId])
   @@index([sentByUserId])
@@ -692,11 +696,11 @@ model ScheduledBroadcast {
 }
 
 model EventAdmin {
-  id        String         @id @default(cuid())
+  id        String          @id @default(cuid())
   eventId   String
   userId    String
   role      AdminPermission @default(COADMIN)
-  createdAt DateTime       @default(now())
+  createdAt DateTime        @default(now())
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)

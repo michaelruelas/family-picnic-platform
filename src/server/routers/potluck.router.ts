@@ -207,6 +207,12 @@ export const potluckRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Multi-claim per RSVP: this procedure always CREATES a new
+      // PotluckSignup row. The same household can sign up multiple
+      // times on one slot with different dish names (e.g. "Other:
+      // Cups" and "Other: Napkins"). To edit or drop an existing
+      // signup, use `updateSignup` / `cancelSignup` with the
+      // signup's `id`.
       const slot = await prisma.potluckSlot.findUnique({
         where: { id: input.slotId },
         include: { event: true },
@@ -233,64 +239,20 @@ export const potluckRouter = router({
         throw new Error('You must have a confirmed RSVP to sign up for potluck');
       }
 
-      const existingSignup = await prisma.potluckSignup.findUnique({
-        where: {
-          slotId_rsvpId: {
-            slotId: input.slotId,
-            rsvpId: rsvp.id,
-          },
-        },
-      });
-
       if (slot.slotType === SlotType.LIMITED) {
+        // Serializable transaction so the count + create + counter
+        // increment stay atomic. Without this two concurrent signups
+        // on a near-full LIMITED slot could both pass the capacity
+        // check and exceed `maxSignups`.
         return prisma.$transaction(
           async (tx) => {
             const currentSignups = await tx.potluckSignup.count({
               where: { slotId: input.slotId },
             });
-            const effectiveCount = existingSignup ? currentSignups - 1 : currentSignups;
             const maxSignups = slot.maxSignups || 0;
 
-            if (effectiveCount >= maxSignups) {
+            if (currentSignups >= maxSignups) {
               throw new Error('This slot is full');
-            }
-
-            if (existingSignup) {
-              const before = {
-                dishName: existingSignup.dishName,
-                servings: existingSignup.servings,
-                dietaryLabels: existingSignup.dietaryLabels,
-              };
-              const updated = await tx.potluckSignup.update({
-                where: { id: existingSignup.id },
-                data: {
-                  dishName: input.dishName,
-                  servings: input.servings,
-                  dietaryLabels: input.dietaryLabels,
-                },
-              });
-              // FPP-50: surface signup edits on the audit log so the
-              // dish list is traceable per household.
-              await writeDomainAuditLog(
-                {
-                  actorId: ctx.session.user.id,
-                  action: 'potluck.signup.update',
-                  subjectType: 'PotluckSignup',
-                  subjectId: updated.id,
-                  payload: {
-                    slotId: input.slotId,
-                    eventId: slot.eventId,
-                    before,
-                    after: {
-                      dishName: input.dishName,
-                      servings: input.servings,
-                      dietaryLabels: input.dietaryLabels,
-                    },
-                  },
-                },
-                tx,
-              );
-              return updated;
             }
 
             const created = await tx.potluckSignup.create({
@@ -308,6 +270,8 @@ export const potluckRouter = router({
               data: { currentSignups: { increment: 1 } },
             });
 
+            // FPP-50: surface the new dish on the audit log so the
+            // dish list is traceable per household.
             await writeDomainAuditLog(
               {
                 actorId: ctx.session.user.id,
@@ -331,52 +295,10 @@ export const potluckRouter = router({
         );
       }
 
-      if (existingSignup) {
-        // FPP-50 review: wrap the UNLIMITED update path in a
-        // transaction so the audit log row is atomic with the signup
-        // write. No Serializable isolation needed because UNLIMITED
-        // slots have no capacity race; the default isolation level
-        // is fine.
-        return prisma.$transaction(async (tx) => {
-          const before = {
-            dishName: existingSignup.dishName,
-            servings: existingSignup.servings,
-            dietaryLabels: existingSignup.dietaryLabels,
-          };
-          const updated = await tx.potluckSignup.update({
-            where: { id: existingSignup.id },
-            data: {
-              dishName: input.dishName,
-              servings: input.servings,
-              dietaryLabels: input.dietaryLabels,
-            },
-          });
-          await writeDomainAuditLog(
-            {
-              actorId: ctx.session.user.id,
-              action: 'potluck.signup.update',
-              subjectType: 'PotluckSignup',
-              subjectId: updated.id,
-              payload: {
-                slotId: input.slotId,
-                eventId: slot.eventId,
-                before,
-                after: {
-                  dishName: input.dishName,
-                  servings: input.servings,
-                  dietaryLabels: input.dietaryLabels,
-                },
-              },
-            },
-            tx,
-          );
-          return updated;
-        });
-      }
-
       // FPP-50 review: wrap the UNLIMITED create path in a
       // transaction so the audit log row is atomic with the signup
-      // write.
+      // write. UNLIMITED slots have no capacity race so the default
+      // isolation level is fine.
       return prisma.$transaction(async (tx) => {
         const created = await tx.potluckSignup.create({
           data: {
@@ -410,49 +332,46 @@ export const potluckRouter = router({
   updateSignup: protectedProcedure
     .input(
       z.object({
-        slotId: z.string(),
+        signupId: z.string(),
         dishName: z.string().trim().default(''),
         servings: z.number().int().min(1),
         dietaryLabels: z.array(z.string()),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const slot = await prisma.potluckSlot.findUnique({ where: { id: input.slotId } });
-      if (!slot) {
-        throw new Error('Slot not found');
+      // Multi-claim: edits target a single signup row identified by
+      // its `id`. The caller must own the signup (via their RSVP).
+      const signup = await prisma.potluckSignup.findUnique({
+        where: { id: input.signupId },
+        include: { slot: true },
+      });
+      if (!signup) {
+        throw new Error('Signup not found');
       }
+
       const rsvp = await prisma.rSVP.findUnique({
         where: {
           eventId_userId: {
-            eventId: slot.eventId,
+            eventId: signup.slot.eventId,
             userId: ctx.session.user.id,
           },
         },
+        select: { id: true },
       });
 
-      if (!rsvp) {
-        throw new Error('RSVP not found');
+      if (!rsvp || rsvp.id !== signup.rsvpId) {
+        throw new Error('Signup not found');
       }
 
       // FPP-50 review: wrap the update + audit write in a transaction
       // so the audit log row is atomic with the signup write.
       return prisma.$transaction(async (tx) => {
         const before = await tx.potluckSignup.findUnique({
-          where: {
-            slotId_rsvpId: {
-              slotId: input.slotId,
-              rsvpId: rsvp.id,
-            },
-          },
+          where: { id: input.signupId },
         });
 
         const updated = await tx.potluckSignup.update({
-          where: {
-            slotId_rsvpId: {
-              slotId: input.slotId,
-              rsvpId: rsvp.id,
-            },
-          },
+          where: { id: input.signupId },
           data: {
             dishName: input.dishName,
             servings: input.servings,
@@ -468,8 +387,8 @@ export const potluckRouter = router({
             subjectType: 'PotluckSignup',
             subjectId: updated.id,
             payload: {
-              slotId: input.slotId,
-              eventId: slot.eventId,
+              slotId: signup.slotId,
+              eventId: signup.slot.eventId,
               before: before
                 ? {
                     dishName: before.dishName,
@@ -492,39 +411,30 @@ export const potluckRouter = router({
     }),
 
   cancelSignup: protectedProcedure
-    .input(z.object({ slotId: z.string() }))
+    .input(z.object({ signupId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const slot = await prisma.potluckSlot.findUnique({
-        where: { id: input.slotId },
+      // Multi-claim: cancellation targets a single signup row by its
+      // `id`. The caller must own the signup (via their RSVP).
+      const signup = await prisma.potluckSignup.findUnique({
+        where: { id: input.signupId },
+        include: { slot: true },
       });
 
-      if (!slot) {
-        throw new Error('Slot not found');
+      if (!signup) {
+        throw new Error('Signup not found');
       }
 
       const rsvp = await prisma.rSVP.findUnique({
         where: {
           eventId_userId: {
-            eventId: slot.eventId,
+            eventId: signup.slot.eventId,
             userId: ctx.session.user.id,
           },
         },
+        select: { id: true },
       });
 
-      if (!rsvp) {
-        throw new Error('RSVP not found');
-      }
-
-      const signup = await prisma.potluckSignup.findUnique({
-        where: {
-          slotId_rsvpId: {
-            slotId: input.slotId,
-            rsvpId: rsvp.id,
-          },
-        },
-      });
-
-      if (!signup) {
+      if (!rsvp || rsvp.id !== signup.rsvpId) {
         throw new Error('Signup not found');
       }
 
@@ -537,7 +447,7 @@ export const potluckRouter = router({
         });
 
         await tx.potluckSlot.update({
-          where: { id: input.slotId },
+          where: { id: signup.slotId },
           data: { currentSignups: { decrement: 1 } },
         });
 
@@ -550,8 +460,8 @@ export const potluckRouter = router({
             subjectType: 'PotluckSignup',
             subjectId: signup.id,
             payload: {
-              slotId: input.slotId,
-              eventId: slot.eventId,
+              slotId: signup.slotId,
+              eventId: signup.slot.eventId,
               dishName: signup.dishName,
               servings: signup.servings,
             },

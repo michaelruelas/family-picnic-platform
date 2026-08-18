@@ -79,12 +79,29 @@ describe('Potluck Schema', () => {
       expect(result.success).toBe(true);
     });
 
-    it('validates cancel action', () => {
+    it('validates cancel action (uses signupId, not slotId)', () => {
+      // Multi-claim: cancel targets a single signup row by its `id`,
+      // not by (slotId, rsvpId) like the legacy schema did.
       const result = potluckSignupSchema.safeParse({
-        slotId: 'slot-123',
         action: 'cancel',
+        signupId: 'signup-123',
       });
       expect(result.success).toBe(true);
+    });
+
+    it('rejects cancel without signupId', () => {
+      const result = potluckSignupSchema.safeParse({
+        action: 'cancel',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects signup without slotId', () => {
+      const result = potluckSignupSchema.safeParse({
+        action: 'signup',
+        dishName: 'Cake',
+      });
+      expect(result.success).toBe(false);
     });
 
     it('rejects invalid action', () => {
@@ -111,7 +128,7 @@ describe('Potluck Schema', () => {
         dishName: 'Salad',
       });
       expect(result.success).toBe(true);
-      if (result.success) {
+      if (result.success && result.data.action === 'signup') {
         expect(result.data.servings).toBe(1);
         expect(result.data.dietaryLabels).toEqual([]);
       }

@@ -95,6 +95,16 @@ describe('Prisma schema integrity vs SPEC', () => {
     expect(block![1]!).not.toContain('userId');
   });
 
+  it('PotluckSignup does not enforce a unique (slotId, rsvpId) constraint (multi-claim)', () => {
+    // A household can bring several distinct items in the same slot
+    // (e.g. "Other: Cups" and "Other: Napkins"). Each signup is
+    // uniquely identified by its `id`; capacity on
+    // `PotluckSlot.maxSignups` still counts every signup row.
+    const block = schema.match(/model PotluckSignup \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).not.toMatch(/@@unique\(\[slotId,\s*rsvpId\]\)/);
+  });
+
   it('PotluckSignup uses servings (not servesHowMany)', () => {
     expect(schema).toMatch(/servings\s+Int/);
     expect(schema).not.toContain('servesHowMany');

@@ -72,14 +72,14 @@ export function usePotluckSignupMutation() {
 
   const updateSignup = trpc.potluck.updateSignup.useMutation({
     onSuccess: (_data, variables) => {
-      track('potluck_update', { slotId: variables.slotId });
+      track('potluck_update', { signupId: variables.signupId });
       invalidateAll();
     },
   });
 
   const cancelSignup = trpc.potluck.cancelSignup.useMutation({
     onSuccess: (_data, variables) => {
-      track('potluck_cancel', { slotId: variables.slotId });
+      track('potluck_cancel', { signupId: variables.signupId });
       invalidateAll();
     },
   });

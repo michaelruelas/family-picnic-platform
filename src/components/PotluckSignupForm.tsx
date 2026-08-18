@@ -62,9 +62,12 @@ export default function PotluckSignupForm({
 
       if (action === 'signup') {
         if (userSignup) {
+          // Multi-claim: updateSignup targets the existing signup
+          // row by `id`. The same slot can hold several rows from
+          // this caller with different dish names.
           updateSignup.mutate(
             {
-              slotId: slot.id,
+              signupId: userSignup.id,
               dishName: dishName.trim(),
               servings,
               dietaryLabels: labels,
@@ -98,9 +101,12 @@ export default function PotluckSignupForm({
             },
           );
         }
-      } else {
+      } else if (userSignup) {
+        // Multi-claim: cancelSignup targets the signup row by `id`,
+        // not by `slotId`. The same slot can hold several rows from
+        // this caller with different dish names.
         cancelSignup.mutate(
-          { slotId: slot.id },
+          { signupId: userSignup.id },
           {
             onSuccess: () => {
               setIsExpanded(false);

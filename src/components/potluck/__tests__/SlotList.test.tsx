@@ -214,6 +214,9 @@ describe('SlotList', () => {
   });
 
   it('updates an existing signup when the user re-opens the modal', async () => {
+    // Multi-claim: edit targets the signup row directly by `id`. The
+    // same slot can hold several rows from this caller with different
+    // dish names; each row has its own Edit affordance.
     mockMySignups.push({
       id: 'ps-1',
       slotId: 's-1',
@@ -232,14 +235,14 @@ describe('SlotList', () => {
         isRsvpConfirmed={true}
       />,
     );
-    fireEvent.click(screen.getByTestId('potluck-edit-s-1'));
+    fireEvent.click(screen.getByTestId('potluck-edit-signup-ps-1'));
     const input = await screen.findByTestId('potluck-claim-dish-input');
     expect(input).toHaveValue('Mac and cheese');
     fireEvent.change(input, { target: { value: 'Spicy mac and cheese' } });
     fireEvent.click(screen.getByTestId('potluck-claim-submit'));
     await waitFor(() => {
       expect(mockUpdateSignup.mutateAsync).toHaveBeenCalledWith({
-        slotId: 's-1',
+        signupId: 'ps-1',
         dishName: 'Spicy mac and cheese',
         servings: 1,
         dietaryLabels: [],
@@ -247,7 +250,7 @@ describe('SlotList', () => {
     });
   });
 
-  it('drops a claimed slot when the drop button is clicked', async () => {
+  it('drops a single signup row by id when the drop button is clicked', async () => {
     mockMySignups.push({
       id: 'ps-1',
       slotId: 's-1',
@@ -266,9 +269,123 @@ describe('SlotList', () => {
         isRsvpConfirmed={true}
       />,
     );
-    fireEvent.click(screen.getByTestId('potluck-drop-s-1'));
+    fireEvent.click(screen.getByTestId('potluck-drop-signup-ps-1'));
     await waitFor(() => {
-      expect(mockCancelSignup.mutateAsync).toHaveBeenCalledWith({ slotId: 's-1' });
+      expect(mockCancelSignup.mutateAsync).toHaveBeenCalledWith({ signupId: 'ps-1' });
+    });
+  });
+
+  it('shows the "Claim another dish" button when the caller already has a signup on the slot', async () => {
+    // Multi-claim: the primary CTA flips from "Claim this dish" to
+    // "Claim another dish" once the caller has at least one signup on
+    // the slot. The slot stays claimable so the caller can bring
+    // several distinct items (e.g. "Other: Cups" + "Other: Napkins").
+    mockMySignups.push({
+      id: 'ps-1',
+      slotId: 's-1',
+      dishName: 'Mac and cheese',
+      servings: 1,
+      dietaryLabels: [],
+      claimedAt: new Date(),
+      slot: { id: 's-1', name: 'Mac and cheese', category: 'MAIN', slotType: 'UNLIMITED' },
+    });
+    render(
+      <SlotList
+        eventId="evt-1"
+        slots={baseSlots}
+        userId="u-1"
+        hasRsvp={true}
+        isRsvpConfirmed={true}
+      />,
+    );
+    const claimAnother = screen.getByTestId('potluck-claim-another-s-1');
+    expect(claimAnother).toBeInTheDocument();
+    expect(claimAnother.textContent).toMatch(/Claim another dish/i);
+    expect(screen.queryByTestId('potluck-claim-s-1')).not.toBeInTheDocument();
+  });
+
+  it('renders one row per signup when the caller has multiple signups on the same slot', () => {
+    // The headline use case: two distinct dish names on one slot
+    // (e.g. "Other: Cups" and "Other: Napkins") show up as separate
+    // rows with their own Edit / Drop affordances.
+    mockMySignups.push(
+      {
+        id: 'ps-cups',
+        slotId: 's-other',
+        dishName: 'Cups',
+        servings: 1,
+        dietaryLabels: [],
+        claimedAt: new Date(),
+        slot: { id: 's-other', name: null, category: 'OTHER', slotType: 'UNLIMITED' },
+      },
+      {
+        id: 'ps-napkins',
+        slotId: 's-other',
+        dishName: 'Napkins',
+        servings: 1,
+        dietaryLabels: [],
+        claimedAt: new Date(),
+        slot: { id: 's-other', name: null, category: 'OTHER', slotType: 'UNLIMITED' },
+      },
+    );
+    const otherSlot = [
+      {
+        id: 's-other',
+        name: null,
+        category: 'OTHER' as const,
+        slotType: 'UNLIMITED' as const,
+        maxSignups: null,
+        currentSignups: 0,
+        signups: [],
+      },
+    ];
+    render(
+      <SlotList
+        eventId="evt-1"
+        slots={otherSlot}
+        userId="u-1"
+        hasRsvp={true}
+        isRsvpConfirmed={true}
+      />,
+    );
+    expect(screen.getByTestId('potluck-my-signup-ps-cups')).toBeInTheDocument();
+    expect(screen.getByTestId('potluck-my-signup-ps-napkins')).toBeInTheDocument();
+    // One combined "Claim another dish" button at the bottom of the
+    // card opens a fresh modal for a third dish.
+    expect(screen.getByTestId('potluck-claim-another-s-other')).toBeInTheDocument();
+  });
+
+  it('opens a new-claim modal and submits via the signup mutation from the "Claim another" button', async () => {
+    mockMySignups.push({
+      id: 'ps-1',
+      slotId: 's-1',
+      dishName: 'Mac and cheese',
+      servings: 1,
+      dietaryLabels: [],
+      claimedAt: new Date(),
+      slot: { id: 's-1', name: 'Mac and cheese', category: 'MAIN', slotType: 'UNLIMITED' },
+    });
+    render(
+      <SlotList
+        eventId="evt-1"
+        slots={baseSlots}
+        userId="u-1"
+        hasRsvp={true}
+        isRsvpConfirmed={true}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('potluck-claim-another-s-1'));
+    const input = await screen.findByTestId('potluck-claim-dish-input');
+    expect(input).toHaveValue('');
+    fireEvent.change(input, { target: { value: 'Green beans' } });
+    fireEvent.click(screen.getByTestId('potluck-claim-submit'));
+    await waitFor(() => {
+      expect(mockSignup.mutateAsync).toHaveBeenCalledWith({
+        slotId: 's-1',
+        dishName: 'Green beans',
+        servings: 1,
+        dietaryLabels: [],
+      });
     });
   });
 

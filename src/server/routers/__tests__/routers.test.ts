@@ -3367,7 +3367,6 @@ describe('potluck.router', () => {
       event: { status: 'PUBLISHED' },
     });
     mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
-    mockPrisma.potluckSignup.findUnique.mockResolvedValue(null);
     mockPrisma.potluckSignup.create.mockResolvedValue({
       id: 'ps-1',
       slotId: 'slot-1',
@@ -3380,6 +3379,9 @@ describe('potluck.router', () => {
     const caller = createCallerFactory(potluckRouter)({ session: userSession });
     const result = await caller.signup({ slotId: 'slot-1', dishName: 'Pasta', servings: 2 });
 
+    // Multi-claim: signup is unconditional create. The (slotId, rsvpId)
+    // lookup that used to drive upsert is gone.
+    expect(mockPrisma.potluckSignup.findUnique).not.toHaveBeenCalled();
     expect(mockPrisma.potluckSignup.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -3393,35 +3395,47 @@ describe('potluck.router', () => {
     expect(result.dishName).toBe('Pasta');
   });
 
-  it('signup updates existing signup for unlimited slot', async () => {
+  it('signup creates a second signup on the same slot for multi-claim (different dish)', async () => {
+    // Multi-claim: a household can bring several distinct items in the
+    // same category slot (e.g. "Other: Cups" and "Other: Napkins").
     mockPrisma.potluckSlot.findUnique.mockResolvedValue({
-      id: 'slot-1',
+      id: 'slot-other',
       eventId: 'evt-1',
       slotType: 'UNLIMITED',
       maxSignups: null,
       event: { status: 'PUBLISHED' },
     });
     mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
-    mockPrisma.potluckSignup.findUnique.mockResolvedValue({
-      id: 'ps-1',
-      slotId: 'slot-1',
-      rsvpId: 'rsvp-1',
-    });
-    mockPrisma.potluckSignup.update.mockResolvedValue({
-      id: 'ps-1',
-      dishName: 'Updated',
-      servings: 3,
-    });
+    mockPrisma.potluckSignup.create
+      .mockResolvedValueOnce({ id: 'ps-1', dishName: 'Cups' })
+      .mockResolvedValueOnce({ id: 'ps-2', dishName: 'Napkins' });
 
     const { potluckRouter } = await import('~/server/routers/potluck.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(potluckRouter)({ session: userSession });
-    const result = await caller.signup({ slotId: 'slot-1', dishName: 'Updated', servings: 3 });
 
-    expect(mockPrisma.potluckSignup.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'ps-1' } }),
+    const first = await caller.signup({ slotId: 'slot-other', dishName: 'Cups', servings: 1 });
+    const second = await caller.signup({ slotId: 'slot-other', dishName: 'Napkins', servings: 1 });
+
+    expect(first.id).toBe('ps-1');
+    expect(second.id).toBe('ps-2');
+    expect(mockPrisma.potluckSignup.create).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.potluckSignup.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({ slotId: 'slot-other', rsvpId: 'rsvp-1', dishName: 'Cups' }),
+      }),
     );
-    expect(result.dishName).toBe('Updated');
+    expect(mockPrisma.potluckSignup.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          slotId: 'slot-other',
+          rsvpId: 'rsvp-1',
+          dishName: 'Napkins',
+        }),
+      }),
+    );
   });
 
   it('signup for LIMITED slot uses transaction with serializable isolation', async () => {
@@ -3433,7 +3447,6 @@ describe('potluck.router', () => {
       event: { status: 'PUBLISHED' },
     });
     mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
-    mockPrisma.potluckSignup.findUnique.mockResolvedValue(null);
     mockPrisma.potluckSignup.count.mockResolvedValue(2);
     mockPrisma.potluckSignup.create.mockResolvedValue({ id: 'ps-1', dishName: 'Pasta' });
 
@@ -3455,7 +3468,6 @@ describe('potluck.router', () => {
       event: { status: 'PUBLISHED' },
     });
     mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
-    mockPrisma.potluckSignup.findUnique.mockResolvedValue(null);
     mockPrisma.potluckSignup.count.mockResolvedValue(2);
 
     const { potluckRouter } = await import('~/server/routers/potluck.router');
@@ -3464,32 +3476,6 @@ describe('potluck.router', () => {
     await expect(
       caller.signup({ slotId: 'slot-1', dishName: 'Pasta', servings: 1 }),
     ).rejects.toThrow('This slot is full');
-  });
-
-  it('signup updates existing signup for LIMITED slot using transaction', async () => {
-    mockPrisma.potluckSlot.findUnique.mockResolvedValue({
-      id: 'slot-1',
-      eventId: 'evt-1',
-      slotType: 'LIMITED',
-      maxSignups: 3,
-      event: { status: 'PUBLISHED' },
-    });
-    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
-    mockPrisma.potluckSignup.findUnique.mockResolvedValue({
-      id: 'ps-1',
-      slotId: 'slot-1',
-      rsvpId: 'rsvp-1',
-    });
-    mockPrisma.potluckSignup.count.mockResolvedValue(1);
-    mockPrisma.potluckSignup.update.mockResolvedValue({ id: 'ps-1', dishName: 'Updated' });
-
-    const { potluckRouter } = await import('~/server/routers/potluck.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(potluckRouter)({ session: userSession });
-    const result = await caller.signup({ slotId: 'slot-1', dishName: 'Updated', servings: 2 });
-
-    expect(mockPrisma.$transaction).toHaveBeenCalled();
-    expect(result.dishName).toBe('Updated');
   });
 
   it('signup throws when slot not found', async () => {
@@ -3534,8 +3520,17 @@ describe('potluck.router', () => {
     ).rejects.toThrow('You must have a confirmed RSVP');
   });
 
-  it('updateSignup updates potluck signup', async () => {
-    mockPrisma.potluckSlot.findUnique.mockResolvedValue({ id: 'slot-1', eventId: 'evt-1' });
+  it('updateSignup updates the dish by signup id', async () => {
+    // Multi-claim: updateSignup targets the signup row directly by id.
+    mockPrisma.potluckSignup.findUnique.mockResolvedValue({
+      id: 'ps-1',
+      slotId: 'slot-1',
+      rsvpId: 'rsvp-1',
+      dishName: 'Original',
+      servings: 2,
+      dietaryLabels: [],
+      slot: { id: 'slot-1', eventId: 'evt-1' },
+    });
     mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
     mockPrisma.potluckSignup.update.mockResolvedValue({
       id: 'ps-1',
@@ -3547,7 +3542,7 @@ describe('potluck.router', () => {
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(potluckRouter)({ session: userSession });
     const result = await caller.updateSignup({
-      slotId: 'slot-1',
+      signupId: 'ps-1',
       dishName: 'Updated',
       servings: 4,
       dietaryLabels: ['VEGAN'],
@@ -3555,40 +3550,73 @@ describe('potluck.router', () => {
 
     expect(mockPrisma.potluckSignup.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { slotId_rsvpId: { slotId: 'slot-1', rsvpId: 'rsvp-1' } },
+        where: { id: 'ps-1' },
         data: { dishName: 'Updated', servings: 4, dietaryLabels: ['VEGAN'] },
       }),
     );
     expect(result.dishName).toBe('Updated');
   });
 
-  it('updateSignup throws when RSVP not found', async () => {
-    mockPrisma.potluckSlot.findUnique.mockResolvedValue({ id: 'slot-1', eventId: 'evt-1' });
-    mockPrisma.rSVP.findUnique.mockResolvedValue(null);
+  it('updateSignup throws when signup not found', async () => {
+    mockPrisma.potluckSignup.findUnique.mockResolvedValue(null);
 
     const { potluckRouter } = await import('~/server/routers/potluck.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(potluckRouter)({ session: userSession });
     await expect(
-      caller.updateSignup({ slotId: 'slot-1', dishName: 'Test', servings: 2, dietaryLabels: [] }),
-    ).rejects.toThrow('RSVP not found');
+      caller.updateSignup({
+        signupId: 'missing',
+        dishName: 'Test',
+        servings: 1,
+        dietaryLabels: [],
+      }),
+    ).rejects.toThrow('Signup not found');
   });
 
-  it('cancelSignup deletes signup and decrements slot count', async () => {
-    mockPrisma.potluckSlot.findUnique.mockResolvedValue({ id: 'slot-1', eventId: 'evt-1' });
-    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
+  it('updateSignup throws when caller does not own the signup', async () => {
+    mockPrisma.potluckSignup.findUnique.mockResolvedValue({
+      id: 'ps-1',
+      slotId: 'slot-1',
+      rsvpId: 'other-rsvp',
+      dishName: 'Original',
+      servings: 1,
+      dietaryLabels: [],
+      slot: { id: 'slot-1', eventId: 'evt-1' },
+    });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1' });
+
+    const { potluckRouter } = await import('~/server/routers/potluck.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(potluckRouter)({ session: userSession });
+    await expect(
+      caller.updateSignup({
+        signupId: 'ps-1',
+        dishName: 'Test',
+        servings: 1,
+        dietaryLabels: [],
+      }),
+    ).rejects.toThrow('Signup not found');
+  });
+
+  it('cancelSignup deletes signup by id and decrements slot count', async () => {
+    // Multi-claim: cancel targets one signup row by id, so dropping
+    // one of several rows on the same slot is supported.
     mockPrisma.potluckSignup.findUnique.mockResolvedValue({
       id: 'ps-1',
       slotId: 'slot-1',
       rsvpId: 'rsvp-1',
+      dishName: 'Salad',
+      servings: 2,
+      slot: { id: 'slot-1', eventId: 'evt-1' },
     });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
     mockPrisma.potluckSignup.delete.mockResolvedValue({ id: 'ps-1' });
     mockPrisma.potluckSlot.update.mockResolvedValue({ id: 'slot-1' });
 
     const { potluckRouter } = await import('~/server/routers/potluck.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(potluckRouter)({ session: userSession });
-    const result = await caller.cancelSignup({ slotId: 'slot-1' });
+    const result = await caller.cancelSignup({ signupId: 'ps-1' });
 
     expect(mockPrisma.potluckSignup.delete).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'ps-1' } }),
@@ -3602,34 +3630,28 @@ describe('potluck.router', () => {
     expect(result.success).toBe(true);
   });
 
-  it('cancelSignup throws when slot not found', async () => {
-    mockPrisma.potluckSlot.findUnique.mockResolvedValue(null);
-
-    const { potluckRouter } = await import('~/server/routers/potluck.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(potluckRouter)({ session: userSession });
-    await expect(caller.cancelSignup({ slotId: 'invalid' })).rejects.toThrow('Slot not found');
-  });
-
-  it('cancelSignup throws when RSVP not found', async () => {
-    mockPrisma.potluckSlot.findUnique.mockResolvedValue({ id: 'slot-1', eventId: 'evt-1' });
-    mockPrisma.rSVP.findUnique.mockResolvedValue(null);
-
-    const { potluckRouter } = await import('~/server/routers/potluck.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(potluckRouter)({ session: userSession });
-    await expect(caller.cancelSignup({ slotId: 'slot-1' })).rejects.toThrow('RSVP not found');
-  });
-
   it('cancelSignup throws when signup not found', async () => {
-    mockPrisma.potluckSlot.findUnique.mockResolvedValue({ id: 'slot-1', eventId: 'evt-1' });
-    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
     mockPrisma.potluckSignup.findUnique.mockResolvedValue(null);
 
     const { potluckRouter } = await import('~/server/routers/potluck.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(potluckRouter)({ session: userSession });
-    await expect(caller.cancelSignup({ slotId: 'slot-1' })).rejects.toThrow('Signup not found');
+    await expect(caller.cancelSignup({ signupId: 'missing' })).rejects.toThrow('Signup not found');
+  });
+
+  it('cancelSignup throws when caller does not own the signup', async () => {
+    mockPrisma.potluckSignup.findUnique.mockResolvedValue({
+      id: 'ps-1',
+      slotId: 'slot-1',
+      rsvpId: 'other-rsvp',
+      slot: { id: 'slot-1', eventId: 'evt-1' },
+    });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1' });
+
+    const { potluckRouter } = await import('~/server/routers/potluck.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(potluckRouter)({ session: userSession });
+    await expect(caller.cancelSignup({ signupId: 'ps-1' })).rejects.toThrow('Signup not found');
   });
 
   it('signup writes a domain audit entry for new dish (FPP-50)', async () => {
@@ -3670,22 +3692,22 @@ describe('potluck.router', () => {
 
   it('cancelSignup writes a domain audit entry capturing the dropped dish (FPP-50)', async () => {
     const { writeDomainAuditLog } = await import('~/lib/audit');
-    mockPrisma.potluckSlot.findUnique.mockResolvedValue({ id: 'slot-1', eventId: 'evt-1' });
-    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
     mockPrisma.potluckSignup.findUnique.mockResolvedValue({
       id: 'ps-1',
       slotId: 'slot-1',
       rsvpId: 'rsvp-1',
       dishName: 'Salad',
       servings: 3,
+      slot: { id: 'slot-1', eventId: 'evt-1' },
     });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
     mockPrisma.potluckSignup.delete.mockResolvedValue({ id: 'ps-1' });
     mockPrisma.potluckSlot.update.mockResolvedValue({ id: 'slot-1' });
 
     const { potluckRouter } = await import('~/server/routers/potluck.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(potluckRouter)({ session: userSession });
-    await caller.cancelSignup({ slotId: 'slot-1' });
+    await caller.cancelSignup({ signupId: 'ps-1' });
 
     // FPP-50 review: cancel + counter decrement + audit write are
     // wrapped in a $transaction so the row is atomic with the delete.
