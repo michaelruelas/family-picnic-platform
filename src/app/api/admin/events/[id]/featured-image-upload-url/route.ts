@@ -38,6 +38,10 @@ function s3Config(): S3Config {
       region: process.env.AWS_REGION || 'us-east-1',
       endpoint,
       forcePathStyle: !!endpoint,
+      // FPP-69: see src/lib/s3.ts — opt out of flexible checksums so
+      // S3-compat providers (SeaweedFS, MinIO, R2) don't bounce the
+      // x-amz-checksum-crc32 header on PUT.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,

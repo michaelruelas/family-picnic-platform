@@ -15,6 +15,13 @@ const s3Client = new S3Client({
   // AWS S3 defaults to virtual-hosted style; the SDK auto-detects for
   // AWS but we set it explicitly when a custom endpoint is supplied.
   forcePathStyle: !!process.env.S3_ENDPOINT,
+  // FPP-69: AWS SDK v3 ships "flexible checksums" by default and tacks
+  // x-amz-checksum-crc32 + x-amz-sdk-checksum-algorithm=CRC32 onto every
+  // PUT. SeaweedFS (and most S3-compat providers pre-2024) reject
+  // unknown checksum headers with 4xx. WHEN_REQUIRED matches the
+  // legacy pre-feature behavior and only adds checksums when the
+  // operation explicitly requires them.
+  requestChecksumCalculation: 'WHEN_REQUIRED',
   credentials: process.env.AWS_ACCESS_KEY_ID
     ? {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
