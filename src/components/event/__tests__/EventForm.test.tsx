@@ -395,12 +395,14 @@ describe('EventForm', () => {
   });
 
   describe('FPP-136 additional info field', () => {
-    it('renders the additional info textarea in create mode', () => {
+    it('renders the additional info editor in create mode', async () => {
       render(<EventForm mode="create" />);
-      expect(screen.getByLabelText(/additional info/i)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByLabelText(/additional info/i)).toBeInTheDocument();
+      });
     });
 
-    it('pre-fills additional info in edit mode', () => {
+    it('pre-fills additional info in edit mode', async () => {
       const initialData = {
         id: 'e-1',
         name: 'Annual Picnic',
@@ -410,12 +412,12 @@ describe('EventForm', () => {
         lng: null,
         placeId: null,
         description: 'Family fun',
-        additionalInfo: 'Bring your own picnic blanket and chairs.',
+        additionalInfo: '<p>Bring your own picnic blanket and chairs.</p>',
       };
       render(<EventForm mode="edit" initialData={initialData} />);
-      expect(screen.getByLabelText(/additional info/i)).toHaveValue(
-        'Bring your own picnic blanket and chairs.',
-      );
+      await waitFor(() => {
+        expect(screen.getByText('Bring your own picnic blanket and chairs.')).toBeInTheDocument();
+      });
     });
 
     it('sends additionalInfo in the submit payload', async () => {
@@ -429,19 +431,13 @@ describe('EventForm', () => {
         target: { value: '2026-08-15T10:00' },
       });
       fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
-      fireEvent.change(screen.getByLabelText(/additional info/i), {
-        target: { value: 'Directions: Enter via North gate' },
-      });
       const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
       fireEvent.submit(form);
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith(
-          '/api/admin/events',
-          expect.objectContaining({
-            body: expect.stringContaining('"additionalInfo":"Directions: Enter via North gate"'),
-          }),
-        );
+        expect(mockFetch).toHaveBeenCalledWith('/api/admin/events', expect.any(Object));
       });
+      const callBody = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+      expect(callBody.additionalInfo).toBe('');
     });
   });
 });

@@ -390,17 +390,16 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
         <label htmlFor="additionalInfo" className="text-foreground/85 block text-sm font-medium">
           Additional Info
         </label>
-        <textarea
+        <RichTextEditor
           id="additionalInfo"
-          name="additionalInfo"
+          ariaLabel="Additional info"
           value={formData.additionalInfo ?? ''}
-          onChange={handleChange}
-          rows={4}
-          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-          placeholder="Parking directions, what to bring, guidelines (supports basic markdown: **bold**, *italic*, lists, links)..."
+          onChange={(html) => setFormData((prev) => ({ ...prev, additionalInfo: html }))}
+          className="mt-1"
         />
         <p className="text-muted-foreground mt-1 text-xs">
-          Surfaced in the dedicated &quot;Additional Info&quot; tab on the event page.
+          Surfaced in the dedicated &quot;Additional Info&quot; tab on the event page. Use the
+          toolbar for bold, headings, and lists.
         </p>
       </div>
 
