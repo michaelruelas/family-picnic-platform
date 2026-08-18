@@ -3,9 +3,9 @@ import { notFound } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { EventStickyBar } from '~/components/event/EventStickyBar';
-import EventSubNav from '~/components/event/EventSubNav';
+import EventNav from '~/components/event/EventNav';
 import { BreatheSection } from '~/components/ui/BreatheSection';
-import { EventTabs } from '~/components/event/EventTabs';
+import { EventSectionTabs } from '~/components/event/EventSectionTabs';
 import { EVENT_TAB_KEYS, type EventTabKey } from '~/lib/event-tabs';
 import { EventHeaderSection } from '~/components/event/EventHeaderSection';
 import { formatItineraryTime } from '~/lib/itinerary-time';
@@ -28,7 +28,7 @@ function resolveInitialTab(tabParam: string | string[] | undefined): EventTabKey
  * FPP-46: tabbed event overview page.
  *
  * Renders the hero, route-level sub-nav (Overview / Potluck / Photos),
- * then delegates the within-page sections to `<EventTabs>`. The tabbed
+ * then delegates the within-page sections to `<EventSectionTabs>`. The tabbed
  * shell swaps between `Tabs` (desktop, with keyboard nav and URL deep
  * links) and `EventAnchorNav` (mobile, scroll anchors) under the hood.
  *
@@ -276,7 +276,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
       </BreatheSection>
 
       <div className="mx-auto max-w-6xl px-5 pt-6 md:pt-8">
-        <EventSubNav
+        <EventNav
           eventId={event.id}
           dishCount={totalPotluckDishes}
           photoCount={totalPhotos}
@@ -285,7 +285,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
       </div>
 
       <div className="mx-auto max-w-6xl px-5 pt-6 md:pt-10">
-        <EventTabs
+        <EventSectionTabs
           eventId={event.id}
           initialTab={initialTab}
           headerPanel={

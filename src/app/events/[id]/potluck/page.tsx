@@ -7,7 +7,7 @@ import { RSVPStatus, EventStatus } from '~/lib/generated/enums';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 import MySlotsSummary from '~/components/potluck/MySlotsSummary';
 import SlotList, { type EventSlot } from '~/components/potluck/SlotList';
-import EventSubNav from '~/components/event/EventSubNav';
+import EventNav from '~/components/event/EventNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -120,7 +120,7 @@ export default async function EventPotluckPage({ params }: PageProps) {
 
       <div className="mx-auto max-w-4xl px-5">
         <div className="mt-6">
-          <EventSubNav
+          <EventNav
             eventId={event.id}
             dishCount={dishCount}
             photoCount={eventPhotos}

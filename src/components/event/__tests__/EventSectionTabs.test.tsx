@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { EventTabs } from '../EventTabs';
+import { EventSectionTabs } from '../EventSectionTabs';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
@@ -8,10 +8,10 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-describe('EventTabs (FPP-135)', () => {
+describe('EventSectionTabs (FPP-135)', () => {
   it('renders Overview, Itinerary, and Additional Info tabs without Gallery tab', () => {
     render(
-      <EventTabs
+      <EventSectionTabs
         eventId="event-123"
         initialTab="header"
         headerPanel={<div>Header Content</div>}

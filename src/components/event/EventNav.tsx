@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-interface EventSubNavProps {
+interface EventNavProps {
   eventId: string;
   dishCount: number;
   photoCount?: number;
@@ -8,13 +8,13 @@ interface EventSubNavProps {
 }
 
 interface Tab {
-  key: 'overview' | 'potluck';
+  key: 'overview' | 'potluck' | 'photos';
   label: string;
   href: string;
   count: number;
 }
 
-export default function EventSubNav({ eventId, dishCount, active }: EventSubNavProps) {
+export default function EventNav({ eventId, dishCount, photoCount, active }: EventNavProps) {
   const tabs: Tab[] = [
     {
       key: 'overview',
@@ -27,6 +27,12 @@ export default function EventSubNav({ eventId, dishCount, active }: EventSubNavP
       label: 'Potluck',
       href: `/events/${eventId}/potluck`,
       count: dishCount,
+    },
+    {
+      key: 'photos',
+      label: 'Gallery',
+      href: `/events/${eventId}/photos`,
+      count: photoCount ?? 0,
     },
   ];
 

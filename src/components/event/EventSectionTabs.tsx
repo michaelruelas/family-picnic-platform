@@ -14,7 +14,7 @@ function isEventTabKey(value: string | null): value is EventTabKey {
   return value !== null && (EVENT_TAB_KEYS as readonly string[]).includes(value);
 }
 
-interface EventTabsProps {
+interface EventSectionTabsProps {
   eventId: string;
   /** Initial tab derived server-side from `?tab=`. */
   initialTab: EventTabKey;
@@ -43,21 +43,21 @@ interface EventTabsProps {
  *   the sections like a long landing page. Anchor clicks update the
  *   URL hash so the back button + refresh preserve the section.
  *
- * The `useSearchParams` call lives in `EventTabsContent` and is wrapped
+ * The `useSearchParams` call lives in `EventSectionTabsContent` and is wrapped
  * in `<Suspense>` so Next.js can statically prerender the surrounding
  * page shell without blocking on the hook during partial prerendering.
  * Until the hook resolves, the `initialTab` value (read from the server
  * on the same render) is used as the active tab.
  */
-export function EventTabs(props: EventTabsProps) {
+export function EventSectionTabs(props: EventSectionTabsProps) {
   return (
-    <Suspense fallback={<EventTabsFallback {...props} />}>
-      <EventTabsContent {...props} />
+    <Suspense fallback={<EventSectionTabsFallback {...props} />}>
+      <EventSectionTabsContent {...props} />
     </Suspense>
   );
 }
 
-function EventTabsContent({
+function EventSectionTabsContent({
   initialTab,
   headerPanel,
   itineraryItems,
@@ -67,7 +67,7 @@ function EventTabsContent({
   eventName,
   userId,
   userRole,
-}: EventTabsProps) {
+}: EventSectionTabsProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -157,7 +157,7 @@ function EventTabsContent({
  * depend on the URL — guests who land on a cached render still see
  * all sections stacked, and the client takes over after hydrate.
  */
-function EventTabsFallback({
+function EventSectionTabsFallback({
   initialTab,
   headerPanel,
   itineraryItems,
@@ -167,7 +167,7 @@ function EventTabsFallback({
   eventName,
   userId,
   userRole,
-}: EventTabsProps) {
+}: EventSectionTabsProps) {
   return (
     <div className="space-y-12">
       <div className="border-border bg-card/60 inline-flex flex-wrap items-center gap-1 rounded-sm border p-1 text-sm opacity-60 shadow-sm backdrop-blur">

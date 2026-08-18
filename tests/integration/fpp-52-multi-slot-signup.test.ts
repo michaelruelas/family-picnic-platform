@@ -10,7 +10,7 @@ const rsvpSheetPath = path.join(process.cwd(), 'src/components/event/RsvpBottomS
 const potluckRouterPath = path.join(process.cwd(), 'src/server/routers/potluck.router.ts');
 const usePotluckHookPath = path.join(process.cwd(), 'src/hooks/usePotluck.ts');
 const potluckEditorPath = path.join(process.cwd(), 'src/components/event/PotluckEditor.tsx');
-const eventSubNavPath = path.join(process.cwd(), 'src/components/event/EventSubNav.tsx');
+const eventNavPath = path.join(process.cwd(), 'src/components/event/EventNav.tsx');
 
 describe('FPP-27 — Slot list view grouped by category', () => {
   it('has a route at /events/[id]/potluck', async () => {
@@ -136,10 +136,10 @@ describe('FPP-21 — Potluck editing moved into the RSVP bottom sheet (Dishes ta
 
   it('reaches the potluck page from the event detail subnav (FPP-139)', async () => {
     // FPP-139: potluck carousel preview was removed from EventHeaderSection;
-    // guests jump to the standalone potluck page via the route-level EventSubNav.
-    const subNavContent = await fs.readFile(eventSubNavPath, 'utf-8');
-    expect(subNavContent).toContain('/potluck');
-    expect(subNavContent).toContain('Potluck');
+    // guests jump to the standalone potluck page via the route-level EventNav.
+    const navContent = await fs.readFile(eventNavPath, 'utf-8');
+    expect(navContent).toContain('/potluck');
+    expect(navContent).toContain('Potluck');
   });
 });
 

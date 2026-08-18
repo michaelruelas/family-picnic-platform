@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import PhotoCard from '~/components/PhotoCard';
 import UploadButton from '~/components/photos/UploadButton';
-import EventSubNav from '~/components/event/EventSubNav';
+import EventNav from '~/components/event/EventNav';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 
 export const dynamic = 'force-dynamic';
@@ -84,7 +84,7 @@ export default async function EventPhotosPage({ params }: PageProps) {
 
       <div className="mx-auto max-w-4xl px-5">
         <div className="mt-6">
-          <EventSubNav
+          <EventNav
             eventId={event.id}
             dishCount={dishCount}
             photoCount={photoCount}
