@@ -83,6 +83,36 @@ export default function NavBarClient() {
               </NavLink>
             ))}
           </div>
+          {status === 'loading' ? (
+            <span className="bg-secondary text-muted-foreground rounded-sm px-4 py-2 text-sm font-medium opacity-50">
+              ...
+            </span>
+          ) : session ? (
+            <div className="flex items-center gap-1.5">
+              {authenticatedNavItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
+                >
+                  {item.label}
+                </Link>
+              ))}
+              <button
+                onClick={() => signOut({ callbackUrl: '/' })}
+                className="border-border bg-card text-foreground hover:border-foreground press rounded-sm border px-4 py-2 text-sm font-medium transition-all"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="bg-foreground text-background hover:bg-foreground/90 press rounded-sm px-5 py-2 text-sm font-semibold transition-all"
+            >
+              Sign In
+            </Link>
+          )}
           <button
             type="button"
             onClick={toggleTheme}
@@ -124,36 +154,6 @@ export default function NavBarClient() {
               </svg>
             )}
           </button>
-          {status === 'loading' ? (
-            <span className="bg-secondary text-muted-foreground rounded-sm px-4 py-2 text-sm font-medium opacity-50">
-              ...
-            </span>
-          ) : session ? (
-            <div className="flex items-center gap-1.5">
-              {authenticatedNavItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-muted-foreground hover:text-foreground hidden rounded-sm px-3 py-2 text-sm font-medium transition-colors md:inline"
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <button
-                onClick={() => signOut({ callbackUrl: '/' })}
-                className="border-border bg-card text-foreground hover:border-foreground press rounded-sm border px-4 py-2 text-sm font-medium transition-all"
-              >
-                Sign Out
-              </button>
-            </div>
-          ) : (
-            <Link
-              href="/login"
-              className="bg-foreground text-background hover:bg-foreground/90 press rounded-sm px-5 py-2 text-sm font-semibold transition-all"
-            >
-              Sign In
-            </Link>
-          )}
 
           {/* Mobile hamburger menu button */}
           <button
