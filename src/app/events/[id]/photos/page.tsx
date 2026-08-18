@@ -2,8 +2,8 @@ import { prisma } from '~/lib/prisma';
 import { notFound } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
-import PhotoCard from '~/components/PhotoCard';
 import UploadButton from '~/components/photos/UploadButton';
+import PhotoGallery from '~/components/photos/PhotoGallery';
 import EventNav from '~/components/event/EventNav';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 
@@ -111,20 +111,21 @@ export default async function EventPhotosPage({ params }: PageProps) {
             </p>
           </div>
         ) : (
-          <div
-            className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3"
-            data-testid="event-photo-grid"
-          >
-            {event.photos.map((photo) => (
-              <PhotoCard
-                key={photo.id}
-                photo={photo}
-                eventName={event.name}
-                userId={userId}
-                userRole={userRole}
-              />
-            ))}
-          </div>
+          <PhotoGallery
+            photos={event.photos.map((p) => ({
+              id: p.id,
+              caption: p.caption,
+              url: p.url,
+              thumbnailUrl: p.thumbnailUrl,
+              createdAt: p.createdAt,
+              uploadedByUserId: p.uploadedByUserId,
+              uploadedBy: p.uploadedBy,
+              reactions: p.reactions,
+            }))}
+            eventName={event.name}
+            userId={userId}
+            userRole={userRole}
+          />
         )}
       </div>
     </main>

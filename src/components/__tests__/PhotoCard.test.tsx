@@ -113,4 +113,20 @@ describe('PhotoCard', () => {
     fireEvent.click(screen.getByText('Cancel'));
     expect(screen.queryByText(/Delete this photo\?/)).not.toBeInTheDocument();
   });
+
+  it('calls onOpen when image is clicked', () => {
+    const onOpen = vi.fn();
+    render(<PhotoCard photo={basePhoto} eventName="Picnic" onOpen={onOpen} />);
+    fireEvent.click(screen.getByRole('button', { name: /Test caption/i }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to event name in open-button label when no caption', () => {
+    const onOpen = vi.fn();
+    render(
+      <PhotoCard photo={{ ...basePhoto, caption: null }} eventName="Picnic" onOpen={onOpen} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /View Picnic photo/i }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
 });

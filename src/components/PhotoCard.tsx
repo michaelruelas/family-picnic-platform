@@ -21,9 +21,10 @@ interface PhotoCardProps {
   eventName: string;
   userId?: string;
   userRole?: string;
+  onOpen?: () => void;
 }
 
-export default function PhotoCard({ photo, eventName, userId, userRole }: PhotoCardProps) {
+export default function PhotoCard({ photo, eventName, userId, userRole, onOpen }: PhotoCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -52,11 +53,17 @@ export default function PhotoCard({ photo, eventName, userId, userRole }: PhotoC
 
   return (
     <div className="group bg-secondary relative aspect-square overflow-hidden rounded-sm">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={photo.caption || `View ${eventName} photo`}
+        className="absolute inset-0 z-0 cursor-zoom-in"
+      />
       <Image
         src={photo.thumbnailUrl || photo.url}
         alt={photo.caption || `${eventName} photo`}
         fill
-        className="object-cover transition-transform duration-200 group-hover:scale-105"
+        className="pointer-events-none object-cover transition-transform duration-200 group-hover:scale-105"
         sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
       />
       {photo.caption && (

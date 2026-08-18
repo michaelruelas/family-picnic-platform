@@ -535,8 +535,7 @@ describe('useUserProfileMutation', () => {
     renderHook(() => useUserProfileMutation());
     const opts = (
       mockQueries.user.updatePreferences.useMutation.mock.calls[0] as unknown as
-        | Array<{ onSuccess: () => Promise<void> }>
-        | undefined
+        Array<{ onSuccess: () => Promise<void> }> | undefined
     )?.[0];
     expect(opts).toBeDefined();
     await opts!.onSuccess();
