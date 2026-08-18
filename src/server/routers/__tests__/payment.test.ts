@@ -34,6 +34,7 @@ const mockCreatePaymentIntent = vi.fn();
 const mockCreateRefund = vi.fn();
 const mockGetPublishableKey = vi.fn();
 const mockIsStripeConfigured = vi.fn();
+const mockRetrievePaymentIntent = vi.fn();
 
 vi.mock('~/lib/stripe', async (importOriginal) => {
   const actual = await importOriginal<typeof import('~/lib/stripe')>();
@@ -43,6 +44,9 @@ vi.mock('~/lib/stripe', async (importOriginal) => {
     createRefund: (...args: unknown[]) => mockCreateRefund(...args),
     getPublishableKey: () => mockGetPublishableKey(),
     isConfigured: () => mockIsStripeConfigured(),
+    getStripeClient: () => ({
+      paymentIntents: { retrieve: (...args: unknown[]) => mockRetrievePaymentIntent(...args) },
+    }),
   };
 });
 
@@ -134,6 +138,13 @@ beforeEach(() => {
   vi.stubEnv('NEXTAUTH_URL', 'http://localhost:3000');
   mockIsStripeConfigured.mockReturnValue(true);
   mockGetPublishableKey.mockReturnValue('pk_test_abc');
+  // Default: no terminal drift — the call site has to opt in by
+  // overriding this with a `mockResolvedValueOnce` for the specific
+  // intent it wants to fake.
+  mockRetrievePaymentIntent.mockResolvedValue({
+    id: 'pi_default',
+    status: 'requires_payment_method',
+  });
   mockCreatePaymentIntent.mockResolvedValue({
     paymentIntentId: 'pi_1',
     clientSecret: 'pi_1_secret_xyz',
@@ -318,6 +329,194 @@ describe('payment.createPaymentIntent', () => {
     expect(mockPrisma.registration.create).not.toHaveBeenCalled();
     expect(mockCreatePaymentIntent).toHaveBeenCalledWith(
       expect.objectContaining({ idempotencyKey: 'ch-1' }),
+    );
+  });
+
+  it('syncs an active charge whose Stripe intent has moved to SUCCEEDED before reusing it', async () => {
+    // Repro of the production bug: the user paid via the Stripe
+    // dashboard (out of band) so the intent is SUCCEEDED but our local
+    // charge is still REQUIRES_PAYMENT_METHOD. Without the pre-flight
+    // sync we'd hand `<Elements>` a terminal-state client_secret and
+    // Stripe.js would throw "This PaymentIntent is in a terminal
+    // state and cannot be used to initialize Elements".
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      name: 'Picnic',
+      status: 'PUBLISHED',
+      registrationFeeCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'maria@example.com',
+      name: 'Maria',
+      householdId: 'h-1',
+    });
+    // First read (pre-flight) sees the stale active charge.
+    mockPrisma.registration.findUnique.mockResolvedValueOnce({
+      id: 'reg-stale',
+      status: 'PENDING',
+      charges: [
+        {
+          id: 'ch-stale',
+          stripePaymentIntentId: 'pi_already_paid',
+          amountCents: 2500,
+          currency: 'usd',
+          status: 'REQUIRES_PAYMENT_METHOD',
+        },
+      ],
+    });
+    mockRetrievePaymentIntent.mockResolvedValueOnce({
+      id: 'pi_already_paid',
+      status: 'succeeded',
+    });
+    // Second read (inside the transaction) reflects the sync: the
+    // stale charge has been flipped to SUCCEEDED, so the create-new
+    // branch fires instead.
+    mockPrisma.registration.findUnique.mockResolvedValueOnce({
+      id: 'reg-stale',
+      status: 'PENDING',
+      charges: [
+        {
+          id: 'ch-stale',
+          stripePaymentIntentId: 'pi_already_paid',
+          amountCents: 2500,
+          currency: 'usd',
+          status: 'SUCCEEDED',
+        },
+      ],
+    });
+    mockPrisma.charge.create.mockResolvedValue({
+      id: 'ch-fresh',
+      amountCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.charge.update.mockResolvedValue({
+      id: 'ch-fresh',
+      status: 'REQUIRES_PAYMENT_METHOD',
+    });
+
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    await caller.createPaymentIntent({ eventId: 'evt-1' });
+
+    // Stale charge was flipped to SUCCEEDED locally so the next caller
+    // can't reuse it.
+    expect(mockPrisma.charge.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'ch-stale' },
+        data: expect.objectContaining({ status: 'SUCCEEDED' }),
+      }),
+    );
+    // ...and the caller gets a fresh charge/intent pair, not the
+    // cached terminal-state client_secret.
+    expect(mockPrisma.charge.create).toHaveBeenCalledTimes(1);
+    expect(mockCreatePaymentIntent).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: 'ch-fresh' }),
+    );
+    expect(mockRetrievePaymentIntent).toHaveBeenCalledWith('pi_already_paid');
+  });
+
+  it('skips the sync when the active intent is non-terminal', async () => {
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      name: 'Picnic',
+      status: 'PUBLISHED',
+      registrationFeeCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'maria@example.com',
+      name: 'Maria',
+      householdId: 'h-1',
+    });
+    mockPrisma.registration.findUnique.mockResolvedValue({
+      id: 'reg-2',
+      status: 'PENDING',
+      charges: [
+        {
+          id: 'ch-active',
+          stripePaymentIntentId: 'pi_still_waiting',
+          amountCents: 2500,
+          currency: 'usd',
+          status: 'REQUIRES_PAYMENT_METHOD',
+        },
+      ],
+    });
+    mockRetrievePaymentIntent.mockResolvedValueOnce({
+      id: 'pi_still_waiting',
+      status: 'requires_payment_method',
+    });
+    mockPrisma.charge.update.mockResolvedValue({
+      id: 'ch-active',
+      status: 'REQUIRES_PAYMENT_METHOD',
+    });
+
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    await caller.createPaymentIntent({ eventId: 'evt-1' });
+
+    // We re-touched Stripe to ask, but the local row is unchanged and
+    // the existing charge is reused — no fresh Stripe intent created.
+    expect(mockRetrievePaymentIntent).toHaveBeenCalledWith('pi_still_waiting');
+    expect(mockPrisma.charge.create).not.toHaveBeenCalled();
+    expect(mockCreatePaymentIntent).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: 'ch-active' }),
+    );
+  });
+
+  it('swallows Stripe retrieve failures so a Stripe outage cannot block checkout', async () => {
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      name: 'Picnic',
+      status: 'PUBLISHED',
+      registrationFeeCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'maria@example.com',
+      name: 'Maria',
+      householdId: 'h-1',
+    });
+    mockPrisma.registration.findUnique.mockResolvedValue({
+      id: 'reg-outage',
+      status: 'PENDING',
+      charges: [
+        {
+          id: 'ch-outage',
+          stripePaymentIntentId: 'pi_unknown',
+          amountCents: 2500,
+          currency: 'usd',
+          status: 'REQUIRES_PAYMENT_METHOD',
+        },
+      ],
+    });
+    mockRetrievePaymentIntent.mockRejectedValueOnce(new Error('stripe api is down'));
+    mockPrisma.charge.update.mockResolvedValue({
+      id: 'ch-outage',
+      status: 'REQUIRES_PAYMENT_METHOD',
+    });
+
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+
+    // The procedure still completes — falling back to the local
+    // optimistic view keeps the user unblocked during a Stripe outage.
+    // The audit log gets a `payment.intentReconcileFailed` row so the
+    // ops team can spot the drift on the next deploy.
+    const { writeAuditLog } = await import('~/lib/audit');
+    await caller.createPaymentIntent({ eventId: 'evt-1' });
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'payment.intentReconcileFailed' }),
+    );
+    expect(mockPrisma.charge.create).not.toHaveBeenCalled();
+    expect(mockCreatePaymentIntent).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: 'ch-outage' }),
     );
   });
 

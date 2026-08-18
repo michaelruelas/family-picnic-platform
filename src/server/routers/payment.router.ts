@@ -12,6 +12,7 @@ import { writeAuditLog } from '~/lib/audit';
 import {
   createPaymentIntent,
   getPublishableKey,
+  getStripeClient,
   isConfigured as stripeConfigured,
 } from '~/lib/stripe';
 import { createPaymentIntentInputSchema, payLaterInputSchema } from '~/lib/schemas/payment';
@@ -40,6 +41,43 @@ const ACTIVE_CHARGE_STATUSES: ChargeStatus[] = [
   ChargeStatus.PROCESSING,
   ChargeStatus.REQUIRES_CAPTURE,
 ];
+
+/**
+ * Stripe considers `succeeded` and `canceled` terminal; `requires_payment_method`
+ * after Stripe-side cancellation also falls into this bucket. When we hand a
+ * PaymentIntent in one of these states back to `<Elements>` it throws
+ * "This PaymentIntent is in a terminal state and cannot be used to
+ * initialize Elements".
+ */
+function isTerminalIntentStatus(status: string | null | undefined): boolean {
+  return status === 'succeeded' || status === 'canceled';
+}
+
+/**
+ * Reconcile a local Charge whose Stripe side has moved to a terminal
+ * state. Stripe's idempotency cache returns the original intent for 24
+ * hours even after it has since been paid or canceled, so blindly
+ * returning the cached client_secret mounts `<Elements>` against a
+ * terminal intent and Stripe.js throws. We can't recover the intent,
+ * but we can sync the local row to Stripe's truth so the next caller
+ * takes the "create a fresh charge" branch.
+ */
+async function syncChargeToTerminalState(
+  prismaClient: typeof prisma,
+  chargeId: string,
+  stripeStatus: string,
+  lastErrorCode: string | null,
+  lastErrorMessage: string | null,
+): Promise<void> {
+  await prismaClient.charge.update({
+    where: { id: chargeId },
+    data: {
+      status: mapStripeIntentStatusToChargeStatus(stripeStatus),
+      lastErrorCode,
+      lastErrorMessage,
+    },
+  });
+}
 
 export const paymentRouter = router({
   /**
@@ -246,6 +284,37 @@ async function createPaymentIntentInner(
   // create a fresh Charge + PaymentIntent. Postgres aborts the loser
   // with P2034; the outer withSerializableRetry then re-runs the
   // whole body.
+  //
+  // Pre-flight: any active charge with a Stripe-side terminal intent
+  // (succeeded / canceled via dashboard, webhook failure, or out-of-
+  // band refund) must be synced *before* the transaction so the
+  // `existing && activeCharge` check below skips it. We deliberately
+  // run this outside the Serializable tx — calling Stripe holds an
+  // HTTP request, not a Postgres row lock — and only touch rows that
+  // are already considered "active" in our DB.
+  const registrationPre = await prismaClient.registration.findUnique({
+    where: { eventId_userId: { eventId: event.id, userId: user.id } },
+    select: {
+      id: true,
+      charges: {
+        where: { status: { in: ACTIVE_CHARGE_STATUSES } },
+        select: {
+          id: true,
+          stripePaymentIntentId: true,
+        },
+      },
+    },
+  });
+  if (registrationPre) {
+    await reconcileStaleChargesWithStripe(
+      prismaClient,
+      registrationPre.charges,
+      user.id,
+      event.id,
+      getStripeClient,
+    );
+  }
+
   const { registration, charge } = await prismaClient.$transaction(
     async (tx) => findOrCreateActiveCharge(tx, event.id, user, fee, event.currency),
     { isolationLevel: 'Serializable' },
@@ -416,4 +485,68 @@ async function findOrCreateActiveCharge(
       currency: chargeRow.currency,
     },
   };
+}
+
+/**
+ * Walks every "active" charge on a registration and asks Stripe whether
+ * the underlying PaymentIntent has since moved to a terminal state.
+ * Out-of-band payments (Stripe dashboard, terminal on the user's side
+ * with a delayed webhook) or canceled-via-dashboard intents land in
+ * our DB as `REQUIRES_PAYMENT_METHOD` until the webhook catches up,
+ * but Stripe will still hand us a cached client_secret for them.
+ * Mounting `<Elements>` against that secret is the production cause of
+ * "This PaymentIntent is in a terminal state and cannot be used to
+ * initialize Elements".
+ *
+ * Each stale charge is updated in place so the transaction below sees
+ * a clean slate and routes the caller through the "create a fresh
+ * charge" branch. We never *use* a stale client_secret here — this
+ * helper only flips the local row to its terminal status and returns.
+ */
+async function reconcileStaleChargesWithStripe(
+  prismaClient: typeof prisma,
+  activeCharges: Array<{ id: string; stripePaymentIntentId: string }>,
+  userId: string,
+  eventId: string,
+  getClient: typeof getStripeClient,
+): Promise<void> {
+  if (activeCharges.length === 0) return;
+  const stripe = getClient();
+  for (const charge of activeCharges) {
+    const piid = charge.stripePaymentIntentId;
+    // Skip the placeholder we persist until Stripe hands us a real
+    // id — there's nothing to retrieve on Stripe's side yet, and the
+    // audit log is the source of truth for the eventual replace.
+    if (!piid || !piid.startsWith('pi_')) continue;
+    try {
+      const intent = await stripe.paymentIntents.retrieve(piid);
+      if (isTerminalIntentStatus(intent.status)) {
+        await syncChargeToTerminalState(
+          prismaClient,
+          charge.id,
+          intent.status,
+          intent.last_payment_error?.code ?? null,
+          intent.last_payment_error?.message ?? null,
+        );
+      }
+    } catch (err) {
+      // Don't fail the caller if Stripe is unreachable — the
+      // consistent read in findOrCreateActiveCharge will surface the
+      // stale charge, and the resulting clientSecret will at worst
+      // look identical to the previous one (Stripe idempotency
+      // cache) so the user sees the same Stripe Element they had
+      // before. Surface the error in the audit log so operators
+      // can spot the drift on the next deploy.
+      await writeAuditLog({
+        userId,
+        eventId,
+        action: 'payment.intentReconcileFailed',
+        newValue: {
+          chargeId: charge.id,
+          paymentIntentId: piid,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      });
+    }
+  }
 }
