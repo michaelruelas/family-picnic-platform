@@ -15,7 +15,7 @@ interface UsePotluckSlotsOptions {
 export function usePotluckSlots({ eventId }: UsePotluckSlotsOptions): UsePotluckSlotsReturn {
   const { data, isLoading, error, refetch } = trpc.potluck.listSlots.useQuery(
     { eventId },
-    { enabled: !!eventId },
+    { enabled: !!eventId, staleTime: 0 },
   );
 
   return {
@@ -41,7 +41,7 @@ export function usePotluckFoodSummary({
 }: UsePotluckFoodSummaryOptions): UsePotluckFoodSummaryReturn {
   const { data, isLoading, error } = trpc.potluck.getFoodSummary.useQuery(
     { eventId },
-    { enabled: !!eventId },
+    { enabled: !!eventId, staleTime: 0 },
   );
 
   return {
@@ -54,9 +54,13 @@ export function usePotluckFoodSummary({
 export function usePotluckSignupMutation() {
   const utils = trpc.useUtils();
 
-  const invalidateAll = () => {
-    void utils.potluck.listSlots.invalidate();
-    void utils.potluck.getMySignups.invalidate();
+  const invalidateAll = async () => {
+    await Promise.all([
+      utils.potluck.listSlots.invalidate(),
+      utils.potluck.getSlotsForEvent.invalidate(),
+      utils.potluck.getMySignups.invalidate(),
+      utils.potluck.getFoodSummary.invalidate(),
+    ]);
   };
 
   const signup = trpc.potluck.signup.useMutation({
@@ -126,7 +130,7 @@ export function useMyPotluckSignups({
 }: UseMyPotluckSignupsOptions): UseMyPotluckSignupsReturn {
   const { data, isLoading, error, refetch } = trpc.potluck.getMySignups.useQuery(
     { eventId },
-    { enabled: enabled && !!eventId },
+    { enabled: enabled && !!eventId, staleTime: 0 },
   );
 
   return {
