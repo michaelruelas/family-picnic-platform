@@ -40,6 +40,10 @@ vi.mock('~/hooks', () => ({
   }),
 }));
 
+vi.mock('../PotluckEditor', () => ({
+  default: () => <div data-testid="mock-potluck-editor">Potluck editor</div>,
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh, push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
@@ -210,6 +214,29 @@ describe('RsvpBottomSheet per-member attendance', () => {
       const lastCall = mockConfirm.mutateAsync.mock.calls.at(-1)?.[0];
       expect(lastCall?.memberAttendances).toHaveLength(2);
     });
+  });
+
+  it('moves directly to the Potluck tab after confirmation', async () => {
+    setRosterReady();
+    render(<RsvpBottomSheet {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId('rsvp-tab-potluck')).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByTestId('mock-potluck-editor')).toBeInTheDocument();
+      expect(screen.getByText(/your RSVP is saved/i)).toBeInTheDocument();
+    });
+  });
+
+  it('keeps waitlisted RSVPs on the Attendance tab', async () => {
+    mockConfirm.mutateAsync.mockResolvedValueOnce({ id: 'rsvp-1', isWaitlisted: true });
+    setRosterReady();
+    render(<RsvpBottomSheet {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+    await waitFor(() => {
+      expect(mockConfirm.mutateAsync).toHaveBeenCalled();
+    });
+    expect(screen.getByTestId('rsvp-tab-attendance')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByTestId('mock-potluck-editor')).not.toBeInTheDocument();
   });
 
   it('adds a household member and persists them', async () => {

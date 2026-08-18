@@ -87,7 +87,7 @@ describe('FPP-25 — My-slots summary + remove', () => {
   });
 });
 
-describe('FPP-21 — Potluck editing moved into the RSVP bottom sheet (Dishes tab)', () => {
+describe('FPP-21 — Potluck editing moved into the RSVP bottom sheet (Potluck tab)', () => {
   it('replaces the standalone Manage potluck link with Edit attendance & dishes on the RSVP card', async () => {
     const cardContent = await fs.readFile(rsvpCardPath, 'utf-8');
     expect(cardContent).not.toContain('Manage potluck dishes');
@@ -95,29 +95,29 @@ describe('FPP-21 — Potluck editing moved into the RSVP bottom sheet (Dishes ta
     expect(cardContent).toContain('dishes');
   });
 
-  it('renders Attendance and Dishes tabs in the RSVP bottom sheet', async () => {
+  it('renders Attendance and Potluck tabs in the RSVP bottom sheet', async () => {
     const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
     expect(sheetContent).toContain('Attendance');
-    expect(sheetContent).toContain('Dishes');
+    expect(sheetContent).toMatch(/>\s*Potluck\s*</);
     expect(sheetContent).toContain('rsvp-tab-attendance');
-    expect(sheetContent).toContain('rsvp-tab-dishes');
+    expect(sheetContent).toContain('rsvp-tab-potluck');
   });
 
-  it('embeds PotluckEditor in the Dishes tab when the RSVP is confirmed', async () => {
+  it('embeds PotluckEditor in the Potluck tab when the RSVP is confirmed', async () => {
     const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
     expect(sheetContent).toContain('PotluckEditor');
     expect(sheetContent).toContain("status === 'CONFIRMED'");
   });
 
-  it('shows an RSVP-first hint in the Dishes tab when the RSVP is not confirmed', async () => {
+  it('shows an RSVP-first hint in the Potluck tab when the RSVP is not confirmed', async () => {
     const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
     expect(sheetContent).toContain('RSVP first');
   });
 
-  it('supports the ?rsvpOpen=1#dishes deep link to open the sheet on the Dishes tab', async () => {
+  it('supports the ?rsvpOpen=1#potluck deep link to open the sheet on the Potluck tab', async () => {
     const sheetContent = await fs.readFile(rsvpSheetPath, 'utf-8');
     expect(sheetContent).toContain('rsvpOpen');
-    expect(sheetContent).toContain('#dishes');
+    expect(sheetContent).toContain('#potluck');
   });
 
   it('renders the standalone potluck page as read-only with a deep link to the editor', async () => {
@@ -150,7 +150,7 @@ describe('FPP-26/25 — Backed by the potluck router + hook', () => {
     expect(content).toContain('orderBy: { claimedAt:');
   });
 
-  it('exposes a getSlotsForEvent query used by the Dishes tab', async () => {
+  it('exposes a getSlotsForEvent query used by the Potluck tab', async () => {
     const content = await fs.readFile(potluckRouterPath, 'utf-8');
     expect(content).toContain('getSlotsForEvent');
   });

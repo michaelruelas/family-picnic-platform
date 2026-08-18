@@ -166,7 +166,7 @@ describe('Per-member RSVP attendance (FPP-30, FPP-29)', () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
       expect(content).not.toContain('/my-events/${result.id}/confirmation');
       expect(content).toContain('rsvp-success-banner');
-      expect(content).toContain("setActiveTab('dishes')");
+      expect(content).toContain("setActiveTab('potluck')");
     });
   });
 

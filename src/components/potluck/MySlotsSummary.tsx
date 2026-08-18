@@ -145,7 +145,7 @@ export default function MySlotsSummary({
         <p className="text-muted-foreground mt-4 text-xs">
           Manage your dishes from the{' '}
           <Link
-            href={`/events/${eventId}?rsvpOpen=1#dishes`}
+            href={`/events/${eventId}?rsvpOpen=1#potluck`}
             className="text-terracotta underline underline-offset-4"
           >
             event page
