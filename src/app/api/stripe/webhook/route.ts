@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
 
   try {
     switch (event.type) {
+      // ── PaymentIntent lifecycle (state-changing) ─────────────
       case 'payment_intent.succeeded':
         await handlePaymentIntentSucceeded(event.data.object as StripePaymentIntentLike, log);
         break;
@@ -79,6 +80,22 @@ export async function POST(request: NextRequest) {
       case 'payment_intent.canceled':
         await handlePaymentIntentFailed(event.data.object as StripePaymentIntentLike, log);
         break;
+
+      // ── PaymentIntent informational events ────────────────────
+      // Each of these is emitted alongside a state-changing sibling
+      // (succeeded / payment_failed / canceled). We never need to
+      // mutate DB state here — the sibling handler carries the
+      // change. We log at info so they show up in default logs
+      // (useful for debugging webhook latency and abandoned 3DS).
+      case 'payment_intent.created':
+      case 'payment_intent.processing':
+      case 'payment_intent.requires_action':
+      case 'payment_intent.amount_capturable_updated':
+      case 'payment_intent.partially_funded':
+        log.info({ type: event.type, eventId: event.id }, 'Informational payment_intent event');
+        break;
+
+      // ── Charge lifecycle (state-changing) ────────────────────
       case 'charge.refunded':
         await handleChargeRefunded(event.data.object as StripeChargeLike, log);
         break;
@@ -86,8 +103,27 @@ export async function POST(request: NextRequest) {
         // We only need charge updates when receipt URL becomes available.
         await handleChargeUpdated(event.data.object as StripeChargeLike);
         break;
+
+      // ── Charge informational events ──────────────────────────
+      // charge.succeeded is redundant with payment_intent.succeeded
+      // and would be dedup-skipped by the handler above. The
+      // manual-capture events (charge.captured, charge.failed) are
+      // unused in this app — payment_intent.payment_failed runs
+      // first for any failure and the dedup catches the rest.
+      case 'charge.succeeded':
+      case 'charge.captured':
+      case 'charge.failed':
+        log.info({ type: event.type, eventId: event.id }, 'Informational charge event');
+        break;
+
       default:
-        log.debug({ type: event.type, eventId: event.id }, 'Unhandled Stripe event type');
+        // Anything Stripe sends that we did not enumerate above.
+        // Log at info so an unknown event type is visible in
+        // default logs (no need to bump the log level to debug) —
+        // promote to a real handler once we know what to do with
+        // it. Cheap insurance against missing a new Stripe event
+        // type that turns out to matter.
+        log.info({ type: event.type, eventId: event.id }, 'Unhandled Stripe event type');
     }
   } catch (err) {
     // The Stripe event was already accepted (signature verified). Any
