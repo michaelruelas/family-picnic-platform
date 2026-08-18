@@ -298,6 +298,13 @@ spec:
         - protocol: TCP
           port: 8080
     - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: seaweedfs
+      ports:
+        - protocol: TCP
+          port: 8333
+    - to:
         - ipBlock:
             cidr: 0.0.0.0/0
             except:

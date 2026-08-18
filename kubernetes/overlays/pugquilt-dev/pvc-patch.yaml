@@ -33,3 +33,17 @@ spec:
   resources:
     requests:
       storage: 10Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: seaweedfs
+spec:
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi

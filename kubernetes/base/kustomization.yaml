@@ -11,6 +11,7 @@ resources:
   - nextjs.yaml
   - postgres.yaml
   - photoprism.yaml
+  - seaweedfs.yaml
   - configmap.yaml
   - ingressroute.yaml
   - ingress.yaml

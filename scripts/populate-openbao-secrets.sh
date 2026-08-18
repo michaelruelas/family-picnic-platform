@@ -164,6 +164,7 @@ echo "==> Reading existing secrets from ${SECRET_PREFIX}/* and ${ENV_DEV_OUTPUT}
 POSTGRES_JSON=$(bao_get_json "${SECRET_PREFIX}/postgres")
 NEXTJS_JSON=$(bao_get_json "${SECRET_PREFIX}/nextjs")
 PHOTOPRISM_JSON=$(bao_get_json "${SECRET_PREFIX}/photoprism")
+SEAWEEDFS_JSON=$(bao_get_json "${SECRET_PREFIX}/seaweedfs")
 
 # Track which values were freshly generated so we can summarize at the end.
 GENERATED=()
@@ -202,6 +203,45 @@ if [ -n "$(extract "$PHOTOPRISM_JSON" admin-password)" ] || [ -n "$(env_dev_get 
   PRESERVED+=("photoprism/admin-password")
 else
   GENERATED+=("photoprism/admin-password")
+fi
+
+# FPP-69: S3-compatible storage credentials. The access key is a
+# stable identifier (the bucket reader for the family-picnic bucket);
+# the secret key is a randomly generated 32-byte string. Both
+# SeaweedFS (for S3 auth) and the Next.js pod (for presigned URL
+# signing) read the same pair from OpenBao so rotation is a single
+# point of change.
+S3_ACCESS_KEY_ID=$(resolve \
+  "$(extract "$SEAWEEDFS_JSON" access-key-id)" \
+  "$(env_dev_get S3_ACCESS_KEY_ID)" \
+  "printf 'family-picnic-photos'")
+if [ -n "$(extract "$SEAWEEDFS_JSON" access-key-id)" ] || [ -n "$(env_dev_get S3_ACCESS_KEY_ID)" ]; then
+  PRESERVED+=("seaweedfs/access-key-id")
+else
+  GENERATED+=("seaweedfs/access-key-id")
+fi
+
+S3_SECRET_ACCESS_KEY=$(resolve \
+  "$(extract "$SEAWEEDFS_JSON" secret-access-key)" \
+  "$(env_dev_get S3_SECRET_ACCESS_KEY)" \
+  "gen_secret 32")
+if [ -n "$(extract "$SEAWEEDFS_JSON" secret-access-key)" ] || [ -n "$(env_dev_get S3_SECRET_ACCESS_KEY)" ]; then
+  PRESERVED+=("seaweedfs/secret-access-key")
+else
+  GENERATED+=("seaweedfs/secret-access-key")
+fi
+
+# Bucket name is a stable identifier, not a secret. It still lives in
+# OpenBao so the nextjs-secrets Secret can pick it up without an extra
+# configmap edit.
+S3_BUCKET_NAME=$(resolve \
+  "$(extract "$SEAWEEDFS_JSON" bucket-name)" \
+  "$(env_dev_get S3_BUCKET_NAME)" \
+  "printf 'family-picnic-photos'")
+if [ -n "$(extract "$SEAWEEDFS_JSON" bucket-name)" ] || [ -n "$(env_dev_get S3_BUCKET_NAME)" ]; then
+  PRESERVED+=("seaweedfs/bucket-name")
+else
+  GENERATED+=("seaweedfs/bucket-name")
 fi
 
 # External-service keys: never auto-generated.
@@ -350,6 +390,9 @@ if [ "$EXPORT_PATCH" = "true" ]; then
 PG_PASS=$PG_PASS
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 PHOTOPRISM_ADMIN_PASS=$PHOTOPRISM_ADMIN_PASS
+S3_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID
+S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY
+S3_BUCKET_NAME=$S3_BUCKET_NAME
 DATABASE_URL=$DATABASE_URL
 EOF
   chmod 600 "$LOCAL_OUTPUT"
@@ -415,12 +458,13 @@ STRIPE_API_KEY="${STRIPE_API_KEY}"
 NEXT_PUBLIC_POSTHOG_KEY="${NEXT_PUBLIC_POSTHOG_KEY}"
 NEXT_PUBLIC_POSTHOG_HOST="${NEXT_PUBLIC_POSTHOG_HOST}"
 
-# --- S3 (using photoprism via Next.js; no S3 in dev) ---
-S3_ENDPOINT=""
-S3_BUCKET="family-picnic-dev"
-S3_ACCESS_KEY=""
-S3_SECRET_KEY=""
-S3_PUBLIC_URL=""
+# --- S3 (SeaweedFS endpoint at i.foliapicnic.com) ---
+S3_ENDPOINT="https://i.${APP_DOMAIN}"
+S3_PUBLIC_URL="https://i.${APP_DOMAIN}"
+AWS_REGION="us-east-1"
+S3_BUCKET_NAME="${S3_BUCKET_NAME}"
+AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY_ID}"
+AWS_SECRET_ACCESS_KEY="${S3_SECRET_ACCESS_KEY}"
 
 # --- PhotoPrism ---
 PHOTOPRISM_URL="http://localhost:2342"
@@ -473,10 +517,18 @@ EOF
   print_patch_cmd "${SECRET_PREFIX}/photoprism" "admin-password=\"$PHOTOPRISM_ADMIN_PASS\""
 
   echo ""
+  echo "# 4. Patch SeaweedFS Secret:"
+  print_patch_cmd "${SECRET_PREFIX}/seaweedfs" \
+    "access-key-id=\"$S3_ACCESS_KEY_ID\"" \
+    "secret-access-key=\"$S3_SECRET_ACCESS_KEY\"" \
+    "bucket-name=\"$S3_BUCKET_NAME\""
+
+  echo ""
   echo "================================================================================"
   echo "# To sync and restart after running the patch commands above:"
   echo "kubectl annotate externalsecret -n family-picnic-${TARGET_ENV} --all force-sync=\$(date +%s) --overwrite"
   echo "kubectl rollout restart deployment/nextjs -n family-picnic-${TARGET_ENV}"
+  echo "kubectl rollout restart statefulset/seaweedfs -n family-picnic-${TARGET_ENV}"
   echo "================================================================================"
   exit 0
 fi
@@ -517,6 +569,13 @@ bao_exec kv put "${SECRET_PREFIX}/photoprism" \
   admin-password="$PHOTOPRISM_ADMIN_PASS" \
   >/dev/null
 
+echo "==> Writing ${SECRET_PREFIX}/seaweedfs"
+bao_exec kv put "${SECRET_PREFIX}/seaweedfs" \
+  access-key-id="$S3_ACCESS_KEY_ID" \
+  secret-access-key="$S3_SECRET_ACCESS_KEY" \
+  bucket-name="$S3_BUCKET_NAME" \
+  >/dev/null
+
 # --- save local copy ---------------------------------------------------------
 
 cat > "$LOCAL_OUTPUT" <<EOF
@@ -526,6 +585,9 @@ cat > "$LOCAL_OUTPUT" <<EOF
 PG_PASS=$PG_PASS
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 PHOTOPRISM_ADMIN_PASS=$PHOTOPRISM_ADMIN_PASS
+S3_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID
+S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY
+S3_BUCKET_NAME=$S3_BUCKET_NAME
 DATABASE_URL=$DATABASE_URL
 EOF
 chmod 600 "$LOCAL_OUTPUT"
@@ -593,12 +655,13 @@ STRIPE_API_KEY="${STRIPE_API_KEY}"
 NEXT_PUBLIC_POSTHOG_KEY="${NEXT_PUBLIC_POSTHOG_KEY}"
 NEXT_PUBLIC_POSTHOG_HOST="${NEXT_PUBLIC_POSTHOG_HOST}"
 
-# --- S3 (using photoprism via Next.js; no S3 in dev) ---
-S3_ENDPOINT=""
-S3_BUCKET="family-picnic-dev"
-S3_ACCESS_KEY=""
-S3_SECRET_KEY=""
-S3_PUBLIC_URL=""
+# --- S3 (SeaweedFS endpoint at i.foliapicnic.com) ---
+S3_ENDPOINT="https://i.${APP_DOMAIN}"
+S3_PUBLIC_URL="https://i.${APP_DOMAIN}"
+AWS_REGION="us-east-1"
+S3_BUCKET_NAME="${S3_BUCKET_NAME}"
+AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY_ID}"
+AWS_SECRET_ACCESS_KEY="${S3_SECRET_ACCESS_KEY}"
 
 # --- PhotoPrism ---
 PHOTOPRISM_URL="http://localhost:2342"
@@ -617,7 +680,7 @@ chmod 600 "$ENV_DEV_OUTPUT"
 # --- summary -----------------------------------------------------------------
 
 echo ""
-echo "==> All three OpenBao paths written under ${SECRET_PREFIX}"
+echo "==> All four OpenBao paths written under ${SECRET_PREFIX}"
 echo "==> Raw values: $LOCAL_OUTPUT (mode 0600)"
 echo "==> .env.dev:   $ENV_DEV_OUTPUT (mode 0600)"
 echo ""
@@ -641,6 +704,7 @@ echo "Next steps:"
 echo "  1. Forward cluster services to localhost:"
 echo "       kubectl port-forward svc/postgres 5432:5432 -n family-picnic-dev &"
 echo "       kubectl port-forward svc/photoprism 2342:8080 -n family-picnic-dev &"
+echo "       kubectl port-forward svc/seaweedfs 8333:8333 -n family-picnic-dev &"
 echo "  2. Force the ExternalSecret to refresh (or wait up to 1m):"
 echo "       kubectl annotate externalsecret -n family-picnic-dev --all force-sync=\$(date +%s)"
 echo "  3. Watch the pods come up:"

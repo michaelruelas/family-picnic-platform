@@ -12,6 +12,7 @@ kubernetes/
 │   ├── nextjs.yaml              # Next.js app: Deployment, Service, Ingress, HPA, PDB, NetworkPolicy
 │   ├── postgres.yaml            # PostgreSQL: StatefulSet, headless Service, PVC, Secret, PDB
 │   ├── photoprism.yaml          # PhotoPrism: Deployment, Service, 50TB PVC, Secret, PDB
+│   ├── seaweedfs.yaml           # SeaweedFS S3 gateway: StatefulSet, 5GB PVC, Job, NetworkPolicy
 │   ├── configmap.yaml           # Base environment variables (non-sensitive)
 │   └── ingressroute.yaml        # Traefik IngressRoute
 └── overlays/
@@ -20,6 +21,7 @@ kubernetes/
         ├── nextjs-patch.yaml        # Dev Next.js patches (1 replica, lower resources)
         ├── postgres-patch.yaml      # Dev PostgreSQL patches (1 replica)
         ├── photoprism-patch.yaml    # Dev PhotoPrism patches
+        ├── seaweedfs-patch.yaml     # Dev SeaweedFS patches (lower resources, pd-disabled PDB)
         ├── pvc-patch.yaml           # Dev PVC patches (local-path storage)
         ├── external-secrets.yaml    # Dev ExternalSecret → OpenBao paths under secret/family-picnic-dev/*
         └── patches/
@@ -33,6 +35,7 @@ kubernetes/
 - cert-manager for TLS certificates
 - StorageClass `gp3-encrypted` for encrypted volumes
 - StorageClass `standard-longhorn` for PhotoPrism 50TB volume
+- Traefik `IngressRoute` CRDs (the chart already installs them)
 
 ## Quick Start
 
@@ -142,6 +145,22 @@ Each component has a NetworkPolicy that:
 - Next.js: HPA configured, min 2 replicas, max 10
 - PostgreSQL: Manual scaling with `kubectl scale statefulset postgres --replicas=N`
 - PhotoPrism: Single replica (uses PersistentVolume)
+- SeaweedFS: Single replica (single bucket, low traffic); scale later by adding volume servers
+
+## S3-Compatible Storage (SeaweedFS)
+
+Photo uploads go through a SeaweedFS S3 gateway exposed at
+`i.foliapicnic.com`. The bucket `family-picnic-photos` is public-read so the
+URL stored in the DB renders directly in the browser without a presigned GET.
+
+- StatefulSet runs master + volume + filer + S3 in one pod (port 8333)
+- 5GB PVC at install time; the bootstrap Job creates the bucket and applies
+  the public-read policy on first apply
+- Credentials live in `secret/family-picnic-dev/seaweedfs` in OpenBao and are
+  surfaced to both the SeaweedFS pod (via `s3.json` template) and the
+  Next.js pod (via `nextjs-secrets` env vars)
+- Traefik route `i.foliapicnic.com` → `seaweedfs:8333` is defined in
+  `base/ingressroute.yaml`
 
 ## Backup
 

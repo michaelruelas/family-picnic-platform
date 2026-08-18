@@ -1,0 +1,434 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: seaweedfs-config
+  labels:
+    app.kubernetes.io/name: seaweedfs
+    app.kubernetes.io/component: object-storage
+data:
+  # FPP-69: S3 identities template. The access/secret keys are
+  # substituted at pod startup from the seaweedfs-credentials Secret
+  # so the rendered file lives only inside the pod's tmpfs. The
+  # populate-openbao-secrets.sh script generates the key pair and
+  # pushes them into OpenBao under
+  # secret/family-picnic-dev/seaweedfs; the seaweedfs-credentials
+  # ExternalSecret (in the overlay) pulls them into a K8s Secret.
+  #
+  # Placeholders use the __FOO__ pattern and the # sed delimiter so
+  # the values populated by populate-openbao-secrets.sh (always
+  # alphanumeric — gen_secret strips `+/=` and the access key is the
+  # stable id `family-picnic-photos`) never need shell escaping.
+  s3.json.tmpl: |
+    {
+      "identities": [
+        {
+          "name": "family-picnic",
+          "credentials": [
+            {
+              "accessKey": "__S3_ACCESS_KEY_ID__",
+              "secretKey": "__S3_SECRET_ACCESS_KEY__"
+            }
+          ],
+          "actions": [
+            "Read",
+            "Write",
+            "List",
+            "Tagging",
+            "Admin"
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: seaweedfs-bucket-policy
+  labels:
+    app.kubernetes.io/name: seaweedfs
+    app.kubernetes.io/component: object-storage
+data:
+  # FPP-69: public-read for the photo bucket. The URL stored in the DB
+  # (https://i.foliapicnic.com/family-picnic-photos/<key>) renders in
+  # the browser without a presigned GET. PDF attachments are served
+  # via presigned GETs through the public-download endpoint and are
+  # not affected by this policy.
+  policy.json: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "PublicRead",
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "s3:GetObject",
+          "Resource": "arn:aws:s3:::family-picnic-photos/*"
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: seaweedfs
+  labels:
+    app.kubernetes.io/name: seaweedfs
+    app.kubernetes.io/component: object-storage
+spec:
+  serviceName: seaweedfs-headless
+  replicas: 1
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: seaweedfs
+      app.kubernetes.io/component: object-storage
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: seaweedfs
+        app.kubernetes.io/component: object-storage
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: render-s3-config
+          image: ghcr.io/seaweedfs/seaweedfs:v3.77
+          command:
+            - /bin/sh
+            - -eu
+            - -c
+            - |
+              # FPP-69: render the s3.json template with the real
+              # credentials and write to a tmpfs path so the secret
+              # never lands on the persistent volume. The SeaweedFS
+              # image is Alpine with only `sed` available for
+              # templating, so we use sed with the safe # delimiter
+              # and __PLACEHOLDER__ tokens. Populated values are
+              # always alphanumeric (see populate-openbao-secrets.sh
+              # gen_secret) so no escaping is needed.
+              sed -e "s#__S3_ACCESS_KEY_ID__#${S3_ACCESS_KEY_ID}#g" \
+                  -e "s#__S3_SECRET_ACCESS_KEY__#${S3_SECRET_ACCESS_KEY}#g" \
+                /etc/seaweedfs/template/s3.json.tmpl \
+                > /etc/seaweedfs-runtime/s3.json
+              chmod 0644 /etc/seaweedfs-runtime/s3.json
+          env:
+            - name: S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: seaweedfs-credentials
+                  key: access-key-id
+            - name: S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: seaweedfs-credentials
+                  key: secret-access-key
+          volumeMounts:
+            - name: cfg
+              mountPath: /etc/seaweedfs/template
+              readOnly: true
+            - name: cfg-runtime
+              mountPath: /etc/seaweedfs-runtime
+      containers:
+        - name: seaweedfs
+          image: ghcr.io/seaweedfs/seaweedfs:v3.77
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: s3
+              containerPort: 8333
+              protocol: TCP
+            - name: filer
+              containerPort: 8888
+              protocol: TCP
+            - name: master
+              containerPort: 9333
+              protocol: TCP
+            - name: volume
+              containerPort: 8080
+              protocol: TCP
+          args:
+            - server
+            - -dir=/data
+            - -filer
+            - -s3
+            - -s3.config=/etc/seaweedfs-runtime/s3.json
+            - -ip=seaweedfs-0.seaweedfs-headless
+            - -master.port=9333
+            - -volume.port=8080
+            - -filer.port=8888
+            - -s3.port=8333
+            - -volume.max=0
+            - -master.volumeSizeLimitMB=1024
+          env:
+            - name: GOGC
+              # FPP-69: cap GC to keep the master process under the
+              # 256Mi request limit. SeaweedFS allocates a few MB on
+              # cold start; the default GOGC=100 lets it balloon under
+              # bursts of small-object writes.
+              value: '50'
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: '1'
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            tcpSocket:
+              port: s3
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: s3
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: cfg-runtime
+              mountPath: /etc/seaweedfs-runtime
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+      volumes:
+        - name: cfg
+          configMap:
+            name: seaweedfs-config
+        - name: cfg-runtime
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: run
+          emptyDir:
+            sizeLimit: 10Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app.kubernetes.io/name: seaweedfs
+          app.kubernetes.io/component: object-storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: gp3-encrypted
+        resources:
+          requests:
+            # FPP-69: 5GB upfront per the launch scoping. SeaweedFS
+            # pads volumes by 1MB per volume server, so a 5GB budget
+            # yields ~5,000 volumes max. Plenty for the dev pilot.
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seaweedfs-headless
+  labels:
+    app.kubernetes.io/name: seaweedfs
+    app.kubernetes.io/component: object-storage
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: seaweedfs
+    app.kubernetes.io/component: object-storage
+  ports:
+    - name: s3
+      port: 8333
+      targetPort: s3
+      protocol: TCP
+    - name: filer
+      port: 8888
+      targetPort: filer
+      protocol: TCP
+    - name: master
+      port: 9333
+      targetPort: master
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seaweedfs
+  labels:
+    app.kubernetes.io/name: seaweedfs
+    app.kubernetes.io/component: object-storage
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: seaweedfs
+    app.kubernetes.io/component: object-storage
+  ports:
+    - name: s3
+      port: 8333
+      targetPort: s3
+      protocol: TCP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: seaweedfs
+  labels:
+    app.kubernetes.io/name: seaweedfs
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: seaweedfs
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: seaweedfs-netpol
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: seaweedfs
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8333
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: seaweedfs
+      ports:
+        - protocol: TCP
+          port: 8333
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: nextjs
+      ports:
+        - protocol: TCP
+          port: 8333
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: nextjs
+      ports:
+        - protocol: TCP
+          port: 8888
+        - protocol: TCP
+          port: 9333
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seaweedfs-bootstrap
+  labels:
+    app.kubernetes.io/name: seaweedfs
+    app.kubernetes.io/component: object-storage
+spec:
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: seaweedfs
+        app.kubernetes.io/component: object-storage
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bootstrap
+          image: ghcr.io/seaweedfs/seaweedfs:v3.77
+          command:
+            - /bin/sh
+            - -eu
+            - -c
+            - |
+              set -euo pipefail
+
+              # FPP-69: wait for the S3 API to accept connections.
+              # The bucket listing endpoint is unauthenticated and
+              # returns 200 once the filer is ready.
+              ready=""
+              for i in $(seq 1 60); do
+                if wget -q -O- http://seaweedfs:8333/ >/dev/null 2>&1; then
+                  ready=yes
+                  break
+                fi
+                sleep 2
+              done
+              if [ -z "$ready" ]; then
+                echo "ERROR: seaweedfs S3 API did not come up in 120s" >&2
+                exit 1
+              fi
+
+              echo "==> Creating bucket family-picnic-photos (no-op if exists)"
+              weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888 >/tmp/shell.out 2>&1 <<'EOF' || true
+              s3.bucket.create -name family-picnic-photos
+              EOF
+              cat /tmp/shell.out
+
+              echo "==> Attaching public-read bucket policy"
+              aws --endpoint-url http://seaweedfs:8333 s3api put-bucket-policy \
+                --bucket family-picnic-photos \
+                --policy file:///etc/seaweedfs/policy.json || true
+
+              echo "==> Verifying bucket is reachable"
+              aws --endpoint-url http://seaweedfs:8333 s3 ls \
+                s3://family-picnic-photos/ || true
+
+              echo "==> Done"
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: seaweedfs-credentials
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: seaweedfs-credentials
+                  key: secret-access-key
+          volumeMounts:
+            - name: policy
+              mountPath: /etc/seaweedfs
+      volumes:
+        - name: policy
+          configMap:
+            name: seaweedfs-bucket-policy

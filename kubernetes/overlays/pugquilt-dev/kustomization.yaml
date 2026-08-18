@@ -16,6 +16,7 @@ patches:
   - path: nextjs-patch.yaml
   - path: postgres-patch.yaml
   - path: photoprism-patch.yaml
+  - path: seaweedfs-patch.yaml
   - path: pvc-patch.yaml
   - patch: |-
       - op: remove
@@ -44,6 +45,13 @@ patches:
     target:
       kind: ExternalSecret
       name: photoprism-credentials
+  - patch: |-
+      - op: replace
+        path: /spec/refreshInterval
+        value: 1m
+    target:
+      kind: ExternalSecret
+      name: seaweedfs-credentials
 
 images:
   - name: ghcr.io/family-picnic/platform

@@ -9,7 +9,13 @@ data:
   NEXTAUTH_URL: https://foliapicnic.com
   NODE_ENV: production
   NEXT_PUBLIC_APP_URL: https://foliapicnic.com
-  S3_BUCKET: family-picnic-photos
-  S3_REGION: us-east-1
-  S3_ENDPOINT: ''
+  # FPP-69: S3-compatible endpoint exposed via the SeaweedFS gateway.
+  # Both S3_ENDPOINT and S3_PUBLIC_URL point at the public hostname so
+  # the presigned PUT URL the browser receives is reachable from the
+  # internet. The bucket is public-read, so the same URL serves as a
+  # GET URL once the upload finishes.
+  S3_ENDPOINT: https://i.foliapicnic.com
+  S3_PUBLIC_URL: https://i.foliapicnic.com
+  AWS_REGION: us-east-1
+  S3_BUCKET_NAME: family-picnic-photos
   PHOTOPRISM_URL: http://photoprism:8080
