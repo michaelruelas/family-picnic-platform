@@ -312,6 +312,21 @@ STRIPE_API_KEY=$(resolve \
   "$(env_dev_get STRIPE_API_KEY)" \
   "printf ''")
 
+# PostHog: NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST are
+# build-time env vars. The host defaults to the US cloud; the key must
+# be created in the PostHog dashboard first.
+NEXT_PUBLIC_POSTHOG_KEY=$(resolve \
+  "$(extract "$NEXTJS_JSON" posthog-key)" \
+  "$(env_dev_get NEXT_PUBLIC_POSTHOG_KEY)" \
+  "printf ''")
+[ -n "$NEXT_PUBLIC_POSTHOG_KEY" ] && PRESERVED+=("nextjs/posthog-key") || true
+
+NEXT_PUBLIC_POSTHOG_HOST=$(resolve \
+  "$(extract "$NEXTJS_JSON" posthog-host)" \
+  "$(env_dev_get NEXT_PUBLIC_POSTHOG_HOST)" \
+  "printf 'https://us.i.posthog.com'")
+[ -n "$NEXT_PUBLIC_POSTHOG_HOST" ] && PRESERVED+=("nextjs/posthog-host") || true
+
 # DATABASE_URL: in-cluster form for OpenBao, localhost form for .env.dev.
 # Each form is preserved independently if the user has set it.
 IN_CLUSTER_DATABASE_URL="postgresql://postgres:${PG_PASS}@postgres:5432/familypicnic?schema=public"
@@ -396,6 +411,10 @@ STRIPE_PUBLISHABLE_KEY="${STRIPE_PUBLISHABLE_KEY}"
 STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET}"
 STRIPE_API_KEY="${STRIPE_API_KEY}"
 
+# --- PostHog (analytics) ---
+NEXT_PUBLIC_POSTHOG_KEY="${NEXT_PUBLIC_POSTHOG_KEY}"
+NEXT_PUBLIC_POSTHOG_HOST="${NEXT_PUBLIC_POSTHOG_HOST}"
+
 # --- S3 (using photoprism via Next.js; no S3 in dev) ---
 S3_ENDPOINT=""
 S3_BUCKET="family-picnic-dev"
@@ -441,6 +460,8 @@ EOF
   [ -n "$STRIPE_SECRET_KEY" ] && nextjs_patch_args+=("stripe-secret-key=\"$STRIPE_SECRET_KEY\"")
   [ -n "$STRIPE_PUBLISHABLE_KEY" ] && nextjs_patch_args+=("stripe-publishable-key=\"$STRIPE_PUBLISHABLE_KEY\"")
   [ -n "$STRIPE_WEBHOOK_SECRET" ] && nextjs_patch_args+=("stripe-webhook-secret=\"$STRIPE_WEBHOOK_SECRET\"")
+  [ -n "$NEXT_PUBLIC_POSTHOG_KEY" ] && nextjs_patch_args+=("posthog-key=\"$NEXT_PUBLIC_POSTHOG_KEY\"")
+  [ -n "$NEXT_PUBLIC_POSTHOG_HOST" ] && nextjs_patch_args+=("posthog-host=\"$NEXT_PUBLIC_POSTHOG_HOST\"")
   print_patch_cmd "${SECRET_PREFIX}/nextjs" "${nextjs_patch_args[@]}"
 
   echo ""
@@ -487,6 +508,8 @@ bao_exec kv put "${SECRET_PREFIX}/nextjs" \
   stripe-secret-key="$STRIPE_SECRET_KEY" \
   stripe-publishable-key="$STRIPE_PUBLISHABLE_KEY" \
   stripe-webhook-secret="$STRIPE_WEBHOOK_SECRET" \
+  posthog-key="$NEXT_PUBLIC_POSTHOG_KEY" \
+  posthog-host="$NEXT_PUBLIC_POSTHOG_HOST" \
   >/dev/null
 
 echo "==> Writing ${SECRET_PREFIX}/photoprism"
@@ -565,6 +588,10 @@ STRIPE_SECRET_KEY="${STRIPE_SECRET_KEY}"
 STRIPE_PUBLISHABLE_KEY="${STRIPE_PUBLISHABLE_KEY}"
 STRIPE_WEBHOOK_SECRET="${STRIPE_WEBHOOK_SECRET}"
 STRIPE_API_KEY="${STRIPE_API_KEY}"
+
+# --- PostHog (analytics) ---
+NEXT_PUBLIC_POSTHOG_KEY="${NEXT_PUBLIC_POSTHOG_KEY}"
+NEXT_PUBLIC_POSTHOG_HOST="${NEXT_PUBLIC_POSTHOG_HOST}"
 
 # --- S3 (using photoprism via Next.js; no S3 in dev) ---
 S3_ENDPOINT=""
