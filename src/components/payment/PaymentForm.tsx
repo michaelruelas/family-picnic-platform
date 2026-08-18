@@ -18,38 +18,26 @@ interface PaymentFormProps {
 }
 
 export default function PaymentForm(props: PaymentFormProps) {
+  return <PaymentFormSetup {...props} />;
+}
+
+/**
+ * Wraps the intent creation so the `<Elements>` provider (and the
+ * `<PaymentElement>` it hosts) only mounts once a `clientSecret` is
+ * available. Stripe throws if you mount a Payment Element without
+ * one, so we have to fetch the intent before instantiating Stripe
+ * Elements. The setup wrapper is the only place that owns the
+ * `createIntent` mutation; `PaymentFormInner` below just renders the
+ * confirmation form once Stripe is ready.
+ */
+function PaymentFormSetup(props: PaymentFormProps) {
   const stripePromise = useMemo<Promise<StripeJs | null>>(
     () => loadStripe(props.publishableKey),
     [props.publishableKey],
   );
 
-  if (!stripePromise) {
-    return (
-      <div className="bg-card rounded-sm p-6 shadow-sm">
-        <p className="text-foreground">Loading payment form…</p>
-      </div>
-    );
-  }
-
-  return (
-    <Elements
-      stripe={stripePromise}
-      options={{
-        appearance: { theme: 'stripe' },
-        currency: props.currency.toLowerCase(),
-      }}
-    >
-      <PaymentFormInner {...props} />
-    </Elements>
-  );
-}
-
-function PaymentFormInner(props: PaymentFormProps) {
-  const stripe = useStripe();
-  const elements = useElements();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   const createIntent = trpc.payment.createPaymentIntent.useMutation({
     onSuccess: (data) => {
@@ -66,6 +54,81 @@ function PaymentFormInner(props: PaymentFormProps) {
     createIntent.mutate({ eventId: props.eventId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (!stripePromise) {
+    return (
+      <div className="bg-card rounded-sm p-6 shadow-sm" data-testid="payment-loading">
+        <p className="text-foreground">Loading payment form…</p>
+      </div>
+    );
+  }
+
+  if (createIntent.isPending && !clientSecret) {
+    return (
+      <div className="bg-card rounded-sm p-8 shadow-sm" data-testid="payment-loading">
+        <Spinner />
+        <p className="text-muted-foreground mt-3">Preparing secure payment…</p>
+      </div>
+    );
+  }
+
+  if (createIntent.isError) {
+    return (
+      <div className="bg-card rounded-sm p-6 shadow-sm" data-testid="payment-error">
+        <p className="text-destructive">
+          {error ?? 'Could not start the payment. Please try again or contact an admin.'}
+        </p>
+        <button
+          type="button"
+          onClick={() => createIntent.mutate({ eventId: props.eventId })}
+          className="bg-terracotta hover:bg-terracotta mt-4 rounded-sm px-4 py-2 text-sm font-medium text-white"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!clientSecret) {
+    return null;
+  }
+
+  return (
+    <Elements
+      stripe={stripePromise}
+      options={{
+        // Lock the Payment Element to the intent created for this
+        // event so the clientSecret matches the Stripe session.
+        clientSecret,
+        appearance: { theme: 'stripe' },
+      }}
+    >
+      <PaymentFormInner
+        eventId={props.eventId}
+        eventName={props.eventName}
+        amountCents={props.amountCents}
+        currency={props.currency}
+        returnUrl={props.returnUrl}
+        clientSecret={clientSecret}
+      />
+    </Elements>
+  );
+}
+
+interface PaymentFormInnerProps {
+  eventId: string;
+  eventName: string;
+  amountCents: number;
+  currency: string;
+  returnUrl: string;
+  clientSecret: string;
+}
+
+function PaymentFormInner(props: PaymentFormInnerProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,15 +149,9 @@ function PaymentFormInner(props: PaymentFormProps) {
       return;
     }
 
-    if (!clientSecret) {
-      setError('Payment is still initializing, please try again');
-      setSubmitting(false);
-      return;
-    }
-
     const { error: confirmError } = await stripe.confirmPayment({
       elements,
-      clientSecret,
+      clientSecret: props.clientSecret,
       confirmParams: {
         return_url: props.returnUrl,
       },
@@ -120,32 +177,6 @@ function PaymentFormInner(props: PaymentFormProps) {
     // return_url. Show a spinner until the navigation completes.
   }
 
-  if (createIntent.isPending && !clientSecret) {
-    return (
-      <div className="bg-card rounded-sm p-8 shadow-sm">
-        <Spinner />
-        <p className="text-muted-foreground mt-3">Preparing secure payment…</p>
-      </div>
-    );
-  }
-
-  if (createIntent.isError) {
-    return (
-      <div className="bg-card rounded-sm p-6 shadow-sm">
-        <p className="text-destructive">
-          {error ?? 'Could not start the payment. Please try again or contact an admin.'}
-        </p>
-        <button
-          type="button"
-          onClick={() => createIntent.mutate({ eventId: props.eventId })}
-          className="bg-terracotta hover:bg-terracotta mt-4 rounded-sm px-4 py-2 text-sm font-medium text-white"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -169,7 +200,7 @@ function PaymentFormInner(props: PaymentFormProps) {
 
       <button
         type="submit"
-        disabled={!stripe || !elements || submitting || !clientSecret}
+        disabled={!stripe || !elements || submitting}
         className="bg-terracotta hover:bg-terracotta w-full rounded-sm px-6 py-3 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? 'Processing…' : `Pay ${formatAmount(props.amountCents, props.currency)}`}
