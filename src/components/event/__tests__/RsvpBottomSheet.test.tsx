@@ -45,9 +45,26 @@ vi.mock('../PotluckEditor', () => ({
 }));
 
 vi.mock('~/components/payment/PaymentBlock', () => ({
-  default: (props: { eventId: string }) => (
+  default: (props: {
+    eventId: string;
+    onPayNow?: () => void;
+    onPayLater?: () => void;
+  }) => (
     <div data-testid="mock-payment-block" data-event-id={props.eventId}>
-      Payment block
+      <button
+        type="button"
+        data-testid="mock-payment-pay-now"
+        onClick={() => props.onPayNow?.()}
+      >
+        Pay now
+      </button>
+      <button
+        type="button"
+        data-testid="mock-payment-pay-later"
+        onClick={() => props.onPayLater?.()}
+      >
+        Pay later
+      </button>
     </div>
   ),
 }));
@@ -414,22 +431,53 @@ describe('RsvpBottomSheet per-member attendance', () => {
   });
 
   describe('embedded fee / Pay Later (FPP-123)', () => {
-    it('renders the PaymentBlock on the Potluck tab after a paid confirm', async () => {
+    const paidProps = {
+      ...baseProps,
+      registrationFeeConfig: { amountCents: 1000, minAge: 0, currency: 'usd' },
+    };
+
+    it('renders the PaymentBlock on the Attendance tab when a fee applies', () => {
       setRosterReady();
-      render(
-        <RsvpBottomSheet
-          {...baseProps}
-          registrationFeeConfig={{ amountCents: 1000, minAge: 0, currency: 'usd' }}
-        />,
-      );
-      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+      render(<RsvpBottomSheet {...paidProps} />);
+      expect(screen.getByTestId('mock-payment-block')).toBeInTheDocument();
+      expect(screen.getByTestId('mock-payment-block')).toHaveAttribute('data-event-id', 'evt-1');
+    });
+
+    it('disables Save until the user picks Pay later or Pay now', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...paidProps} />);
+      const save = screen.getByTestId('rsvp-save-button');
+      expect(save).toBeDisabled();
+      expect(mockConfirm.mutateAsync).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId('mock-payment-pay-later'));
+      await waitFor(() => expect(save).not.toBeDisabled());
+      fireEvent.click(save);
+      await waitFor(() => expect(mockConfirm.mutateAsync).toHaveBeenCalled());
+    });
+
+    it('also enables Save after the user clicks Pay now', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...paidProps} />);
+      const save = screen.getByTestId('rsvp-save-button');
+      expect(save).toBeDisabled();
+
+      fireEvent.click(screen.getByTestId('mock-payment-pay-now'));
+      await waitFor(() => expect(save).not.toBeDisabled());
+    });
+
+    it('keeps the PaymentBlock on the Potluck tab after confirm so the user can re-pay', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...paidProps} />);
+      fireEvent.click(screen.getByTestId('mock-payment-pay-later'));
+      fireEvent.click(screen.getByTestId('rsvp-save-button'));
       await waitFor(() => {
         expect(screen.getByTestId('mock-payment-block')).toBeInTheDocument();
-        expect(screen.getByTestId('mock-payment-block')).toHaveAttribute('data-event-id', 'evt-1');
+        expect(screen.getByTestId('mock-potluck-editor')).toBeInTheDocument();
       });
     });
 
-    it('omits the PaymentBlock when the event is free', async () => {
+    it('omits the PaymentBlock when the event is free', () => {
       setRosterReady();
       render(
         <RsvpBottomSheet
@@ -437,10 +485,6 @@ describe('RsvpBottomSheet per-member attendance', () => {
           registrationFeeConfig={{ amountCents: 0, minAge: 0, currency: 'usd' }}
         />,
       );
-      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
-      await waitFor(() => {
-        expect(screen.getByTestId('mock-potluck-editor')).toBeInTheDocument();
-      });
       expect(screen.queryByTestId('mock-payment-block')).not.toBeInTheDocument();
     });
   });

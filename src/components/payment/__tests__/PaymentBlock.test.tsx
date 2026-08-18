@@ -111,4 +111,39 @@ describe('PaymentBlock', () => {
       expect(screen.getByTestId('rsvp-payment-error')).toHaveTextContent(/payments are offline/i);
     });
   });
+
+  it('switches Pay now to a button when onPayNow is provided', () => {
+    const onPayNow = vi.fn();
+    render(
+      <PaymentBlock
+        eventId="evt-1"
+        eventName="Annual Picnic"
+        amountCents={2500}
+        currency="usd"
+        onPayNow={onPayNow}
+      />,
+    );
+    const payNow = screen.getByTestId('rsvp-payment-pay-now');
+    expect(payNow.tagName).toBe('BUTTON');
+    expect(payNow).not.toHaveAttribute('href');
+    fireEvent.click(payNow);
+    expect(onPayNow).toHaveBeenCalledTimes(1);
+  });
+
+  it('invokes onPayLater only after the mutation succeeds', async () => {
+    const onPayLater = vi.fn();
+    render(
+      <PaymentBlock
+        eventId="evt-1"
+        eventName="Annual Picnic"
+        amountCents={2500}
+        currency="usd"
+        onPayLater={onPayLater}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('rsvp-payment-pay-later'));
+    await waitFor(() => {
+      expect(onPayLater).toHaveBeenCalledTimes(1);
+    });
+  });
 });
