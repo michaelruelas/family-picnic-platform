@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadStripe, type Stripe as StripeJs } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { trpc } from '~/lib/trpc-client';
@@ -15,6 +15,16 @@ interface PaymentFormProps {
   currency: string;
   publishableKey: string;
   returnUrl: string;
+  /**
+   * Fires when Stripe confirms the payment inline (card flows,
+   * including 3DS challenges). The parent uses this to invalidate
+   * its registration cache and collapse the surrounding payment
+   * block into a paid state. `redirect: 'if_required'` keeps the
+   * user on this page for card and 3DS flows; only true redirect-
+   * based payment methods (e.g. bank redirects) would still
+   * navigate to `returnUrl`.
+   */
+  onSuccess?: (paymentIntent: { status: string; id?: string }) => void;
 }
 
 export default function PaymentForm(props: PaymentFormProps) {
@@ -38,10 +48,25 @@ function PaymentFormSetup(props: PaymentFormProps) {
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Guard against the React 18 StrictMode dev-mode double-mount:
+  // without this, the effect below fires `createIntent.mutate` twice,
+  // tRPC batches both into one HTTP request, the server can return
+  // two different PaymentIntents (one of which can hit Stripe in a
+  // terminal state on the second attempt), and `<Elements>` then
+  // receives a `clientSecret` change after first mount — Stripe.js
+  // surfaces that as "Could not retrieve elements store". The ref
+  // survives remounts in the same component instance, so even though
+  // StrictMode re-runs the effect we only fire the mutation once.
+  const intentRequestedRef = useRef(false);
 
   const createIntent = trpc.payment.createPaymentIntent.useMutation({
     onSuccess: (data) => {
-      setClientSecret(data.clientSecret);
+      // Freeze on the first non-empty clientSecret. A second
+      // response (e.g. from a parallel mutation that the server
+      // serialized into a different PaymentIntent) must not be
+      // applied — once Elements is mounted against a secret, Stripe.js
+      // cannot safely switch it to a different PaymentIntent.
+      setClientSecret((current) => current ?? data.clientSecret);
       setError(null);
     },
     onError: (err) => {
@@ -50,7 +75,8 @@ function PaymentFormSetup(props: PaymentFormProps) {
   });
 
   useEffect(() => {
-    if (clientSecret) return;
+    if (intentRequestedRef.current) return;
+    intentRequestedRef.current = true;
     createIntent.mutate({ eventId: props.eventId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -80,7 +106,14 @@ function PaymentFormSetup(props: PaymentFormProps) {
         </p>
         <button
           type="button"
-          onClick={() => createIntent.mutate({ eventId: props.eventId })}
+          onClick={() => {
+            // Allow a retry to fire a fresh mutation by resetting the
+            // guard. We only do this on explicit user retry so a
+            // StrictMode re-mount cannot leak through.
+            intentRequestedRef.current = false;
+            setError(null);
+            createIntent.mutate({ eventId: props.eventId });
+          }}
           className="bg-terracotta hover:bg-terracotta mt-4 rounded-sm px-4 py-2 text-sm font-medium text-white"
         >
           Retry
@@ -109,7 +142,7 @@ function PaymentFormSetup(props: PaymentFormProps) {
         amountCents={props.amountCents}
         currency={props.currency}
         returnUrl={props.returnUrl}
-        clientSecret={clientSecret}
+        onSuccess={props.onSuccess}
       />
     </Elements>
   );
@@ -121,7 +154,7 @@ interface PaymentFormInnerProps {
   amountCents: number;
   currency: string;
   returnUrl: string;
-  clientSecret: string;
+  onSuccess?: (paymentIntent: { status: string; id?: string }) => void;
 }
 
 function PaymentFormInner(props: PaymentFormInnerProps) {
@@ -149,13 +182,30 @@ function PaymentFormInner(props: PaymentFormInnerProps) {
       return;
     }
 
-    const { error: confirmError } = await stripe.confirmPayment({
+    // `redirect: 'if_required'` keeps the user on this page for
+    // card payments and 3DS challenges — Stripe.js renders the 3DS
+    // dialog inline and resolves the PaymentIntent here. Only
+    // redirect-based payment methods (e.g. bank redirects) will
+    // still navigate to `return_url`. The result is always a
+    // `PaymentIntentResult` (or an error) so we can inspect both
+    // halves explicitly with a typed shape; Stripe's TypeScript
+    // types narrow `paymentIntent` away on the error branch.
+    //
+    // Note: do NOT also pass `clientSecret` at the top level — the
+    // Elements instance from `<Elements clientSecret={...}>` already
+    // carries the secret, and re-passing it triggers Stripe.js'
+    // "Could not retrieve elements store" path.
+    type PaymentIntentLike = { status?: string; id?: string };
+    type ConfirmResult = { error?: unknown; paymentIntent?: PaymentIntentLike | null };
+    const result = (await stripe.confirmPayment({
       elements,
-      clientSecret: props.clientSecret,
       confirmParams: {
         return_url: props.returnUrl,
       },
-    });
+      redirect: 'if_required',
+    })) as ConfirmResult;
+    const confirmError = result.error as { message?: string; code?: string } | undefined;
+    const paymentIntent = result.paymentIntent ?? null;
 
     if (confirmError) {
       track('payment_failed', {
@@ -173,8 +223,18 @@ function PaymentFormInner(props: PaymentFormInnerProps) {
       amountCents: props.amountCents,
       currency: props.currency,
     });
-    // If we reach here without an error, Stripe is redirecting to the
-    // return_url. Show a spinner until the navigation completes.
+
+    if (paymentIntent && paymentIntent.status === 'succeeded') {
+      setSubmitting(false);
+      props.onSuccess?.({ status: paymentIntent.status, id: paymentIntent.id });
+      return;
+    }
+
+    // `redirect: 'if_required'` returned a non-succeeded status
+    // (e.g. `processing`) without an error: Stripe is handling
+    // authentication inline (3DS modal). Leave the spinner
+    // running so the user sees feedback until the next poll /
+    // resolve fires `onSuccess`.
   }
 
   return (

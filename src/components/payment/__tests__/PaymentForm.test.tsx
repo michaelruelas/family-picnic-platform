@@ -8,6 +8,8 @@ vi.mock('@stripe/stripe-js', () => ({
 const mockElementsSpy = vi.fn();
 const mockPaymentElementSpy = vi.fn();
 
+const mockConfirmPayment = vi.fn().mockResolvedValue({ paymentIntent: { status: 'succeeded' } });
+
 vi.mock('@stripe/react-stripe-js', () => ({
   Elements: (props: { children: React.ReactNode; stripe: unknown; options: unknown }) => {
     mockElementsSpy(props.options);
@@ -18,7 +20,7 @@ vi.mock('@stripe/react-stripe-js', () => ({
     return <div data-testid="payment-element" />;
   },
   useStripe: () => ({
-    confirmPayment: vi.fn().mockResolvedValue({}),
+    confirmPayment: mockConfirmPayment,
   }),
   useElements: () => ({
     submit: vi.fn().mockResolvedValue({}),
@@ -33,6 +35,11 @@ interface IntentOutcome {
 }
 
 let intentOutcome: IntentOutcome = { clientSecret: 'pi_test_secret_xyz' };
+// Optional per-call clientSecret overrides — when set, each successive
+// `mutate()` call resolves with the next secret in the queue. Used by
+// the StrictMode double-mount test to assert the form freezes on the
+// first one and ignores the second.
+const intentSecretQueue: string[] = [];
 
 const mockMutate = vi.fn();
 
@@ -46,8 +53,10 @@ vi.mock('~/lib/trpc-client', () => ({
               mockMutate(input);
               if (intentOutcome.error) {
                 opts?.onError?.(intentOutcome.error);
-              } else if (intentOutcome.clientSecret) {
-                opts?.onSuccess?.({ clientSecret: intentOutcome.clientSecret });
+              } else {
+                const queuedSecret = intentSecretQueue.shift();
+                const secret = queuedSecret ?? intentOutcome.clientSecret;
+                if (secret) opts?.onSuccess?.({ clientSecret: secret });
               }
             },
             get isPending() {
@@ -69,7 +78,10 @@ beforeEach(() => {
   mockMutate.mockClear();
   mockElementsSpy.mockClear();
   mockPaymentElementSpy.mockClear();
+  mockConfirmPayment.mockClear();
+  mockConfirmPayment.mockResolvedValue({ paymentIntent: { status: 'succeeded' } });
   intentOutcome = { clientSecret: 'pi_test_secret_xyz' };
+  intentSecretQueue.length = 0;
 });
 
 const baseProps = {
@@ -120,5 +132,63 @@ describe('PaymentForm', () => {
     expect(submit).not.toBeDisabled();
     fireEvent.click(submit);
     await waitFor(() => expect(submit).toHaveTextContent(/processing/i));
+  });
+
+  it('confirms payment inline with redirect: if_required so 3DS stays on the page', async () => {
+    const onSuccess = vi.fn();
+    render(<PaymentForm {...baseProps} onSuccess={onSuccess} />);
+    await waitFor(() => screen.getByTestId('payment-form'));
+    fireEvent.click(screen.getByRole('button', { name: /pay \$10\.00/i }));
+    await waitFor(() => expect(mockConfirmPayment).toHaveBeenCalledTimes(1));
+    const options = mockConfirmPayment.mock.calls[0]?.[0] as {
+      redirect?: string;
+      confirmParams?: { return_url?: string };
+      clientSecret?: string;
+    };
+    // Without `redirect: 'if_required'`, Stripe.js defaults to
+    // `'always'` and navigates the browser to `return_url` after a
+    // successful confirmation, which tears the user off the page
+    // and breaks the dynamic in-place update.
+    expect(options.redirect).toBe('if_required');
+    expect(options.confirmParams?.return_url).toBe(baseProps.returnUrl);
+    // The Elements instance from `<Elements clientSecret={...}>`
+    // already carries the secret; re-passing it at the top level
+    // makes Stripe.js throw "Could not retrieve elements store".
+    expect(options.clientSecret).toBeUndefined();
+    await waitFor(() =>
+      expect(onSuccess).toHaveBeenCalledWith({ status: 'succeeded', id: undefined }),
+    );
+  });
+
+  it('surfaces Stripe errors inline without navigating away', async () => {
+    mockConfirmPayment.mockResolvedValueOnce({ error: { message: 'Your card was declined.' } });
+    render(<PaymentForm {...baseProps} />);
+    await waitFor(() => screen.getByTestId('payment-form'));
+    fireEvent.click(screen.getByRole('button', { name: /pay \$10\.00/i }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/card was declined/i));
+    expect(mockConfirmPayment).toHaveBeenCalledTimes(1);
+  });
+
+  it('only fires createPaymentIntent once even if the setup effect re-runs (StrictMode dev double-mount)', async () => {
+    render(<PaymentForm {...baseProps} />);
+    // Wait long enough for any double-fire to settle. The bug we're
+    // guarding against is two mutate() calls in dev StrictMode.
+    await waitFor(() => screen.getByTestId('payment-form'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(mockMutate).toHaveBeenCalledTimes(1);
+    expect(mockMutate).toHaveBeenCalledWith({ eventId: 'evt-1' });
+  });
+
+  it('freezes the clientSecret on the first intent so a second concurrent response cannot switch Elements mid-flight', async () => {
+    // Simulate the two responses tRPC can return when StrictMode
+    // double-fires the mutation and the server returns two distinct
+    // PaymentIntents. Without the freeze, Elements would receive
+    // `clientSecret` as an updated prop and Stripe.js would throw
+    // "Could not retrieve elements store".
+    intentSecretQueue.push('pi_first_secret', 'pi_second_secret');
+    render(<PaymentForm {...baseProps} />);
+    await waitFor(() => screen.getByTestId('payment-form'));
+    const options = mockElementsSpy.mock.calls.at(-1)?.[0] as { clientSecret: string };
+    expect(options.clientSecret).toBe('pi_first_secret');
   });
 });
