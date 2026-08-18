@@ -76,6 +76,15 @@ Run `npm install` to ensure all dependencies are installed.
 
 ## External Services
 
+### "EROFS: read-only file system, mkdir '/app/.next/cache'" in Next.js pod logs
+
+The Next.js container runs with `readOnlyRootFilesystem: true`. Its image
+optimizer writes to `/app/.next/cache` at runtime, so the directory must be
+writable. The base manifest (`kubernetes/base/nextjs.yaml`) mounts an
+`emptyDir` at `/app/.next/cache` for this. If you see this error after a
+manifest change, confirm the `next-cache` volume and mount are still present
+and that no overlay has stripped them.
+
 ### "Photo upload fails"
 
 1. Check S3-compatible storage is configured (`S3_*` vars in `.env`)
