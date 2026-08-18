@@ -76,6 +76,11 @@ export default async function EditEventPage({ params }: PageProps) {
     rsvpDeadline: event.rsvpDeadline?.toISOString().slice(0, 16) ?? '',
     maxCapacity: event.maxCapacity ?? undefined,
     mapImageUrl: event.mapImageUrl ?? '',
+    // FPP-145: pre-fill the host-typed custom location title so the
+    // 'Location Name' input does not blank out after a save + refresh.
+    // Without this line the form re-mounts empty and the host has to
+    // retype the title even though it's already persisted in the DB.
+    customLocationName: event.customLocationName ?? '',
     // FPP-60: pre-fill the featured image so the host can see/replace
     // the currently-set hero in edit mode.
     featuredImageUrl: event.featuredImageUrl ?? '',
