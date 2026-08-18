@@ -18,7 +18,7 @@ vi.mock('next-auth', () => ({
 vi.mock('~/lib/auth', () => ({
   authOptions: {},
   getServerSession: vi.fn(),
-  isAdminRole: (role: unknown) => role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT',
+  isAdminRole: (role: unknown) => role === 'SUPER_ADMIN' || role === 'ADMIN',
 }));
 
 describe('authRouter', () => {

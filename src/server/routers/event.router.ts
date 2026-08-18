@@ -44,7 +44,7 @@ export const eventRouter = router({
     }),
 
   // FPP-65 / QUB-13.1: per-event gated. A HOST assigned to the event
-  // can call update; so can super-admin/ADMIN_ADULT. Other callers
+  // can call update; so can super-admin/ADMIN. Other callers
   // get FORBIDDEN.
   update: eventAdminProcedure(
     z.object({
@@ -386,7 +386,7 @@ export const eventRouter = router({
 
   // FPP-65 / QUB-13.1 + QUB-13.2: per-event gated. After the row
   // is removed, run `unassignHostRole` so a user who loses their
-  // last OWNER permission row is demoted back to ADMIN_ADULT.
+  // last OWNER permission row is demoted back to ADULT.
   removeAdmin: eventAdminProcedure(
     z.object({
       eventId: z.string(),

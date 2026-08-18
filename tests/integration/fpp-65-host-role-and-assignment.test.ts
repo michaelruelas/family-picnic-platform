@@ -39,16 +39,14 @@ describe('FPP-65: host role and assignment to events', () => {
   const eventRouterPath = path.join(process.cwd(), 'src/server/routers/event.router.ts');
 
   describe('FPP-42 / QUB-13.1 — role model', () => {
-    it('declares ADMIN_ADULT, SUPER_ADMIN, and HOST on the Role enum', async () => {
+    it('declares SUPER_ADMIN, ADMIN, ADULT, and HOST on the Role enum', async () => {
       const schema = await fs.readFile(schemaPath, 'utf-8');
       const block = schema.match(/enum Role \{([\s\S]*?)^\}/m);
       expect(block).not.toBeNull();
-      expect(block![1]!).toMatch(/ADMIN_ADULT/);
       expect(block![1]!).toMatch(/SUPER_ADMIN/);
+      expect(block![1]!).toMatch(/ADMIN/);
+      expect(block![1]!).toMatch(/ADULT/);
       expect(block![1]!).toMatch(/HOST/);
-      // Legacy ADMIN value is removed from the schema (the
-      // backfill migrates all existing rows to SUPER_ADMIN).
-      expect(block![1]!).not.toMatch(/\bADMIN\b/);
     });
 
     it('migration adds SUPER_ADMIN and HOST to the Role enum and backfills ADMIN', async () => {
@@ -69,15 +67,13 @@ describe('FPP-65: host role and assignment to events', () => {
       expect(auth).toMatch(/export function isSuperAdminRole/);
     });
 
-    it('keeps isAdminRole strict (SUPER_ADMIN + ADMIN_ADULT, no HOST)', async () => {
+    it('keeps isAdminRole strict (SUPER_ADMIN + ADMIN, no HOST)', async () => {
       // FPP-65 audit: HOST was a per-event scoped role, NOT a
       // global admin tier. Removing HOST from ADMIN_ROLES means a
       // host cannot unlock global admin access — they must go
       // through the per-event `eventAdminProcedure` builder.
       const auth = await fs.readFile(authLibPath, 'utf-8');
-      expect(auth).toMatch(
-        /ADMIN_ROLES:\s*readonly Role\[\]\s*=\s*\['SUPER_ADMIN',\s*'ADMIN_ADULT'\]/,
-      );
+      expect(auth).toMatch(/ADMIN_ROLES:\s*readonly Role\[\]\s*=\s*\['SUPER_ADMIN',\s*'ADMIN'\]/);
       expect(auth).toMatch(/export function isAdminRole/);
     });
   });
@@ -235,9 +231,7 @@ describe('FPP-65: host role and assignment to events', () => {
       // original PR, which gave any host global admin access. That
       // contradicted the FPP-65 spec ("scoped to events they have
       // an EventAdmin row for"). The fix removes HOST from the set.
-      expect(auth).toMatch(
-        /ADMIN_ROLES:\s*readonly Role\[\]\s*=\s*\['SUPER_ADMIN',\s*'ADMIN_ADULT'\]/,
-      );
+      expect(auth).toMatch(/ADMIN_ROLES:\s*readonly Role\[\]\s*=\s*\['SUPER_ADMIN',\s*'ADMIN'\]/);
       // Defensive: HOST must not appear in the literal — future
       // case-insensitive grep would also catch the trailing comma.
       const adminRolesDecl = auth.match(/ADMIN_ROLES:\s*readonly Role\[\]\s*=\s*\[([^\]]+)\]/);
@@ -302,7 +296,7 @@ describe('FPP-65: host role and assignment to events', () => {
     it('REST POST admins route rejects HOST self-assignment', async () => {
       const route = await fs.readFile(adminsRoutePath, 'utf-8');
       // FPP-104: tightened to use `isSuperAdminRole` so an
-      // ADMIN_ADULT user cannot self-promote to OWNER on an event
+      // ADMIN user cannot self-promote to OWNER on an event
       // they already have a row for. The error message was updated
       // to reflect the new "only super-admins" framing.
       const actorCheck = route.match(/const actorIsSuperAdmin[\s\S]*?\);/);
@@ -322,14 +316,14 @@ describe('FPP-65: host role and assignment to events', () => {
       expect(route).toMatch(/unassignHostRole\(/);
     });
 
-    it('unassignHostRole demotes HOST to ADMIN_ADULT when no OWNER rows remain', async () => {
+    it('unassignHostRole demotes HOST to ADULT when no OWNER rows remain', async () => {
       const helper = await fs.readFile(eventAccessPath, 'utf-8');
       expect(helper).toMatch(/export async function unassignHostRole/);
       // The check must gate on zero remaining OWNER rows so a user
       // who still hosts another event keeps their HOST role.
       expect(helper).toMatch(/eventAdmin\.count\(\{[\s\S]*?role: AdminPermission\.OWNER/);
-      // The demotion target record must be ADMIN_ADULT, not HOST.
-      expect(helper).toMatch(/data:\s*\{\s*role:\s*Role\.ADMIN_ADULT\s*\}/);
+      // The demotion target record must be ADULT, not HOST.
+      expect(helper).toMatch(/data:\s*\{\s*role:\s*Role\.ADULT\s*\}/);
     });
 
     it('admin UI event-edit pages use requireEventAdminPage (per-event gate)', async () => {

@@ -114,7 +114,7 @@ describe('DELETE /api/admin/events/[id]/admins/[userId]', () => {
     expect(prismaMock.user.updateManyAndReturn).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'u-1', role: 'HOST' },
-        data: { role: 'ADMIN_ADULT' },
+        data: { role: 'ADULT' },
       }),
     );
   });

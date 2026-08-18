@@ -24,7 +24,7 @@ import {
  *
  * - FPP-104: per-event gate via `requireEventAdminApi(eventId)` —
  *   a HOST with an EventAdmin row for the event can override
- *   RSVPs on their own event. Super-admins / ADMIN_ADULT still
+ *   RSVPs on their own event. Super-admins / ADMIN still
  *   pass via the platform-level admin branch.
  * - Validates the payload with `rsvpAdminOverrideSchema`.
  * - Inside a single `$transaction`:

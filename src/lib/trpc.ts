@@ -84,7 +84,7 @@ export const router = t.router;
  * single event (event.update, event.publish, event.addAdmin, ...).
  * Allows the caller through if EITHER:
  *   - they pass `isAdminRole(...)` (platform-level super-admin or
- *     adult-family user with the legacy pre-FPP-65 admin perks), OR
+ *     admin user), OR
  *   - they have an EventAdmin row for the event (host, co-admin, or
  *     inviter — `canAccessEvent` short-circuits super-admins too).
  *

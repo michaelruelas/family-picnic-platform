@@ -17,7 +17,7 @@ const userSession = {
     id: 'u-1',
     email: 'u@example.com',
     name: 'U',
-    role: 'ADMIN_ADULT' as const,
+    role: 'ADMIN' as const,
     householdId: null,
   },
   expires: '2099-01-01',

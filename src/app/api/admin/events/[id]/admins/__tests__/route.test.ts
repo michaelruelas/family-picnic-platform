@@ -264,14 +264,14 @@ describe('POST /api/admin/events/[id]/admins', () => {
     expect(prismaMock.eventAdmin.create).not.toHaveBeenCalled();
   });
 
-  it('rejects ADMIN_ADULT self-assignment (FPP-104 followup)', async () => {
+  it('rejects ADMIN self-assignment (FPP-104 followup)', async () => {
     // FPP-104: the previous self-assignment guard used `isAdminRole`,
-    // which let a default `ADMIN_ADULT` user (who has no special
+    // which let a default `ADMIN` user (who has no special
     // platform-level privilege) self-promote to OWNER on an event
     // they already had a row for. The check now uses
-    // `isSuperAdminRole`, so an `ADMIN_ADULT` self-assignment is
+    // `isSuperAdminRole`, so an `ADMIN` self-assignment is
     // also rejected with 403.
-    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN_ADULT' } } as never);
+    mockedSession.mockResolvedValue({ user: { id: 'u-1', role: 'ADMIN' } } as never);
     prismaMock.eventAdmin.findUnique.mockResolvedValue({ id: 'ea-existing' } as never);
     const res = await POST(
       new NextRequest('http://x', {

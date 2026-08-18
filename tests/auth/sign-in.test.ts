@@ -30,9 +30,9 @@ describe('signIn callback', () => {
     expect(identityContent).toContain('email_tombstoned');
   });
 
-  it('creates user with ADMIN_ADULT role as default', async () => {
+  it('creates user with ADULT role as default', async () => {
     const identityContent = await fs.readFile(userIdentityPath, 'utf-8');
-    expect(identityContent).toContain("role: 'ADMIN_ADULT'");
+    expect(identityContent).toContain("role: 'ADULT'");
   });
 
   it('falls back to email when profile name is missing', async () => {

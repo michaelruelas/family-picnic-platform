@@ -66,7 +66,7 @@ describe('findOrCreateUserByIdentity', () => {
           id: 'user-1',
           email: 'a@example.com',
           name: 'A',
-          role: 'ADMIN_ADULT',
+          role: 'ADMIN',
           deletedAt: null,
         },
       } as never);
@@ -104,7 +104,7 @@ describe('findOrCreateUserByIdentity', () => {
           id: 'user-1',
           email: 'a@example.com',
           name: 'A',
-          role: 'ADMIN_ADULT',
+          role: 'ADMIN',
           deletedAt: new Date(),
         },
       } as never);
@@ -158,7 +158,7 @@ describe('findOrCreateUserByIdentity', () => {
         id: 'user-1',
         email: 'existing@example.com',
         name: 'Existing',
-        role: 'ADMIN_ADULT',
+        role: 'ADMIN',
         deletedAt: null,
       } as never);
       vi.mocked(prisma.linkedIdentity.create).mockResolvedValue({
@@ -241,7 +241,7 @@ describe('findOrCreateUserByIdentity', () => {
               id: 'user-new',
               email: 'new@example.com',
               name: 'new@example.com',
-              role: 'ADMIN_ADULT',
+              role: 'ADULT',
             }),
           },
           linkedIdentity: {
@@ -264,7 +264,7 @@ describe('findOrCreateUserByIdentity', () => {
       });
 
       expect(result?.userId).toBe('user-new');
-      expect(result?.user.role).toBe('ADMIN_ADULT');
+      expect(result?.user.role).toBe('ADULT');
       expect(result?.identityCreated).toBe(true);
       expect(result?.linkedToExistingUser).toBe(false);
       expect(prisma.$transaction).toHaveBeenCalled();
@@ -289,7 +289,7 @@ describe('findOrCreateUserByIdentity', () => {
               id: 'user-new',
               email: 'mixed@example.com',
               name: 'mixed@example.com',
-              role: 'ADMIN_ADULT',
+              role: 'ADULT',
             }),
           },
           linkedIdentity: {

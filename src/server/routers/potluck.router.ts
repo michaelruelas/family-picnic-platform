@@ -8,7 +8,7 @@ import { writeDomainAuditLog } from '~/lib/audit';
 export const potluckRouter = router({
   // FPP-104: per-event gate. A HOST with an EventAdmin row on the
   // event can create slots for their own picnic; super-admins /
-  // ADMIN_ADULT users pass via the platform-level admin branch.
+  // ADMIN users pass via the platform-level admin branch.
   // Aligns the tRPC proc with the per-event REST gate the admin UI
   // already relies on.
   createSlot: eventAdminProcedure(

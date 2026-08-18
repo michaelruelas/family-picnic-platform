@@ -66,7 +66,7 @@ describe('PhotoCard', () => {
   });
 
   it('does not show delete button for non-owner non-admin', () => {
-    render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-2" userRole="ADMIN_ADULT" />);
+    render(<PhotoCard photo={basePhoto} eventName="Picnic" userId="u-2" userRole="ADULT" />);
     expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
   });
 
