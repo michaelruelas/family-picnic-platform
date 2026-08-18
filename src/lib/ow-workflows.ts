@@ -323,7 +323,7 @@ export const rsvpDecline = defineWorkflow<RsvpDeclineInput, RsvpDeclineOutput>(
         for (const signup of existingRsvp.potluckSignups) {
           await tx.potluckSlot.update({
             where: { id: signup.slotId },
-            data: { currentSignups: { decrement: signup.servings } },
+            data: { currentSignups: { decrement: 1 } },
           });
         }
         await tx.potluckSignup.deleteMany({ where: { rsvpId: existingRsvp.id } });

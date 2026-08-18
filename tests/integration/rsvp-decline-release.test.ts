@@ -16,10 +16,10 @@ describe('RSVP Decline Auto-Release Potluck Slots', () => {
     expect(routeContent).toContain('existingRsvp');
   });
 
-  it('decrements PotluckSlot.currentSignups for each released slot', async () => {
+  it('decrements PotluckSlot.currentSignups once for each released slot', async () => {
     const routeContent = await fs.readFile(routePath, 'utf-8');
-    expect(routeContent).toContain('currentSignups: { decrement:');
-    expect(routeContent).toContain('signup.servings');
+    expect(routeContent).toContain('currentSignups: { decrement: 1 }');
+    expect(routeContent).not.toContain('decrement: signup.servings');
   });
 
   it('deletes all potluck signups tied to the RSVP', async () => {
