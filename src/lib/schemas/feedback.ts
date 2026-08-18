@@ -39,12 +39,7 @@ export const feedbackSubmitSchema = z.object({
     .optional()
     .or(z.literal('')),
   // The path the user was on when they submitted. Helps reproduce bugs.
-  pageUrl: z
-    .string()
-    .trim()
-    .max(2048, 'pageUrl is too long')
-    .optional()
-    .or(z.literal('')),
+  pageUrl: z.string().trim().max(2048, 'pageUrl is too long').optional().or(z.literal('')),
 });
 
 export type FeedbackSubmitInput = z.infer<typeof feedbackSubmitSchema>;
