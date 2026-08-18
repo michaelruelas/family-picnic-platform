@@ -42,7 +42,7 @@
 │  ┌───────────────────────────────┴─────────────────────────────────┐        │
 │  │                    PostgreSQL (Prisma ORM)                       │        │
 │  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐     │        │
-│  │  │Household│ │   User  │ │Dependent│ │  Event  │ │Invitation│    │        │
+│  │  │Household│ │   User  │ │HouseholdMember│ │  Event  │ │Invitation│    │        │
 │  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘     │        │
 │  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐     │        │
 │  │  │   RSVP  │ │Potluck  │ │Potluck  │ │   Comms │ │  Photo  │     │        │
@@ -75,7 +75,7 @@
 | Component           | Purpose                                                            |
 | ------------------- | ------------------------------------------------------------------ |
 | RSVP Card           | Allows guests to respond to event invitations with attendee count  |
-| Household Dashboard | Manages family members, dependents, and view family RSVP history   |
+| Household Dashboard | Manages household members and views family RSVP history            |
 | Potluck Planner     | Displays categorized food slots, allows signup with item details   |
 | Photo Gallery       | Grid view of event photos with reactions, powered by PhotoPrism    |
 | Admin Dashboard     | Event management, broadcast messaging, user management, audit logs |
@@ -99,9 +99,9 @@
 ```
 Household ─────┬──── User (owner)
                │
-               └──── Dependent
-                     │
-                     └──── Invitation ──── Event
+               └──── HouseholdMember
+                      │
+                      └──── Invitation ──── Event
                            │
                            └──── RSVP
                                  │
@@ -495,9 +495,9 @@ Upload Flow with PhotoPrism:
 
 ```prisma
 // Core Models
-model Household { id, name, createdAt, updatedAt }
-model User      { id, email, name, image, householdId, role }
-model Dependent { id, name, relationship, householdId }
+model Household      { id, name, createdAt, updatedAt }
+model User           { id, email, name, image, householdId, role }
+model HouseholdMember { id, name, age, householdId }
 
 // Event & Invitation
 model Event      { id, title, date, location, description, createdAt }

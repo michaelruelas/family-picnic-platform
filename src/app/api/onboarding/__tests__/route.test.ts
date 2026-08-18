@@ -8,7 +8,6 @@ const prismaMock = vi.hoisted(() => ({
   user: { update: vi.fn(), findUnique: vi.fn() },
   household: { create: vi.fn(), findFirst: vi.fn() },
   householdMember: { create: vi.fn(), findFirst: vi.fn() },
-  dependent: { create: vi.fn() },
   $transaction: vi.fn(),
 }));
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
@@ -23,7 +22,6 @@ vi.mock('next/server', async (importOriginal) => {
 
 import { getServerSession } from 'next-auth';
 import { POST as POSTHousehold } from '~/app/api/onboarding/household/route';
-import { POST as POSTDependent } from '~/app/api/onboarding/dependent/route';
 import { POST as POSTComplete } from '~/app/api/onboarding/complete/route';
 
 const mockedSession = vi.mocked(getServerSession);
@@ -123,100 +121,6 @@ describe('POST /api/onboarding/household', () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     prismaMock.$transaction.mockRejectedValue(new Error('boom'));
     const res = await POSTHousehold(makeJsonRequest('http://x', { name: 'The Smiths' }));
-    expect(res.status).toBe(500);
-  });
-});
-
-describe('POST /api/onboarding/dependent', () => {
-  it('returns 401 when no session', async () => {
-    mockedSession.mockResolvedValue(null);
-    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Kid' }));
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 400 when user has no household', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: null } as never);
-    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Kid' }));
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 400 when name missing', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
-    const res = await POSTDependent(makeJsonRequest('http://x', {}));
-    expect(res.status).toBe(400);
-  });
-
-  it('creates a household member with the trimmed name', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
-    prismaMock.householdMember.findFirst.mockResolvedValue(null);
-    prismaMock.householdMember.create.mockResolvedValue({ id: 'm-1' } as never);
-    const res = await POSTDependent(
-      makeJsonRequest('http://x', { name: 'Kid', age: 10, isChild: true }),
-    );
-    expect(res.status).toBe(200);
-    expect(prismaMock.householdMember.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          householdId: 'h-1',
-          name: 'Kid',
-          age: 10,
-        }),
-      }),
-    );
-  });
-
-  it('rejects duplicate member names within a household', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
-    prismaMock.householdMember.findFirst.mockResolvedValue({ id: 'm-1' } as never);
-    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Spouse', age: 40 }));
-    expect(res.status).toBe(409);
-  });
-
-  it('passes deletedAt: null to the duplicate check so a re-added name works', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
-    prismaMock.householdMember.findFirst.mockResolvedValue(null);
-    prismaMock.householdMember.create.mockResolvedValue({ id: 'm-2' } as never);
-    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Spouse', age: 40 }));
-    expect(res.status).toBe(200);
-    expect(prismaMock.householdMember.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ deletedAt: null }),
-      }),
-    );
-  });
-
-  it('persists the relationship string on the new member', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
-    prismaMock.householdMember.findFirst.mockResolvedValue(null);
-    prismaMock.householdMember.create.mockResolvedValue({ id: 'm-3' } as never);
-    const res = await POSTDependent(
-      makeJsonRequest('http://x', { name: 'Cousin', relationship: 'COUSIN', age: 25 }),
-    );
-    expect(res.status).toBe(200);
-    expect(prismaMock.householdMember.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ name: 'Cousin', relationship: 'COUSIN' }),
-      }),
-    );
-  });
-
-  it('returns 400 when age is missing (FPP-122)', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
-    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Kid' }));
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 500 on error', async () => {
-    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    prismaMock.user.findUnique.mockRejectedValue(new Error('boom'));
-    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Kid', age: 5 }));
     expect(res.status).toBe(500);
   });
 });

@@ -148,19 +148,15 @@ async function main() {
     data: { householdId: patelHousehold.id, name: priyaPatel.name, age: 29 },
   });
 
-  const dependent = await prisma.dependent.create({
+  await prisma.householdMember.create({
     data: {
-      name: 'Sofia Garcia',
-      relationship: 'CHILD',
-      age: 7,
-      isChild: true,
-      dietaryLabels: ['nut-free', 'dairy-free'],
       householdId: garciaHousehold.id,
-      managedByUserId: mariaGarcia.id,
+      name: 'Sofia Garcia',
+      age: 7,
+      relationship: 'CHILD',
+      notes: 'Allergies: nut-free, dairy-free',
     },
   });
-
-  console.log('Created dependent:', dependent.name);
 
   const event = await prisma.event.create({
     data: {

@@ -30,14 +30,6 @@ export default async function ProfilePage() {
           name: true,
         },
       },
-      managedDependents: {
-        where: {
-          deletedAt: null,
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
-      },
     },
   });
 
@@ -59,7 +51,7 @@ export default async function ProfilePage() {
 
       <BreatheSection className="mt-12">
         <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9">
-          <ProfileClient user={user} initialDependents={user.managedDependents} />
+          <ProfileClient user={user} />
         </div>
       </BreatheSection>
 

@@ -1,18 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useUserProfileMutation, useDependentMutations, useHouseholdNameMutation } from '~/hooks';
-import { Relationship, CommunicationPreference } from '~/lib/generated/enums';
-
-interface Dependent {
-  id: string;
-  name: string;
-  relationship: Relationship;
-  // FPP-122: dependents always carry an age.
-  age: number;
-  dietaryLabels: string[];
-  isChild: boolean;
-}
+import { useRouter } from 'next/navigation';
+import { useUserProfileMutation, useHouseholdNameMutation } from '~/hooks';
+import { CommunicationPreference } from '~/lib/generated/enums';
 
 interface ProfileFormProps {
   user: {
@@ -25,21 +16,11 @@ interface ProfileFormProps {
       name: string;
     } | null;
   };
-  initialDependents?: Dependent[];
 }
 
-const RELATIONSHIP_LABELS: Record<Relationship, string> = {
-  SPOUSE: 'Spouse',
-  CHILD: 'Child',
-  PARENT: 'Parent',
-  SIBLING: 'Sibling',
-  INLAW: 'In-Law',
-  COUSIN: 'Cousin',
-};
-
-export default function ProfileClient({ user, initialDependents = [] }: ProfileFormProps) {
+export default function ProfileClient({ user }: ProfileFormProps) {
+  const router = useRouter();
   const { updatePreferences } = useUserProfileMutation();
-  const { create, update, remove } = useDependentMutations();
   const { updateName } = useHouseholdNameMutation();
   const [name, setName] = useState(user.name);
   const [communicationPreference, setCommunicationPreference] = useState(
@@ -53,18 +34,6 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
   const [householdSuccess, setHouseholdSuccess] = useState(false);
   const [householdError, setHouseholdError] = useState<string | null>(null);
   const [isSavingHousehold, setIsSavingHousehold] = useState(false);
-  const [dependents, setDependents] = useState<Dependent[]>(initialDependents);
-  const [showDependentForm, setShowDependentForm] = useState(false);
-  const [editingDependentId, setEditingDependentId] = useState<string | null>(null);
-  const [dependentForm, setDependentForm] = useState({
-    name: '',
-    relationship: 'CHILD',
-    age: '',
-    dietaryLabels: '',
-    isChild: false,
-  });
-  const [dependentError, setDependentError] = useState<string | null>(null);
-  const [dependentSubmitting, setDependentSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,8 +66,13 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
     setHouseholdSuccess(false);
   };
 
-  const handleSaveHousehold = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // FPP-117: invoked from a button click rather than a form submit.
+  // The previous version wrapped this in a nested <form> inside the
+  // outer profile-edit form, which is invalid HTML — browsers may
+  // dispatch the Save click to the outer form's submit handler (which
+  // only calls updatePreferences) and the rename silently does
+  // nothing. Wired to a <div> + button.onClick instead.
+  const handleSaveHousehold = async () => {
     if (!user.household) return;
     const trimmed = householdName.trim();
     if (!trimmed) {
@@ -119,6 +93,11 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
       await updateName.mutateAsync({ id: user.household.id, name: trimmed });
       setHouseholdSuccess(true);
       setHouseholdName(trimmed);
+      // FPP-117: re-fetch the server-component prop so `user.household.name`
+      // (which gates the Save button's disabled state) reflects the new
+      // value. Without this the button stays disabled after the first
+      // successful rename.
+      router.refresh();
     } catch (err) {
       setHouseholdError(
         err instanceof Error ? err.message : 'Something went wrong. Please try again.',
@@ -126,127 +105,6 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
     } finally {
       setIsSavingHousehold(false);
     }
-  };
-
-  const resetDependentForm = () => {
-    setDependentForm({
-      name: '',
-      relationship: 'CHILD',
-      age: '',
-      dietaryLabels: '',
-      isChild: false,
-    });
-    setEditingDependentId(null);
-    setShowDependentForm(false);
-    setDependentError(null);
-  };
-
-  const handleAddDependent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // FPP-122: age is required. Mirror the schema bounds before
-    // the round-trip.
-    const trimmedAge = dependentForm.age.trim();
-    if (trimmedAge === '') {
-      setDependentError('Age is required');
-      return;
-    }
-    const ageNumber = Number(trimmedAge);
-    if (!Number.isInteger(ageNumber) || ageNumber < 0 || ageNumber > 120) {
-      setDependentError('Age must be a whole number between 0 and 120');
-      return;
-    }
-    setDependentSubmitting(true);
-    setDependentError(null);
-
-    try {
-      const newDependent = await create.mutateAsync({
-        name: dependentForm.name,
-        relationship: dependentForm.relationship as
-          'SPOUSE' | 'CHILD' | 'PARENT' | 'SIBLING' | 'INLAW' | 'COUSIN',
-        age: ageNumber,
-        dietaryLabels: dependentForm.dietaryLabels
-          .split(',')
-          .map((l) => l.trim())
-          .filter((l) => l !== ''),
-        isChild: dependentForm.isChild,
-      });
-      setDependents([...dependents, newDependent]);
-      resetDependentForm();
-    } catch (err) {
-      setDependentError(
-        err instanceof Error ? err.message : 'Something went wrong. Please try again.',
-      );
-    } finally {
-      setDependentSubmitting(false);
-    }
-  };
-
-  const handleUpdateDependent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingDependentId) return;
-
-    // FPP-122: same required-age guard as the create path.
-    const trimmedAge = dependentForm.age.trim();
-    if (trimmedAge === '') {
-      setDependentError('Age is required');
-      return;
-    }
-    const ageNumber = Number(trimmedAge);
-    if (!Number.isInteger(ageNumber) || ageNumber < 0 || ageNumber > 120) {
-      setDependentError('Age must be a whole number between 0 and 120');
-      return;
-    }
-    setDependentSubmitting(true);
-    setDependentError(null);
-
-    try {
-      const updatedDependent = await update.mutateAsync({
-        id: editingDependentId,
-        name: dependentForm.name,
-        relationship: dependentForm.relationship as
-          'SPOUSE' | 'CHILD' | 'PARENT' | 'SIBLING' | 'INLAW' | 'COUSIN',
-        age: ageNumber,
-        dietaryLabels: dependentForm.dietaryLabels
-          .split(',')
-          .map((l) => l.trim())
-          .filter((l) => l !== ''),
-        isChild: dependentForm.isChild,
-      });
-      setDependents(dependents.map((d) => (d.id === editingDependentId ? updatedDependent : d)));
-      resetDependentForm();
-    } catch (err) {
-      setDependentError(
-        err instanceof Error ? err.message : 'Something went wrong. Please try again.',
-      );
-    } finally {
-      setDependentSubmitting(false);
-    }
-  };
-
-  const handleDeleteDependent = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this family member?')) return;
-
-    try {
-      await remove.mutateAsync({ id });
-      setDependents(dependents.filter((d) => d.id !== id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-    }
-  };
-
-  const startEditDependent = (dependent: Dependent) => {
-    setDependentForm({
-      name: dependent.name,
-      relationship: dependent.relationship,
-      // FPP-122: dependents always carry an age; fall back to '' only
-      // for legacy rows the migration hasn't touched yet.
-      age: dependent.age !== null && dependent.age !== undefined ? String(dependent.age) : '',
-      dietaryLabels: dependent.dietaryLabels.join(', '),
-      isChild: dependent.isChild,
-    });
-    setEditingDependentId(dependent.id);
-    setShowDependentForm(true);
-    setDependentError(null);
   };
 
   return (
@@ -301,7 +159,11 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
           <div>
             <label className="text-foreground/85 block text-sm font-medium">Household</label>
             {user.household ? (
-              <form onSubmit={handleSaveHousehold} className="mt-1 space-y-2">
+              // FPP-117: not a <form>. Nested forms are invalid HTML
+              // and the outer profile-edit form swallowed this Save
+              // click on some browsers. The Save button is now an
+              // explicit onClick handler below.
+              <div className="mt-1 space-y-2">
                 <input
                   type="text"
                   value={householdName}
@@ -316,7 +178,8 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                 />
                 <div className="flex items-center gap-3">
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handleSaveHousehold}
                     disabled={
                       isSavingHousehold ||
                       householdName.trim() === '' ||
@@ -330,7 +193,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                 </div>
                 {householdError && <p className="text-destructive text-xs">{householdError}</p>}
                 {householdSuccess && <p className="text-sage text-xs">Household name updated</p>}
-              </form>
+              </div>
             ) : (
               <p className="text-muted-foreground mt-1">Not assigned to a household</p>
             )}
@@ -386,182 +249,6 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
             </div>
           )}
         </form>
-      </div>
-
-      <div className="bg-card ring-border rounded-sm p-6 shadow-sm ring-1">
-        <div className="flex items-center justify-between">
-          <h2 className="text-foreground text-xl font-semibold">Family Members</h2>
-          {!showDependentForm && (
-            <button
-              onClick={() => setShowDependentForm(true)}
-              className="bg-terracotta/15 text-terracotta hover:bg-terracotta/20 rounded-sm px-3 py-1 text-sm font-medium"
-            >
-              + Add
-            </button>
-          )}
-        </div>
-
-        {dependents.length === 0 && !showDependentForm ? (
-          <p className="text-muted-foreground mt-4 text-sm">
-            No family members added yet. Add your spouse, children, or other family members to help
-            us plan for everyone.
-          </p>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {dependents.map((dependent) => (
-              <li key={dependent.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-foreground/85">{dependent.name}</span>
-                  <span className="bg-terracotta/15 text-terracotta rounded-sm px-2 py-0.5 text-xs capitalize">
-                    {RELATIONSHIP_LABELS[dependent.relationship]?.toLowerCase() ||
-                      dependent.relationship.toLowerCase()}
-                  </span>
-                  {dependent.isChild && (
-                    <span className="bg-info/15 text-info rounded-sm px-2 py-0.5 text-xs">
-                      Child
-                    </span>
-                  )}
-                </div>
-                <div className="text-muted-foreground flex items-center gap-3 text-sm">
-                  {dependent.age !== null && dependent.age !== undefined && (
-                    <span>{dependent.age} yrs</span>
-                  )}
-                  {dependent.dietaryLabels.length > 0 && (
-                    <span className="text-terracotta">🥗 {dependent.dietaryLabels.join(', ')}</span>
-                  )}
-                  <button
-                    onClick={() => startEditDependent(dependent)}
-                    className="text-primary hover:text-primary-hover font-medium"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteDependent(dependent.id)}
-                    className="text-destructive hover:text-foreground"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {showDependentForm && (
-          <form
-            onSubmit={editingDependentId ? handleUpdateDependent : handleAddDependent}
-            className="border-border bg-secondary/60 mt-6 rounded-sm border p-4"
-          >
-            <h3 className="text-foreground text-lg font-medium">
-              {editingDependentId ? 'Edit Family Member' : 'Add Family Member'}
-            </h3>
-
-            {dependentError && (
-              <div className="bg-destructive/10 text-destructive mt-3 rounded-sm p-3 text-sm">
-                {dependentError}
-              </div>
-            )}
-
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-foreground/85 block text-sm font-medium">Name</label>
-                <input
-                  type="text"
-                  value={dependentForm.name}
-                  onChange={(e) => setDependentForm({ ...dependentForm, name: e.target.value })}
-                  required
-                  placeholder="Full name"
-                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-foreground/85 block text-sm font-medium">Relationship</label>
-                <select
-                  value={dependentForm.relationship}
-                  onChange={(e) =>
-                    setDependentForm({ ...dependentForm, relationship: e.target.value })
-                  }
-                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-                >
-                  <option value="SPOUSE">Spouse</option>
-                  <option value="CHILD">Child</option>
-                  <option value="PARENT">Parent</option>
-                  <option value="SIBLING">Sibling</option>
-                  <option value="INLAW">In-Law</option>
-                  <option value="COUSIN">Cousin</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-foreground/85 block text-sm font-medium">
-                  Age <span className="text-destructive">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={dependentForm.age}
-                  onChange={(e) => setDependentForm({ ...dependentForm, age: e.target.value })}
-                  required
-                  min="0"
-                  max="120"
-                  placeholder="Age in years"
-                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-foreground/85 block text-sm font-medium">
-                  Dietary Labels (optional)
-                </label>
-                <input
-                  type="text"
-                  value={dependentForm.dietaryLabels}
-                  onChange={(e) =>
-                    setDependentForm({ ...dependentForm, dietaryLabels: e.target.value })
-                  }
-                  placeholder="vegetarian, gluten-free, nut-free"
-                  className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={dependentForm.isChild}
-                  onChange={(e) =>
-                    setDependentForm({ ...dependentForm, isChild: e.target.checked })
-                  }
-                  className="border-border text-terracotta focus:ring-foreground/20 h-4 w-4 rounded"
-                />
-                <span className="text-foreground/85 text-sm">This is a child (under 18)</span>
-              </label>
-            </div>
-
-            <div className="mt-6 flex gap-3">
-              <button
-                type="submit"
-                disabled={dependentSubmitting}
-                className="bg-terracotta hover:bg-terracotta flex-1 rounded-sm px-4 py-2 font-medium text-white disabled:opacity-50"
-              >
-                {dependentSubmitting
-                  ? 'Saving...'
-                  : editingDependentId
-                    ? 'Save Changes'
-                    : 'Add Family Member'}
-              </button>
-              <button
-                type="button"
-                onClick={resetDependentForm}
-                disabled={dependentSubmitting}
-                className="bg-secondary text-foreground/85 hover:bg-secondary flex-1 rounded-sm px-4 py-2 font-medium disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
       </div>
     </div>
   );

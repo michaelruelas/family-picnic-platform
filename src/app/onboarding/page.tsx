@@ -44,7 +44,7 @@ export default async function OnboardingPage() {
       id: true,
       name: true,
       _count: {
-        select: { users: true, dependents: true },
+        select: { users: true, members: true },
       },
     },
     orderBy: { name: 'asc' },
@@ -72,7 +72,7 @@ export default async function OnboardingPage() {
         households={households.map((h) => ({
           id: h.id,
           name: h.name,
-          memberCount: h._count.users + h._count.dependents,
+          memberCount: h._count.users + h._count.members,
         }))}
       />
     </main>

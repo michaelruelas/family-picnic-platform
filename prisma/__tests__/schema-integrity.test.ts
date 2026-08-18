@@ -209,4 +209,26 @@ describe('Prisma schema integrity vs SPEC', () => {
   it('FPP-43: User model has an uploadedAttachments relation', () => {
     expect(schema).toMatch(/model User \{[\s\S]*?uploadedAttachments\s+EventAttachment\[\]/);
   });
+
+  it('HouseholdMember is the roster model and has householdId, name, age, relationship', () => {
+    const block = schema.match(/model HouseholdMember \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    const body = block![1]!;
+    expect(body).toMatch(/householdId\s+String/);
+    expect(body).toMatch(/name\s+String/);
+    // FPP-122: age is now required at the DB layer.
+    expect(body).toMatch(/\bage\s+Int\b/);
+    expect(body).not.toMatch(/\bage\s+Int\?/);
+    expect(body).toMatch(/relationship\s+String\?/);
+    // The legacy Dependent model is gone.
+    expect(schema).not.toMatch(/^model Dependent \{/m);
+  });
+
+  it('Household model has a members relation and no dependents relation', () => {
+    const block = schema.match(/model Household \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    const body = block![1]!;
+    expect(body).toMatch(/members\s+HouseholdMember\[\]/);
+    expect(body).not.toMatch(/dependents\s+Dependent\[\]/);
+  });
 });

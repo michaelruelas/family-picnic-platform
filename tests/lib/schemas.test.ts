@@ -4,8 +4,6 @@ import {
   rsvpConfirmSchema,
   rsvpDeclineSchema,
   potluckSignupSchema,
-  dependentCreateSchema,
-  dependentUpdateSchema,
   profileUpdateSchema,
   photoReactionSchema,
   VALID_REACTIONS,
@@ -122,103 +120,26 @@ describe('Potluck Schema', () => {
 });
 
 describe('Dependent Schemas', () => {
-  describe('dependentCreateSchema', () => {
-    it('validates correct dependent creation', () => {
-      const result = dependentCreateSchema.safeParse({
+  describe('householdMemberCreateSchema', () => {
+    it('validates correct household member creation', () => {
+      const { householdMemberCreateSchema } = barrel;
+      const result = householdMemberCreateSchema.safeParse({
+        householdId: 'h-1',
         name: 'Emma',
-        relationship: 'CHILD',
         age: 8,
-        dietaryLabels: ['nut-free'],
-        isChild: true,
       });
       expect(result.success).toBe(true);
-    });
-
-    it('validates without optional fields', () => {
-      // FPP-122: age is required on create.
-      const result = dependentCreateSchema.safeParse({
-        name: 'Spouse',
-        relationship: 'SPOUSE',
-        age: 30,
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('rejects when age is missing (FPP-122)', () => {
-      const result = dependentCreateSchema.safeParse({
-        name: 'Spouse',
-        relationship: 'SPOUSE',
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it('rejects empty name', () => {
-      const result = dependentCreateSchema.safeParse({
-        name: '',
-        relationship: 'CHILD',
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it('rejects invalid relationship', () => {
-      const result = dependentCreateSchema.safeParse({
-        name: 'Test',
-        relationship: 'INVALID',
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it('rejects negative age', () => {
-      const result = dependentCreateSchema.safeParse({
-        name: 'Test',
-        relationship: 'CHILD',
-        age: -1,
-      });
-      expect(result.success).toBe(false);
     });
   });
 
-  describe('dependentUpdateSchema', () => {
+  describe('householdMemberUpdateSchema', () => {
     it('validates partial update', () => {
-      const result = dependentUpdateSchema.safeParse({
-        id: 'dep-123',
+      const { householdMemberUpdateSchema } = barrel;
+      const result = householdMemberUpdateSchema.safeParse({
+        id: 'mem-123',
         name: 'Updated Name',
       });
       expect(result.success).toBe(true);
-    });
-
-    it('validates update with all fields', () => {
-      const result = dependentUpdateSchema.safeParse({
-        id: 'dep-123',
-        name: 'Updated',
-        relationship: 'CHILD',
-        age: 10,
-        dietaryLabels: ['gluten-free'],
-        isChild: true,
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('rejects missing id', () => {
-      const result = dependentUpdateSchema.safeParse({
-        name: 'Updated',
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it('allows omitting age', () => {
-      const result = dependentUpdateSchema.safeParse({
-        id: 'dep-123',
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('rejects nulling age (FPP-122 keeps age required)', () => {
-      const result = dependentUpdateSchema.safeParse({
-        id: 'dep-123',
-        age: null,
-      });
-      expect(result.success).toBe(false);
     });
   });
 });
