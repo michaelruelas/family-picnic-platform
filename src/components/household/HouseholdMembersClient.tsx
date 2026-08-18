@@ -164,7 +164,7 @@ export default function HouseholdMembersClient({
                       <span className="text-foreground font-medium">{member.name}</span>
                       {backfilled && (
                         <span
-                          className="rounded-sm bg-amber-100 px-2 py-0.5 text-xs text-amber-800"
+                          className="bg-warning/20 text-warning-foreground rounded-sm px-2 py-0.5 text-xs font-medium"
                           title="Edit to confirm the imported name and age"
                         >
                           {backfillLabel(member)}
@@ -182,7 +182,7 @@ export default function HouseholdMembersClient({
                 <div className="flex items-center gap-3 text-sm">
                   <button
                     onClick={() => startEdit(member)}
-                    className="text-blue-600 hover:text-blue-800"
+                    className="text-primary hover:text-primary-hover font-medium"
                   >
                     Edit
                   </button>

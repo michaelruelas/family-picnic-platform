@@ -112,7 +112,7 @@ export function EventStickyBar({
             <button
               onClick={() => setIsSheetOpen(true)}
               disabled={!isRsvpOpen}
-              className="bg-terracotta shadow-soft press rounded-sm px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+              className="bg-terracotta shadow-soft press hover:bg-terracotta/90 rounded-sm px-6 py-3 text-sm font-semibold text-white transition-all disabled:opacity-50"
             >
               {isRsvpOpen ? (isFull ? 'Join Waitlist' : 'RSVP Now') : 'RSVP Closed'}
             </button>

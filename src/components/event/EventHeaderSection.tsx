@@ -414,7 +414,7 @@ function PotluckCategoryCard({
   const colorByCategory: Record<string, string> = {
     MAIN: 'bg-terracotta/15 text-terracotta',
     SIDE: 'bg-sage/20 text-sage',
-    DESSERT: 'bg-sunlight/30 text-[#a07c2f]',
+    DESSERT: 'bg-sunlight/25 text-sunlight-foreground',
     DRINK: 'bg-secondary text-foreground',
     OTHER: 'bg-secondary text-muted-foreground',
   };

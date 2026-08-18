@@ -70,7 +70,7 @@ export default function LinkedAccounts({ enabledProviders, sessionEmail }: Linke
   return (
     <div className="bg-card ring-border rounded-sm p-6 shadow-sm ring-1">
       <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-blue-100 text-2xl">
+        <div className="bg-info/15 text-info flex h-12 w-12 shrink-0 items-center justify-center rounded-sm text-2xl">
           🔗
         </div>
         <div className="flex-1">

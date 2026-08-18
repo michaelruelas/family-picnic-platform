@@ -26,16 +26,16 @@ type DeliveryStatusProps = {
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { bg: string; text: string; label: string }> = {
-    QUEUED: { bg: 'bg-sunlight/30', text: 'text-[#a07c2f]', label: 'Queued' },
-    SENT: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Sent' },
-    DELIVERED: { bg: 'bg-sage/20', text: 'text-sage', label: 'Delivered' },
+    QUEUED: { bg: 'bg-warning/25', text: 'text-warning-foreground', label: 'Queued' },
+    SENT: { bg: 'bg-info/20', text: 'text-info', label: 'Sent' },
+    DELIVERED: { bg: 'bg-success/20', text: 'text-success', label: 'Delivered' },
     FAILED: { bg: 'bg-destructive/15', text: 'text-destructive', label: 'Failed' },
-    UNSUBSCRIBED: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Unsubscribed' },
+    UNSUBSCRIBED: { bg: 'bg-secondary', text: 'text-muted-foreground', label: 'Unsubscribed' },
   };
 
   const { bg, text, label } = config[status] ?? {
-    bg: 'bg-gray-100',
-    text: 'text-gray-700',
+    bg: 'bg-secondary',
+    text: 'text-muted-foreground',
     label: status,
   };
 
@@ -84,25 +84,25 @@ export default function DeliveryStatus({ logs, loading = false }: DeliveryStatus
           <div className="text-foreground text-2xl font-bold">{summary.total}</div>
           <div className="text-muted-foreground">Total</div>
         </div>
-        <div className="bg-sunlight/30 rounded-sm p-3">
-          <div className="text-2xl font-bold text-[#a07c2f]">{summary.queued}</div>
-          <div className="text-yellow-600">Queued</div>
+        <div className="bg-warning/20 rounded-sm p-3">
+          <div className="text-warning-foreground text-2xl font-bold">{summary.queued}</div>
+          <div className="text-warning-foreground/80">Queued</div>
         </div>
-        <div className="rounded-sm bg-blue-100 p-3">
-          <div className="text-2xl font-bold text-blue-700">{summary.sent}</div>
-          <div className="text-blue-600">Sent</div>
+        <div className="bg-info/15 rounded-sm p-3">
+          <div className="text-info text-2xl font-bold">{summary.sent}</div>
+          <div className="text-info/80">Sent</div>
         </div>
-        <div className="bg-sage/20 rounded-sm p-3">
-          <div className="text-sage text-2xl font-bold">{summary.delivered}</div>
-          <div className="text-sage">Delivered</div>
+        <div className="bg-success/20 rounded-sm p-3">
+          <div className="text-success text-2xl font-bold">{summary.delivered}</div>
+          <div className="text-success">Delivered</div>
         </div>
         <div className="bg-destructive/15 rounded-sm p-3">
           <div className="text-destructive text-2xl font-bold">{summary.failed}</div>
           <div className="text-destructive">Failed</div>
         </div>
-        <div className="rounded-sm bg-gray-100 p-3">
-          <div className="text-2xl font-bold text-gray-700">{summary.unsubscribed}</div>
-          <div className="text-gray-600">Unsubscribed</div>
+        <div className="bg-secondary rounded-sm p-3">
+          <div className="text-muted-foreground text-2xl font-bold">{summary.unsubscribed}</div>
+          <div className="text-muted-foreground">Unsubscribed</div>
         </div>
       </div>
 

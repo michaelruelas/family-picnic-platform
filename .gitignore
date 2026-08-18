@@ -49,3 +49,4 @@ playwright-tests/snapshots.spec.ts-snapshots/*.png
 # Misc
 .gnfh/
 audits/
+.openchamber/

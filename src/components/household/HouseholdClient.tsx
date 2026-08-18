@@ -207,7 +207,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
               className="border-border flex items-center justify-between rounded-sm border p-3"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-blue-100 font-medium text-blue-700">
+                <div className="bg-info/15 text-info flex h-10 w-10 items-center justify-center rounded-sm font-medium">
                   {dependent.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex flex-col">
@@ -218,7 +218,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
                         dependent.relationship.toLowerCase()}
                     </span>
                     {dependent.isChild && (
-                      <span className="rounded-sm bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                      <span className="bg-info/15 text-info rounded-sm px-2 py-0.5 text-xs">
                         Child
                       </span>
                     )}
@@ -236,7 +236,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
               <div className="flex items-center gap-3 text-sm">
                 <button
                   onClick={() => startEditDependent(dependent)}
-                  className="text-blue-600 hover:text-blue-800"
+                  className="text-primary hover:text-primary-hover font-medium"
                 >
                   Edit
                 </button>

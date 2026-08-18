@@ -128,7 +128,7 @@ export function Calendar({ events }: CalendarProps) {
           return (
             <div
               key={day}
-              className={`bg-card min-h-24 p-2 md:min-h-32 ${isCurrentDay ? 'ring-2 ring-green-500 ring-inset' : ''}`}
+              className={`bg-card min-h-24 p-2 md:min-h-32 ${isCurrentDay ? 'ring-primary ring-2 ring-inset' : ''}`}
             >
               <div
                 className={`mb-1 inline-flex h-7 w-7 items-center justify-center rounded-sm text-sm font-medium ${
@@ -156,7 +156,7 @@ export function Calendar({ events }: CalendarProps) {
           <span>Today</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="bg-sage/30 h-3 w-3 rounded border border-green-300" />
+          <span className="bg-sage/30 border-success/40 h-3 w-3 rounded border" />
           <span>Published</span>
         </div>
         <div className="flex items-center gap-2">

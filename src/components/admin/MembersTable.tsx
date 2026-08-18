@@ -58,7 +58,7 @@ interface MembersTableProps {
 
 const ATTENDING_PALETTE: Record<RsvpAttending, string> = {
   [RsvpAttending.YES]: 'bg-sage/20 text-sage',
-  [RsvpAttending.MAYBE]: 'bg-sunlight/30 text-[#a07c2f]',
+  [RsvpAttending.MAYBE]: 'bg-sunlight/25 text-sunlight-foreground',
   [RsvpAttending.NO]: 'bg-destructive/15 text-destructive',
 };
 
@@ -250,7 +250,7 @@ export default function MembersTable({
               <button
                 type="button"
                 onClick={() => setPickerOpen((v) => !v)}
-                className="bg-sage text-sage-foreground rounded-sm px-3 py-1.5 text-sm font-medium hover:bg-[#6fa18a]"
+                className="bg-sage text-sage-foreground hover:bg-sage-hover rounded-sm px-3 py-1.5 text-sm font-medium"
                 data-testid="add-rsvp-button"
                 aria-haspopup="menu"
                 aria-expanded={pickerOpen}
@@ -307,7 +307,7 @@ export default function MembersTable({
         </div>
         <div className="bg-card rounded-sm p-4 shadow-sm">
           <p className="text-muted-foreground text-xs">Maybe</p>
-          <p className="mt-1 text-2xl font-semibold text-[#a07c2f] tabular-nums">
+          <p className="text-sunlight-foreground mt-1 text-2xl font-semibold tabular-nums">
             {counts[RsvpAttending.MAYBE]}
           </p>
         </div>

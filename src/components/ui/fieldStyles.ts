@@ -17,8 +17,8 @@
  * mode, matching the FPP-44 dark-panel rule.
  */
 
-export const FOCUS_RING_DEFAULT = 'focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)]';
-export const FOCUS_RING_DESTRUCTIVE = 'focus:shadow-[0_0_0_3px_rgba(196,69,54,0.15)]';
+export const FOCUS_RING_DEFAULT = 'focus:shadow-[0_0_0_3px_rgba(2,132,199,0.15)]';
+export const FOCUS_RING_DESTRUCTIVE = 'focus:shadow-[0_0_0_3px_rgba(239,68,68,0.18)]';
 
 export const fieldBaseClasses =
   'text-foreground placeholder:text-muted-foreground disabled:bg-muted disabled:text-muted-foreground ' +

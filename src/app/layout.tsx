@@ -4,6 +4,7 @@ import './globals.css';
 import Providers from '~/components/Providers';
 import NavBarClient from '~/components/NavBarClient';
 import Footer from '~/components/Footer';
+import { themeColors, getThemeCss, getThemeScript } from '~/lib/theme';
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -29,12 +30,26 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#F9F8F6',
+  themeColor: themeColors.primary,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${fraunces.variable} ${inter.variable}`} suppressHydrationWarning>
+      <head>
+        <style
+          id="dynamic-theme"
+          dangerouslySetInnerHTML={{
+            __html: getThemeCss(),
+          }}
+        />
+        <script
+          id="dynamic-theme-script"
+          dangerouslySetInnerHTML={{
+            __html: getThemeScript(),
+          }}
+        />
+      </head>
       <body className="flex min-h-screen flex-col antialiased">
         <Providers>
           <NavBarClient />

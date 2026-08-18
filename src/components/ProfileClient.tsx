@@ -391,7 +391,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                       dependent.relationship.toLowerCase()}
                   </span>
                   {dependent.isChild && (
-                    <span className="rounded-sm bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                    <span className="bg-info/15 text-info rounded-sm px-2 py-0.5 text-xs">
                       Child
                     </span>
                   )}
@@ -403,7 +403,7 @@ export default function ProfileClient({ user, initialDependents = [] }: ProfileF
                   )}
                   <button
                     onClick={() => startEditDependent(dependent)}
-                    className="text-blue-600 hover:text-blue-800"
+                    className="text-primary hover:text-primary-hover font-medium"
                   >
                     Edit
                   </button>

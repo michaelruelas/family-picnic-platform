@@ -10,7 +10,7 @@ const statusConfig: Record<EventStatus, { label: string; bg: string; text: strin
   DRAFT: { label: 'Draft', bg: 'bg-secondary', text: 'text-foreground/85' },
   PUBLISHED: { label: 'Published', bg: 'bg-sage/20', text: 'text-sage' },
   CLOSED: { label: 'Closed', bg: 'bg-destructive/15', text: 'text-destructive' },
-  CANCELLED: { label: 'Cancelled', bg: 'bg-gray-100', text: 'text-gray-700' },
+  CANCELLED: { label: 'Cancelled', bg: 'bg-secondary', text: 'text-muted-foreground' },
 };
 
 export default function EventStatusBadge({ status }: EventStatusBadgeProps) {

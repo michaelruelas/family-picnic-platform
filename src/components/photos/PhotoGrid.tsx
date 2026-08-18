@@ -82,7 +82,7 @@ export default function PhotoGrid({
         >
           <div className="relative max-h-[90vh] max-w-[90vw]">
             <button
-              className="absolute -top-10 right-0 text-white hover:text-stone-300"
+              className="absolute -top-10 right-0 font-medium text-white hover:text-white/70"
               onClick={() => setSelectedPhoto(null)}
             >
               Close

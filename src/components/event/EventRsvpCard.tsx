@@ -207,7 +207,7 @@ export function EventRsvpCard({
                 <div className="mt-5 flex flex-col gap-2">
                   <button
                     onClick={() => setIsSheetOpen(true)}
-                    className="bg-terracotta press rounded-sm px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
+                    className="bg-terracotta press hover:bg-terracotta-hover rounded-sm px-4 py-2.5 text-sm font-semibold text-white transition-all"
                     data-testid="rsvp-card-edit-link"
                   >
                     Edit attendance &amp; dishes
@@ -245,7 +245,7 @@ export function EventRsvpCard({
                 <button
                   onClick={() => setIsSheetOpen(true)}
                   disabled={isFull}
-                  className="bg-terracotta shadow-soft press mt-5 w-full rounded-sm px-5 py-3 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+                  className="bg-terracotta shadow-soft press hover:bg-terracotta-hover mt-5 w-full rounded-sm px-5 py-3 font-semibold text-white transition-all disabled:opacity-50"
                 >
                   {isFull ? 'Event is full' : 'RSVP again'}
                 </button>
@@ -254,7 +254,7 @@ export function EventRsvpCard({
           )}
           {isWaitlisted && (
             <>
-              <div className="bg-sunlight/30 mt-4 inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold text-[#a07c2f]">
+              <div className="bg-sunlight/25 text-sunlight-foreground mt-4 inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold">
                 On the waitlist
               </div>
               <h3 className="font-display text-foreground mt-3 text-2xl font-semibold">
@@ -308,7 +308,7 @@ export function EventRsvpCard({
             <div className="mt-5 flex flex-col gap-2">
               <button
                 onClick={() => setIsSheetOpen(true)}
-                className="bg-terracotta shadow-soft press w-full rounded-sm px-5 py-3 font-semibold text-white transition-all hover:bg-[#cf6c52]"
+                className="bg-terracotta shadow-soft press hover:bg-terracotta-hover w-full rounded-sm px-5 py-3 font-semibold text-white transition-all"
                 data-testid="rsvp-card-rsvp-button"
               >
                 {isFull ? 'Join Waitlist' : 'RSVP Now'}

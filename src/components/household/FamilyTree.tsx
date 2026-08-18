@@ -99,7 +99,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
                     key={user.id}
                     className="text-muted-foreground flex items-center gap-2 text-sm"
                   >
-                    <span className="h-2 w-2 rounded-sm bg-amber-400" />
+                    <span className="bg-role-adult h-2 w-2 rounded-sm" />
                     {user.name}
                     <span className="text-muted-foreground/70 text-xs">({user.email})</span>
                   </li>
@@ -118,7 +118,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
                     className="text-muted-foreground flex items-center gap-2 text-sm"
                   >
                     <span
-                      className={`h-2 w-2 rounded-sm ${dep.isChild ? 'bg-blue-400' : 'bg-green-400'}`}
+                      className={`h-2 w-2 rounded-sm ${dep.isChild ? 'bg-role-child' : 'bg-role-dependent'}`}
                     />
                     {dep.name}
                     <span className="text-muted-foreground/70 text-xs">

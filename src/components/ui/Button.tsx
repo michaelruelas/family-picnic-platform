@@ -13,12 +13,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-terracotta text-white hover:bg-[#cf6c52] focus:ring-terracotta shadow-soft',
-  sage: 'bg-sage text-sage-foreground hover:bg-[#6fa18a] focus:ring-sage shadow-soft',
-  secondary: 'bg-secondary text-secondary-foreground hover:bg-[#e8e1d2] focus:ring-secondary',
+  primary: 'bg-terracotta text-white hover:bg-terracotta-hover focus:ring-terracotta shadow-soft',
+  sage: 'bg-sage text-sage-foreground hover:bg-sage-hover focus:ring-sage shadow-soft',
+  secondary: 'bg-secondary text-secondary-foreground hover:bg-muted focus:ring-secondary',
   outline:
     'bg-transparent text-foreground border border-border hover:border-foreground focus:ring-foreground',
-  danger: 'bg-destructive text-destructive-foreground hover:bg-[#a83a2d] focus:ring-destructive',
+  danger:
+    'bg-destructive text-destructive-foreground hover:bg-destructive-hover focus:ring-destructive',
   ghost:
     'bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground focus:ring-secondary',
 };

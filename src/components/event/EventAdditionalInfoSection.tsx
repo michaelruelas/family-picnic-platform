@@ -100,7 +100,7 @@ function renderInline(text: string) {
         <a
           key={`link-${key++}`}
           href={m[2]}
-          className="text-terracotta underline underline-offset-2 hover:text-[#cf6c52]"
+          className="text-terracotta hover:text-terracotta-hover underline underline-offset-2"
         >
           {m[1]}
         </a>

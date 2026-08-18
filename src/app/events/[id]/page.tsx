@@ -245,7 +245,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
         <div className="from-foreground/40 absolute inset-0 bg-gradient-to-t via-transparent to-transparent" />
         <div className="absolute top-5 right-5 left-5 flex flex-wrap items-center justify-between gap-3">
           <div className="shadow-soft inline-flex items-center gap-2 rounded-sm border border-white/40 bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur-md">
-            <span className="bg-sunlight h-2 w-2 rounded-sm shadow-[0_0_10px_#f2cc8f]" />
+            <span className="bg-sunlight h-2 w-2 rounded-sm shadow-[0_0_10px_var(--sunlight)]" />
             {event.status === 'PUBLISHED'
               ? 'Invitation Open'
               : event.status === 'CANCELLED'

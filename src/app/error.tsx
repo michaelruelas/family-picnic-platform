@@ -28,7 +28,7 @@ export default function Error({
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button
             onClick={reset}
-            className="bg-terracotta shadow-soft press rounded-sm px-7 py-3 font-semibold text-white hover:bg-[#cf6c52]"
+            className="bg-terracotta shadow-soft press hover:bg-terracotta/90 rounded-sm px-7 py-3 font-semibold text-white"
           >
             Try Again
           </button>

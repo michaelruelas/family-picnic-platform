@@ -118,7 +118,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
     warning: {
       bg: 'bg-sunlight/25',
       text: 'text-foreground',
-      icon: 'text-[#a07c2f]',
+      icon: 'text-sunlight-foreground',
       ring: 'ring-sunlight/40',
     },
     info: {

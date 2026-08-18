@@ -623,7 +623,7 @@ export function RsvpBottomSheet({
             onClick={() => {
               void refetch();
             }}
-            className="bg-terracotta shadow-soft press mt-6 rounded-sm px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
+            className="bg-terracotta shadow-soft press hover:bg-terracotta/90 mt-6 rounded-sm px-5 py-2.5 text-sm font-semibold text-white transition-all"
           >
             Try again
           </button>
@@ -673,7 +673,7 @@ export function RsvpBottomSheet({
         sheet body itself is viewport-constrained and scrolls.
       */}
       <div
-        className="border-border bg-secondary/40 sticky top-0 z-10 mx-auto mb-5 flex w-full max-w-md rounded-sm border p-1"
+        className="border-border bg-secondary/80 sticky top-0 z-10 mx-auto mb-5 flex w-full max-w-md rounded-sm border p-1 shadow-sm backdrop-blur-sm"
         role="tablist"
         aria-label="RSVP sections"
         data-testid="rsvp-tabs"
@@ -686,8 +686,8 @@ export function RsvpBottomSheet({
           onClick={() => setActiveTab('attendance')}
           className={
             activeTab === 'attendance'
-              ? 'bg-card text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-semibold transition-colors'
-              : 'text-muted-foreground hover:text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-medium transition-colors'
+              ? 'bg-primary text-primary-foreground flex-1 rounded-sm px-4 py-2 text-sm font-semibold shadow-sm transition-all'
+              : 'text-muted-foreground hover:text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-medium transition-all'
           }
         >
           Attendance
@@ -700,8 +700,8 @@ export function RsvpBottomSheet({
           onClick={() => setActiveTab('dishes')}
           className={
             activeTab === 'dishes'
-              ? 'bg-card text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-semibold transition-colors'
-              : 'text-muted-foreground hover:text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-medium transition-colors'
+              ? 'bg-primary text-primary-foreground flex-1 rounded-sm px-4 py-2 text-sm font-semibold shadow-sm transition-all'
+              : 'text-muted-foreground hover:text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-medium transition-all'
           }
         >
           Dishes
@@ -980,7 +980,7 @@ export function RsvpBottomSheet({
                   type="button"
                   onClick={addAdHocMember}
                   disabled={!newMember.name.trim()}
-                  className="bg-terracotta press rounded-sm px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+                  className="bg-terracotta press hover:bg-terracotta/90 rounded-sm px-4 py-2 text-sm font-semibold text-white transition-all disabled:opacity-50"
                   data-testid="rsvp-add-person-submit"
                 >
                   Add
@@ -1122,7 +1122,7 @@ export function RsvpBottomSheet({
           <button
             onClick={handleConfirm}
             disabled={isSubmitting || yesCount === 0 || hasInvalidNames}
-            className="bg-terracotta shadow-soft press mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all hover:bg-[#cf6c52] disabled:opacity-50"
+            className="bg-terracotta shadow-soft press hover:bg-terracotta/90 mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all disabled:opacity-50"
           >
             {isSubmitting
               ? 'Saving...'
@@ -1159,7 +1159,7 @@ export function RsvpBottomSheet({
               <button
                 type="button"
                 onClick={() => setActiveTab('attendance')}
-                className="bg-terracotta press mt-5 rounded-sm px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
+                className="bg-terracotta press hover:bg-terracotta/90 mt-5 rounded-sm px-5 py-2.5 text-sm font-semibold text-white transition-all"
               >
                 Go to Attendance
               </button>

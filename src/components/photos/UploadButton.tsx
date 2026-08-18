@@ -180,7 +180,7 @@ export default function UploadButton({
       />
 
       <div
-        className="border-sunlight/50 bg-sunlight/20 hover:bg-terracotta/15 relative flex flex-col items-center justify-center rounded-sm border-2 border-dashed p-6 transition-colors hover:border-amber-400"
+        className="border-border bg-secondary/60 hover:bg-accent hover:border-primary relative flex flex-col items-center justify-center rounded-sm border-2 border-dashed p-6 transition-colors"
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       >

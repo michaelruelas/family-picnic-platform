@@ -115,7 +115,7 @@ export default function SlotGrid({ eventId, slots }: SlotGridProps) {
       {!showAddForm && (
         <button
           onClick={() => setShowAddForm(true)}
-          className="border-border bg-secondary/60 text-muted-foreground hover:bg-sunlight/20 hover:text-terracotta flex w-full items-center justify-center gap-2 rounded-sm border-2 border-dashed px-4 py-3 text-sm font-medium hover:border-amber-400"
+          className="border-border bg-secondary/60 text-muted-foreground hover:bg-accent hover:text-primary hover:border-primary flex w-full items-center justify-center gap-2 rounded-sm border-2 border-dashed px-4 py-3 text-sm font-medium transition-colors"
         >
           <span className="text-lg">+</span> Add Potluck Slot
         </button>

@@ -128,7 +128,11 @@ export default async function RsvpConfirmationPage({ params }: PageProps) {
 
   const statusLabel: Record<RSVPStatus, { label: string; bg: string; color: string }> = {
     CONFIRMED: { label: 'Confirmed', bg: 'bg-sage/20', color: 'text-sage' },
-    WAITLISTED: { label: 'On the waitlist', bg: 'bg-sunlight/30', color: 'text-[#a07c2f]' },
+    WAITLISTED: {
+      label: 'On the waitlist',
+      bg: 'bg-sunlight/25',
+      color: 'text-sunlight-foreground',
+    },
     DECLINED: { label: 'Declined', bg: 'bg-secondary', color: 'text-muted-foreground' },
     PENDING: { label: 'Pending', bg: 'bg-sunlight/20', color: 'text-muted-foreground' },
     INVITED: { label: 'Invited', bg: 'bg-secondary', color: 'text-muted-foreground' },
@@ -421,7 +425,7 @@ function AttendanceGroup({
     tone === 'sage'
       ? 'text-sage'
       : tone === 'sunlight'
-        ? 'text-[#a07c2f]'
+        ? 'text-sunlight-foreground'
         : 'text-muted-foreground';
   return (
     <li className="py-4 first:pt-0">

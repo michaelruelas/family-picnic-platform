@@ -151,7 +151,7 @@ export default async function EventsPage() {
                             )}
                           </div>
                           {event.rsvpDeadline && new Date(event.rsvpDeadline) > now && (
-                            <div className="bg-sunlight/25 mt-4 inline-flex items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-semibold text-[#a07c2f]">
+                            <div className="bg-sunlight/25 text-sunlight-foreground mt-4 inline-flex items-center gap-1.5 rounded-sm px-3 py-1 text-xs font-semibold">
                               <span>⏰</span> RSVP by{' '}
                               {new Date(event.rsvpDeadline).toLocaleDateString('en-US', {
                                 month: 'short',

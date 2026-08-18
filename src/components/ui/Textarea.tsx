@@ -24,8 +24,8 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           id={textareaId}
           className={`text-foreground placeholder:text-muted-foreground disabled:bg-muted disabled:text-muted-foreground bg-card block min-h-[80px] w-full resize-y rounded-sm border px-4 py-3 text-base transition-all duration-200 focus:ring-0 focus:outline-none disabled:cursor-not-allowed ${
             error
-              ? 'border-destructive focus:border-destructive focus:shadow-[0_0_0_3px_rgba(196,69,54,0.15)]'
-              : 'border-border focus:border-foreground focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)]'
+              ? 'border-destructive focus:border-destructive focus:shadow-[0_0_0_3px_rgba(239,68,68,0.18)]'
+              : 'border-border focus:border-foreground focus:shadow-[0_0_0_3px_rgba(2,132,199,0.15)]'
           } ${className} `}
           {...props}
         />

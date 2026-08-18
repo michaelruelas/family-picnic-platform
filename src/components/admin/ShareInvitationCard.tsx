@@ -47,7 +47,7 @@ export default function ShareInvitationCard({ eventId }: ShareInvitationCardProp
           <button
             type="button"
             onClick={handleCopy}
-            className="bg-terracotta press rounded-sm px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#cf6c52]"
+            className="bg-terracotta press hover:bg-terracotta-hover rounded-sm px-5 py-2.5 text-sm font-semibold text-white transition-all"
             data-testid="copy-invitation-url-button"
           >
             {copied ? '✓ Copied!' : 'Copy Invitation Link'}

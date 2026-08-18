@@ -75,7 +75,7 @@ function ArchiveButton({ eventId }: { eventId: string }) {
       type="button"
       onClick={onClick}
       disabled={busy}
-      className="rounded-sm bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-200 disabled:opacity-50"
+      className="bg-warning/20 text-warning-foreground hover:bg-warning/30 rounded-sm px-3 py-1 text-xs font-medium disabled:opacity-50"
     >
       {busy ? 'Archiving...' : 'Archive'}
     </button>

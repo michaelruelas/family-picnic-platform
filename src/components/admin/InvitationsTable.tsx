@@ -22,10 +22,10 @@ interface InvitationsTableProps {
 }
 
 const STATUS_PALETTE: Record<InvitationStatus, string> = {
-  PENDING: 'bg-sunlight/30 text-[#a07c2f]',
-  SENT: 'bg-blue-100 text-blue-700',
-  DELIVERED: 'bg-sage/20 text-sage',
-  USED: 'bg-purple-100 text-purple-700',
+  PENDING: 'bg-warning/25 text-warning-foreground',
+  SENT: 'bg-info/20 text-info',
+  DELIVERED: 'bg-success/20 text-success',
+  USED: 'bg-secondary text-muted-foreground',
   EXPIRED: 'bg-destructive/15 text-destructive',
 };
 
@@ -210,7 +210,7 @@ export default function InvitationsTable({ initialInvitations }: InvitationsTabl
                   void resend(row.id);
                 }}
                 disabled={busyId === row.id}
-                className="rounded-sm bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 disabled:opacity-50"
+                className="bg-info/15 text-info hover:bg-info/25 rounded-sm px-3 py-1 text-xs font-medium disabled:opacity-50"
               >
                 {busyId === row.id ? 'Sending…' : 'Resend'}
               </button>
