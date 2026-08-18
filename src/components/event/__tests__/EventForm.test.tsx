@@ -440,4 +440,55 @@ describe('EventForm', () => {
       expect(callBody.additionalInfo).toBe('');
     });
   });
+
+  // FPP-145: optional custom display-name column lives directly under
+  // the Google Places autocomplete. Empty string clears the field so
+  // the public page falls back to the resolved Google address.
+  describe('FPP-145 custom location name field', () => {
+    it('renders the custom display name input in create mode', () => {
+      render(<EventForm mode="create" />);
+      expect(screen.getByLabelText(/custom display name/i)).toBeInTheDocument();
+    });
+
+    it('pre-fills the custom display name in edit mode', () => {
+      const initialData = {
+        id: 'e-1',
+        name: 'Annual Picnic',
+        date: '2026-08-15T10:00',
+        location: 'Shaver Lake, CA',
+        customLocationName: 'Shaver Lake - Camp Edison Tannenager Site',
+        lat: 37.1,
+        lng: -119.3,
+        placeId: 'place-xyz',
+        description: '',
+      };
+      render(<EventForm mode="edit" initialData={initialData} />);
+      expect(screen.getByLabelText(/custom display name/i)).toHaveValue(
+        'Shaver Lake - Camp Edison Tannenager Site',
+      );
+    });
+
+    it('sends customLocationName in the submit payload', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'e-new' }),
+      } as never);
+      render(<EventForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/event name/i), { target: { value: 'New' } });
+      fireEvent.change(screen.getByLabelText(/event date/i), {
+        target: { value: '2026-08-15T10:00' },
+      });
+      fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
+      fireEvent.change(screen.getByLabelText(/custom display name/i), {
+        target: { value: 'Camp Edison Site 12' },
+      });
+      const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
+      fireEvent.submit(form);
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith('/api/admin/events', expect.any(Object));
+      });
+      const callBody = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+      expect(callBody.customLocationName).toBe('Camp Edison Site 12');
+    });
+  });
 });

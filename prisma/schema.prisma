@@ -228,6 +228,14 @@ model Event {
   name                  String
   date                  DateTime
   location              String
+  // FPP-145: optional host-defined display name for the location. When
+  // set, the public event page surfaces this string instead of the
+  // `location` row (which usually holds the Google Places formatted
+  // address from the admin autocomplete). The two are decoupled so the
+  // host can add context that Google doesn't know about — e.g.
+  // "Shaver Lake - Camp Edison Tannenager Site" alongside a map pin
+  // at the resolved Shaver Lake coordinates.
+  customLocationName    String?
   lat                   Float?
   lng                   Float?
   placeId               String?

@@ -84,6 +84,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       name,
       date,
       location,
+      // FPP-145: optional host-defined location display name. Empty
+      // string clears the field; omit leaves the existing value.
+      customLocationName,
       lat,
       lng,
       placeId,
@@ -142,6 +145,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (name !== undefined) updateData.name = name;
     if (date !== undefined) updateData.date = new Date(date);
     if (location !== undefined) updateData.location = location;
+    // FPP-145: empty string clears the custom display name so the
+    // public page falls back to the resolved Google address. Matches
+    // the `additionalInfo` / `mapImageUrl` clear-by-empty pattern.
+    if (customLocationName !== undefined) {
+      updateData.customLocationName = customLocationName || null;
+    }
     if (lat !== undefined) updateData.lat = lat;
     if (lng !== undefined) updateData.lng = lng;
     if (placeId !== undefined) updateData.placeId = placeId;

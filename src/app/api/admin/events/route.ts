@@ -71,6 +71,9 @@ export async function POST(request: Request) {
           name,
           date,
           location,
+          // FPP-145: optional host-defined location display name.
+          // Distinct from `location` (Google Places formatted address).
+          customLocationName,
           lat,
           lng,
           placeId,
@@ -135,6 +138,7 @@ export async function POST(request: Request) {
               name,
               date,
               location,
+              customLocationName,
               lat,
               lng,
               placeId,

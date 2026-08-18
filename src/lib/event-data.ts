@@ -4,6 +4,10 @@ export function toEventCreateData(input: {
   name: string;
   date: string;
   location: string;
+  // FPP-145: optional host-defined location display name. Empty
+  // string collapses to NULL so the public page falls back to
+  // `location` (matching the PATCH path).
+  customLocationName?: string | null;
   lat?: number | null;
   lng?: number | null;
   placeId?: string | null;
@@ -21,6 +25,7 @@ export function toEventCreateData(input: {
     name: input.name,
     date: new Date(input.date),
     location: input.location,
+    customLocationName: input.customLocationName || null,
     lat: input.lat ?? null,
     lng: input.lng ?? null,
     placeId: input.placeId ?? null,

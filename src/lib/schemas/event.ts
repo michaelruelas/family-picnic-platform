@@ -4,6 +4,9 @@ const eventFields = {
   name: z.string().min(1, 'Event name is required'),
   date: z.string().min(1, 'Event date is required'),
   location: z.string().min(1, 'Location is required'),
+  // FPP-145: optional host-defined display name. Empty string clears
+  // the field so the public page falls back to `location`.
+  customLocationName: z.string().optional().nullable().or(z.literal('')),
   lat: z.number().optional().nullable(),
   lng: z.number().optional().nullable(),
   placeId: z.string().optional().nullable(),
@@ -51,6 +54,7 @@ export const eventUpdateSchema = z
     name: z.string().min(1, 'Event name is required').optional(),
     date: z.string().min(1, 'Event date is required').optional(),
     location: z.string().min(1, 'Location is required').optional(),
+    customLocationName: z.string().optional().nullable().or(z.literal('')),
     lat: z.number().optional().nullable(),
     lng: z.number().optional().nullable(),
     placeId: z.string().optional().nullable(),

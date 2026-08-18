@@ -28,6 +28,9 @@ export const eventRouter = router({
         name: z.string().min(1),
         date: z.string().datetime(),
         location: z.string().min(1),
+        // FPP-145: optional custom display name. Distinct from
+        // `location` (the Google Places formatted address).
+        customLocationName: z.string().optional().nullable(),
         lat: z.number().optional().nullable(),
         lng: z.number().optional().nullable(),
         placeId: z.string().optional().nullable(),
@@ -65,6 +68,9 @@ export const eventRouter = router({
       name: z.string().min(1).optional(),
       date: z.string().datetime().optional(),
       location: z.string().min(1).optional(),
+      // FPP-145: optional host-defined display name. Empty string
+      // clears it; omit leaves the existing value untouched.
+      customLocationName: z.string().min(1).optional().nullable(),
       lat: z.number().optional().nullable(),
       lng: z.number().optional().nullable(),
       placeId: z.string().optional().nullable(),
@@ -91,6 +97,12 @@ export const eventRouter = router({
     }
     if (data.additionalInfo !== undefined && data.additionalInfo === '') {
       updateData.additionalInfo = null;
+    }
+    // FPP-145: same empty-string-clears-the-field pattern for
+    // customLocationName so the host can drop back to the resolved
+    // Google address by simply editing the input empty.
+    if (data.customLocationName !== undefined && data.customLocationName === '') {
+      updateData.customLocationName = null;
     }
     return prisma.event.update({
       where: { id },

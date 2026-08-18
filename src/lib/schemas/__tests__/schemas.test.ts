@@ -257,6 +257,37 @@ describe('eventCreateSchema', () => {
     });
     expect(result.success).toBe(true);
   });
+
+  // FPP-145: optional custom display name. Optional everywhere;
+  // empty string permitted (the API collapses it back to null).
+  it('passes with customLocationName set', () => {
+    const result = eventCreateSchema.safeParse({
+      name: 'Annual Picnic',
+      date: '2026-07-15',
+      location: 'Shaver Lake, CA',
+      customLocationName: 'Shaver Lake - Camp Edison Tannenager Site',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes with customLocationName as empty string', () => {
+    const result = eventCreateSchema.safeParse({
+      name: 'Annual Picnic',
+      date: '2026-07-15',
+      location: 'Central Park',
+      customLocationName: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes without customLocationName (the column is optional)', () => {
+    const result = eventCreateSchema.safeParse({
+      name: 'Annual Picnic',
+      date: '2026-07-15',
+      location: 'Central Park',
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe('eventUpdateSchema', () => {
@@ -335,6 +366,40 @@ describe('eventUpdateSchema', () => {
     const result = eventUpdateSchema.safeParse({
       id: 'evt-1',
       additionalInfo: 'Updated notes',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  // FPP-145: customLocationName supports the same nullable +
+  // empty-string-clear contract as additionalInfo / featuredImageUrl.
+  it('passes with customLocationName set', () => {
+    const result = eventUpdateSchema.safeParse({
+      id: 'evt-1',
+      customLocationName: 'Shaver Lake - Camp Edison Tannenager Site',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('allows empty string customLocationName to clear the field', () => {
+    const result = eventUpdateSchema.safeParse({
+      id: 'evt-1',
+      customLocationName: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('allows explicit null customLocationName to clear the field', () => {
+    const result = eventUpdateSchema.safeParse({
+      id: 'evt-1',
+      customLocationName: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('passes without customLocationName (omitted leaves the column untouched)', () => {
+    const result = eventUpdateSchema.safeParse({
+      id: 'evt-1',
+      name: 'Renamed',
     });
     expect(result.success).toBe(true);
   });

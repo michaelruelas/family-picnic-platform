@@ -13,6 +13,11 @@ interface EventFormData {
   name: string;
   date: string;
   location: string;
+  // FPP-145: optional host-defined display name for the location,
+  // surfaced on the public event page in place of `location` when
+  // set. Useful for adding context (camp name, meeting spot, site)
+  // that Google Places doesn't know about.
+  customLocationName?: string;
   lat: number | null;
   lng: number | null;
   placeId: string | null;
@@ -59,6 +64,10 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     name: initialData?.name ?? '',
     date: initialData?.date ?? '',
     location: initialData?.location ?? '',
+    // FPP-145: defaults to the stored customLocationName when editing
+    // an event that already has one, so the host can iterate on the
+    // existing display label without retyping.
+    customLocationName: initialData?.customLocationName ?? '',
     lat: initialData?.lat ?? null,
     lng: initialData?.lng ?? null,
     placeId: initialData?.placeId ?? null,
@@ -213,13 +222,40 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
 
         <div className="md:col-span-2">
           <label htmlFor="location" className="text-foreground/85 block text-sm font-medium">
-            Location * (start typing for address suggestions)
+            Location *
           </label>
           <LocationAutocomplete
             value={formData.location}
             hasGeocodedAddress={formData.lat !== null && formData.lng !== null}
             onChange={handleLocationChange}
           />
+          {/* FPP-145: optional display-name override. Sits directly
+              under the Google Places autocomplete so the host sees
+              both fields in one location column. The string they
+              type here is what guests see on the public event page —
+              `location` (the Google formatted address) stays pinned
+              on the embedded map regardless. */}
+          <div className="mt-4">
+            <label
+              htmlFor="customLocationName"
+              className="text-foreground/85 block text-sm font-medium"
+            >
+              Custom Display Name (optional)
+            </label>
+            <input
+              type="text"
+              id="customLocationName"
+              name="customLocationName"
+              value={formData.customLocationName ?? ''}
+              onChange={handleChange}
+              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+              placeholder="Shaver Lake - Camp Edison Tannenager Site"
+            />
+            <p className="text-muted-foreground mt-1 text-xs">
+              Shown to guests on the event page in place of the resolved address. Useful for context
+              Google doesn&apos;t know about — camp names, meeting spots, building numbers, sites.
+            </p>
+          </div>
         </div>
 
         <div>
