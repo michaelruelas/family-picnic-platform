@@ -524,4 +524,25 @@ describe('useUserProfileMutation', () => {
     renderHook(() => useUserProfileMutation());
     expect(mockUseUtils).toHaveBeenCalled();
   });
+
+  // FPP-34: the RSVP sheet hydrates phone + sms consent from
+  // getRsvpFormState. If updatePreferences does not invalidate that
+  // query, the next sheet open reseeds the stale snapshot and the
+  // user has to re-check the consent box.
+  it('invalidates getRsvpFormState and getProfile on a successful preferences update', async () => {
+    mockQueries.user.updatePreferences.useMutation.mockClear();
+    const { useUserProfileMutation } = await import('~/hooks/useUser');
+    renderHook(() => useUserProfileMutation());
+    const opts = (
+      mockQueries.user.updatePreferences.useMutation.mock.calls[0] as unknown as
+        | Array<{ onSuccess: () => Promise<void> }>
+        | undefined
+    )?.[0];
+    expect(opts).toBeDefined();
+    await opts!.onSuccess();
+    const lastUtils = mockUseUtils.mock.results.at(-1)?.value;
+    expect(lastUtils).toBeDefined();
+    expect(lastUtils!.user.getProfile.invalidate).toHaveBeenCalled();
+    expect(lastUtils!.rsvp.getRsvpFormState.invalidate).toHaveBeenCalled();
+  });
 });
