@@ -44,7 +44,15 @@ export default async function EventPotluckPage({ params }: PageProps) {
               rsvp: {
                 select: {
                   userId: true,
-                  user: { select: { id: true, name: true } },
+                  // FPP-127: walk through the user to read the
+                  // household name (RSVP has no household FK).
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                      household: { select: { id: true, name: true } },
+                    },
+                  },
                 },
               },
             },
@@ -86,6 +94,9 @@ export default async function EventPotluckPage({ params }: PageProps) {
       rsvp: {
         userId: s.rsvp.userId,
         user: s.rsvp.user,
+        // FPP-127: prefer the household name as the label. The
+        // user name is still on the row for the "is mine?" badge.
+        householdName: s.rsvp.user.household?.name ?? null,
       },
     })),
   }));

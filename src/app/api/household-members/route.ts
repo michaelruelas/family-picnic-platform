@@ -33,7 +33,9 @@ export async function POST(request: Request) {
       data: {
         householdId: result.data.householdId,
         name: result.data.name.trim(),
-        age: result.data.age ?? null,
+        // FPP-122: age is now a required field on every household
+        // member. The schema already rejects missing values.
+        age: result.data.age,
         notes: result.data.notes?.trim() || null,
       },
     });

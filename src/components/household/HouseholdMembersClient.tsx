@@ -2,11 +2,15 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { trpc } from '~/lib/trpc-client';
 
 interface Member {
   id: string;
   name: string;
-  age: number | null;
+  // FPP-122: age is required at the DB and schema layer. The UI
+  // always collects it on add/edit; existing rows read it back as
+  // a non-null number.
+  age: number;
   notes: string | null;
 }
 
@@ -31,9 +35,20 @@ export default function HouseholdMembersClient({
   initialMembers,
 }: HouseholdMembersClientProps) {
   const router = useRouter();
+  // FPP-117/FPP-121: a roster edit (create / update / delete) must
+  // invalidate the tRPC caches that the RSVP modal reads so the
+  // next open reflects the new member without a hard reload.
+  const utils = trpc.useUtils();
+  const invalidateRsvpForm = () => {
+    void utils.rsvp.getRsvpFormState.invalidate();
+    void utils.user.getProfile.invalidate();
+    void utils.household.getById.invalidate();
+  };
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // FPP-122: the form always carries an age value. Empty string
+  // means "no value yet"; the submit handler refuses to send it.
   const [form, setForm] = useState({ name: '', age: '', notes: '' });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +63,9 @@ export default function HouseholdMembersClient({
   const startEdit = (member: Member) => {
     setForm({
       name: member.name,
-      age: member.age !== null ? String(member.age) : '',
+      // FPP-122: members always have an age now; fall back to '' only
+      // for legacy rows the migration hasn't touched yet.
+      age: member.age !== null && member.age !== undefined ? String(member.age) : '',
       notes: isBackfilled(member) ? '' : (member.notes ?? ''),
     });
     setEditingId(member.id);
@@ -61,9 +78,24 @@ export default function HouseholdMembersClient({
     setSubmitting(true);
     setError(null);
 
-    const ageValue = form.age.trim() === '' ? null : Number(form.age);
-    if (ageValue !== null && (Number.isNaN(ageValue) || ageValue < 0 || ageValue > 120)) {
-      setError('Age must be between 0 and 120.');
+    // FPP-122: age is required. The schema also rejects negative or
+    // over-120 values; we surface the same error before the request
+    // so the user does not wait on a round-trip just to see the
+    // server complain.
+    const trimmedAge = form.age.trim();
+    if (trimmedAge === '') {
+      setError('Age is required');
+      setSubmitting(false);
+      return;
+    }
+    const ageValue = Number(trimmedAge);
+    if (
+      !Number.isFinite(ageValue) ||
+      !Number.isInteger(ageValue) ||
+      ageValue < 0 ||
+      ageValue > 120
+    ) {
+      setError('Age must be a whole number between 0 and 120.');
       setSubmitting(false);
       return;
     }
@@ -97,6 +129,9 @@ export default function HouseholdMembersClient({
       }
       reset();
       router.refresh();
+      // FPP-117/FPP-121: push the new member into the RSVP form
+      // cache so a subsequent open shows the updated roster.
+      invalidateRsvpForm();
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -118,6 +153,9 @@ export default function HouseholdMembersClient({
 
       setMembers(members.filter((m) => m.id !== id));
       router.refresh();
+      // FPP-121: drop the removed member from the RSVP form
+      // snapshot so the next open does not show them again.
+      invalidateRsvpForm();
     } catch {
       alert('Something went wrong. Please try again.');
     }
@@ -172,7 +210,9 @@ export default function HouseholdMembersClient({
                       )}
                     </div>
                     <span className="text-muted-foreground text-xs">
-                      {member.age !== null ? `${member.age} yrs` : 'Age not set'}
+                      {member.age !== null && member.age !== undefined
+                        ? `${member.age} yrs`
+                        : 'Age not set'}
                       {!backfilled && member.notes && (
                         <span className="ml-2 italic">— {member.notes}</span>
                       )}
@@ -236,7 +276,7 @@ export default function HouseholdMembersClient({
 
             <div>
               <label htmlFor="member-age" className="text-foreground/85 block text-sm font-medium">
-                Age (optional)
+                Age <span className="text-destructive">*</span>
               </label>
               <input
                 id="member-age"
@@ -245,6 +285,7 @@ export default function HouseholdMembersClient({
                 max="120"
                 value={form.age}
                 onChange={(e) => setForm({ ...form, age: e.target.value })}
+                required
                 placeholder="Age in years"
                 className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />

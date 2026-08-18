@@ -1349,7 +1349,8 @@ describe('dependent.router', () => {
     const { dependentRouter } = await import('~/server/routers/dependent.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(dependentRouter)({ session: userSession });
-    const result = await caller.create({ name: 'Alice', relationship: 'CHILD' });
+    // FPP-122: age is required.
+    const result = await caller.create({ name: 'Alice', relationship: 'CHILD', age: 7 });
 
     expect(mockPrisma.dependent.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1402,7 +1403,7 @@ describe('dependent.router', () => {
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(dependentRouter)({ session: userSession });
 
-    await expect(caller.create({ name: 'Alice', relationship: 'CHILD' })).rejects.toThrow(
+    await expect(caller.create({ name: 'Alice', relationship: 'CHILD', age: 5 })).rejects.toThrow(
       'User not found',
     );
   });
@@ -1419,7 +1420,9 @@ describe('dependent.router', () => {
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(dependentRouter)({ session: userSession });
 
-    await expect(caller.create({ name: 'Alice', relationship: 'CHILD' })).rejects.toMatchObject({
+    await expect(
+      caller.create({ name: 'Alice', relationship: 'CHILD', age: 5 }),
+    ).rejects.toMatchObject({
       code: 'PRECONDITION_FAILED',
       message: 'USER_HAS_NO_HOUSEHOLD',
     });
@@ -1449,7 +1452,9 @@ describe('dependent.router', () => {
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(dependentRouter)({ session: userSession });
 
-    await expect(caller.create({ name: 'Alice', relationship: 'CHILD' })).rejects.toMatchObject({
+    await expect(
+      caller.create({ name: 'Alice', relationship: 'CHILD', age: 5 }),
+    ).rejects.toMatchObject({
       code: 'PRECONDITION_FAILED',
       message: 'USER_HAS_NO_HOUSEHOLD',
     });
@@ -1477,7 +1482,9 @@ describe('dependent.router', () => {
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(dependentRouter)({ session: userSession });
 
-    await expect(caller.create({ name: 'Alice', relationship: 'CHILD' })).rejects.toBeDefined();
+    await expect(
+      caller.create({ name: 'Alice', relationship: 'CHILD', age: 5 }),
+    ).rejects.toBeDefined();
     expect(mockPrisma.dependent.create).not.toHaveBeenCalled();
   });
 

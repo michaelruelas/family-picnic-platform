@@ -23,7 +23,13 @@ function mockMutationResult(overrides: Record<string, unknown> = {}) {
 }
 
 const mockUseUtils = vi.fn(() => ({
-  rsvp: { getMyRsvp: { invalidate: vi.fn() }, getHeadcount: { invalidate: vi.fn() } },
+  rsvp: {
+    getMyRsvp: { invalidate: vi.fn() },
+    getHeadcount: { invalidate: vi.fn() },
+    // FPP-121: the dependent-mutation onSuccess handler invalidates
+    // getRsvpFormState so the RSVP sheet picks up the new row.
+    getRsvpFormState: { invalidate: vi.fn() },
+  },
   potluck: {
     listSlots: { invalidate: vi.fn() },
     getMySignups: { invalidate: vi.fn() },

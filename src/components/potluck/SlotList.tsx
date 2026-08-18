@@ -29,6 +29,10 @@ export interface EventSlot {
     rsvp: {
       userId: string;
       user: { id: string; name: string | null } | null;
+      // FPP-127: the household name is the primary identity handle
+      // on a potluck claim. The user name remains for the
+      // "is mine?" affordance; the UI reads householdName first.
+      householdName: string | null;
     };
   }>;
 }
@@ -267,7 +271,17 @@ export default function SlotList({
                         {slot.signups.slice(0, 3).map((s) => (
                           <li key={s.id} className="truncate">
                             <span className="text-foreground/80 font-medium">{s.dishName}</span>
-                            {s.rsvp.user?.name ? ` · ${s.rsvp.user.name}` : ''}
+                            {/* FPP-127: the household name is the
+                              primary identity handle on a claim.
+                              Fall back to the user name for legacy
+                              rows where householdName is not yet
+                              surfaced, and finally omit the suffix
+                              when neither is set. */}
+                            {s.rsvp.householdName
+                              ? ` · ${s.rsvp.householdName}`
+                              : s.rsvp.user?.name
+                                ? ` · ${s.rsvp.user.name}`
+                                : ''}
                           </li>
                         ))}
                         {slot.signups.length > 3 && (

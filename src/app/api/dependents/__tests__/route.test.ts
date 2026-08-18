@@ -73,20 +73,30 @@ describe('GET /api/dependents', () => {
 describe('POST /api/dependents', () => {
   it('returns 401 when no session', async () => {
     mockedSession.mockResolvedValue(null);
-    const res = await POST(makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD', age: 7 }),
+    );
     expect(res.status).toBe(401);
   });
 
   it('returns 400 on invalid body', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    const res = await POST(makeJsonRequest('http://x', { name: '', relationship: 'FROB' }));
+    const res = await POST(makeJsonRequest('http://x', { name: '', relationship: 'FROB', age: 5 }));
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 on missing age (FPP-122)', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    const res = await POST(makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD' }));
     expect(res.status).toBe(400);
   });
 
   it('returns 404 when user not found', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     prismaMock.user.findUnique.mockResolvedValue(null);
-    const res = await POST(makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD', age: 7 }),
+    );
     expect(res.status).toBe(404);
   });
 
@@ -98,7 +108,9 @@ describe('POST /api/dependents', () => {
       household: { id: 'h-1', deletedAt: null },
     } as never);
     prismaMock.dependent.create.mockResolvedValue({ id: 'd-1', name: 'Kid' } as never);
-    const res = await POST(makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD', age: 7 }),
+    );
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.id).toBe('d-1');
@@ -114,7 +126,9 @@ describe('POST /api/dependents', () => {
       householdId: null,
       household: null,
     } as never);
-    const res = await POST(makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD', age: 7 }),
+    );
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.code).toBe('USER_HAS_NO_HOUSEHOLD');
@@ -128,7 +142,9 @@ describe('POST /api/dependents', () => {
       householdId: 'h-deleted',
       household: { id: 'h-deleted', deletedAt: new Date('2026-08-01T00:00:00.000Z') },
     } as never);
-    const res = await POST(makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD', age: 7 }),
+    );
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.code).toBe('USER_HAS_NO_HOUSEHOLD');
@@ -138,7 +154,9 @@ describe('POST /api/dependents', () => {
   it('returns 500 on error', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     prismaMock.user.findUnique.mockRejectedValue(new Error('boom'));
-    const res = await POST(makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { name: 'Kid', relationship: 'CHILD', age: 7 }),
+    );
     expect(res.status).toBe(500);
   });
 });

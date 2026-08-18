@@ -42,11 +42,16 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
     Array<{
       name: string;
       relationship: 'SPOUSE' | 'CHILD' | 'PARENT' | 'SIBLING' | 'INLAW' | 'COUSIN';
+      // FPP-122: every roster row must carry an age. The form keeps
+      // it as a string so the number input can be empty until the
+      // user types; the submit handler refuses to send ''.
       age: string;
       isChild: boolean;
     }>
   >([]);
   const [showFamilyForm, setShowFamilyForm] = useState(false);
+  // FPP-122: the inline form mirrors the household page; an empty
+  // age is treated as a validation failure, not an optional field.
   const [newFamilyMember, setNewFamilyMember] = useState({
     name: '',
     relationship: 'SPOUSE' as const,
@@ -109,7 +114,18 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
   };
 
   const handleAddFamilyMember = () => {
+    // FPP-122: refuse to enqueue a row without an age so the
+    // batch POST never carries a null.
     if (!newFamilyMember.name.trim()) return;
+    if (newFamilyMember.age.trim() === '') {
+      setError('Age is required for each family member');
+      return;
+    }
+    const ageNumber = Number(newFamilyMember.age);
+    if (!Number.isInteger(ageNumber) || ageNumber < 0 || ageNumber > 120) {
+      setError('Age must be a whole number between 0 and 120');
+      return;
+    }
     setFamilyMembers([
       ...familyMembers,
       {
@@ -238,7 +254,10 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
               type="text"
               value={newHouseholdName}
               onChange={(e) => setNewHouseholdName(e.target.value)}
-              placeholder="The Johnson Family"
+              // FPP-120: placeholder no longer pre-fills a real
+              // surname. The user picks a name that fits their
+              // family; we don't want to seed one.
+              placeholder="e.g. The Garcia Family Picnic Crew"
               className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-4 py-3 text-lg shadow-sm focus:ring-1 focus:outline-none"
             />
           </div>
@@ -371,11 +390,16 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
               </select>
             </div>
             <div>
-              <label className="text-foreground/85 block text-sm font-medium">Age (optional)</label>
+              <label className="text-foreground/85 block text-sm font-medium">
+                Age <span className="text-destructive">*</span>
+              </label>
               <input
                 type="number"
                 value={newFamilyMember.age}
                 onChange={(e) => setNewFamilyMember({ ...newFamilyMember, age: e.target.value })}
+                required
+                min="0"
+                max="120"
                 placeholder="Age in years"
                 className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
               />

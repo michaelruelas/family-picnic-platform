@@ -111,12 +111,19 @@ export const potluckRouter = router({
         include: {
           signups: {
             include: {
+              // FPP-127: surface the household name as the primary
+              // identity handle on every potluck claim. The RSVP
+              // table does not hold a household relation, so we
+              // walk through the user. The UI reads `household.name`
+              // so a household of five still reads as one claim,
+              // not five.
               rsvp: {
                 include: {
                   user: {
                     select: {
                       id: true,
                       name: true,
+                      household: { select: { id: true, name: true } },
                     },
                   },
                 },
@@ -151,7 +158,17 @@ export const potluckRouter = router({
               rsvp: {
                 select: {
                   userId: true,
-                  user: { select: { id: true, name: true } },
+                  // FPP-127: pull the household name through the
+                  // user relation (RSVP does not have its own
+                  // household FK) so the client can label claims by
+                  // household, not by individual user.
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                      household: { select: { id: true, name: true } },
+                    },
+                  },
                 },
               },
             },
@@ -174,6 +191,7 @@ export const potluckRouter = router({
           rsvp: {
             userId: s.rsvp.userId,
             user: s.rsvp.user,
+            householdName: s.rsvp.user.household?.name ?? null,
           },
         })),
       }));

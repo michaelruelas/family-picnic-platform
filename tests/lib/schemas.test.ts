@@ -135,11 +135,21 @@ describe('Dependent Schemas', () => {
     });
 
     it('validates without optional fields', () => {
+      // FPP-122: age is required on create.
+      const result = dependentCreateSchema.safeParse({
+        name: 'Spouse',
+        relationship: 'SPOUSE',
+        age: 30,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects when age is missing (FPP-122)', () => {
       const result = dependentCreateSchema.safeParse({
         name: 'Spouse',
         relationship: 'SPOUSE',
       });
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
 
     it('rejects empty name', () => {
@@ -196,12 +206,19 @@ describe('Dependent Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('allows nulling age', () => {
+    it('allows omitting age', () => {
+      const result = dependentUpdateSchema.safeParse({
+        id: 'dep-123',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects nulling age (FPP-122 keeps age required)', () => {
       const result = dependentUpdateSchema.safeParse({
         id: 'dep-123',
         age: null,
       });
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
   });
 });

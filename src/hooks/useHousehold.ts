@@ -109,6 +109,12 @@ export function useDependentMutations() {
     onSuccess: () => {
       void utils.dependent.list.invalidate();
       void utils.household.getById.invalidate();
+      // FPP-121: a new dependent must surface in the RSVP form
+      // the next time the user opens it. Without invalidating the
+      // cached form snapshot, the attendance list stays stale
+      // until a hard reload.
+      void utils.rsvp.getRsvpFormState.invalidate();
+      void utils.user.getProfile.invalidate();
     },
   });
 
@@ -116,6 +122,11 @@ export function useDependentMutations() {
     onSuccess: () => {
       void utils.dependent.list.invalidate();
       void utils.household.getById.invalidate();
+      // FPP-121: a dependent name / age edit must reach the RSVP
+      // form on next open so the per-member attendance list stays
+      // in sync with the household roster.
+      void utils.rsvp.getRsvpFormState.invalidate();
+      void utils.user.getProfile.invalidate();
     },
   });
 
@@ -123,6 +134,10 @@ export function useDependentMutations() {
     onSuccess: () => {
       void utils.dependent.list.invalidate();
       void utils.household.getById.invalidate();
+      // FPP-121: removing a dependent must also refresh the RSVP
+      // form so the attendance list drops the soft-deleted row.
+      void utils.rsvp.getRsvpFormState.invalidate();
+      void utils.user.getProfile.invalidate();
     },
   });
 
