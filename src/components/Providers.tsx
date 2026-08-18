@@ -3,6 +3,7 @@
 import { SessionProvider } from 'next-auth/react';
 import { useEffect } from 'react';
 import { ThemeProvider } from '~/components/theme-provider';
+import AnalyticsProvider from './AnalyticsProvider';
 import TRPCProvider from './TRPCProvider';
 import OfflineBanner from './ui/OfflineBanner';
 import { ToastProvider } from './ui/Toast';
@@ -34,20 +35,22 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionProvider>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-        themes={['light', 'dark']}
-      >
-        <TRPCProvider>
-          <ToastProvider>
-            <OfflineBanner />
-            {children}
-          </ToastProvider>
-        </TRPCProvider>
-      </ThemeProvider>
+      <AnalyticsProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+          themes={['light', 'dark']}
+        >
+          <TRPCProvider>
+            <ToastProvider>
+              <OfflineBanner />
+              {children}
+            </ToastProvider>
+          </TRPCProvider>
+        </ThemeProvider>
+      </AnalyticsProvider>
     </SessionProvider>
   );
 }
