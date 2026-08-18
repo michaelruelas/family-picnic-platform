@@ -6,42 +6,96 @@ interface PublicAttendeeListProps {
 
 /**
  * FPP-151: publicly visible "Who's coming" list on the event page.
- * Groups members by household and surfaces only the household name
- * + first names of members with `attending = YES`. No emails,
- * no user ids, no decline messages — the data is shaped so a guest
- * cannot scrape the household roster for any event.
+ * Households are the primary row; member first names are sub-rows so
+ * the household groups its attendees visually while still showing
+ * each individual on its own line.
  *
  * Renders nothing when the list is empty so the section can be
  * included unconditionally from `EventSectionTabs` without a
  * dangling "no one yet" placeholder on early-lifecycle events.
+ *
+ * Shape contract:
+ * - `householdName` is a stable label per group
+ * - `attendingFirstNames` is a list of first-name strings, ONE per
+ *   `RsvpMemberAttendance` row with `attending = YES` (already
+ *   filtered + count-checked upstream in `page.tsx`)
  */
 export function PublicAttendeeList({ attendees }: PublicAttendeeListProps) {
   if (attendees.length === 0) return null;
 
+  const totalMembers = attendees.reduce((sum, g) => sum + g.attendingFirstNames.length, 0);
+  const householdCount = attendees.length;
+
   return (
-    <ul className="grid gap-3 sm:grid-cols-2" data-testid="public-attendee-list">
-      {attendees.map((group) => {
-        const attending = group.attendingFirstNames;
-        const joined = attending.join(', ');
-        return (
-          <li
-            key={`${group.householdName}-${attending.join('|')}`}
-            className="bg-card ring-border/60 shadow-card flex items-start gap-3 rounded-sm p-4 ring-1"
-          >
-            <span className="text-terracotta text-xl" aria-hidden="true">
-              👨‍👩‍👧
+    <div data-testid="public-attendee-list">
+      <header className="mb-6">
+        <h2 className="font-display text-foreground text-3xl font-medium tracking-tight md:text-4xl">
+          Who&apos;s coming
+        </h2>
+        <p className="text-muted-foreground mt-2 text-sm">
+          {totalMembers} {totalMembers === 1 ? 'person' : 'people'} from {householdCount}{' '}
+          {householdCount === 1 ? 'household' : 'households'} so far.
+        </p>
+      </header>
+
+      <table className="text-foreground w-full text-left" data-testid="public-attendee-table">
+        <thead>
+          <tr className="border-border border-y">
+            <th
+              scope="col"
+              className="text-muted-foreground py-2 pr-4 text-xs font-semibold tracking-widest uppercase"
+            >
+              Household
+            </th>
+            <th
+              scope="col"
+              className="text-muted-foreground py-2 text-xs font-semibold tracking-widest uppercase"
+            >
+              Attending members
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {attendees.map((group) => (
+            <HouseholdGroup key={group.householdName} {...group} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function HouseholdGroup({ householdName, attendingFirstNames }: PublicAttendee) {
+  const count = attendingFirstNames.length;
+  return (
+    <>
+      <tr
+        className="bg-secondary/40 border-border/60 border-t"
+        data-testid="public-attendee-household"
+      >
+        <th
+          scope="rowgroup"
+          colSpan={2}
+          className="text-foreground px-3 py-3 text-base font-semibold"
+        >
+          {householdName}{' '}
+          <span className="text-muted-foreground ml-1 text-sm font-normal">
+            ({count} {count === 1 ? 'going' : 'going'})
+          </span>
+        </th>
+      </tr>
+      {attendingFirstNames.map((firstName, idx) => (
+        <tr key={`${householdName}-${firstName}-${idx}`} data-testid="public-attendee-member">
+          <td className="border-border/30 w-2 border-t" aria-hidden="true" />
+          <td className="border-border/30 border-t px-3 py-2 pl-8 text-sm">
+            <span className="text-foreground font-medium">{firstName}</span>
+            <span className="text-muted-foreground ml-2 text-xs tracking-widest uppercase">
+              going
             </span>
-            <div className="min-w-0">
-              <p className="text-foreground font-semibold">{group.householdName}</p>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                {joined}
-                {attending.length === 1 ? ' is going' : ' are going'}
-              </p>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+          </td>
+        </tr>
+      ))}
+    </>
   );
 }
 
