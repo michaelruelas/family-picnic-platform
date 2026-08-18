@@ -19,7 +19,8 @@ export function LocationAutocomplete({
   hasGeocodedAddress,
   onChange,
 }: LocationAutocompleteProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const elementRef = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [scriptError, setScriptError] = useState(false);
   const [geoSelected, setGeoSelected] = useState(hasGeocodedAddress);
@@ -31,53 +32,53 @@ export function LocationAutocomplete({
   }, []);
 
   useEffect(() => {
-    if (!scriptLoaded || !inputRef.current || !window.google?.maps?.places) return;
+    if (!scriptLoaded || !containerRef.current || elementRef.current) return;
 
-    const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-      types: ['address'],
-      fields: ['formatted_address', 'geometry', 'place_id'],
-    });
+    const el = new google.maps.places.PlaceAutocompleteElement();
+    elementRef.current = el;
+    containerRef.current.appendChild(el);
 
-    const listener = autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      if (!place?.geometry?.location) return;
+    el.addEventListener('gmp-select', async (event: Event) => {
+      const { placePrediction } = event as google.maps.places.GmpSelectEvent;
+      const place = placePrediction.toPlace();
+      await place.fetchFields({
+        fields: ['formattedAddress', 'location', 'placeId'],
+      });
+      if (!place.location) return;
       setGeoSelected(true);
       onChange({
-        location: place.formatted_address || inputRef.current?.value || '',
-        lat: place.geometry.location.lat(),
-        lng: place.geometry.location.lng(),
-        placeId: place.place_id || null,
+        location: place.formattedAddress || '',
+        lat: place.location.lat(),
+        lng: place.location.lng(),
+        placeId: place.placeId || null,
       });
     });
-
-    return () => {
-      window.google.maps.event.removeListener(listener);
-    };
   }, [scriptLoaded, onChange]);
 
-  const handleManualInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setGeoSelected(false);
-    onChange({
-      location: e.target.value,
-      lat: null,
-      lng: null,
-      placeId: null,
-    });
-  };
+  useEffect(() => {
+    const el = elementRef.current;
+    if (!el) return;
+    const internalInput = el.querySelector('input') as HTMLInputElement | null;
+    if (internalInput && internalInput.value !== value) {
+      internalInput.value = value;
+    }
+  }, [value]);
 
   return (
     <div>
-      <input
-        type="text"
-        id="location"
-        name="location"
-        ref={inputRef}
-        value={value}
-        onChange={handleManualInput}
-        required
-        className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-        placeholder="Start typing an address..."
-      />
+      {!scriptLoaded && !scriptError && (
+        <input
+          type="text"
+          id="location"
+          name="location"
+          value={value}
+          required
+          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+          placeholder="Loading address autocomplete..."
+          disabled
+        />
+      )}
+      <div ref={containerRef} className="mt-1" />
       {value && !geoSelected && (
         <p className="text-muted-foreground mt-1 text-xs">
           Select an address from the suggestions to enable the map and directions.
