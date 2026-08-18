@@ -2,7 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { router, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { ChargeStatus, RefundStatus, RegistrationStatus, RSVPStatus } from '~/lib/generated/enums';
+import { ChargeStatus, RefundStatus, RegistrationStatus, RSVPStatus, Role } from '~/lib/generated/enums';
 import { writeAuditLog } from '~/lib/audit';
 import { listAuditLogEntries } from '~/server/audit-entries';
 import { createRefund, isConfigured as stripeConfigured } from '~/lib/stripe';
@@ -222,6 +222,507 @@ export const adminRouter = router({
       }
 
       return results;
+    }),
+
+  /**
+   * Lists users matching a search query or returns recent users.
+   * Excludes soft-deleted users.
+   */
+  listUsers: auditedAdminProcedure
+    .input(
+      z
+        .object({
+          q: z.string().trim().min(2).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const where = input?.q
+        ? {
+            deletedAt: null,
+            OR: [
+              { name: { contains: input.q, mode: 'insensitive' as const } },
+              { email: { contains: input.q, mode: 'insensitive' as const } },
+            ],
+          }
+        : { deletedAt: null };
+
+      return prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          household: { select: { id: true, name: true } },
+        },
+      });
+    }),
+
+  /**
+   * Soft-deletes a user. The user can no longer sign in and the
+   * email becomes available for re-registration.
+   */
+  deleteUser: auditedAdminProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { id: true, deletedAt: true },
+      });
+
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+      if (user.deletedAt) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'User is already deleted',
+        });
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { deletedAt: new Date(), householdId: null },
+      });
+
+      return { deleted: true };
+    }),
+
+  /**
+   * Returns a single user with full details for the edit modal.
+   */
+  getUser: auditedAdminProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          householdId: true,
+          phoneNumber: true,
+          communicationPreference: true,
+          smsConsent: true,
+          createdAt: true,
+          household: { select: { id: true, name: true } },
+        },
+      });
+
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+
+      return user;
+    }),
+
+  /**
+   * Updates a user's name, email, role, and/or household assignment.
+   */
+  updateUser: auditedAdminProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1),
+        name: z.string().trim().min(1).max(200),
+        email: z.string().trim().email().max(320),
+        role: z.nativeEnum(Role),
+        phoneNumber: z.string().trim().max(30).nullable(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { id: true, deletedAt: true },
+      });
+
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+      if (user.deletedAt) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Cannot edit a deleted user',
+        });
+      }
+
+      await prisma.user.update({
+        where: { id: input.userId },
+        data: {
+          name: input.name,
+          email: input.email,
+          role: input.role,
+          phoneNumber: input.phoneNumber,
+        },
+      });
+
+      return { updated: true };
+    }),
+
+  /**
+   * Lists all households for the household picker in the user edit modal.
+   */
+  listHouseholds: auditedAdminProcedure.query(async () => {
+    return prisma.household.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    });
+  }),
+
+  /**
+   * Returns a single user with all related data for the user detail page.
+   */
+  getUserDetail: auditedAdminProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          householdId: true,
+          phoneNumber: true,
+          communicationPreference: true,
+          smsConsent: true,
+          onboardingCompletedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+          devPassword: true,
+          household: {
+            select: {
+              id: true,
+              name: true,
+              members: {
+                where: { deletedAt: null },
+                orderBy: { name: 'asc' },
+                select: { id: true, name: true, age: true, relationship: true },
+              },
+              users: {
+                where: { deletedAt: null, id: { not: input.userId } },
+                select: { id: true, name: true, email: true, role: true },
+              },
+            },
+          },
+          linkedIdentities: {
+            orderBy: { createdAt: 'asc' },
+            select: { id: true, provider: true, providerAccountId: true, emailSnapshot: true, createdAt: true },
+          },
+          eventAdmins: {
+            select: {
+              id: true,
+              event: { select: { id: true, name: true, date: true } },
+            },
+          },
+        },
+      });
+
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+
+      return {
+        ...user,
+        hasDevPassword: Boolean(user.devPassword),
+        devPassword: undefined,
+      };
+    }),
+
+  /**
+   * Unlinks an OAuth identity from a user. Admin version skips the
+   * ownership guard (the admin can unlink any identity).
+   */
+  unlinkIdentity: auditedAdminProcedure
+    .input(z.object({ identityId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const identity = await prisma.linkedIdentity.findUnique({
+        where: { id: input.identityId },
+      });
+
+      if (!identity) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Identity not found' });
+      }
+
+      await prisma.linkedIdentity.delete({ where: { id: input.identityId } });
+
+      await writeAuditLog({
+        userId: ctx.session.user.id,
+        action: 'admin.user.unlinkIdentity',
+        oldValue: { provider: identity.provider, identityId: identity.id, userId: identity.userId },
+      });
+
+      return { unlinked: true };
+    }),
+
+  /**
+   * Clears the dev auth password for a user, preventing dev-credentials
+   * sign-in without affecting OAuth sign-in.
+   */
+  clearDevPassword: auditedAdminProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { id: true, devPassword: true },
+      });
+
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+      if (!user.devPassword) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'User does not have a dev password set',
+        });
+      }
+
+      await prisma.user.update({
+        where: { id: input.userId },
+        data: { devPassword: null },
+      });
+
+      await writeAuditLog({
+        userId: ctx.session.user.id,
+        action: 'admin.user.clearDevPassword',
+        oldValue: { hadPassword: true },
+        newValue: { hadPassword: false },
+      });
+
+      return { cleared: true };
+    }),
+
+  /**
+   * Renames a household. Used when editing a household from the user
+   * detail page.
+   */
+  updateHouseholdName: auditedAdminProcedure
+    .input(z.object({ householdId: z.string().min(1), name: z.string().trim().min(1).max(200) }))
+    .mutation(async ({ input }) => {
+      const household = await prisma.household.findUnique({
+        where: { id: input.householdId },
+        select: { id: true },
+      });
+
+      if (!household) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Household not found' });
+      }
+
+      await prisma.household.update({
+        where: { id: input.householdId },
+        data: { name: input.name },
+      });
+
+      return { updated: true };
+    }),
+
+  /**
+   * Soft-deletes a household roster member (HouseholdMember, not a User).
+   */
+  removeHouseholdMember: auditedAdminProcedure
+    .input(z.object({ memberId: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const member = await prisma.householdMember.findUnique({
+        where: { id: input.memberId },
+        select: { id: true, deletedAt: true },
+      });
+
+      if (!member) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Member not found' });
+      }
+      if (member.deletedAt) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Member is already removed',
+        });
+      }
+
+      await prisma.householdMember.update({
+        where: { id: input.memberId },
+        data: { deletedAt: new Date() },
+      });
+
+      return { removed: true };
+    }),
+
+  /**
+   * Creates a new household. Checks for duplicate names.
+   */
+  createHousehold: auditedAdminProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(80),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const existing = await prisma.household.findFirst({
+        where: {
+          deletedAt: null,
+          name: { equals: input.name, mode: 'insensitive' },
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'A household with this name already exists',
+        });
+      }
+
+      return prisma.household.create({
+        data: { name: input.name },
+      });
+    }),
+
+  /**
+   * Lists all households with user counts and roster member counts.
+   */
+  listHouseholdsDetail: auditedAdminProcedure.query(async () => {
+    return prisma.household.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        _count: { select: { users: true, members: true } },
+        users: {
+          where: { deletedAt: null },
+          select: { id: true, name: true, email: true, role: true },
+        },
+        members: {
+          where: { deletedAt: null },
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true, age: true, relationship: true },
+        },
+},
+    });
+  }),
+
+  /**
+   * Returns a single household with all related data for the detail page.
+   */
+  getHouseholdDetail: auditedAdminProcedure
+    .input(z.object({ householdId: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const household = await prisma.household.findUnique({
+        where: { id: input.householdId },
+        select: {
+          id: true,
+          name: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+          users: {
+            where: { deletedAt: null },
+            orderBy: { name: 'asc' },
+            select: { id: true, name: true, email: true, role: true },
+          },
+          members: {
+            where: { deletedAt: null },
+            orderBy: { name: 'asc' },
+            select: { id: true, name: true, age: true, relationship: true },
+          },
+        },
+      });
+
+      if (!household) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Household not found' });
+      }
+
+      return household;
+    }),
+
+  /**
+   * Assigns a user to a household by setting their householdId.
+   */
+  linkUserToHousehold: auditedAdminProcedure
+    .input(z.object({ userId: z.string().min(1), householdId: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { id: true, deletedAt: true },
+      });
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+      if (user.deletedAt) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Cannot link a deleted user',
+        });
+      }
+
+      const household = await prisma.household.findUnique({
+        where: { id: input.householdId },
+        select: { id: true, deletedAt: true },
+      });
+      if (!household || household.deletedAt) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Household not found' });
+      }
+
+      await prisma.user.update({
+        where: { id: input.userId },
+        data: { householdId: input.householdId },
+      });
+
+      return { linked: true };
+    }),
+
+  /**
+   * Removes a user from their household by setting householdId to null.
+   */
+  unlinkUserFromHousehold: auditedAdminProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { id: true, householdId: true },
+      });
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      }
+      if (!user.householdId) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'User is not assigned to any household',
+        });
+      }
+
+      await prisma.user.update({
+        where: { id: input.userId },
+        data: { householdId: null },
+      });
+
+      return { unlinked: true };
+    }),
+
+  /**
+   * Adds a roster member to a household.
+   */
+  addHouseholdMember: auditedAdminProcedure
+    .input(
+      z.object({
+        householdId: z.string().min(1),
+        name: z.string().trim().min(1).max(200),
+        age: z.number().int().min(0).max(150),
+        relationship: z.string().trim().max(100).nullable(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      return prisma.householdMember.create({
+        data: {
+          householdId: input.householdId,
+          name: input.name,
+          age: input.age,
+          relationship: input.relationship,
+        },
+      });
     }),
 
   /**
