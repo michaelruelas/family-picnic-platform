@@ -54,7 +54,8 @@ const sessionUser = {
   householdId: 'h-1',
 };
 
-const signedInCaller = () => createCaller({ session: { user: sessionUser, expires: '2099-01-01' } });
+const signedInCaller = () =>
+  createCaller({ session: { user: sessionUser, expires: '2099-01-01' } });
 const anonymousCaller = () => createCaller({ session: null });
 
 const fakeHeaders = (entries: Record<string, string>) => {
@@ -100,9 +101,7 @@ describe('feedback.submit', () => {
 
   it('requires an email when the caller is anonymous', async () => {
     const caller = anonymousCaller();
-    await expect(caller.submit({ ...baseInput, email: '' })).rejects.toThrow(
-      /share an email/i,
-    );
+    await expect(caller.submit({ ...baseInput, email: '' })).rejects.toThrow(/share an email/i);
     expect(sendGridMock.sendEmail).not.toHaveBeenCalled();
   });
 

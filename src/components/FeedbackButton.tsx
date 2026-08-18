@@ -31,10 +31,7 @@ const CATEGORY_OPTIONS = FEEDBACK_CATEGORIES.map((value) => ({
   label: FEEDBACK_CATEGORY_LABELS[value],
 }));
 
-export default function FeedbackButton({
-  variant = 'link',
-  className = '',
-}: FeedbackButtonProps) {
+export default function FeedbackButton({ variant = 'link', className = '' }: FeedbackButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [category, setCategory] = useState<FeedbackCategory>('BUG');
   const [message, setMessage] = useState('');
@@ -100,8 +97,7 @@ export default function FeedbackButton({
     }
   }
 
-  const submitDisabled =
-    submit.isPending || trimmedMessage.length < FEEDBACK_MESSAGE_MIN;
+  const submitDisabled = submit.isPending || trimmedMessage.length < FEEDBACK_MESSAGE_MIN;
 
   const trigger =
     variant === 'floating' ? (
@@ -197,12 +193,7 @@ export default function FeedbackButton({
           )}
 
           <div className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={handleClose}
-              disabled={submit.isPending}
-            >
+            <Button type="button" variant="ghost" onClick={handleClose} disabled={submit.isPending}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={submitDisabled}>

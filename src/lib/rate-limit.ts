@@ -264,12 +264,7 @@ export function checkFeedbackSubmitRateLimit(
   now: number = Date.now(),
 ): RateLimitResult {
   const key = actor ? `feedback:actor:${actor}` : 'feedback:anonymous';
-  return checkInMemoryIpRateLimit(
-    key,
-    FEEDBACK_SUBMITS_PER_HOUR,
-    FEEDBACK_SUBMIT_WINDOW_MS,
-    now,
-  );
+  return checkInMemoryIpRateLimit(key, FEEDBACK_SUBMITS_PER_HOUR, FEEDBACK_SUBMIT_WINDOW_MS, now);
 }
 
 export function resetFeedbackRateLimits(): void {
