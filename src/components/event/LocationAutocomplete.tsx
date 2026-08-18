@@ -64,20 +64,40 @@ export function LocationAutocomplete({
     }
   }, [value]);
 
+  // Always render a controlled <input> so manual typing flows back
+  // to the parent form. Google Maps' PlaceAutocompleteElement renders
+  // its own internal input inside `containerRef` once the script loads
+  // — both inputs stay in the DOM so the user can fall back to
+  // typing if the suggestions API is unavailable or disabled.
+  const inputClasses =
+    'border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none';
+
   return (
     <div>
-      {!scriptLoaded && !scriptError && (
-        <input
-          type="text"
-          id="location"
-          name="location"
-          value={value}
-          required
-          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-          placeholder="Loading address autocomplete..."
-          disabled
-        />
-      )}
+      <input
+        type="text"
+        id="location"
+        name="location"
+        value={value}
+        onChange={(e) =>
+          onChange({
+            location: e.target.value,
+            lat: null,
+            lng: null,
+            placeId: null,
+          })
+        }
+        required
+        className={inputClasses}
+        placeholder={
+          scriptError
+            ? 'Enter address manually'
+            : scriptLoaded
+              ? ''
+              : 'Loading address autocomplete…'
+        }
+        disabled={!scriptLoaded && !scriptError}
+      />
       <div ref={containerRef} className="mt-1" />
       {value && !geoSelected && (
         <p className="text-muted-foreground mt-1 text-xs">
