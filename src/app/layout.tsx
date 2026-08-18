@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from 'next';
-import { Alfa_Slab_One, Inter } from 'next/font/google';
+import { Bevan, Inter } from 'next/font/google';
 import './globals.css';
 import Providers from '~/components/Providers';
 import NavBarClient from '~/components/NavBarClient';
 import Footer from '~/components/Footer';
 import { themeColors, getThemeCss, getThemeScript } from '~/lib/theme';
 
-const alfaSlabOne = Alfa_Slab_One({
+const bevan = Bevan({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-display',
@@ -35,11 +35,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${alfaSlabOne.variable} ${inter.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en"       className={`${bevan.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
         <style
           id="dynamic-theme"

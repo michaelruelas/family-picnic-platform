@@ -230,7 +230,7 @@
   h5,
   h6 {
     font-family: var(--font-display), serif;
-    letter-spacing: 0.025em;
+    letter-spacing: 0.075em;
     color: var(--foreground);
   }
 
@@ -275,7 +275,7 @@
 @layer components {
   .font-display {
     font-family: var(--font-display), serif;
-    letter-spacing: 0.025em;
+    letter-spacing: 0.075em;
   }
 
   .shadow-soft {
