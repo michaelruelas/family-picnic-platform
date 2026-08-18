@@ -45,17 +45,9 @@ vi.mock('../PotluckEditor', () => ({
 }));
 
 vi.mock('~/components/payment/PaymentBlock', () => ({
-  default: (props: {
-    eventId: string;
-    onPayNow?: () => void;
-    onPayLater?: () => void;
-  }) => (
+  default: (props: { eventId: string; onPayNow?: () => void; onPayLater?: () => void }) => (
     <div data-testid="mock-payment-block" data-event-id={props.eventId}>
-      <button
-        type="button"
-        data-testid="mock-payment-pay-now"
-        onClick={() => props.onPayNow?.()}
-      >
+      <button type="button" data-testid="mock-payment-pay-now" onClick={() => props.onPayNow?.()}>
         Pay now
       </button>
       <button
