@@ -53,7 +53,13 @@ export async function POST(request: Request) {
       .object({
         name: z.string().min(1, 'Name is required').trim().min(1),
         relationship: z.enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN'] as const),
-        age: z.number().int().positive().optional(),
+        // FPP-122: age is required on create so the per-member
+        // attendance list and fee calc stay consistent.
+        age: z
+          .number({ error: 'Age is required' })
+          .int('Age must be a whole number')
+          .nonnegative('Age cannot be negative')
+          .max(120, 'Age must be 120 or fewer'),
         dietaryLabels: z.array(z.string()).default([]),
         isChild: z.boolean().default(false),
       })
@@ -105,7 +111,8 @@ export async function POST(request: Request) {
       data: {
         name: name.trim(),
         relationship,
-        age: age !== undefined && age !== null ? Number(age) : null,
+        // FPP-122: the schema now guarantees a numeric age.
+        age: Number(age),
         dietaryLabels: Array.isArray(dietaryLabels) ? dietaryLabels : [],
         isChild: Boolean(isChild),
         householdId: user.household.id,
@@ -141,7 +148,14 @@ export async function PATCH(request: Request) {
         relationship: z
           .enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN'] as const)
           .optional(),
-        age: z.number().int().positive().nullable().optional(),
+        // FPP-122: match the create bounds; reject nulls so we
+        // don't regress the required-age contract.
+        age: z
+          .number()
+          .int('Age must be a whole number')
+          .nonnegative('Age cannot be negative')
+          .max(120, 'Age must be 120 or fewer')
+          .optional(),
         dietaryLabels: z.array(z.string()).optional(),
         isChild: z.boolean().optional(),
       })

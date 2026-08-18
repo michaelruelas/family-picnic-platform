@@ -21,10 +21,11 @@ import {
 } from '~/lib/schemas/rsvp';
 
 describe('dependentCreateSchema', () => {
-  it('passes with valid data', () => {
+  it('passes with valid data and required age', () => {
     const result = dependentCreateSchema.safeParse({
       name: 'Alice',
       relationship: 'CHILD',
+      age: 7,
     });
     expect(result.success).toBe(true);
   });
@@ -43,6 +44,7 @@ describe('dependentCreateSchema', () => {
   it('fails when name is missing', () => {
     const result = dependentCreateSchema.safeParse({
       relationship: 'CHILD',
+      age: 5,
     });
     expect(result.success).toBe(false);
   });
@@ -51,6 +53,7 @@ describe('dependentCreateSchema', () => {
     const result = dependentCreateSchema.safeParse({
       name: '   ',
       relationship: 'CHILD',
+      age: 5,
     });
     expect(result.success).toBe(false);
   });
@@ -59,11 +62,20 @@ describe('dependentCreateSchema', () => {
     const result = dependentCreateSchema.safeParse({
       name: 'Alice',
       relationship: 'FRIEND',
+      age: 5,
     });
     expect(result.success).toBe(false);
   });
 
-  it('fails when age is not positive', () => {
+  it('fails when age is missing (FPP-122)', () => {
+    const result = dependentCreateSchema.safeParse({
+      name: 'Alice',
+      relationship: 'CHILD',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when age is negative (FPP-122)', () => {
     const result = dependentCreateSchema.safeParse({
       name: 'Alice',
       relationship: 'CHILD',
@@ -85,6 +97,7 @@ describe('dependentCreateSchema', () => {
     const result = dependentCreateSchema.parse({
       name: 'Alice',
       relationship: 'CHILD',
+      age: 5,
     });
     expect(result.dietaryLabels).toEqual([]);
   });
@@ -93,6 +106,7 @@ describe('dependentCreateSchema', () => {
     const result = dependentCreateSchema.parse({
       name: 'Alice',
       relationship: 'CHILD',
+      age: 5,
     });
     expect(result.isChild).toBe(false);
   });
@@ -108,11 +122,12 @@ describe('dependentUpdateSchema', () => {
   });
 
   it('passes with all fields', () => {
+    // FPP-122: age, when present, must be a valid number.
     const result = dependentUpdateSchema.safeParse({
       id: 'dep-1',
       name: 'Alice',
       relationship: 'SIBLING',
-      age: null,
+      age: 8,
       dietaryLabels: ['gluten-free'],
       isChild: true,
     });
@@ -127,20 +142,20 @@ describe('dependentUpdateSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('fails when age is zero', () => {
+  it('accepts age 0 (FPP-122, newborn is valid)', () => {
     const result = dependentUpdateSchema.safeParse({
       id: 'dep-1',
       age: 0,
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
-  it('allows age to be null', () => {
+  it('rejects null age to keep the required-age contract (FPP-122)', () => {
     const result = dependentUpdateSchema.safeParse({
       id: 'dep-1',
       age: null,
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
   it('fails with invalid relationship', () => {
@@ -774,6 +789,7 @@ describe('householdMemberCreateSchema', () => {
     const result = householdMemberCreateSchema.safeParse({
       householdId: 'h-1',
       name: 'Alex',
+      age: 30,
     });
     expect(result.success).toBe(true);
   });
@@ -788,18 +804,25 @@ describe('householdMemberCreateSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('allows null age and notes', () => {
+  it('accepts age 0 (newborn)', () => {
     const result = householdMemberCreateSchema.safeParse({
       householdId: 'h-1',
       name: 'Alex',
-      age: null,
-      notes: null,
+      age: 0,
     });
     expect(result.success).toBe(true);
   });
 
+  it('fails when age is missing (FPP-122)', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
+      name: 'Alex',
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('fails when name is missing', () => {
-    const result = householdMemberCreateSchema.safeParse({ householdId: 'h-1' });
+    const result = householdMemberCreateSchema.safeParse({ householdId: 'h-1', age: 30 });
     expect(result.success).toBe(false);
   });
 
@@ -807,12 +830,13 @@ describe('householdMemberCreateSchema', () => {
     const result = householdMemberCreateSchema.safeParse({
       householdId: 'h-1',
       name: '   ',
+      age: 30,
     });
     expect(result.success).toBe(false);
   });
 
   it('fails when householdId is missing', () => {
-    const result = householdMemberCreateSchema.safeParse({ name: 'Alex' });
+    const result = householdMemberCreateSchema.safeParse({ name: 'Alex', age: 30 });
     expect(result.success).toBe(false);
   });
 
@@ -847,6 +871,7 @@ describe('householdMemberCreateSchema', () => {
     const result = householdMemberCreateSchema.safeParse({
       householdId: 'h-1',
       name: 'Alex',
+      age: 30,
       notes: 'x'.repeat(501),
     });
     expect(result.success).toBe(false);
@@ -867,11 +892,15 @@ describe('householdMemberUpdateSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('passes with all fields including null to clear', () => {
+  it('passes with all fields including clearing notes', () => {
+    // FPP-122: age is now required on every household member. The
+    // update path still accepts partial updates, but when age is
+    // sent it must be a number, not null. Notes may still be
+    // nulled to clear them.
     const result = householdMemberUpdateSchema.safeParse({
       id: 'm-1',
       name: 'Alex',
-      age: null,
+      age: 10,
       notes: null,
     });
     expect(result.success).toBe(true);
@@ -1063,6 +1092,7 @@ describe('household-member schemas reuse attendee-name rules (FPP-36)', () => {
     const result = householdMemberCreateSchema.safeParse({
       householdId: 'h-1',
       name: '   ',
+      age: 30,
     });
     expect(result.success).toBe(false);
   });
@@ -1071,6 +1101,7 @@ describe('household-member schemas reuse attendee-name rules (FPP-36)', () => {
     const result = householdMemberCreateSchema.safeParse({
       householdId: 'h-1',
       name: 'Alice\u2028Bob',
+      age: 30,
     });
     expect(result.success).toBe(false);
   });

@@ -102,7 +102,7 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
             class="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
             id="rsvp-household-name"
             maxlength="80"
-            placeholder="e.g. The Garcia Family"
+            placeholder="e.g. The Garcia Family Picnic Crew"
             type="text"
             value="   "
           />
@@ -387,7 +387,7 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
             class="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
             id="rsvp-household-name"
             maxlength="80"
-            placeholder="e.g. The Garcia Family"
+            placeholder="e.g. The Garcia Family Picnic Crew"
             type="text"
             value="The Garcia Family"
           />

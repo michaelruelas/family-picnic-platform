@@ -130,20 +130,22 @@ async function main() {
   // FPP-107: the head of household (the user who received the invite)
   // must have a HouseholdMember row so they appear in the RSVP form
   // and can set their age for registration fee calculation.
+  // FPP-122: age is now required at the DB layer; seed with the
+  // neutral adult default and let the user adjust it post-onboarding.
   await prisma.householdMember.create({
-    data: { householdId: garciaHousehold.id, name: mariaGarcia.name },
+    data: { householdId: garciaHousehold.id, name: mariaGarcia.name, age: 35 },
   });
   await prisma.householdMember.create({
-    data: { householdId: garciaHousehold.id, name: carlosGarcia.name },
+    data: { householdId: garciaHousehold.id, name: carlosGarcia.name, age: 37 },
   });
   await prisma.householdMember.create({
-    data: { householdId: thompsonHousehold.id, name: lisaThompson.name },
+    data: { householdId: thompsonHousehold.id, name: lisaThompson.name, age: 42 },
   });
   await prisma.householdMember.create({
-    data: { householdId: thompsonHousehold.id, name: bobThompson.name },
+    data: { householdId: thompsonHousehold.id, name: bobThompson.name, age: 44 },
   });
   await prisma.householdMember.create({
-    data: { householdId: patelHousehold.id, name: priyaPatel.name },
+    data: { householdId: patelHousehold.id, name: priyaPatel.name, age: 29 },
   });
 
   const dependent = await prisma.dependent.create({

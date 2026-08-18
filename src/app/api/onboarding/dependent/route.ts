@@ -26,6 +26,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
+    // FPP-122: age is now a required field on every household
+    // member. The onboarding wizard still sends the value as a
+    // string from the number input, so normalise it here and
+    // surface a friendly error if it's missing or invalid.
+    let parsedAge: number;
+    if (typeof age === 'number' && Number.isFinite(age)) {
+      parsedAge = Math.trunc(age);
+    } else if (typeof age === 'string' && age.trim() !== '') {
+      const asNumber = Number(age);
+      if (!Number.isFinite(asNumber)) {
+        return NextResponse.json({ error: 'Age must be a whole number' }, { status: 400 });
+      }
+      parsedAge = Math.trunc(asNumber);
+    } else {
+      return NextResponse.json({ error: 'Age is required' }, { status: 400 });
+    }
+    if (parsedAge < 0 || parsedAge > 120) {
+      return NextResponse.json({ error: 'Age must be between 0 and 120' }, { status: 400 });
+    }
+
     // The HouseholdMember roster is the source of truth for "who is
     // in this household" going forward. The duplicate check must
     // ignore soft-deleted rows so a user can re-add a member with
@@ -53,7 +73,7 @@ export async function POST(request: Request) {
       data: {
         householdId: user.householdId,
         name: trimmedName,
-        age: age ? parseInt(age, 10) : null,
+        age: parsedAge,
         relationship: normalizedRelationship,
         // The onboarding wizard used to set `isChild` on the legacy
         // Dependent model. HouseholdMember does not have an

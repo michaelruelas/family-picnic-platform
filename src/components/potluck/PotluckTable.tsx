@@ -21,6 +21,11 @@ export interface PotluckTableSignup {
       name?: string | null;
       household?: { name: string } | null;
     } | null;
+    // FPP-127: household name is the primary identity handle on a
+    // potluck claim. The PotluckTable reads `rsvp.householdName`
+    // first and falls back to the user name only when the row
+    // predates the migration.
+    householdName?: string | null;
   } | null;
 }
 
@@ -75,8 +80,12 @@ export default function PotluckTable({ slots, className = '', currentRsvpId }: P
 
       if (slot.signups.length > 0) {
         for (const signup of slot.signups) {
-          const userName = signup.rsvp?.user?.name || 'Guest';
-          const household = signup.rsvp?.user?.household?.name || null;
+          // FPP-127: the household name is the primary identity
+          // handle. Fall back to the legacy `user.household.name`
+          // path and then to the user name for very old rows.
+          const household =
+            signup.rsvp?.householdName ?? signup.rsvp?.user?.household?.name ?? null;
+          const broughtBy = household ?? signup.rsvp?.user?.name ?? 'Guest';
           const isCurrentUser = Boolean(currentRsvpId && signup.rsvp?.id === currentRsvpId);
 
           result.push({
@@ -86,7 +95,10 @@ export default function PotluckTable({ slots, className = '', currentRsvpId }: P
             categoryLabel,
             categoryEmoji,
             isSignedUp: true,
-            broughtBy: userName,
+            broughtBy,
+            // FPP-127: surface the household name as a parenthetical
+            // when we resolved it from the user record (legacy) so
+            // the UI can still show both fields in that case.
             householdName: household,
             servings: signup.servings,
             isCurrentUser,
@@ -241,13 +253,11 @@ export default function PotluckTable({ slots, className = '', currentRsvpId }: P
                 </td>
                 <td className="text-foreground px-4 py-3 sm:px-6">
                   {row.isSignedUp ? (
+                    // FPP-127: broughtBy is already the household
+                    // name when one exists, so the legacy
+                    // parenthetical duplicate is no longer needed.
                     <div>
                       <span className="font-medium">{row.broughtBy}</span>
-                      {row.householdName && (
-                        <span className="text-muted-foreground ml-1.5 text-xs">
-                          ({row.householdName})
-                        </span>
-                      )}
                     </div>
                   ) : (
                     <span className="text-muted-foreground/60">—</span>

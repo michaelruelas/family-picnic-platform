@@ -67,7 +67,12 @@ const baseSlots = [
         dishName: 'Lemon bars',
         servings: 1,
         dietaryLabels: [],
-        rsvp: { userId: 'u-99', user: { id: 'u-99', name: 'Pat' } },
+        // FPP-127: include the household name on the fixture.
+        rsvp: {
+          userId: 'u-99',
+          user: { id: 'u-99', name: 'Pat' },
+          householdName: 'The Pat Family',
+        },
       },
     ],
   },

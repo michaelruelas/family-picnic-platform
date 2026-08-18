@@ -67,8 +67,12 @@ describe('PotluckTable (FPP-112)', () => {
 
     // Check signed up dish
     expect(screen.getByText('Grandma’s Special Mac & Cheese')).toBeInTheDocument();
-    expect(screen.getByText('Maria Garcia')).toBeInTheDocument();
-    expect(screen.getByText('(The Garcia Family)')).toBeInTheDocument();
+    // FPP-127: the household name is the primary identity handle
+    // on a potluck claim; the user name is no longer shown next
+    // to it as a parenthetical.
+    expect(screen.getByText('The Garcia Family')).toBeInTheDocument();
+    expect(screen.queryByText('Maria Garcia')).not.toBeInTheDocument();
+    expect(screen.queryByText('(The Garcia Family)')).not.toBeInTheDocument();
     expect(screen.getByText('Signed up')).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
 

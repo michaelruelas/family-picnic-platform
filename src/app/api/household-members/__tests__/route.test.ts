@@ -48,19 +48,21 @@ beforeEach(() => {
 describe('POST /api/household-members', () => {
   it('returns 401 when no session', async () => {
     mockedSession.mockResolvedValue(null);
-    const res = await POST(makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex', age: 30 }),
+    );
     expect(res.status).toBe(401);
   });
 
   it('returns 400 when name is missing', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    const res = await POST(makeJsonRequest('http://x', { householdId: 'h-1' }));
+    const res = await POST(makeJsonRequest('http://x', { householdId: 'h-1', age: 30 }));
     expect(res.status).toBe(400);
   });
 
   it('returns 400 when householdId is missing', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
-    const res = await POST(makeJsonRequest('http://x', { name: 'Alex' }));
+    const res = await POST(makeJsonRequest('http://x', { name: 'Alex', age: 30 }));
     expect(res.status).toBe(400);
   });
 
@@ -79,7 +81,9 @@ describe('POST /api/household-members', () => {
       householdId: 'h-2',
       deletedAt: null,
     } as never);
-    const res = await POST(makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex', age: 30 }),
+    );
     expect(res.status).toBe(403);
   });
 
@@ -90,7 +94,9 @@ describe('POST /api/household-members', () => {
       householdId: null,
       deletedAt: null,
     } as never);
-    const res = await POST(makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex', age: 30 }),
+    );
     expect(res.status).toBe(403);
   });
 
@@ -101,7 +107,9 @@ describe('POST /api/household-members', () => {
       householdId: 'h-1',
       deletedAt: new Date(),
     } as never);
-    const res = await POST(makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex', age: 30 }),
+    );
     expect(res.status).toBe(401);
     expect(prismaMock.householdMember.create).not.toHaveBeenCalled();
   });
@@ -152,7 +160,9 @@ describe('POST /api/household-members', () => {
   it('returns 500 on error', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     prismaMock.user.findUnique.mockRejectedValue(new Error('boom'));
-    const res = await POST(makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex' }));
+    const res = await POST(
+      makeJsonRequest('http://x', { householdId: 'h-1', name: 'Alex', age: 30 }),
+    );
     expect(res.status).toBe(500);
   });
 });

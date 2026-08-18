@@ -20,7 +20,14 @@ export const dependentRouter = router({
       z.object({
         name: z.string().min(1),
         relationship: z.enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN']),
-        age: z.number().int().positive().optional(),
+        // FPP-122: age is required so the dependent feeds the
+        // per-member attendance list and fee calc without
+        // silently dropping out.
+        age: z
+          .number()
+          .int('Age must be a whole number')
+          .nonnegative('Age cannot be negative')
+          .max(120, 'Age must be 120 or fewer'),
         dietaryLabels: z.array(z.string()).default([]),
         isChild: z.boolean().default(false),
       }),
@@ -93,7 +100,14 @@ export const dependentRouter = router({
         relationship: z
           .enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'INLAW', 'COUSIN'])
           .optional(),
-        age: z.number().int().positive().nullable().optional(),
+        // FPP-122: keep the same bounds when updating. Reject
+        // nulls here so we don't regress the required-age contract.
+        age: z
+          .number()
+          .int('Age must be a whole number')
+          .nonnegative('Age cannot be negative')
+          .max(120, 'Age must be 120 or fewer')
+          .optional(),
         dietaryLabels: z.array(z.string()).optional(),
         isChild: z.boolean().optional(),
       }),

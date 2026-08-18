@@ -11,6 +11,12 @@ import { householdCreateSchema } from '~/lib/schemas';
  * required" and because the per-member RSVP form needs at least one
  * row to render. Returns silently if the user already has a member
  * entry with the same name.
+ *
+ * FPP-122: the roster's age column is required at the DB layer, so
+ * this seed has to provide one. The user will edit the row on the
+ * household page right after onboarding; we use 18 as the most
+ * defensible neutral default (most adult account holders are above
+ * 18 and the form rejects the value before persisting).
  */
 async function seedSelfMember(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
@@ -19,13 +25,24 @@ async function seedSelfMember(
 ): Promise<void> {
   const existing = await tx.householdMember.findFirst({
     where: { householdId, name: user.name, deletedAt: null },
-    select: { id: true },
+    select: { id: true, age: true },
   });
-  if (existing) return;
+  if (existing) {
+    // FPP-122: if a previous onboarding run seeded the member
+    // without an age, top it up with the neutral adult default.
+    if (existing.age == null) {
+      await tx.householdMember.update({
+        where: { id: existing.id },
+        data: { age: 18 },
+      });
+    }
+    return;
+  }
   await tx.householdMember.create({
     data: {
       householdId,
       name: user.name,
+      age: 18,
     },
   });
 }

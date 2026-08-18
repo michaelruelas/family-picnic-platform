@@ -76,7 +76,14 @@ const baseSlots = [
         dishName: 'Lemon bars',
         servings: 1,
         dietaryLabels: [],
-        rsvp: { userId: 'u-99', user: { id: 'u-99', name: 'Pat' } },
+        rsvp: {
+          userId: 'u-99',
+          user: { id: 'u-99', name: 'Pat' },
+          // FPP-127: include the household name on the test
+          // fixture so the SlotList component reads it as the
+          // primary identity handle.
+          householdName: 'The Pat Family',
+        },
       },
     ],
   },

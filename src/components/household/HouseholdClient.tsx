@@ -7,7 +7,8 @@ interface Dependent {
   id: string;
   name: string;
   relationship: string;
-  age: number | null;
+  // FPP-122: dependents carry an age, not an optional one.
+  age: number;
   dietaryLabels: string[];
   isChild: boolean;
 }
@@ -55,6 +56,19 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
 
   const handleAddDependent = async (e: React.FormEvent) => {
     e.preventDefault();
+    // FPP-122: age is required, not optional. Mirror the schema
+    // bounds so the user gets immediate feedback instead of a
+    // round-trip and a 400 from the API.
+    const trimmedAge = dependentForm.age.trim();
+    if (trimmedAge === '') {
+      setDependentError('Age is required');
+      return;
+    }
+    const ageNumber = Number(trimmedAge);
+    if (!Number.isInteger(ageNumber) || ageNumber < 0 || ageNumber > 120) {
+      setDependentError('Age must be a whole number between 0 and 120');
+      return;
+    }
     setDependentSubmitting(true);
     setDependentError(null);
 
@@ -65,7 +79,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
         body: JSON.stringify({
           name: dependentForm.name,
           relationship: dependentForm.relationship,
-          age: dependentForm.age ? Number(dependentForm.age) : null,
+          age: ageNumber,
           dietaryLabels: dependentForm.dietaryLabels
             .split(',')
             .map((l) => l.trim())
@@ -103,6 +117,17 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
     e.preventDefault();
     if (!editingDependentId) return;
 
+    // FPP-122: same required-age guard as the create path.
+    const trimmedAge = dependentForm.age.trim();
+    if (trimmedAge === '') {
+      setDependentError('Age is required');
+      return;
+    }
+    const ageNumber = Number(trimmedAge);
+    if (!Number.isInteger(ageNumber) || ageNumber < 0 || ageNumber > 120) {
+      setDependentError('Age must be a whole number between 0 and 120');
+      return;
+    }
     setDependentSubmitting(true);
     setDependentError(null);
 
@@ -114,7 +139,7 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
           id: editingDependentId,
           name: dependentForm.name,
           relationship: dependentForm.relationship,
-          age: dependentForm.age ? Number(dependentForm.age) : null,
+          age: ageNumber,
           dietaryLabels: dependentForm.dietaryLabels
             .split(',')
             .map((l) => l.trim())
@@ -169,7 +194,9 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
     setDependentForm({
       name: dependent.name,
       relationship: dependent.relationship,
-      age: dependent.age !== null ? String(dependent.age) : '',
+      // FPP-122: dependents always have an age; fall back to '' only
+      // for legacy rows the migration hasn't touched yet.
+      age: dependent.age !== null && dependent.age !== undefined ? String(dependent.age) : '',
       dietaryLabels: dependent.dietaryLabels.join(', '),
       isChild: dependent.isChild,
     });
@@ -224,7 +251,9 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
                     )}
                   </div>
                   <div className="text-muted-foreground flex items-center gap-3 text-xs">
-                    {dependent.age !== null && <span>{dependent.age} yrs</span>}
+                    {dependent.age !== null && dependent.age !== undefined && (
+                      <span>{dependent.age} yrs</span>
+                    )}
                     {dependent.dietaryLabels.length > 0 && (
                       <span className="text-terracotta">
                         🥗 {dependent.dietaryLabels.join(', ')}
@@ -299,11 +328,14 @@ export default function HouseholdClient({ initialDependents }: HouseholdClientPr
             </div>
 
             <div>
-              <label className="text-foreground/85 block text-sm font-medium">Age (optional)</label>
+              <label className="text-foreground/85 block text-sm font-medium">
+                Age <span className="text-destructive">*</span>
+              </label>
               <input
                 type="number"
                 value={dependentForm.age}
                 onChange={(e) => setDependentForm({ ...dependentForm, age: e.target.value })}
+                required
                 min="0"
                 max="120"
                 placeholder="Age in years"

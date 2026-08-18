@@ -38,7 +38,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     const owner = await requireActiveMemberOwner(session.user.id, existing.householdId);
     if (!owner.ok) return owner.response;
 
-    const updateData: { name?: string; age?: number | null; notes?: string | null } = {};
+    // FPP-122: age is required at the DB layer, so the update path
+    // only accepts a numeric value (the schema rejects null).
+    const updateData: { name?: string; age?: number; notes?: string | null } = {};
 
     if (result.data.name !== undefined) updateData.name = result.data.name.trim();
     if (result.data.age !== undefined) updateData.age = result.data.age;

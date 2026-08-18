@@ -279,10 +279,12 @@ export function RsvpBottomSheet({
         formState.userName,
       ),
     );
-    setHouseholdName(
-      formState.householdName ||
-        (formState.userName ? `${formState.userName}'s Household` : 'My Household'),
-    );
+    // FPP-120: never auto-fill the household name with a derived
+    // default. If the user already has a household name, show it;
+    // otherwise leave the field empty so they consciously type
+    // their own. The required-name validation on save will catch
+    // any blank value.
+    setHouseholdName(formState.householdName ?? '');
     setPhone(formState.phoneNumber ?? '');
     setSmsConsent(Boolean(formState.smsConsent));
     setShowContact(Boolean(formState.phoneNumber));
@@ -757,7 +759,10 @@ export function RsvpBottomSheet({
               onChange={(e) => setHouseholdName(e.target.value)}
               maxLength={HOUSEHOLD_NAME_MAX}
               autoComplete="off"
-              placeholder="e.g. The Garcia Family"
+              // FPP-120: the placeholder no longer pre-fills a
+              // real surname so the user is prompted to choose
+              // their own household name.
+              placeholder="e.g. The Garcia Family Picnic Crew"
               className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
             />
           </div>

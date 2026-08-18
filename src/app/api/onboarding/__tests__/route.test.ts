@@ -172,7 +172,7 @@ describe('POST /api/onboarding/dependent', () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
     prismaMock.householdMember.findFirst.mockResolvedValue({ id: 'm-1' } as never);
-    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Spouse' }));
+    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Spouse', age: 40 }));
     expect(res.status).toBe(409);
   });
 
@@ -181,7 +181,7 @@ describe('POST /api/onboarding/dependent', () => {
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
     prismaMock.householdMember.findFirst.mockResolvedValue(null);
     prismaMock.householdMember.create.mockResolvedValue({ id: 'm-2' } as never);
-    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Spouse' }));
+    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Spouse', age: 40 }));
     expect(res.status).toBe(200);
     expect(prismaMock.householdMember.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -196,7 +196,7 @@ describe('POST /api/onboarding/dependent', () => {
     prismaMock.householdMember.findFirst.mockResolvedValue(null);
     prismaMock.householdMember.create.mockResolvedValue({ id: 'm-3' } as never);
     const res = await POSTDependent(
-      makeJsonRequest('http://x', { name: 'Cousin', relationship: 'COUSIN' }),
+      makeJsonRequest('http://x', { name: 'Cousin', relationship: 'COUSIN', age: 25 }),
     );
     expect(res.status).toBe(200);
     expect(prismaMock.householdMember.create).toHaveBeenCalledWith(
@@ -206,10 +206,17 @@ describe('POST /api/onboarding/dependent', () => {
     );
   });
 
+  it('returns 400 when age is missing (FPP-122)', async () => {
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1', householdId: 'h-1' } as never);
+    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Kid' }));
+    expect(res.status).toBe(400);
+  });
+
   it('returns 500 on error', async () => {
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     prismaMock.user.findUnique.mockRejectedValue(new Error('boom'));
-    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Kid' }));
+    const res = await POSTDependent(makeJsonRequest('http://x', { name: 'Kid', age: 5 }));
     expect(res.status).toBe(500);
   });
 });
