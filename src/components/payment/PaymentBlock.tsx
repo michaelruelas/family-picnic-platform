@@ -6,64 +6,58 @@ import { formatAmount } from '~/lib/currency';
 
 interface PaymentBlockProps {
   eventId: string;
-  eventName: string;
   amountCents: number;
   currency: string;
   /**
-   * Optional refund hint surfaced under the Pay Later button.
-   * Defaults to the standard copy.
+   * Optional hint surfaced under the buttons. Defaults to the standard
+   * copy explaining the fee and the pay-later option.
    */
   deferredHint?: string;
   /**
-   * If provided, the Pay now button is rendered as a regular button
-   * (not a link) that calls this handler synchronously. Used when the
-   * parent needs to know the user clicked Pay now — for example, to
-   * unlock the Save button before confirm.
+   * Called when the user picks Pay now. The default (no handler)
+   * navigates the browser to `/events/{id}/checkout`. Parents can
+   * override this when they need to do bookkeeping before the
+   * navigation (for tests, deep links, or analytics).
    */
   onPayNow?: () => void;
-  /**
-   * Called after the payLater mutation succeeds. Use this to record
-   * the choice locally so the RSVP Save button is enabled. Failures
-   * do not invoke the callback, so parents can rely on it as a
-   * "deferred is confirmed" signal.
-   */
-  onPayLater?: () => void;
 }
 
 /**
  * FPP-123: embeds the fee choice inside the RSVP confirmation step
  * so the user never has to bounce through `/events/[id]/checkout`
- * unless they actually want to pay. Two CTAs:
+ * unless they actually want to pay.
  *
- * - Pay now → defaults to a link to the hosted Payment Element page,
- *   but parents can supply `onPayNow` to swap in a button (used by
- *   the RSVP sheet to gate Save on the choice).
- * - Pay later → keeps the registration PENDING and cancels any
- *   active Charges so a later Pay Now attempt starts from a clean
- *   intent.
+ * Design contract:
  *
- * Render the block on the Attendance tab of the RSVP sheet when a
- * fee applies. Parents that gate Save on a payment choice pass
- * `onPayNow` / `onPayLater` to be notified synchronously.
+ * - Pay now is the primary action and takes the user straight to the
+ *   checkout page (`onPayNow` defaults to a `window.location` assign).
+ *   Pay later is not offered once Pay now is selected.
+ * - Pay later is a de-emphasized secondary action that runs the
+ *   `payment.payLater` mutation (cancels any active Charges, leaves
+ *   the registration PENDING). Pay now is hidden once Pay later is
+ *   selected.
+ * - Save is never gated by the payment choice — the user can always
+ *   submit the RSVP, paid or deferred.
+ *
+ * The component tracks the choice locally with a `choice` flag; a
+ * separate `payLater` mutation success flips it to `'payLater'`, and
+ * the Pay now handler sets it to `'payNow'` synchronously. Render the
+ * block anywhere a fee applies.
  */
 export default function PaymentBlock({
   eventId,
-  eventName,
   amountCents,
   currency,
   deferredHint,
   onPayNow,
-  onPayLater,
 }: PaymentBlockProps) {
-  const [deferred, setDeferred] = useState(false);
-  const [payNowChosen, setPayNowChosen] = useState(false);
+  const [choice, setChoice] = useState<'payNow' | 'payLater' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const payLater = trpc.payment.payLater.useMutation({
     onSuccess: () => {
-      setDeferred(true);
+      setChoice('payLater');
       setError(null);
-      onPayLater?.();
     },
     onError: (err) => {
       setError(err.message);
@@ -72,18 +66,22 @@ export default function PaymentBlock({
 
   const handlePayNow = () => {
     setError(null);
-    setPayNowChosen(true);
-    onPayNow?.();
+    setChoice('payNow');
+    if (onPayNow) {
+      onPayNow();
+    } else if (typeof window !== 'undefined') {
+      window.location.assign(`/events/${eventId}/checkout`);
+    }
+  };
+
+  const handlePayLater = () => {
+    setError(null);
+    payLater.mutate({ eventId });
   };
 
   const hint =
     deferredHint ??
-    `You can pay ${formatAmount(amountCents, currency)} for ${eventName} any time before the event.`;
-
-  const payNowClass =
-    'bg-terracotta shadow-soft press hover:bg-terracotta/90 rounded-sm px-4 py-2 text-sm font-semibold text-white transition-all disabled:opacity-60';
-  const payLaterClass =
-    'border-border bg-card text-foreground hover:border-foreground rounded-sm border px-4 py-2 text-sm font-semibold transition-all disabled:opacity-60';
+    `Pay ${formatAmount(amountCents, currency)} now or settle up later — the choice is yours.`;
 
   return (
     <div
@@ -94,41 +92,36 @@ export default function PaymentBlock({
         Registration fee: {formatAmount(amountCents, currency)}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        {onPayNow ? (
+        {choice !== 'payLater' && (
           <button
             type="button"
             onClick={handlePayNow}
-            disabled={payNowChosen || payLater.isPending}
-            className={payNowClass}
-            data-testid="rsvp-payment-pay-now"
-          >
-            {payNowChosen ? 'Continue to payment →' : 'Pay now'}
-          </button>
-        ) : (
-          <a
-            href={`/events/${eventId}/checkout`}
-            className={payNowClass}
+            disabled={payLater.isPending}
+            className="bg-terracotta shadow-soft press hover:bg-terracotta/90 rounded-sm px-4 py-2 text-sm font-semibold text-white transition-all disabled:opacity-60"
             data-testid="rsvp-payment-pay-now"
           >
             Pay now
-          </a>
+          </button>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            setError(null);
-            payLater.mutate({ eventId });
-          }}
-          disabled={deferred || payLater.isPending}
-          className={payLaterClass}
-          data-testid="rsvp-payment-pay-later"
-        >
-          {payLater.isPending
-            ? 'Saving…'
-            : deferred
-              ? 'Saved — pay later'
-              : 'Pay later'}
-        </button>
+        {choice === 'payLater' && (
+          <span
+            className="bg-foreground/5 text-muted-foreground rounded-sm px-4 py-2 text-sm font-semibold"
+            data-testid="rsvp-payment-deferred"
+          >
+            Saved — pay later
+          </span>
+        )}
+        {choice !== 'payNow' && (
+          <button
+            type="button"
+            onClick={handlePayLater}
+            disabled={payLater.isPending}
+            className="text-muted-foreground hover:text-foreground rounded-sm px-2 py-2 text-xs font-medium underline underline-offset-4 transition-colors disabled:opacity-60"
+            data-testid="rsvp-payment-pay-later"
+          >
+            {payLater.isPending ? 'Saving…' : 'Pay later'}
+          </button>
+        )}
       </div>
       <p className="text-muted-foreground mt-2 text-xs">{hint}</p>
       {error && (

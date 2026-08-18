@@ -41,30 +41,18 @@ beforeEach(() => {
 });
 
 describe('PaymentBlock', () => {
-  it('renders the fee, Pay now link, and Pay later button', () => {
-    render(
-      <PaymentBlock
-        eventId="evt-1"
-        eventName="Annual Picnic"
-        amountCents={2500}
-        currency="usd"
-      />,
+  it('renders the fee, a Pay now button, and a Pay later link', () => {
+  render(
+<PaymentBlock eventId="evt-1" amountCents={2500} currency="usd" />,
     );
     expect(screen.getByText(/registration fee: \$25\.00/i)).toBeInTheDocument();
     const payNow = screen.getByTestId('rsvp-payment-pay-now');
-    expect(payNow).toHaveAttribute('href', '/events/evt-1/checkout');
+    expect(payNow).toBeInTheDocument();
     expect(screen.getByTestId('rsvp-payment-pay-later')).toBeInTheDocument();
   });
 
-  it('calls the payLater mutation when the button is clicked', async () => {
-    render(
-      <PaymentBlock
-        eventId="evt-1"
-        eventName="Annual Picnic"
-        amountCents={2500}
-        currency="usd"
-      />,
-    );
+  it('calls the payLater mutation when the link is clicked', async () => {
+    render(<PaymentBlock eventId="evt-1" amountCents={2500} currency="usd" />);
     fireEvent.click(screen.getByTestId('rsvp-payment-pay-later'));
     await waitFor(() => {
       expect(mockPayment.payLater.useMutation).toHaveBeenCalled();
@@ -72,24 +60,28 @@ describe('PaymentBlock', () => {
     });
   });
 
-  it('locks the button after a successful payLater response', async () => {
-    render(
-      <PaymentBlock
-        eventId="evt-1"
-        eventName="Annual Picnic"
-        amountCents={2500}
-        currency="usd"
-      />,
-    );
+  it('replaces the Pay later link with a "Saved — pay later" badge after success', async () => {
+    render(<PaymentBlock eventId="evt-1" amountCents={2500} currency="usd" />);
     fireEvent.click(screen.getByTestId('rsvp-payment-pay-later'));
     await waitFor(() => {
-      const btn = screen.getByTestId('rsvp-payment-pay-later');
-      expect(btn).toBeDisabled();
-      expect(btn).toHaveTextContent(/saved.*pay later/i);
+      expect(screen.getByTestId('rsvp-payment-deferred')).toHaveTextContent(/saved.*pay later/i);
+      expect(screen.queryByTestId('rsvp-payment-pay-now')).not.toBeInTheDocument();
     });
   });
 
-  it('surfaces a server error', async () => {
+  it('hides Pay later once Pay now is selected', async () => {
+    const onPayNow = vi.fn();
+    render(
+      <PaymentBlock eventId="evt-1" amountCents={2500} currency="usd" onPayNow={onPayNow} />,
+    );
+    fireEvent.click(screen.getByTestId('rsvp-payment-pay-now'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('rsvp-payment-pay-later')).not.toBeInTheDocument();
+    });
+    expect(onPayNow).toHaveBeenCalledTimes(1);
+  });
+
+  it('surfaces a server error from payLater', async () => {
     mockPayment.payLater.useMutation.mockImplementationOnce(
       (opts: PaymentMutationOptions) => ({
         mutate: () => {
@@ -98,52 +90,10 @@ describe('PaymentBlock', () => {
         isPending: false,
       }),
     );
-    render(
-      <PaymentBlock
-        eventId="evt-1"
-        eventName="Annual Picnic"
-        amountCents={2500}
-        currency="usd"
-      />,
-    );
+    render(<PaymentBlock eventId="evt-1" amountCents={2500} currency="usd" />);
     fireEvent.click(screen.getByTestId('rsvp-payment-pay-later'));
     await waitFor(() => {
       expect(screen.getByTestId('rsvp-payment-error')).toHaveTextContent(/payments are offline/i);
-    });
-  });
-
-  it('switches Pay now to a button when onPayNow is provided', () => {
-    const onPayNow = vi.fn();
-    render(
-      <PaymentBlock
-        eventId="evt-1"
-        eventName="Annual Picnic"
-        amountCents={2500}
-        currency="usd"
-        onPayNow={onPayNow}
-      />,
-    );
-    const payNow = screen.getByTestId('rsvp-payment-pay-now');
-    expect(payNow.tagName).toBe('BUTTON');
-    expect(payNow).not.toHaveAttribute('href');
-    fireEvent.click(payNow);
-    expect(onPayNow).toHaveBeenCalledTimes(1);
-  });
-
-  it('invokes onPayLater only after the mutation succeeds', async () => {
-    const onPayLater = vi.fn();
-    render(
-      <PaymentBlock
-        eventId="evt-1"
-        eventName="Annual Picnic"
-        amountCents={2500}
-        currency="usd"
-        onPayLater={onPayLater}
-      />,
-    );
-    fireEvent.click(screen.getByTestId('rsvp-payment-pay-later'));
-    await waitFor(() => {
-      expect(onPayLater).toHaveBeenCalledTimes(1);
     });
   });
 });
