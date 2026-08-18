@@ -258,6 +258,9 @@ model Event {
   // keeps rendering until the host sets an image.
   featuredImageUrl String?
   description  String
+  // FPP-136: optional markdown/freeform additional info for the event.
+  // Displayed in the dedicated "Additional Info" tab alongside PDF attachments.
+  additionalInfo String?
   rsvpDeadline DateTime?
   maxCapacity  Int?
   // Optional per-attendee fee. When null, registration is free and no

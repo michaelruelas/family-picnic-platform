@@ -72,6 +72,7 @@ export default async function EditEventPage({ params }: PageProps) {
     lng: event.lng,
     placeId: event.placeId,
     description: event.description,
+    additionalInfo: event.additionalInfo ?? '',
     rsvpDeadline: event.rsvpDeadline?.toISOString().slice(0, 16) ?? '',
     maxCapacity: event.maxCapacity ?? undefined,
     mapImageUrl: event.mapImageUrl ?? '',

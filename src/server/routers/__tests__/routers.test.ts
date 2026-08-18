@@ -524,6 +524,7 @@ describe('event.router', () => {
       date: '2026-07-15T12:00:00.000Z',
       location: 'Park',
       description: 'Fun day',
+      additionalInfo: 'Bring chairs',
     });
 
     expect(mockPrisma.event.create).toHaveBeenCalledWith(
@@ -532,6 +533,7 @@ describe('event.router', () => {
           name: 'Summer Picnic',
           location: 'Park',
           description: 'Fun day',
+          additionalInfo: 'Bring chairs',
           status: 'DRAFT',
         }),
       }),
@@ -577,6 +579,7 @@ describe('event.router', () => {
       name: 'Updated Picnic',
       date: '2026-08-01T12:00:00.000Z',
       description: 'Updated description',
+      additionalInfo: 'Updated additional notes',
     });
 
     expect(mockPrisma.event.update).toHaveBeenCalledWith(
@@ -585,6 +588,7 @@ describe('event.router', () => {
         data: expect.objectContaining({
           name: 'Updated Picnic',
           description: 'Updated description',
+          additionalInfo: 'Updated additional notes',
         }),
       }),
     );

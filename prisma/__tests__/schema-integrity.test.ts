@@ -52,6 +52,12 @@ describe('Prisma schema integrity vs SPEC', () => {
     expect(schema).not.toContain('details');
   });
 
+  it('FPP-136: Event model has optional additionalInfo column', () => {
+    const block = schema.match(/model Event \{([\s\S]*?)^\}/m);
+    expect(block).not.toBeNull();
+    expect(block![1]!).toMatch(/additionalInfo\s+String\?/);
+  });
+
   it('Photo model has photoPrismId and caption', () => {
     expect(schema).toContain('photoPrismId');
     expect(schema).toContain('caption');

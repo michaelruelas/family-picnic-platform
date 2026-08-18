@@ -185,12 +185,11 @@ describe('FPP-43 PDF attachments (storage + admin upload + public download)', ()
       expect(src).toMatch(/if\s*\(\s*attachments\.length\s*===\s*0\s*\)\s+return\s+null/);
     });
 
-    it('EventHeaderSection gates the downloads block on attachments.length > 0', async () => {
-      // Belt-and-braces: the header also hides the section when the
-      // array is empty, on top of the section's own null guard.
-      const editPath = path.join(root, 'src/components/event/EventHeaderSection.tsx');
-      const src = await fs.readFile(editPath, 'utf-8');
-      expect(src).toMatch(/attachments\.length\s*>\s*0\s*&&\s*<EventDownloadsSection/);
+    it('EventAdditionalInfoSection gates the downloads block on attachments (FPP-137)', async () => {
+      // Belt-and-braces: Additional Info embeds EventDownloadsSection when attachments are present.
+      const sectionPath = path.join(root, 'src/components/event/EventAdditionalInfoSection.tsx');
+      const src = await fs.readFile(sectionPath, 'utf-8');
+      expect(src).toMatch(/<EventDownloadsSection\s+attachments=\{attachments\}/);
     });
 
     it('public event page filters attachments by event.status = PUBLISHED', async () => {

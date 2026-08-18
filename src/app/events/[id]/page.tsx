@@ -329,7 +329,12 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
             title: item.title,
             description: item.description,
           }))}
-          additionalInfo={null}
+          additionalInfo={event.additionalInfo}
+          attachments={event.attachments.map((a) => ({
+            id: a.id,
+            filename: a.filename,
+            sizeBytes: a.sizeBytes,
+          }))}
           photos={event.photos}
           eventName={event.name}
           userId={userId}

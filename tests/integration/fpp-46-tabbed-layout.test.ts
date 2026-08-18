@@ -117,12 +117,23 @@ describe('FPP-46: event overview tabbed layout', () => {
       expect(content).toMatch(/existingRsvp/);
     });
 
-    it('hosts the host block + potluck preview + meta strip', async () => {
+    it('hosts the host block + meta strip', async () => {
       const content = await fs.readFile(headerSectionPath, 'utf-8');
       expect(content).toContain('A note from the host');
       expect(content).toContain('eventDescription');
-      expect(content).toContain('PotluckPreview');
       expect(content).toContain('MetaStrip');
+    });
+
+    it('FPP-140: consolidates date, time, and location prominently under event title', async () => {
+      const content = await fs.readFile(headerSectionPath, 'utf-8');
+      expect(content).toMatch(/toLocaleDateString/);
+      expect(content).toMatch(/toLocaleTimeString/);
+      expect(content).toMatch(/eventLocation/);
+    });
+
+    it('FPP-139: potluck slider preview is removed from Overview tab', async () => {
+      const content = await fs.readFile(headerSectionPath, 'utf-8');
+      expect(content).not.toContain('PotluckPreview');
     });
   });
 

@@ -393,4 +393,55 @@ describe('EventForm', () => {
       });
     });
   });
+
+  describe('FPP-136 additional info field', () => {
+    it('renders the additional info textarea in create mode', () => {
+      render(<EventForm mode="create" />);
+      expect(screen.getByLabelText(/additional info/i)).toBeInTheDocument();
+    });
+
+    it('pre-fills additional info in edit mode', () => {
+      const initialData = {
+        id: 'e-1',
+        name: 'Annual Picnic',
+        date: '2026-08-15T10:00',
+        location: 'Central Park',
+        lat: null,
+        lng: null,
+        placeId: null,
+        description: 'Family fun',
+        additionalInfo: 'Bring your own picnic blanket and chairs.',
+      };
+      render(<EventForm mode="edit" initialData={initialData} />);
+      expect(screen.getByLabelText(/additional info/i)).toHaveValue(
+        'Bring your own picnic blanket and chairs.',
+      );
+    });
+
+    it('sends additionalInfo in the submit payload', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'e-new' }),
+      } as never);
+      render(<EventForm mode="create" />);
+      fireEvent.change(screen.getByLabelText(/event name/i), { target: { value: 'New' } });
+      fireEvent.change(screen.getByLabelText(/event date/i), {
+        target: { value: '2026-08-15T10:00' },
+      });
+      fireEvent.change(screen.getByLabelText(/location/i), { target: { value: 'Park' } });
+      fireEvent.change(screen.getByLabelText(/additional info/i), {
+        target: { value: 'Directions: Enter via North gate' },
+      });
+      const form = screen.getByRole('button', { name: /create event/i }).closest('form')!;
+      fireEvent.submit(form);
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/admin/events',
+          expect.objectContaining({
+            body: expect.stringContaining('"additionalInfo":"Directions: Enter via North gate"'),
+          }),
+        );
+      });
+    });
+  });
 });

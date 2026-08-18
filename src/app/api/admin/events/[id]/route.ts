@@ -88,6 +88,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       lng,
       placeId,
       description,
+      additionalInfo,
       rsvpDeadline,
       maxCapacity,
       mapImageUrl,
@@ -145,6 +146,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (lng !== undefined) updateData.lng = lng;
     if (placeId !== undefined) updateData.placeId = placeId;
     if (description !== undefined) updateData.description = description;
+    if (additionalInfo !== undefined) updateData.additionalInfo = additionalInfo || null;
     if (rsvpDeadline !== undefined)
       updateData.rsvpDeadline = rsvpDeadline ? new Date(rsvpDeadline) : null;
     if (maxCapacity !== undefined) updateData.maxCapacity = maxCapacity || null;
