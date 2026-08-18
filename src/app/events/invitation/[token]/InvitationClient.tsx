@@ -106,12 +106,13 @@ export default function InvitationClient({
     [household?.members, memberAttendances],
   );
   // FPP-113: the per-attendee fee only counts YES attendees whose age
-  // is supplied and at or above the threshold. Mirror the canonical
-  // `calculateFee` in src/lib/fee.ts — MAYBE/NO members and members
-  // with no age on file must never trigger a charge.
+  // is null, 0, or at/above the threshold. Mirror the canonical
+  // `calculateFee` in src/lib/fee.ts — MAYBE/NO members are excluded,
+  // and only ages 1..(minAge-1) are treated as below threshold.
   const amountCents = selectedMembers.reduce((total, member) => {
     if (memberAttendances[member.id] !== 'YES') return total;
-    if (member.age === null || member.age < event.registrationFeeMinAge) return total;
+    if (member.age !== null && member.age !== 0 && member.age < event.registrationFeeMinAge)
+      return total;
     return total + event.registrationFeeCents;
   }, 0);
 

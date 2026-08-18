@@ -32,8 +32,11 @@ export interface FeeBreakdown {
  * the given per-event fee config. An attendee qualifies when:
  *
  * - `attending === RsvpAttending.YES`
- * - `memberAge !== null`
- * - `memberAge >= config.minAge`
+ * - `memberAge` is null, 0, or >= config.minAge
+ *
+ * Missing ages (null) and age 0 are assumed to be above the
+ * threshold. Only ages 1 through (minAge - 1) are treated as
+ * below the threshold and excluded.
  *
  * Returns 0 (no charge) when `config` is null or `config.amountCents`
  * is 0, regardless of the roster.
@@ -50,8 +53,13 @@ export function calculateFee(attendees: FeeAttendee[], config: FeeConfig | null)
   let qualifyingAttendees = 0;
   for (const attendee of attendees) {
     if (attendee.attending !== RsvpAttending.YES) continue;
-    if (attendee.memberAge === null) continue;
-    if (attendee.memberAge < config.minAge) continue;
+    // null and 0 are assumed above threshold; only 1..minAge-1 is excluded
+    if (
+      attendee.memberAge !== null &&
+      attendee.memberAge !== 0 &&
+      attendee.memberAge < config.minAge
+    )
+      continue;
     qualifyingAttendees += 1;
   }
 
