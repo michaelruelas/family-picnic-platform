@@ -51,10 +51,10 @@ describe('calculateFee', () => {
   });
 
   describe('age filter', () => {
-    it('skips attendees with null age (does not silently bill)', () => {
+    it('treats null age as qualifying (assumed above threshold)', () => {
       const result = calculateFee([yes(null), yes(40)], { amountCents: 1000, minAge: 13 });
-      expect(result.qualifyingAttendees).toBe(1);
-      expect(result.amountCents).toBe(1000);
+      expect(result.qualifyingAttendees).toBe(2);
+      expect(result.amountCents).toBe(2000);
     });
 
     it('treats age equal to minAge as qualifying (inclusive boundary)', () => {
@@ -75,10 +75,10 @@ describe('calculateFee', () => {
       expect(result.amountCents).toBe(500);
     });
 
-    it('treats age 0 as not qualifying when minAge is greater than 0', () => {
+    it('treats age 0 as qualifying even when minAge is greater than 0', () => {
       const result = calculateFee([yes(0)], { amountCents: 500, minAge: 1 });
-      expect(result.qualifyingAttendees).toBe(0);
-      expect(result.amountCents).toBe(0);
+      expect(result.qualifyingAttendees).toBe(1);
+      expect(result.amountCents).toBe(500);
     });
   });
 
