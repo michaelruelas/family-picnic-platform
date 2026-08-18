@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { stripExifFromFile } from '~/lib/exif-stripper';
+import { useRouter } from 'next/navigation';
+import { processImageForUpload } from '~/lib/exif-stripper';
+import { useToast } from '~/components/ui/Toast';
 
 interface UploadButtonProps {
   eventId: string;
@@ -15,11 +17,14 @@ interface UploadingFile {
   file: File;
   progress: number;
   status: 'pending' | 'uploading' | 'processing' | 'done' | 'error';
+  fading?: boolean;
   error?: string;
 }
 
 const MAX_FILE_SIZE_MB = 10;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const DONE_VISIBLE_MS = 1500;
+const FADE_OUT_MS = 500;
 
 export default function UploadButton({
   eventId,
@@ -30,9 +35,20 @@ export default function UploadButton({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { addToast } = useToast();
+  const router = useRouter();
 
   const updateFileStatus = (id: string, updates: Partial<UploadingFile>) => {
     setUploadingFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...updates } : f)));
+  };
+
+  const scheduleRemoval = (id: string) => {
+    setTimeout(() => {
+      setUploadingFiles((prev) => prev.map((f) => (f.id === id ? { ...f, fading: true } : f)));
+      setTimeout(() => {
+        setUploadingFiles((prev) => prev.filter((f) => f.id !== id));
+      }, FADE_OUT_MS);
+    }, DONE_VISIBLE_MS);
   };
 
   const uploadFile = async (uploadingFile: UploadingFile): Promise<boolean> => {
@@ -41,51 +57,72 @@ export default function UploadButton({
     try {
       updateFileStatus(id, { status: 'processing', progress: 0 });
 
-      const stripped = await stripExifFromFile(file);
+      const processed = await processImageForUpload(file);
+      updateFileStatus(id, { progress: 15 });
 
-      updateFileStatus(id, { progress: 20 });
-
-      const presignedResponse = await fetch('/api/photo-upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId,
-          filename: file.name,
-          contentType: file.type,
+      const [fullRes, thumbRes] = await Promise.all([
+        fetch('/api/photo-upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId,
+            filename: file.name,
+            contentType: file.type,
+            variant: 'full',
+          }),
         }),
-      });
+        fetch('/api/photo-upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId,
+            filename: file.name,
+            contentType: file.type,
+            variant: 'thumbnail',
+          }),
+        }),
+      ]);
 
-      if (!presignedResponse.ok) {
-        const error = await presignedResponse.json();
-        throw new Error(error.error || 'Failed to get upload URL');
+      if (!fullRes.ok || !thumbRes.ok) {
+        const err = await (fullRes.ok ? thumbRes : fullRes).json();
+        throw new Error(err.error || 'Failed to get upload URLs');
       }
 
-      const { uploadUrl, key } = await presignedResponse.json();
+      const { uploadUrl: fullUrl, key: fullKey } = await fullRes.json();
+      const { uploadUrl: thumbUrl, key: thumbKey } = await thumbRes.json();
 
-      updateFileStatus(id, { status: 'uploading', progress: 40 });
+      updateFileStatus(id, { status: 'uploading', progress: 30 });
 
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: stripped.blob,
-        headers: {
-          'Content-Type': file.type,
-        },
-      });
+      const [fullUpload, thumbUpload] = await Promise.all([
+        fetch(fullUrl, {
+          method: 'PUT',
+          body: processed.full,
+          headers: { 'Content-Type': 'image/jpeg' },
+        }),
+        fetch(thumbUrl, {
+          method: 'PUT',
+          body: processed.thumbnail,
+          headers: { 'Content-Type': 'image/jpeg' },
+        }),
+      ]);
 
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file to S3');
+      if (!fullUpload.ok || !thumbUpload.ok) {
+        throw new Error('Failed to upload files to S3');
       }
 
       updateFileStatus(id, { progress: 80 });
+
+      const fullPublicUrl = fullUrl.split('?')[0];
+      const thumbPublicUrl = thumbUrl.split('?')[0];
 
       const createResponse = await fetch('/api/photos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventId,
-          photoPrismId: key,
-          url: uploadUrl.split('?')[0],
-          thumbnailUrl: uploadUrl.split('?')[0],
+          photoPrismId: fullKey,
+          url: fullPublicUrl,
+          thumbnailUrl: thumbPublicUrl,
           caption: '',
         }),
       });
@@ -95,6 +132,7 @@ export default function UploadButton({
       }
 
       updateFileStatus(id, { status: 'done', progress: 100 });
+      scheduleRemoval(id);
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
@@ -145,15 +183,26 @@ export default function UploadButton({
     setUploadingFiles((prev) => [...prev, ...newUploadingFiles]);
     setIsUploading(true);
 
+    let successCount = 0;
     for (const uploadingFile of newUploadingFiles) {
-      await uploadFile(uploadingFile);
+      const success = await uploadFile(uploadingFile);
+      if (success) successCount++;
     }
 
     setIsUploading(false);
 
-    const allDone = uploadingFiles.every((f) => f.status === 'done');
-    if (allDone) {
-      alert('All photos uploaded successfully');
+    const errorCount = newUploadingFiles.length - successCount;
+
+    if (successCount > 0 && errorCount === 0) {
+      addToast('success', `Uploaded ${successCount} photo${successCount === 1 ? '' : 's'}`);
+    } else if (successCount > 0 && errorCount > 0) {
+      addToast('warning', `Uploaded ${successCount}, ${errorCount} failed`);
+    } else if (errorCount > 0) {
+      addToast('error', `Upload failed for ${errorCount} photo${errorCount === 1 ? '' : 's'}`);
+    }
+
+    if (successCount > 0) {
+      router.refresh();
       onUploadComplete?.();
     }
   };
@@ -208,7 +257,9 @@ export default function UploadButton({
           {uploadingFiles.map((uploadingFile) => (
             <div
               key={uploadingFile.id}
-              className="bg-secondary/60 flex items-center gap-3 rounded-sm p-3"
+              className={`bg-secondary/60 flex items-center gap-3 rounded-sm p-3 transition-opacity duration-500 ${
+                uploadingFile.fading ? 'opacity-0' : 'opacity-100'
+              }`}
             >
               <div className="flex-1">
                 <p className="text-foreground/85 truncate text-sm font-medium">

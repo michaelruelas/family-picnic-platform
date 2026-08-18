@@ -42,19 +42,22 @@ export interface PresignedUploadUrl {
   expiresAt: Date;
 }
 
-export function generateS3Key(eventId: string, userId: string, filename: string): string {
+export type PhotoVariant = 'full' | 'thumbnail';
+
+export function generateS3Key(
+  eventId: string,
+  userId: string,
+  filename: string,
+  variant: PhotoVariant = 'full',
+): string {
   const timestamp = Date.now();
   const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-  return `events/${eventId}/uploads/${userId}/${timestamp}-${sanitizedFilename}`;
+  const base = `events/${eventId}/uploads/${userId}/${timestamp}-${sanitizedFilename}`;
+  // Thumbnail gets a sibling object under the same prefix so a bucket
+  // listing for an uploader still surfaces both variants together.
+  return variant === 'thumbnail' ? `${base}.thumb.jpg` : base;
 }
 
-/**
- * FPP-43: keys for PDF attachments live under a dedicated
- * `attachments/` subpath so a future bucket-wide lifecycle rule (or
- * migration) can target them without touching photo uploads. The
- * uploaders are kept on the path so the original uploader is
- * recoverable from the key alone when the DB row is missing.
- */
 export function generateAttachmentS3Key(eventId: string, userId: string, filename: string): string {
   const timestamp = Date.now();
   const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -66,8 +69,9 @@ export async function generatePresignedUploadUrl(
   userId: string,
   filename: string,
   contentType: string,
+  variant: PhotoVariant = 'full',
 ): Promise<PresignedUploadUrl> {
-  const key = generateS3Key(eventId, userId, filename);
+  const key = generateS3Key(eventId, userId, filename, variant);
 
   const command = new PutObjectCommand({
     Bucket: BUCKET_NAME,

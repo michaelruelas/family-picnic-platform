@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { eventId, filename, contentType } = body;
+    const { eventId, filename, contentType, variant } = body;
 
     if (!eventId || !filename || !contentType) {
       return NextResponse.json(
@@ -36,11 +36,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Thumbnails are always produced as JPEG by the client, even when
+    // the source upload is HEIC/PNG, so allow that content type here
+    // when the caller is requesting a thumbnail variant.
+    const normalizedVariant = variant === 'thumbnail' ? 'thumbnail' : 'full';
+    const normalizedContentType = normalizedVariant === 'thumbnail' ? 'image/jpeg' : contentType;
+
     const { uploadUrl, key, expiresAt } = await generatePresignedUploadUrl(
       eventId,
       session.user.id,
       filename,
-      contentType,
+      normalizedContentType,
+      normalizedVariant,
     );
 
     return NextResponse.json({
