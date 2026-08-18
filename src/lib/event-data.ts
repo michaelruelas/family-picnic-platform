@@ -8,6 +8,7 @@ export function toEventCreateData(input: {
   lng?: number | null;
   placeId?: string | null;
   description?: string;
+  additionalInfo?: string | null;
   rsvpDeadline?: string | null;
   maxCapacity?: number | null;
   mapImageUrl?: string | null;
@@ -24,6 +25,7 @@ export function toEventCreateData(input: {
     lng: input.lng ?? null,
     placeId: input.placeId ?? null,
     description: input.description ?? '',
+    additionalInfo: input.additionalInfo || null,
     rsvpDeadline: input.rsvpDeadline ? new Date(input.rsvpDeadline) : null,
     maxCapacity: input.maxCapacity ?? null,
     mapImageUrl: input.mapImageUrl || null,

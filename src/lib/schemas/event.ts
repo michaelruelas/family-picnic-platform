@@ -8,6 +8,8 @@ const eventFields = {
   lng: z.number().optional().nullable(),
   placeId: z.string().optional().nullable(),
   description: z.string().optional().default(''),
+  // FPP-136: optional additional info markdown/notes for guests.
+  additionalInfo: z.string().optional().nullable().or(z.literal('')),
   rsvpDeadline: z.string().optional(),
   maxCapacity: z.number().int().positive().optional(),
   mapImageUrl: z.string().url().optional().or(z.literal('')),
@@ -53,6 +55,7 @@ export const eventUpdateSchema = z
     lng: z.number().optional().nullable(),
     placeId: z.string().optional().nullable(),
     description: z.string().optional(),
+    additionalInfo: z.string().optional().nullable().or(z.literal('')),
     rsvpDeadline: z.string().optional(),
     maxCapacity: z.number().int().positive().optional(),
     mapImageUrl: z.string().url().optional().or(z.literal('')),

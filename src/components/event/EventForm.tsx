@@ -16,6 +16,7 @@ interface EventFormData {
   lng: number | null;
   placeId: string | null;
   description: string;
+  additionalInfo?: string;
   rsvpDeadline?: string;
   maxCapacity?: number;
   mapImageUrl?: string;
@@ -61,6 +62,7 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
     lng: initialData?.lng ?? null,
     placeId: initialData?.placeId ?? null,
     description: initialData?.description ?? '',
+    additionalInfo: initialData?.additionalInfo ?? '',
     rsvpDeadline: initialData?.rsvpDeadline ?? '',
     maxCapacity: initialData?.maxCapacity ?? undefined,
     mapImageUrl: initialData?.mapImageUrl ?? '',
@@ -379,6 +381,24 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
           className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
           placeholder="Join us for our annual family picnic..."
         />
+      </div>
+
+      <div>
+        <label htmlFor="additionalInfo" className="text-foreground/85 block text-sm font-medium">
+          Additional Info
+        </label>
+        <textarea
+          id="additionalInfo"
+          name="additionalInfo"
+          value={formData.additionalInfo ?? ''}
+          onChange={handleChange}
+          rows={4}
+          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
+          placeholder="Parking directions, what to bring, guidelines (supports basic markdown: **bold**, *italic*, lists, links)..."
+        />
+        <p className="text-muted-foreground mt-1 text-xs">
+          Surfaced in the dedicated &quot;Additional Info&quot; tab on the event page.
+        </p>
       </div>
 
       <div className="flex gap-3">

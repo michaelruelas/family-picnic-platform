@@ -6,7 +6,8 @@ import { Tabs } from '~/components/ui/Tabs';
 import { EventAnchorNav } from './EventAnchorNav';
 import { EventItinerarySection, type ItineraryItem } from './EventItinerarySection';
 import { EventAdditionalInfoSection } from './EventAdditionalInfoSection';
-import { type GalleryPhoto } from './EventGallerySection';
+import { EventGallerySection, type GalleryPhoto } from './EventGallerySection';
+import { type PublicEventAttachment } from './EventDownloadsSection';
 import { EVENT_TAB_KEYS, type EventTabKey } from '~/lib/event-tabs';
 
 function isEventTabKey(value: string | null): value is EventTabKey {
@@ -20,8 +21,10 @@ interface EventTabsProps {
   headerPanel: ReactNode;
   itineraryItems: ItineraryItem[];
   additionalInfo: string | null;
-  photos?: GalleryPhoto[];
-  eventName?: string;
+  /** FPP-137: PDF attachments rendered inside the Additional Info tab. */
+  attachments?: PublicEventAttachment[];
+  photos: GalleryPhoto[];
+  eventName: string;
   /**
    * Caller's user id and role.
    */
@@ -59,6 +62,11 @@ function EventTabsContent({
   headerPanel,
   itineraryItems,
   additionalInfo,
+  attachments,
+  photos,
+  eventName,
+  userId,
+  userRole,
 }: EventTabsProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -96,10 +104,10 @@ function EventTabsContent({
       {
         key: 'additional-info' as const,
         label: 'Additional Info',
-        panel: <EventAdditionalInfoSection body={additionalInfo} />,
+        panel: <EventAdditionalInfoSection body={additionalInfo} attachments={attachments ?? []} />,
       },
     ],
-    [headerPanel, itineraryItems, additionalInfo],
+    [headerPanel, itineraryItems, additionalInfo, attachments, photos, eventName, userId, userRole],
   );
 
   const anchorItems = tabs.map((t) => ({
@@ -154,6 +162,11 @@ function EventTabsFallback({
   headerPanel,
   itineraryItems,
   additionalInfo,
+  attachments,
+  photos,
+  eventName,
+  userId,
+  userRole,
 }: EventTabsProps) {
   return (
     <div className="space-y-12">
@@ -177,7 +190,7 @@ function EventTabsFallback({
           <EventItinerarySection items={itineraryItems} />
         </section>
         <section aria-label="Additional Info">
-          <EventAdditionalInfoSection body={additionalInfo} />
+          <EventAdditionalInfoSection body={additionalInfo} attachments={attachments ?? []} />
         </section>
       </div>
     </div>

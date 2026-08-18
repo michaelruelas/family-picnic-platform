@@ -1,50 +1,45 @@
+import { EventDownloadsSection, type PublicEventAttachment } from './EventDownloadsSection';
+
 export interface EventAdditionalInfoSectionProps {
   /**
-   * Free-form body supplied by the event host. Until the dedicated
-   * `additionalInfo` column lands on the `Event` model, this is
-   * always `null` and the tab renders its empty state. When the field
-   * arrives, swap this prop for `event.additionalInfo` and the
-   * placeholder copy goes away.
+   * Free-form body supplied by the event host (stored in Event.additionalInfo).
    */
   body: string | null;
+  /**
+   * FPP-137: PDF attachments surfaced directly inside the Additional Info tab.
+   */
+  attachments?: PublicEventAttachment[];
 }
 
 /**
- * FPP-46 / FPP-8: Additional Info tab content. Renders the event's
- * free-form additional-info block (bold / lists / basic markdown).
- *
- * Today the `Event` model has no `additionalInfo` column, so `body`
- * is always null and the tab shows its empty state. The marker
- * `data-testid="event-additional-info"` lets future tests assert
- * that the section is present even when empty (the tab panel itself
- * stays mounted behind the `Tabs` primitive).
+ * FPP-46 / FPP-8 / FPP-136 / FPP-137: Additional Info tab content.
+ * Renders the event's free-form additional-info block (bold / lists / basic markdown)
+ * and embeds the host's PDF downloads section.
  */
-export function EventAdditionalInfoSection({ body }: EventAdditionalInfoSectionProps) {
+export function EventAdditionalInfoSection({
+  body,
+  attachments = [],
+}: EventAdditionalInfoSectionProps) {
   const trimmed = body?.trim() ?? '';
+  const hasBody = trimmed.length > 0;
+  const hasAttachments = attachments.length > 0;
 
   return (
-    <section data-testid="event-additional-info">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Extras</p>
-          <h2 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
-            Additional Info
-          </h2>
-        </div>
+    <section data-testid="event-additional-info" className="space-y-8">
+      <div>
+        <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Extras</p>
+        <h2 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
+          Additional Info
+        </h2>
       </div>
 
-      {trimmed.length === 0 ? (
-        /*
-          FPP-8: "Empty state: hidden." We honour that by not
-          rendering an empty-state card when the host hasn't shared
-          anything yet — the tab itself stays available so the URL
-          deep link still resolves, but the panel body is a quiet
-          "nothing extra" line instead of a noisy placeholder.
-        */
+      {!hasBody && !hasAttachments && (
         <p className="text-muted-foreground mt-6 text-sm italic">Nothing extra to share yet.</p>
-      ) : (
-        <AdditionalInfoBody body={trimmed} />
       )}
+
+      {hasBody && <AdditionalInfoBody body={trimmed} />}
+
+      {hasAttachments && <EventDownloadsSection attachments={attachments} />}
     </section>
   );
 }

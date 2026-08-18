@@ -19,6 +19,7 @@ export const eventRouter = router({
         lng: z.number().optional().nullable(),
         placeId: z.string().optional().nullable(),
         description: z.string(),
+        additionalInfo: z.string().optional().nullable(),
         rsvpDeadline: z.string().datetime().optional(),
         maxCapacity: z.number().int().positive().optional(),
         mapImageUrl: z.string().optional(),
@@ -55,6 +56,7 @@ export const eventRouter = router({
       lng: z.number().optional().nullable(),
       placeId: z.string().optional().nullable(),
       description: z.string().optional(),
+      additionalInfo: z.string().optional().nullable(),
       rsvpDeadline: z.string().datetime().optional(),
       maxCapacity: z.number().int().positive().optional(),
       mapImageUrl: z.string().optional(),
@@ -73,6 +75,9 @@ export const eventRouter = router({
     // empty string through the optional update field.
     if (data.featuredImageUrl !== undefined && data.featuredImageUrl === '') {
       updateData.featuredImageUrl = null;
+    }
+    if (data.additionalInfo !== undefined && data.additionalInfo === '') {
+      updateData.additionalInfo = null;
     }
     return prisma.event.update({
       where: { id },

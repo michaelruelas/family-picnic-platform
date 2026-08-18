@@ -294,6 +294,16 @@ describe('eventCreateSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('FPP-136: passes with additionalInfo on create', () => {
+    const result = eventCreateSchema.safeParse({
+      name: 'Annual Picnic',
+      date: '2026-07-15',
+      location: 'Central Park',
+      additionalInfo: '**Bring** chairs and blankets.',
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe('eventUpdateSchema', () => {
@@ -366,6 +376,14 @@ describe('eventUpdateSchema', () => {
       featuredImageUrl: 'not-a-url',
     });
     expect(result.success).toBe(false);
+  });
+
+  it('FPP-136: passes with additionalInfo on update', () => {
+    const result = eventUpdateSchema.safeParse({
+      id: 'evt-1',
+      additionalInfo: 'Updated notes',
+    });
+    expect(result.success).toBe(true);
   });
 });
 
