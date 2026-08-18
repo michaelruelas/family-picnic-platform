@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import FeedbackButton from '~/components/FeedbackButton';
 import { APP_VERSION } from '~/lib/constants';
 
 export default function Footer() {
@@ -22,12 +23,7 @@ export default function Footer() {
           <Link href="/privacy-policy" className="hover:text-foreground transition-colors">
             Privacy Policy
           </Link>
-          <a
-            href="mailto:support@foliapicnic.com"
-            className="hover:text-foreground transition-colors"
-          >
-            Contact
-          </a>
+          <FeedbackButton variant="link" className="text-xs sm:text-sm" />
         </div>
       </div>
     </footer>

@@ -13,3 +13,4 @@ export * from './household';
 export * from './payment';
 export * from './audit';
 export * from './event-attachment';
+export * from './feedback';
