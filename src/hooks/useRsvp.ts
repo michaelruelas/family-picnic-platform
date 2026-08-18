@@ -1,10 +1,12 @@
 import { trpc } from '~/lib/trpc-client';
+import { track } from '~/lib/analytics';
 
 export function useRsvpMutation() {
   const utils = trpc.useUtils();
 
   const confirm = trpc.rsvp.confirm.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      track('rsvp_confirmed', { eventId: variables.eventId });
       void utils.rsvp.getMyRsvp.invalidate();
       void utils.rsvp.getHeadcount.invalidate();
       void utils.rsvp.getRsvpFormState.invalidate();
@@ -12,7 +14,8 @@ export function useRsvpMutation() {
   });
 
   const decline = trpc.rsvp.decline.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      track('rsvp_declined', { eventId: variables.eventId });
       void utils.rsvp.getMyRsvp.invalidate();
       void utils.rsvp.getHeadcount.invalidate();
       void utils.rsvp.getRsvpFormState.invalidate();

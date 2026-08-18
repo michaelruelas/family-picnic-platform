@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { track } from '~/lib/analytics';
 import WizardStep from './WizardStep';
 
 interface HouseholdOption {
@@ -33,6 +34,10 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
   const [currentStep, setCurrentStep] = useState<Step>('household');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    track('onboarding_started');
+  }, []);
 
   const [householdMode, setHouseholdMode] = useState<'create' | 'join' | null>(null);
   const [newHouseholdName, setNewHouseholdName] = useState('');
@@ -86,6 +91,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       }
 
       setCurrentStep('family');
+      track('onboarding_household_created');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -110,6 +116,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       }
 
       setCurrentStep('family');
+      track('onboarding_household_joined');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -172,6 +179,9 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
           throw new Error(errBody.error || 'Failed to add family members');
         }
       }
+      if (familyMembers.length > 0) {
+        track('onboarding_family_added', { memberCount: familyMembers.length });
+      }
       setCurrentStep('preferences');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add family members');
@@ -191,6 +201,7 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
         body: JSON.stringify({ communicationPreference }),
       });
 
+      track('onboarding_completed', { communicationPreference });
       router.push('/profile');
       router.refresh();
     } catch (err) {

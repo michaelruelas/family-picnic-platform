@@ -1,4 +1,5 @@
 import { trpc } from '~/lib/trpc-client';
+import { track } from '~/lib/analytics';
 
 interface UsePotluckSlotsReturn {
   slots: ReturnType<typeof trpc.potluck.listSlots.useQuery>['data'];
@@ -59,15 +60,24 @@ export function usePotluckSignupMutation() {
   };
 
   const signup = trpc.potluck.signup.useMutation({
-    onSuccess: invalidateAll,
+    onSuccess: (_data, variables) => {
+      track('potluck_signup', { slotId: variables.slotId, dishName: variables.dishName });
+      invalidateAll();
+    },
   });
 
   const updateSignup = trpc.potluck.updateSignup.useMutation({
-    onSuccess: invalidateAll,
+    onSuccess: (_data, variables) => {
+      track('potluck_update', { slotId: variables.slotId });
+      invalidateAll();
+    },
   });
 
   const cancelSignup = trpc.potluck.cancelSignup.useMutation({
-    onSuccess: invalidateAll,
+    onSuccess: (_data, variables) => {
+      track('potluck_cancel', { slotId: variables.slotId });
+      invalidateAll();
+    },
   });
 
   return {

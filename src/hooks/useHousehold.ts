@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { trpc } from '~/lib/trpc-client';
+import { track } from '~/lib/analytics';
 
 interface UseHouseholdReturn {
   household: ReturnType<typeof trpc.household.getById.useQuery>['data'];
@@ -63,7 +64,8 @@ export function useHouseholdNameMutation() {
   const utils = trpc.useUtils();
 
   const updateName = trpc.household.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      track('household_renamed', { householdId: variables.id });
       void utils.user.getProfile.invalidate();
       void utils.household.getById.invalidate();
       void utils.household.list.invalidate();
@@ -108,7 +110,8 @@ export function useHouseholdMemberNameMutation() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      track('household_member_renamed', { memberId: variables.id });
       // The RSVP form snapshot is what reads the household roster;
       // invalidating it forces the next open to pull the freshly
       // renamed member instead of the stale snapshot.

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { loadStripe, type Stripe as StripeJs } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { trpc } from '~/lib/trpc-client';
+import { track } from '~/lib/analytics';
 import { formatAmount } from '~/lib/currency';
 import Spinner from '~/components/ui/Spinner';
 
@@ -72,6 +73,12 @@ function PaymentFormInner(props: PaymentFormProps) {
     setSubmitting(true);
     setError(null);
 
+    track('payment_initiated', {
+      eventId: props.eventId,
+      amountCents: props.amountCents,
+      currency: props.currency,
+    });
+
     const { error: submitError } = await elements.submit();
     if (submitError) {
       setError(submitError.message ?? 'Payment form is invalid');
@@ -94,10 +101,21 @@ function PaymentFormInner(props: PaymentFormProps) {
     });
 
     if (confirmError) {
+      track('payment_failed', {
+        eventId: props.eventId,
+        error: confirmError.message,
+        code: confirmError.code,
+      });
       setError(confirmError.message ?? 'Payment failed');
       setSubmitting(false);
       return;
     }
+
+    track('payment_completed', {
+      eventId: props.eventId,
+      amountCents: props.amountCents,
+      currency: props.currency,
+    });
     // If we reach here without an error, Stripe is redirecting to the
     // return_url. Show a spinner until the navigation completes.
   }
