@@ -27,3 +27,23 @@ spec:
                 name: nextjs
                 port:
                   number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: seaweedfs
+  labels:
+    app.kubernetes.io/name: seaweedfs
+spec:
+  ingressClassName: cloudflare-tunnel
+  rules:
+    - host: i.foliapicnic.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: seaweedfs
+                port:
+                  number: 8333

@@ -43,7 +43,7 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: (Host(`i.foliapicnic.com`) || Host(`i.family-picnic.dev.qubitquilt.dev`)) && PathPrefix(`/`)
+      match: Host(`i.foliapicnic.com`) && PathPrefix(`/`)
       services:
         - name: seaweedfs
           port: 8333
