@@ -24,11 +24,20 @@ function s3Config(): S3Config {
   const missing = required.filter((name) => !process.env[name]?.trim());
   if (missing.length > 0) return { ok: false, missing };
 
+  // FPP-69 / EH-005: mirror `src/lib/s3.ts` so the SDK signs against
+  // the same endpoint the browser will PUT to. Without this, the
+  // SDK falls back to virtual-hosted AWS S3 URLs (bucket.s3.region.amazonaws.com)
+  // even when S3_ENDPOINT points at SeaweedFS / MinIO / R2, and
+  // presigned URLs hit the wrong host.
+  const endpoint = process.env.S3_ENDPOINT?.trim() || undefined;
+
   return {
     ok: true,
     bucket: process.env.S3_BUCKET_NAME!,
     client: new S3Client({
       region: process.env.AWS_REGION || 'us-east-1',
+      endpoint,
+      forcePathStyle: !!endpoint,
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
