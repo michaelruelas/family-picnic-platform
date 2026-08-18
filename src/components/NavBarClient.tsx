@@ -53,21 +53,21 @@ export default function NavBarClient() {
           onClick={() => setMobileMenuOpen(false)}
           className="group flex items-center gap-2.5"
         >
-          <div className="shadow-soft h-10 w-10 overflow-hidden rounded-sm transition-transform duration-300 group-hover:scale-105">
+          <div className="border-border bg-card shadow-soft flex h-10 w-10 items-center justify-center overflow-hidden rounded-sm border p-1 transition-transform duration-300 group-hover:scale-105">
             <Image
               src="/folia-family-picnic-logo.png"
               alt="Folia Family Picnic logo"
-              width={40}
-              height={40}
+              width={32}
+              height={32}
               priority
               className="h-full w-full object-contain"
             />
           </div>
           <div className="hidden sm:block">
             <p className="font-display text-foreground text-lg leading-none font-semibold tracking-tight">
-              The Family Picnic
+              Folia Family Picnic
             </p>
-            <p className="text-muted-foreground mt-1 text-xs">A place for our people</p>
+            <p className="text-muted-foreground mt-1 text-xs">Gathering every year.</p>
           </div>
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-2">

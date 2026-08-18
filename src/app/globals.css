@@ -64,6 +64,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --font-display: var(--font-display);
+  --font-serif: var(--font-display);
   --font-sans: var(--font-sans);
 
   --radius-sm: 0.75rem;
@@ -228,14 +229,8 @@
   h4,
   h5,
   h6 {
-    font-family:
-      var(--font-display),
-      system-ui,
-      -apple-system,
-      'Segoe UI',
-      Roboto,
-      sans-serif;
-    letter-spacing: -0.015em;
+    font-family: var(--font-display), serif;
+    letter-spacing: 0.025em;
     color: var(--foreground);
   }
 
@@ -279,7 +274,8 @@
 
 @layer components {
   .font-display {
-    font-family: var(--font-display), system-ui, sans-serif;
+    font-family: var(--font-display), serif;
+    letter-spacing: 0.025em;
   }
 
   .shadow-soft {

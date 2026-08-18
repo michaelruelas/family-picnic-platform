@@ -55,6 +55,8 @@ describe('NavBarClient (FPP-114)', () => {
     mockPathname = '/events/event-123';
     render(<NavBarClient />);
     expect(screen.getByRole('navigation')).toBeInTheDocument();
+    expect(screen.getByText('Folia Family Picnic')).toBeInTheDocument();
+    expect(screen.getByText('Gathering every year.')).toBeInTheDocument();
     expect(screen.getByText('Sign In')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /switch to dark mode/i })).toBeInTheDocument();
   });

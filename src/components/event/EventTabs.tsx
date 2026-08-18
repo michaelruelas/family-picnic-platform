@@ -6,7 +6,7 @@ import { Tabs } from '~/components/ui/Tabs';
 import { EventAnchorNav } from './EventAnchorNav';
 import { EventItinerarySection, type ItineraryItem } from './EventItinerarySection';
 import { EventAdditionalInfoSection } from './EventAdditionalInfoSection';
-import { EventGallerySection, type GalleryPhoto } from './EventGallerySection';
+import { type GalleryPhoto } from './EventGallerySection';
 import { EVENT_TAB_KEYS, type EventTabKey } from '~/lib/event-tabs';
 
 function isEventTabKey(value: string | null): value is EventTabKey {
@@ -20,15 +20,13 @@ interface EventTabsProps {
   headerPanel: ReactNode;
   itineraryItems: ItineraryItem[];
   additionalInfo: string | null;
-  photos: GalleryPhoto[];
-  eventName: string;
+  photos?: GalleryPhoto[];
+  eventName?: string;
   /**
-   * Caller's user id and role. Forwarded to the Gallery panel so
-   * `PhotoCard` can render reaction / delete affordances for the
-   * logged-in viewer. Pass `null` for both on the public landing.
+   * Caller's user id and role.
    */
-  userId: string | null;
-  userRole: string | null;
+  userId?: string | null;
+  userRole?: string | null;
 }
 
 /**
@@ -61,10 +59,6 @@ function EventTabsContent({
   headerPanel,
   itineraryItems,
   additionalInfo,
-  photos,
-  eventName,
-  userId,
-  userRole,
 }: EventTabsProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -104,20 +98,8 @@ function EventTabsContent({
         label: 'Additional Info',
         panel: <EventAdditionalInfoSection body={additionalInfo} />,
       },
-      {
-        key: 'gallery' as const,
-        label: 'Gallery',
-        panel: (
-          <EventGallerySection
-            photos={photos}
-            eventName={eventName}
-            userId={userId}
-            userRole={userRole}
-          />
-        ),
-      },
     ],
-    [headerPanel, itineraryItems, additionalInfo, photos, eventName, userId, userRole],
+    [headerPanel, itineraryItems, additionalInfo],
   );
 
   const anchorItems = tabs.map((t) => ({
@@ -165,17 +147,13 @@ function EventTabsContent({
  * is on screen while the client-only `useSearchParams` boundary
  * resolves. Mirrors the mobile layout because that path doesn't
  * depend on the URL — guests who land on a cached render still see
- * all four sections stacked, and the client takes over after hydrate.
+ * all sections stacked, and the client takes over after hydrate.
  */
 function EventTabsFallback({
   initialTab,
   headerPanel,
   itineraryItems,
   additionalInfo,
-  photos,
-  eventName,
-  userId,
-  userRole,
 }: EventTabsProps) {
   return (
     <div className="space-y-12">
@@ -201,14 +179,6 @@ function EventTabsFallback({
         <section aria-label="Additional Info">
           <EventAdditionalInfoSection body={additionalInfo} />
         </section>
-        <section aria-label="Gallery">
-          <EventGallerySection
-            photos={photos}
-            eventName={eventName}
-            userId={userId}
-            userRole={userRole}
-          />
-        </section>
       </div>
     </div>
   );
@@ -222,7 +192,5 @@ function labelFor(key: EventTabKey): string {
       return 'Itinerary';
     case 'additional-info':
       return 'Additional Info';
-    case 'gallery':
-      return 'Gallery';
   }
 }
