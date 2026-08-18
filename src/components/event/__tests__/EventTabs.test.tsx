@@ -17,6 +17,8 @@ describe('EventTabs (FPP-135)', () => {
         headerPanel={<div>Header Content</div>}
         itineraryItems={[]}
         additionalInfo="Some additional info"
+        photos={[]}
+        eventName="Test Event"
       />,
     );
 

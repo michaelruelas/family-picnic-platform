@@ -1,25 +1,6 @@
 declare namespace google {
   namespace maps {
-    class Autocomplete {
-      constructor(input: HTMLInputElement, opts?: AutocompleteOptions);
-      addListener(eventName: string, handler: () => void): MapsEventListener;
-      getPlace(): PlaceResult;
-    }
-
-    interface AutocompleteOptions {
-      types?: string[];
-      fields?: string[];
-    }
-
-    interface PlaceResult {
-      formatted_address?: string;
-      geometry?: {
-        location: LatLng;
-      };
-      place_id?: string;
-    }
-
-    class LatLng {
+    interface LatLng {
       lat(): number;
       lng(): number;
     }
@@ -33,7 +14,41 @@ declare namespace google {
     };
 
     namespace places {
-      class Autocomplete extends google.maps.Autocomplete {}
+      class PlaceAutocompleteElement extends HTMLElement {
+        constructor(opts?: PlaceAutocompleteElementOptions);
+        locationBias?: LatLngBoundsLiteral;
+        locationRestriction?: LatLngBoundsLiteral;
+      }
+
+      interface PlaceAutocompleteElementOptions {
+        locationBias?: LatLngBoundsLiteral;
+        locationRestriction?: LatLngBoundsLiteral;
+      }
+
+      interface LatLngBoundsLiteral {
+        west: number;
+        north: number;
+        east: number;
+        south: number;
+      }
+
+      interface GmpSelectEvent extends Event {
+        placePrediction: PlacePrediction;
+      }
+
+      class Place {
+        fetchFields(opts: { fields: string[] }): Promise<void>;
+        formattedAddress?: string;
+        displayName?: string;
+        location?: LatLng;
+        viewport?: LatLngBoundsLiteral;
+        placeId?: string;
+      }
+
+      class PlacePrediction {
+        toPlace(): Place;
+        text?: { text: string };
+      }
     }
   }
 }
