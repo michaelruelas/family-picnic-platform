@@ -23,3 +23,41 @@ if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
     // no-op
   };
 }
+
+// Tiptap/ProseMirror measures caret and selection position via
+// getClientRects and getBoundingClientRect. jsdom does not implement
+// either on Range, so editor interactions throw `target.getClientRects
+// is not a function`. Stub them with a single zero-rect so the
+// editor's view code can run without erroring.
+const zeroRect: DOMRect = {
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0,
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+  toJSON() {
+    return {};
+  },
+};
+
+if (typeof Range !== 'undefined') {
+  if (!Range.prototype.getBoundingClientRect) {
+    Range.prototype.getBoundingClientRect = function () {
+      return zeroRect;
+    };
+  }
+  if (!Range.prototype.getClientRects) {
+    const rectList = [zeroRect] as unknown as DOMRectList;
+    Object.defineProperty(rectList, 'item', {
+      value(index: number) {
+        return index === 0 ? zeroRect : null;
+      },
+    });
+    Range.prototype.getClientRects = function () {
+      return rectList;
+    };
+  }
+}

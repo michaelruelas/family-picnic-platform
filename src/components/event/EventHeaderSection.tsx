@@ -1,6 +1,7 @@
 import { EventRsvpCard } from './EventRsvpCard';
 import { EventLocationMap } from './EventLocationMap';
 import { type PublicEventAttachment } from './EventDownloadsSection';
+import { sanitizeRichText } from '~/lib/sanitize-html';
 import type { RSVPStatus, RsvpAttending } from '~/lib/generated/enums';
 
 type PotluckSlot = {
@@ -248,13 +249,18 @@ function HostBlock({
   maxCapacity: number | null;
   hosts: { id: string; name: string; email: string; phoneNumber: string | null }[];
 }) {
+  const safeHtml = sanitizeRichText(description);
   return (
     <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9">
       <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">The welcome</p>
       <h3 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
         A note from the host
       </h3>
-      <p className="text-foreground/80 mt-5 text-lg leading-relaxed">{description}</p>
+      <div
+        data-testid="host-note"
+        className="rich-text-content text-foreground/80 mt-5 text-lg leading-relaxed"
+        dangerouslySetInnerHTML={{ __html: safeHtml }}
+      />
       {maxCapacity && (
         <div className="bg-sunlight/20 text-foreground ring-sunlight/40 mt-6 rounded-sm px-5 py-4 text-sm ring-1">
           <span className="font-semibold">Heads up:</span> We can host up to {maxCapacity} people.

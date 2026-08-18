@@ -7,6 +7,7 @@ import { isEventWindowAfter } from '~/lib/event-window';
 import DateTimePicker from '~/components/ui/DateTimePicker';
 import { LocationAutocomplete } from './LocationAutocomplete';
 import FeaturedImageUpload from './FeaturedImageUpload';
+import RichTextEditor from './RichTextEditor';
 
 interface EventFormData {
   name: string;
@@ -372,15 +373,17 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
         <label htmlFor="description" className="text-foreground/85 block text-sm font-medium">
           Description
         </label>
-        <textarea
+        <RichTextEditor
           id="description"
-          name="description"
+          ariaLabel="Event description"
           value={formData.description}
-          onChange={handleChange}
-          rows={4}
-          className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-3 py-2 shadow-sm focus:ring-1 focus:outline-none"
-          placeholder="Join us for our annual family picnic..."
+          onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
+          className="mt-1"
         />
+        <p className="text-muted-foreground mt-1 text-xs">
+          Shown as &quot;A note from the host&quot; on the event page. Use the toolbar for bold,
+          headings, and lists.
+        </p>
       </div>
 
       <div>

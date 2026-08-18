@@ -442,3 +442,90 @@
 .animate-polaroid {
   animation: polaroid-develop 0.5s ease-out forwards;
 }
+
+/*
+ * Shared visual treatment for Tiptap-authored content (the host's "Note
+ * from the host" description). Used both inside the editor surface and
+ * as the wrapper around sanitized HTML on the public event page so the
+ * two contexts look identical.
+ */
+.rich-text-content {
+  color: var(--foreground);
+  line-height: 1.7;
+}
+.rich-text-content > * + * {
+  margin-top: 0.75em;
+}
+.rich-text-content h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin-top: 1.25em;
+}
+.rich-text-content h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+  margin-top: 1em;
+}
+.rich-text-content p {
+  margin: 0;
+}
+.rich-text-content strong {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.rich-text-content em {
+  font-style: italic;
+}
+.rich-text-content ul,
+.rich-text-content ol {
+  padding-left: 1.5rem;
+}
+.rich-text-content ul {
+  list-style: disc;
+}
+.rich-text-content ol {
+  list-style: decimal;
+}
+.rich-text-content li > p {
+  margin: 0;
+}
+.rich-text-content li + li {
+  margin-top: 0.35em;
+}
+.rich-text-content blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+.rich-text-content code {
+  background: var(--secondary);
+  color: var(--foreground);
+  border-radius: 0.25rem;
+  padding: 0.1em 0.35em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+.rich-text-content a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rich-text-content a:hover {
+  color: var(--primary-hover);
+}
+
+/* Tiptap placeholder shown when the editor is empty. */
+.rich-text-content p.is-editor-empty:first-child::before {
+  color: var(--muted-foreground);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

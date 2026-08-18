@@ -66,4 +66,30 @@ describe('EventHeaderSection (FPP-140 / FPP-139)', () => {
     expect(screen.getByTestId('host-contact-block')).toBeInTheDocument();
     expect(screen.getByText('Hosted by Maria Garcia')).toBeInTheDocument();
   });
+
+  it('renders host note HTML from the editor with rich formatting', () => {
+    const html = '<p>Welcome! <strong>Bold note</strong></p><h2>Heading</h2><ul><li>One</li></ul>';
+    render(<EventHeaderSection {...baseProps} eventDescription={html} />);
+    const note = screen.getByTestId('host-note');
+    expect(note.querySelector('strong')?.textContent).toBe('Bold note');
+    expect(note.querySelector('h2')?.textContent).toBe('Heading');
+    expect(note.querySelectorAll('li').length).toBe(1);
+  });
+
+  it('preserves line breaks for plain-text descriptions (legacy data)', () => {
+    const legacy = 'Line one.\nLine two.\n\nNew paragraph.';
+    render(<EventHeaderSection {...baseProps} eventDescription={legacy} />);
+    const note = screen.getByTestId('host-note');
+    expect(note.innerHTML).toContain('Line one.');
+    expect(note.querySelectorAll('br').length).toBeGreaterThan(0);
+  });
+
+  it('strips script tags and dangerous attributes from the host note', () => {
+    const hostile =
+      '<p>Hi <script>alert(1)</script></p><p><a href="javascript:alert(1)">click</a></p>';
+    render(<EventHeaderSection {...baseProps} eventDescription={hostile} />);
+    const note = screen.getByTestId('host-note');
+    expect(note.querySelector('script')).toBeNull();
+    expect(note.querySelector('a')?.getAttribute('href')).toBeNull();
+  });
 });
