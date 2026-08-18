@@ -127,7 +127,7 @@ export async function stampHostRole(
 /**
  * FPP-65 / QUB-13.1: counter to `stampHostRole`. When a user is
  * unassigned from every OWNER-permission EventAdmin row, demote
- * them back to `ADMIN_ADULT` so a removed host does not retain
+ * them back to `ADULT` so a removed host does not retain
  * global admin access on the back of a stale role flag.
  *
  * Conditionally fires only when:
@@ -150,7 +150,7 @@ export async function unassignHostRole(
 
   const result = await (client as PrismaClient).user.updateManyAndReturn({
     where: { id: userId, role: Role.HOST },
-    data: { role: Role.ADMIN_ADULT },
+    data: { role: Role.ADULT },
     select: { id: true },
   });
   return result.length > 0 ? result[0]!.id : null;

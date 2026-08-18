@@ -948,7 +948,7 @@ export const rsvpRouter = router({
 
   // FPP-104: per-event gate. A HOST with an EventAdmin row on the
   // event can override RSVPs on their own picnic. Super-admins /
-  // ADMIN_ADULT users pass via the platform-level admin branch.
+  // ADMIN users pass via the platform-level admin branch.
   // Aligns the tRPC proc with the REST `/api/admin/rsvp/override`
   // route (FPP-102) and the existing event-scoped tRPC builders.
   adminOverride: eventAdminProcedure(rsvpAdminOverrideSchema, (input) => input.eventId).mutation(

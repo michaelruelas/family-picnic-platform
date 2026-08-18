@@ -271,7 +271,7 @@ describe('authOptions session callback', () => {
           id: 'user-1',
           email: 'existing@example.com',
           name: 'Existing',
-          role: 'ADMIN_ADULT',
+          role: 'ADMIN',
           deletedAt: null,
         },
       } as any);
@@ -298,7 +298,7 @@ describe('authOptions session callback', () => {
               id: 'new-user',
               email: 'apple@example.com',
               name: 'apple@example.com',
-              role: 'ADMIN_ADULT',
+              role: 'ADULT',
             }),
           },
           linkedIdentity: {
@@ -334,7 +334,7 @@ describe('authOptions session callback', () => {
         id: 'user-1',
         email: 'existing@example.com',
         name: 'Existing',
-        role: 'ADMIN_ADULT',
+        role: 'ADMIN',
         deletedAt: null,
       } as any);
       vi.mocked(prisma.linkedIdentity.create).mockResolvedValue({

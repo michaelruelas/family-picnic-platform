@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'invalid role' }, { status: 400 });
   }
 
-  // FPP-104: tighten to isSuperAdminRole so an ADMIN_ADULT user
+  // FPP-104: tighten to isSuperAdminRole so an ADMIN user
   // cannot self-promote to OWNER on an event they already have a
   // row for.
   const actorIsSuperAdmin = isSuperAdminRole(session.user.role);

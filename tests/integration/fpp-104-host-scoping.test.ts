@@ -312,7 +312,7 @@ describe('FPP-104: complete per-event host scoping', () => {
     it('REST POST /api/admin/events/[id]/admins uses isSuperAdminRole (FPP-104)', async () => {
       const route = await fs.readFile(eventAdminsPostPath, 'utf-8');
       // FPP-104 followup: the previous guard used isAdminRole,
-      // which let an ADMIN_ADULT user through. The check is now
+      // which let an ADMIN user through. The check is now
       // `isSuperAdminRole` so only platform-level super-admins
       // can self-assign.
       const actorCheck = route.match(/const actorIsSuperAdmin[\s\S]*?\);/);

@@ -11,7 +11,7 @@ import { unassignHostRole } from '~/lib/event-access';
  * for the event (the latter only ever for hosts of the same event).
  *
  * FPP-65 audit: when the removed row had role=OWNER, also run
- * `unassignHostRole` so the user is demoted back to ADMIN_ADULT
+ * `unassignHostRole` so the user is demoted back to ADULT
  * if they no longer hold any OWNER-permission row. The un-stamp
  * is atomic with the EventAdmin delete so a partial failure cannot
  * leave a stale `HOST` flag on a user with no events.

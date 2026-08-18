@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
           member.email,
           member.name,
           newHousehold.id,
-          'ADMIN_ADULT',
+          'ADULT',
         );
         if (created) results.usersCreated++;
 

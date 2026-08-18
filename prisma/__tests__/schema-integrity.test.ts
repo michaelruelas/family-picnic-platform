@@ -6,11 +6,16 @@ const SCHEMA_PATH = path.resolve(__dirname, '../schema.prisma');
 const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
 
 describe('Prisma schema integrity vs SPEC', () => {
-  it('defines the correct Role enum (ADMIN_ADULT, ADMIN)', () => {
+  it('defines the correct Role enum (SUPER_ADMIN, ADMIN, ADULT, HOST)', () => {
     const match = schema.match(/enum Role \{([^}]+)\}/);
     expect(match).not.toBeNull();
-    expect(match![1]!.trim()).toContain('ADMIN_ADULT');
+    expect(match![1]!.trim()).toContain('SUPER_ADMIN');
     expect(match![1]!.trim()).toContain('ADMIN');
+    expect(match![1]!.trim()).toContain('ADULT');
+    expect(match![1]!.trim()).toContain('HOST');
+    // The legacy `ADMIN_ADULT` value was split into `ADMIN` and
+    // `ADULT`; the enum must no longer carry it.
+    expect(match![1]!.trim()).not.toContain('ADMIN_ADULT');
   });
 
   it('defines InvitationStatus as PENDING, SENT, DELIVERED, USED, EXPIRED', () => {

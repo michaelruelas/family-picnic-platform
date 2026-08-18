@@ -64,17 +64,16 @@ describe('FPP-65 / QUB-13.4: canAccessEvent', () => {
     expect(result).toBe(true);
   });
 
-  it('grants ADMIN_ADULT access when they have an EventAdmin row', async () => {
-    // ADMIN_ADULT users keep the legacy per-event access pattern
-    // (they can administer events they have an EventAdmin row for).
+  it('grants ADMIN access when they have an EventAdmin row', async () => {
+    // ADMIN users can administer events they have an EventAdmin row for.
     vi.mocked(prisma.eventAdmin.findUnique).mockResolvedValue({ id: 'ea-1' } as never);
-    const result = await canAccessEvent(makeSession('ADMIN_ADULT'), 'e-1');
+    const result = await canAccessEvent(makeSession('ADMIN'), 'e-1');
     expect(result).toBe(true);
   });
 
-  it('rejects ADMIN_ADULT users with no EventAdmin row', async () => {
+  it('rejects ADMIN users with no EventAdmin row', async () => {
     vi.mocked(prisma.eventAdmin.findUnique).mockResolvedValue(null);
-    expect(await canAccessEvent(makeSession('ADMIN_ADULT'), 'e-1')).toBe(false);
+    expect(await canAccessEvent(makeSession('ADMIN'), 'e-1')).toBe(false);
   });
 });
 
@@ -106,7 +105,7 @@ describe('FPP-65 / QUB-13.4: getEventRole', () => {
     expect(prisma.eventAdmin.findUnique).not.toHaveBeenCalled();
   });
 
-  it('returns the EventAdmin role for HOST/ADMIN_ADULT users', async () => {
+  it('returns the EventAdmin role for HOST/ADMIN users', async () => {
     vi.mocked(prisma.eventAdmin.findUnique).mockResolvedValue({ role: 'OWNER' } as never);
     const result = await getEventRole('u-1', 'e-1', 'HOST');
     expect(result).toBe('OWNER');

@@ -43,7 +43,7 @@ export interface IdentityLookupResult {
  *     tombstone exists, refuse sign-in (returns null).
  *  3. If a non-deleted user with that email exists, attach a new
  *     `LinkedIdentity` row to that user (account linking per FPP-31).
- *  4. Otherwise, create a new user (`role: ADMIN_ADULT`) and the
+ *  4. Otherwise, create a new user (`role: ADULT`) and the
  *     `LinkedIdentity` row in one transaction.
  *
  * The function is intentionally provider-agnostic so the same code
@@ -177,7 +177,7 @@ export async function findOrCreateUserByIdentity(
       data: {
         email,
         name: email,
-        role: 'ADMIN_ADULT',
+        role: 'ADULT',
       },
     });
     const identity = await tx.linkedIdentity.create({

@@ -36,7 +36,7 @@ async function main() {
     create: {
       email: 'maria.garcia@example.com',
       name: 'Maria Garcia',
-      role: 'ADMIN_ADULT',
+      role: 'ADULT',
       householdId: garciaHousehold.id,
       devPassword: TEST_PASSWORD,
     },
@@ -48,7 +48,7 @@ async function main() {
     create: {
       email: 'carlos.garcia@example.com',
       name: 'Carlos Garcia',
-      role: 'ADMIN_ADULT',
+      role: 'ADULT',
       householdId: garciaHousehold.id,
       devPassword: TEST_PASSWORD,
     },
@@ -69,7 +69,7 @@ async function main() {
     create: {
       email: 'lisa.thompson@example.com',
       name: 'Lisa Thompson',
-      role: 'ADMIN_ADULT',
+      role: 'ADULT',
       householdId: thompsonHousehold.id,
       devPassword: TEST_PASSWORD,
     },
@@ -81,7 +81,7 @@ async function main() {
     create: {
       email: 'bob.thompson@example.com',
       name: 'Bob Thompson',
-      role: 'ADMIN_ADULT',
+      role: 'ADULT',
       householdId: thompsonHousehold.id,
       devPassword: TEST_PASSWORD,
     },
@@ -102,7 +102,7 @@ async function main() {
     create: {
       email: 'priya.patel@example.com',
       name: 'Priya Patel',
-      role: 'ADMIN_ADULT',
+      role: 'ADULT',
       householdId: patelHousehold.id,
       devPassword: TEST_PASSWORD,
     },
