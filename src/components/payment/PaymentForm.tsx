@@ -48,24 +48,19 @@ function PaymentFormSetup(props: PaymentFormProps) {
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Guard against the React 18 StrictMode dev-mode double-mount:
-  // without this, the effect below fires `createIntent.mutate` twice,
-  // tRPC batches both into one HTTP request, the server can return
-  // two different PaymentIntents (one of which can hit Stripe in a
-  // terminal state on the second attempt), and `<Elements>` then
-  // receives a `clientSecret` change after first mount — Stripe.js
-  // surfaces that as "Could not retrieve elements store". The ref
-  // survives remounts in the same component instance, so even though
-  // StrictMode re-runs the effect we only fire the mutation once.
+  // Defense-in-depth: even though the server reconciles stale
+  // terminal-state intents, we still want <Elements> to mount exactly
+  // once per form lifecycle. React 18+ StrictMode dev mode re-runs
+  // effects and tRPC's `httpBatchLink` would happily bundle two
+  // `createPaymentIntent` calls into one HTTP request. The ref guard
+  // keeps both sides from racing the same setup. The functional
+  // updater in onSuccess then freezes on whichever secret wins the
+  // network race, so <Elements> never receives a `clientSecret`
+  // change after first mount.
   const intentRequestedRef = useRef(false);
 
   const createIntent = trpc.payment.createPaymentIntent.useMutation({
     onSuccess: (data) => {
-      // Freeze on the first non-empty clientSecret. A second
-      // response (e.g. from a parallel mutation that the server
-      // serialized into a different PaymentIntent) must not be
-      // applied — once Elements is mounted against a secret, Stripe.js
-      // cannot safely switch it to a different PaymentIntent.
       setClientSecret((current) => current ?? data.clientSecret);
       setError(null);
     },
@@ -107,9 +102,9 @@ function PaymentFormSetup(props: PaymentFormProps) {
         <button
           type="button"
           onClick={() => {
-            // Allow a retry to fire a fresh mutation by resetting the
-            // guard. We only do this on explicit user retry so a
-            // StrictMode re-mount cannot leak through.
+            // Allow an explicit user retry to fire a fresh mutation.
+            // We deliberately reset the guard here only so a StrictMode
+            // re-mount can't leak through.
             intentRequestedRef.current = false;
             setError(null);
             createIntent.mutate({ eventId: props.eventId });
@@ -142,6 +137,7 @@ function PaymentFormSetup(props: PaymentFormProps) {
         amountCents={props.amountCents}
         currency={props.currency}
         returnUrl={props.returnUrl}
+        clientSecret={clientSecret}
         onSuccess={props.onSuccess}
       />
     </Elements>
@@ -154,6 +150,7 @@ interface PaymentFormInnerProps {
   amountCents: number;
   currency: string;
   returnUrl: string;
+  clientSecret: string;
   onSuccess?: (paymentIntent: { status: string; id?: string }) => void;
 }
 
