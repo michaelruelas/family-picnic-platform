@@ -78,7 +78,11 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
       });
 
       if (!res.ok) {
-        throw new Error('Failed to create household');
+        // FPP-117: surface the server's actual validation / conflict
+        // message (e.g. "A household with this name already exists") so
+        // the user knows why the save didn't land.
+        const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(errBody.error || 'Failed to create household');
       }
 
       setCurrentStep('family');
@@ -153,11 +157,20 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
 
     try {
       for (const member of familyMembers) {
-        await fetch('/api/onboarding/dependent', {
+        const res = await fetch('/api/household-members', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(member),
+          body: JSON.stringify({
+            householdId: undefined,
+            name: member.name,
+            age: Number(member.age),
+            relationship: member.relationship,
+          }),
         });
+        if (!res.ok) {
+          const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(errBody.error || 'Failed to add family members');
+        }
       }
       setCurrentStep('preferences');
     } catch (err) {

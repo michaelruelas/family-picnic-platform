@@ -89,9 +89,7 @@ export default function PrivacyPolicyPage() {
               Name and contact details (first name, last name, email address, phone number, mailing
               address).
             </li>
-            <li>
-              Household and dependent details (names, relationships, dietary notes, allergies).
-            </li>
+            <li>Household and member details (names, relationships, dietary notes, allergies).</li>
             <li>Event details (RSVP responses, potluck signups, comments).</li>
             <li>Event photos you upload to shared albums.</li>
             <li>
@@ -304,9 +302,9 @@ export default function PrivacyPolicyPage() {
           </h2>
           <p>
             We do not knowingly collect personal data directly from children under 13. Parents or
-            legal guardians may add dependent names and ages to household profiles. If a child under
-            13 provided personal data without parental consent, contact privacy@foliapicnic.com. We
-            will delete that data promptly.
+            legal guardians may add household member names and ages to household profiles. If a
+            child under 13 provided personal data without parental consent, contact
+            privacy@foliapicnic.com. We will delete that data promptly.
           </p>
         </section>
 

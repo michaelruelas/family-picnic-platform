@@ -25,7 +25,7 @@ Admin-only household merge with mandatory audit log entry. The merge operation i
 
 - Only ADMIN role can initiate household merge
 - Requires selecting source and target household
-- All users/dependents from source are moved to target
+- All users/HouseholdMembers from source are moved to target
 - Source household is soft-deleted (retained for historical RSVPs)
 - All RSVPs are preserved and linked to new household
 - Create AdminAuditLog entry with before/after state

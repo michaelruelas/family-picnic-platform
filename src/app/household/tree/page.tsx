@@ -15,12 +15,11 @@ interface HouseholdNode {
     name: string;
     email: string;
   }[];
-  dependents: {
+  members: {
     id: string;
     name: string;
-    relationship: string;
     age: number | null;
-    isChild: boolean;
+    relationship: string | null;
   }[];
   children: HouseholdNode[];
 }
@@ -37,14 +36,13 @@ async function getHouseholdTree(): Promise<HouseholdNode[]> {
           email: true,
         },
       },
-      dependents: {
+      members: {
         where: { deletedAt: null },
         select: {
           id: true,
           name: true,
-          relationship: true,
           age: true,
-          isChild: true,
+          relationship: true,
         },
       },
       children: {
@@ -58,14 +56,13 @@ async function getHouseholdTree(): Promise<HouseholdNode[]> {
               email: true,
             },
           },
-          dependents: {
+          members: {
             where: { deletedAt: null },
             select: {
               id: true,
               name: true,
-              relationship: true,
               age: true,
-              isChild: true,
+              relationship: true,
             },
           },
           children: {
@@ -79,14 +76,13 @@ async function getHouseholdTree(): Promise<HouseholdNode[]> {
                   email: true,
                 },
               },
-              dependents: {
+              members: {
                 where: { deletedAt: null },
                 select: {
                   id: true,
                   name: true,
-                  relationship: true,
                   age: true,
-                  isChild: true,
+                  relationship: true,
                 },
               },
               children: {
@@ -100,14 +96,13 @@ async function getHouseholdTree(): Promise<HouseholdNode[]> {
                       email: true,
                     },
                   },
-                  dependents: {
+                  members: {
                     where: { deletedAt: null },
                     select: {
                       id: true,
                       name: true,
-                      relationship: true,
                       age: true,
-                      isChild: true,
+                      relationship: true,
                     },
                   },
                   children: true,
@@ -155,10 +150,7 @@ export default async function HouseholdTreePage() {
               <span className="bg-role-adult h-2 w-2 rounded-sm" /> Adults
             </span>
             <span className="flex items-center gap-1">
-              <span className="bg-role-child h-2 w-2 rounded-sm" /> Children
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="bg-role-dependent h-2 w-2 rounded-sm" /> Other Dependents
+              <span className="bg-role-child h-2 w-2 rounded-sm" /> Household Members
             </span>
           </div>
         </div>

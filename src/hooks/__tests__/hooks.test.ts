@@ -26,15 +26,12 @@ const mockUseUtils = vi.fn(() => ({
   rsvp: {
     getMyRsvp: { invalidate: vi.fn() },
     getHeadcount: { invalidate: vi.fn() },
-    // FPP-121: the dependent-mutation onSuccess handler invalidates
-    // getRsvpFormState so the RSVP sheet picks up the new row.
     getRsvpFormState: { invalidate: vi.fn() },
   },
   potluck: {
     listSlots: { invalidate: vi.fn() },
     getMySignups: { invalidate: vi.fn() },
   },
-  dependent: { list: { invalidate: vi.fn() } },
   household: { getById: { invalidate: vi.fn() } },
   photo: { list: { invalidate: vi.fn() } },
   user: { getProfile: { invalidate: vi.fn() } },
@@ -61,13 +58,6 @@ const mockQueries = {
   household: {
     getById: vi.fn(() => mockQueryResult()),
     getCumulativeHeadcount: vi.fn(() => mockQueryResult()),
-  },
-  dependent: {
-    list: vi.fn(() => mockQueryResult()),
-    getByHousehold: vi.fn(() => mockQueryResult()),
-    create: { useMutation: vi.fn(() => mockMutationResult()) },
-    update: { useMutation: vi.fn(() => mockMutationResult()) },
-    delete: { useMutation: vi.fn(() => mockMutationResult()) },
   },
   photo: {
     addReaction: { useMutation: vi.fn(() => mockMutationResult()) },
@@ -100,13 +90,6 @@ vi.mock('~/lib/trpc-client', () => ({
     household: {
       getById: { useQuery: mockQueries.household.getById },
       getCumulativeHeadcount: { useQuery: mockQueries.household.getCumulativeHeadcount },
-    },
-    dependent: {
-      list: { useQuery: mockQueries.dependent.list },
-      getByHousehold: { useQuery: mockQueries.dependent.getByHousehold },
-      create: { useMutation: mockQueries.dependent.create.useMutation },
-      update: { useMutation: mockQueries.dependent.update.useMutation },
-      delete: { useMutation: mockQueries.dependent.delete.useMutation },
     },
     photo: {
       addReaction: { useMutation: mockQueries.photo.addReaction.useMutation },
@@ -421,102 +404,6 @@ describe('useHouseholdCumulativeHeadcount', () => {
       { householdId: '' },
       { enabled: false },
     );
-  });
-});
-
-describe('useDependents', () => {
-  it('calls trpc.dependent.list.useQuery with no args', async () => {
-    const { useDependents } = await import('~/hooks/useHousehold');
-    renderHook(() => useDependents());
-    expect(mockQueries.dependent.list).toHaveBeenCalledWith();
-  });
-
-  it('returns dependents, isLoading, error, and refetch', async () => {
-    const refetch = vi.fn();
-    const data = [{ id: 'd-1' }];
-    mockQueries.dependent.list.mockReturnValue(
-      mockQueryResult({ data, isLoading: false, error: null, refetch }),
-    );
-    const { useDependents } = await import('~/hooks/useHousehold');
-    const { result } = renderHook(() => useDependents());
-    expect(result.current.dependents).toEqual(data);
-    expect(result.current.refetch).toBe(refetch);
-  });
-});
-
-describe('useHouseholdDependents', () => {
-  it('calls trpc.dependent.getByHousehold.useQuery with correct params', async () => {
-    const { useHouseholdDependents } = await import('~/hooks/useHousehold');
-    renderHook(() => useHouseholdDependents({ householdId: 'hh-1' }));
-    expect(mockQueries.dependent.getByHousehold).toHaveBeenCalledWith(
-      { householdId: 'hh-1' },
-      { enabled: true },
-    );
-  });
-
-  it('returns data and loading state', async () => {
-    const data = [{ id: 'd-1', householdId: 'hh-1' }];
-    mockQueries.dependent.getByHousehold.mockReturnValue(
-      mockQueryResult({ data, isLoading: false, error: null }),
-    );
-    const { useHouseholdDependents } = await import('~/hooks/useHousehold');
-    const { result } = renderHook(() => useHouseholdDependents({ householdId: 'hh-1' }));
-    expect(result.current.dependents).toEqual(data);
-  });
-
-  it('disables query when householdId is empty', async () => {
-    const { useHouseholdDependents } = await import('~/hooks/useHousehold');
-    renderHook(() => useHouseholdDependents({ householdId: '' }));
-    expect(mockQueries.dependent.getByHousehold).toHaveBeenCalledWith(
-      { householdId: '' },
-      { enabled: false },
-    );
-  });
-});
-
-describe('useDependentMutations', () => {
-  it('returns create, update, remove mutations', async () => {
-    const { useDependentMutations } = await import('~/hooks/useHousehold');
-    const { result } = renderHook(() => useDependentMutations());
-    expect(result.current).toHaveProperty('create');
-    expect(result.current).toHaveProperty('update');
-    expect(result.current).toHaveProperty('remove');
-  });
-
-  it('wires onSuccess for create to invalidate dependent.list and household.getById', async () => {
-    const { useDependentMutations } = await import('~/hooks/useHousehold');
-    renderHook(() => useDependentMutations());
-    const opts = (
-      mockQueries.dependent.create.useMutation.mock.calls[0] as unknown as
-        Array<{ onSuccess: () => void }> | undefined
-    )?.[0];
-    expect(opts).toBeDefined();
-    opts!.onSuccess();
-    expect(mockUseUtils).toHaveBeenCalled();
-  });
-
-  it('wires onSuccess for update to invalidate dependent.list and household.getById', async () => {
-    const { useDependentMutations } = await import('~/hooks/useHousehold');
-    renderHook(() => useDependentMutations());
-    const opts = (
-      mockQueries.dependent.update.useMutation.mock.calls[0] as unknown as
-        Array<{ onSuccess: () => void }> | undefined
-    )?.[0];
-    expect(opts).toBeDefined();
-    opts!.onSuccess();
-    expect(mockUseUtils).toHaveBeenCalled();
-  });
-
-  it('wires onSuccess for remove to invalidate dependent.list and household.getById', async () => {
-    const { useDependentMutations } = await import('~/hooks/useHousehold');
-    renderHook(() => useDependentMutations());
-    const opts = (
-      mockQueries.dependent.delete.useMutation.mock.calls[0] as unknown as
-        Array<{ onSuccess: () => void }> | undefined
-    )?.[0];
-    expect(opts).toBeDefined();
-    opts!.onSuccess();
-    expect(mockUseUtils).toHaveBeenCalled();
   });
 });
 

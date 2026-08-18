@@ -8,19 +8,16 @@ interface User {
   email: string;
 }
 
-interface Dependent {
-  id: string;
-  name: string;
-  relationship: string;
-  age: number | null;
-  isChild: boolean;
-}
-
 interface HouseholdNode {
   id: string;
   name: string;
   users: User[];
-  dependents: Dependent[];
+  members: Array<{
+    id: string;
+    name: string;
+    age: number | null;
+    relationship: string | null;
+  }>;
   children: HouseholdNode[];
 }
 
@@ -33,7 +30,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
   const [showDetails, setShowDetails] = useState(false);
 
   const hasChildren = node.children && node.children.length > 0;
-  const totalMembers = node.users.length + node.dependents.length;
+  const totalMembers = node.users.length + node.members.length;
 
   return (
     <li className="relative">
@@ -68,10 +65,9 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
                 {node.users.length} adult{node.users.length !== 1 ? 's' : ''}
               </span>
             )}
-            {node.dependents.length > 0 && (
+            {node.members.length > 0 && (
               <span>
-                {node.dependents.filter((d) => d.isChild).length} children,{' '}
-                {node.dependents.filter((d) => !d.isChild).length} other
+                {node.members.length} household member{node.members.length !== 1 ? 's' : ''}
               </span>
             )}
           </div>
@@ -108,22 +104,23 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
             </div>
           )}
 
-          {node.dependents.length > 0 && (
+          {node.members.length > 0 && (
             <div>
-              <h4 className="text-foreground/85 text-sm font-medium">Dependents</h4>
+              <h4 className="text-foreground/85 text-sm font-medium">Household Members</h4>
               <ul className="mt-1 space-y-1">
-                {node.dependents.map((dep) => (
+                {node.members.map((member) => (
                   <li
-                    key={dep.id}
+                    key={member.id}
                     className="text-muted-foreground flex items-center gap-2 text-sm"
                   >
-                    <span
-                      className={`h-2 w-2 rounded-sm ${dep.isChild ? 'bg-role-child' : 'bg-role-dependent'}`}
-                    />
-                    {dep.name}
+                    <span className="bg-role-child h-2 w-2 rounded-sm" />
+                    {member.name}
                     <span className="text-muted-foreground/70 text-xs">
-                      ({dep.relationship}
-                      {dep.age !== null ? `, ${dep.age} years old` : ''})
+                      {member.relationship ? `(${member.relationship}` : '('}
+                      {member.age !== null
+                        ? `${member.relationship ? ', ' : ''}${member.age} years old`
+                        : ''}
+                      )
                     </span>
                   </li>
                 ))}
@@ -131,7 +128,7 @@ function HouseholdNodeComponent({ node, level = 0 }: { node: HouseholdNode; leve
             </div>
           )}
 
-          {node.users.length === 0 && node.dependents.length === 0 && (
+          {node.users.length === 0 && node.members.length === 0 && (
             <p className="text-muted-foreground/70 text-sm">No members yet</p>
           )}
         </div>

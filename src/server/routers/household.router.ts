@@ -95,7 +95,7 @@ export const householdRouter = router({
       where: { id: input.id },
       include: {
         users: true,
-        dependents: true,
+        members: true,
         children: true,
       },
     });
@@ -106,11 +106,11 @@ export const householdRouter = router({
       where: { deletedAt: null },
       include: {
         users: true,
-        dependents: true,
+        members: true,
         children: {
           include: {
             users: true,
-            dependents: true,
+            members: true,
           },
         },
       },

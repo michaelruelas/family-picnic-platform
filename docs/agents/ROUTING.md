@@ -54,15 +54,15 @@ the redirect, the route returns a 404 HTML body with a link to
 
 ### User-Facing
 
-| Route                   | File                                    | Description                 |
-| ----------------------- | --------------------------------------- | --------------------------- |
-| `/api/rsvp`             | `src/app/api/rsvp/route.ts`             | RSVP create/update/decline  |
-| `/api/potluck-signup`   | `src/app/api/potluck-signup/route.ts`   | Potluck slot signup         |
-| `/api/dependents`       | `src/app/api/dependents/route.ts`       | Dependent CRUD              |
-| `/api/profile`          | `src/app/api/profile/route.ts`          | Profile preferences         |
-| `/api/photo-reaction`   | `src/app/api/photo-reaction/route.ts`   | Photo reactions             |
-| `/api/photo-upload-url` | `src/app/api/photo-upload-url/route.ts` | S3 presigned URL generation |
-| `/api/photos`           | `src/app/api/photos/route.ts`           | Photo record CRUD           |
+| Route                    | File                                     | Description                 |
+| ------------------------ | ---------------------------------------- | --------------------------- |
+| `/api/rsvp`              | `src/app/api/rsvp/route.ts`              | RSVP create/update/decline  |
+| `/api/potluck-signup`    | `src/app/api/potluck-signup/route.ts`    | Potluck slot signup         |
+| `/api/household-members` | `src/app/api/household-members/route.ts` | Household roster CRUD       |
+| `/api/profile`           | `src/app/api/profile/route.ts`           | Profile preferences         |
+| `/api/photo-reaction`    | `src/app/api/photo-reaction/route.ts`    | Photo reactions             |
+| `/api/photo-upload-url`  | `src/app/api/photo-upload-url/route.ts`  | S3 presigned URL generation |
+| `/api/photos`            | `src/app/api/photos/route.ts`            | Photo record CRUD           |
 
 ### Admin
 
@@ -90,11 +90,10 @@ the redirect, the route returns a 404 HTML body with a link to
 
 ### Onboarding
 
-| Route                       | File                                        | Description                   |
-| --------------------------- | ------------------------------------------- | ----------------------------- |
-| `/api/onboarding/household` | `src/app/api/onboarding/household/route.ts` | Onboarding household setup    |
-| `/api/onboarding/dependent` | `src/app/api/onboarding/dependent/route.ts` | Onboarding dependent creation |
-| `/api/onboarding/complete`  | `src/app/api/onboarding/complete/route.ts`  | Complete onboarding           |
+| Route                       | File                                        | Description                |
+| --------------------------- | ------------------------------------------- | -------------------------- |
+| `/api/onboarding/household` | `src/app/api/onboarding/household/route.ts` | Onboarding household setup |
+| `/api/onboarding/complete`  | `src/app/api/onboarding/complete/route.ts`  | Complete onboarding        |
 
 ### tRPC
 

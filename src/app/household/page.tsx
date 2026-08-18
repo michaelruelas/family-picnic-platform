@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import HouseholdClient from '~/components/household/HouseholdClient';
 import HouseholdMembersClient from '~/components/household/HouseholdMembersClient';
 
 export const dynamic = 'force-dynamic';
@@ -35,17 +34,6 @@ export default async function HouseholdPage() {
               email: true,
             },
           },
-          dependents: {
-            where: { deletedAt: null },
-            select: {
-              id: true,
-              name: true,
-              relationship: true,
-              age: true,
-              dietaryLabels: true,
-              isChild: true,
-            },
-          },
           members: {
             where: { deletedAt: null },
             orderBy: { createdAt: 'asc' },
@@ -57,18 +45,6 @@ export default async function HouseholdPage() {
               relationship: true,
             },
           },
-        },
-      },
-      managedDependents: {
-        where: { deletedAt: null },
-        select: {
-          id: true,
-          name: true,
-          relationship: true,
-          age: true,
-          dietaryLabels: true,
-          isChild: true,
-          householdId: true,
         },
       },
     },
@@ -199,10 +175,6 @@ export default async function HouseholdPage() {
 
       <div className="bg-card ring-border mt-8 rounded-sm p-6 shadow-sm ring-1">
         <HouseholdMembersClient householdId={household.id} initialMembers={household.members} />
-      </div>
-
-      <div className="bg-card ring-border mt-8 rounded-sm p-6 shadow-sm ring-1">
-        <HouseholdClient initialDependents={household.dependents} />
       </div>
     </main>
   );

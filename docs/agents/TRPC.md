@@ -11,7 +11,6 @@ Located in `src/server/routers/`:
 | `auth`          | `auth.router.ts`          | session, signIn, signOut, callback                                                               |
 | `user`          | `user.router.ts`          | me, update, updatePreferences, completeOnboarding, linkHousehold                                 |
 | `household`     | `household.router.ts`     | create, get, getById, update, addMember, removeMember, getCumulativeHeadcount                    |
-| `dependent`     | `dependent.router.ts`     | create, update, remove, list                                                                     |
 | `event`         | `event.router.ts`         | create, list, getById, update, publish, close, reopen, cancel, listAdmins, addAdmin, removeAdmin |
 | `invitation`    | `invitation.router.ts`    | create, send, resend, track, consume                                                             |
 | `rsvp`          | `rsvp.router.ts`          | confirm, decline, update, getByEvent, getMyRsvp, getHeadcount                                    |

@@ -26,17 +26,31 @@ export async function POST(request: Request) {
       );
     }
 
-    const owner = await requireActiveMemberOwner(session.user.id, result.data.householdId);
+    // When the client omits householdId, fall back to the session
+    // user's household. The onboarding wizard hits this path right
+    // after the user picks a household, so the householdId has not
+    // necessarily been written into client state yet.
+    const targetHouseholdId = result.data.householdId ?? session.user.householdId ?? undefined;
+
+    if (!targetHouseholdId) {
+      return NextResponse.json(
+        { error: 'Household ID is required', code: 'BAD_REQUEST' },
+        { status: 400 },
+      );
+    }
+
+    const owner = await requireActiveMemberOwner(session.user.id, targetHouseholdId);
     if (!owner.ok) return owner.response;
 
     const member = await prisma.householdMember.create({
       data: {
-        householdId: result.data.householdId,
+        householdId: targetHouseholdId,
         name: result.data.name.trim(),
         // FPP-122: age is now a required field on every household
         // member. The schema already rejects missing values.
         age: result.data.age,
         notes: result.data.notes?.trim() || null,
+        relationship: result.data.relationship ?? null,
       },
     });
 

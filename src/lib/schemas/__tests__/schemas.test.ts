@@ -1,9 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import {
-  dependentCreateSchema,
-  dependentUpdateSchema,
-  dependentDeleteSchema,
-} from '~/lib/schemas/dependent';
 import { eventCreateSchema, eventUpdateSchema } from '~/lib/schemas/event';
 import {
   householdMemberCreateSchema,
@@ -20,122 +15,73 @@ import {
   rsvpAdminOverrideSchema,
 } from '~/lib/schemas/rsvp';
 
-describe('dependentCreateSchema', () => {
+describe('householdMemberCreateSchema (formerly dependentCreateSchema)', () => {
   it('passes with valid data and required age', () => {
-    const result = dependentCreateSchema.safeParse({
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
       name: 'Alice',
-      relationship: 'CHILD',
       age: 7,
     });
     expect(result.success).toBe(true);
   });
 
-  it('passes with all optional fields', () => {
-    const result = dependentCreateSchema.safeParse({
+  it('passes with optional notes', () => {
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
       name: 'Bob',
-      relationship: 'SPOUSE',
       age: 30,
-      dietaryLabels: ['vegetarian'],
-      isChild: false,
+      notes: 'vegetarian',
     });
     expect(result.success).toBe(true);
   });
 
   it('fails when name is missing', () => {
-    const result = dependentCreateSchema.safeParse({
-      relationship: 'CHILD',
-      age: 5,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('fails when name is empty after trim', () => {
-    const result = dependentCreateSchema.safeParse({
-      name: '   ',
-      relationship: 'CHILD',
-      age: 5,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('fails when relationship is invalid', () => {
-    const result = dependentCreateSchema.safeParse({
-      name: 'Alice',
-      relationship: 'FRIEND',
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
       age: 5,
     });
     expect(result.success).toBe(false);
   });
 
   it('fails when age is missing (FPP-122)', () => {
-    const result = dependentCreateSchema.safeParse({
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
       name: 'Alice',
-      relationship: 'CHILD',
     });
     expect(result.success).toBe(false);
   });
 
   it('fails when age is negative (FPP-122)', () => {
-    const result = dependentCreateSchema.safeParse({
+    const result = householdMemberCreateSchema.safeParse({
+      householdId: 'h-1',
       name: 'Alice',
-      relationship: 'CHILD',
       age: -1,
     });
     expect(result.success).toBe(false);
   });
-
-  it('fails when age is not an integer', () => {
-    const result = dependentCreateSchema.safeParse({
-      name: 'Alice',
-      relationship: 'CHILD',
-      age: 5.5,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('defaults dietaryLabels to empty array', () => {
-    const result = dependentCreateSchema.parse({
-      name: 'Alice',
-      relationship: 'CHILD',
-      age: 5,
-    });
-    expect(result.dietaryLabels).toEqual([]);
-  });
-
-  it('defaults isChild to false', () => {
-    const result = dependentCreateSchema.parse({
-      name: 'Alice',
-      relationship: 'CHILD',
-      age: 5,
-    });
-    expect(result.isChild).toBe(false);
-  });
 });
 
-describe('dependentUpdateSchema', () => {
+describe('householdMemberUpdateSchema (formerly dependentUpdateSchema)', () => {
   it('passes with valid partial update', () => {
-    const result = dependentUpdateSchema.safeParse({
-      id: 'dep-1',
+    const result = householdMemberUpdateSchema.safeParse({
+      id: 'mem-1',
       name: 'Updated Name',
     });
     expect(result.success).toBe(true);
   });
 
   it('passes with all fields', () => {
-    // FPP-122: age, when present, must be a valid number.
-    const result = dependentUpdateSchema.safeParse({
-      id: 'dep-1',
+    const result = householdMemberUpdateSchema.safeParse({
+      id: 'mem-1',
       name: 'Alice',
-      relationship: 'SIBLING',
       age: 8,
-      dietaryLabels: ['gluten-free'],
-      isChild: true,
+      notes: 'gluten-free',
     });
     expect(result.success).toBe(true);
   });
 
   it('fails when id is empty', () => {
-    const result = dependentUpdateSchema.safeParse({
+    const result = householdMemberUpdateSchema.safeParse({
       id: '',
       name: 'Alice',
     });
@@ -143,43 +89,35 @@ describe('dependentUpdateSchema', () => {
   });
 
   it('accepts age 0 (FPP-122, newborn is valid)', () => {
-    const result = dependentUpdateSchema.safeParse({
-      id: 'dep-1',
+    const result = householdMemberUpdateSchema.safeParse({
+      id: 'mem-1',
       age: 0,
     });
     expect(result.success).toBe(true);
   });
 
   it('rejects null age to keep the required-age contract (FPP-122)', () => {
-    const result = dependentUpdateSchema.safeParse({
-      id: 'dep-1',
+    const result = householdMemberUpdateSchema.safeParse({
+      id: 'mem-1',
       age: null,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('fails with invalid relationship', () => {
-    const result = dependentUpdateSchema.safeParse({
-      id: 'dep-1',
-      relationship: 'UNKNOWN',
     });
     expect(result.success).toBe(false);
   });
 });
 
-describe('dependentDeleteSchema', () => {
+describe('householdMemberDeleteSchema (formerly dependentDeleteSchema)', () => {
   it('passes with valid id', () => {
-    const result = dependentDeleteSchema.safeParse({ id: 'dep-1' });
+    const result = householdMemberDeleteSchema.safeParse({ id: 'mem-1' });
     expect(result.success).toBe(true);
   });
 
   it('fails when id is empty', () => {
-    const result = dependentDeleteSchema.safeParse({ id: '' });
+    const result = householdMemberDeleteSchema.safeParse({ id: '' });
     expect(result.success).toBe(false);
   });
 
   it('fails when id is missing', () => {
-    const result = dependentDeleteSchema.safeParse({});
+    const result = householdMemberDeleteSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 });
@@ -835,9 +773,13 @@ describe('householdMemberCreateSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('fails when householdId is missing', () => {
+  it('accepts a missing householdId (server resolves from session)', () => {
+    // The schema lets the client omit householdId so the onboarding
+    // wizard can post a member right after the user picks a household,
+    // before the householdId has been written into client state. The
+    // POST handler falls back to the session user's householdId.
     const result = householdMemberCreateSchema.safeParse({ name: 'Alex', age: 30 });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it('fails when age is negative', () => {

@@ -6,9 +6,9 @@ Family Picnic Platform is a private family engagement hub for an annual picnic e
 
 ### Core Entities
 
-- **Household** - A family unit (e.g., "The Garcia Family"). Contains one or more Users and their Dependents.
+- **Household** - A family unit (e.g., "The Garcia Family"). Contains one or more Users and their HouseholdMembers.
 - **User** - An adult member of a household. Authenticated via Google OAuth or dev credentials.
-- **Dependent** - A child or other family member, possibly with structured dietary labels, managed by a User.
+- **HouseholdMember** - A roster entry for the household: name, age, optional relationship (SPOUSE, CHILD, etc.), and free-form notes. Required for the per-attendee RSVP fee calc (FPP-122).
 - **Event** - The annual picnic. Has a date, location, RSVP deadline, and max capacity.
 - **Invitation** - Links a Household to an Event. Single-use token sent via email.
 - **RSVP** - A Household's response to an Event (CONFIRMED/DECLINED/WAITLISTED).

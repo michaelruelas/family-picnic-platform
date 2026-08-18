@@ -13,9 +13,6 @@ export { usePhotoReactionMutation } from './usePhoto';
 export {
   useHousehold,
   useHouseholdCumulativeHeadcount,
-  useDependents,
-  useHouseholdDependents,
-  useDependentMutations,
   useHouseholdNameMutation,
   useHouseholdMemberNameMutation,
 } from './useHousehold';

@@ -24,12 +24,12 @@ Minimum headcount is 1 (the user themselves). Users cannot RSVP for 0 attendees.
 
 - Validate `headcount >= 1` in RSVP creation/update procedures
 - Use decline flow instead of headcount = 0 for non-attendance
-- Display headcount as "1+ members" in UI when household has dependents
+- Display headcount as "1+ members" in UI when household has additional roster entries
 
 ## Consequences
 
 - Users who don't want to attend should use the decline flow, not headcount 0
-- Need clear UI explaining headcount includes user + all dependents
+- Need clear UI explaining headcount includes the user + every household member on the roster
 
 ## Related
 

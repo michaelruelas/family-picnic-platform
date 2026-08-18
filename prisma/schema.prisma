@@ -124,7 +124,6 @@ model Household {
   parent           Household?  @relation("HouseholdTree", fields: [parentHouseholdId], references: [id])
   children         Household[] @relation("HouseholdTree")
   users            User[]
-  dependents       Dependent[]
   invitations      Invitation[]
   photos           Photo[]
   members          HouseholdMember[]
@@ -201,7 +200,6 @@ model User {
   devPassword            String?
 
   household          Household?        @relation(fields: [householdId], references: [id])
-  managedDependents  Dependent[]
   invitations        Invitation[]      @relation("UserInvitations")
   invitedByMe        Invitation[]     @relation("InvitedByUser")
   rsvps              RSVP[]
@@ -223,31 +221,6 @@ model User {
   @@index([role])
   @@index([deletedAt])
   @@index([phoneNumber])
-}
-
-model Dependent {
-  id              String       @id @default(cuid())
-  name            String
-  relationship    Relationship
-  // FPP-122: age is required on dependents as well as household
-  // members. The dependent model feeds the per-member attendance
-  // list and (where applicable) the registration fee calculation.
-  // Backfill applied in migration 20260817090000_fpp122_require_age.
-  age             Int
-  dietaryLabels   String[]
-  isChild         Boolean      @default(false)
-  householdId     String
-  managedByUserId String
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  deletedAt       DateTime?
-
-  household    Household   @relation(fields: [householdId], references: [id])
-  managedBy    User        @relation(fields: [managedByUserId], references: [id])
-
-  @@index([householdId])
-  @@index([managedByUserId])
-  @@index([deletedAt])
 }
 
 model Event {

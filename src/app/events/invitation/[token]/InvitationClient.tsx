@@ -129,7 +129,7 @@ export default function InvitationClient({
       const result = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(result.error ?? 'Could not create household');
       for (const member of validMembers) {
-        const memberResponse = await fetch('/api/onboarding/dependent', {
+        const memberResponse = await fetch('/api/household-members', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: member.name, age: member.age, relationship: 'Family' }),

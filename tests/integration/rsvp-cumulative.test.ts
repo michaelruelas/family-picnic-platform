@@ -55,12 +55,12 @@ describe('Nested Households (SPEC §8.2)', () => {
     expect(getTreeSection).toContain('!h.parentHouseholdId');
   });
 
-  it('getTree includes children with their users and dependents', async () => {
+  it('getTree includes children with their users and members', async () => {
     const content = await fs.readFile(householdRouterPath, 'utf-8');
     const getTreeSection = content.substring(content.indexOf('getTree'));
     expect(getTreeSection).toContain('children');
     expect(getTreeSection).toContain('users');
-    expect(getTreeSection).toContain('dependents');
+    expect(getTreeSection).toContain('members');
   });
 
   it('Household children relationship is properly defined in schema', async () => {

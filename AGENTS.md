@@ -176,7 +176,7 @@ For complete documentation on:
 | `/api/auth/[...nextauth]`                     | `src/app/api/auth/[...nextauth]/route.ts`                     | NextAuth handler                               |
 | `/api/rsvp`                                   | `src/app/api/rsvp/route.ts`                                   | RSVP create/update/decline                     |
 | `/api/potluck-signup`                         | `src/app/api/potluck-signup/route.ts`                         | Potluck slot signup                            |
-| `/api/dependents`                             | `src/app/api/dependents/route.ts`                             | Dependent CRUD                                 |
+| `/api/household-members`                      | `src/app/api/household-members/route.ts`                      | Household roster CRUD                          |
 | `/api/profile`                                | `src/app/api/profile/route.ts`                                | Profile preferences                            |
 | `/api/photo-reaction`                         | `src/app/api/photo-reaction/route.ts`                         | Photo reactions                                |
 | `/api/photo-upload-url`                       | `src/app/api/photo-upload-url/route.ts`                       | S3 presigned URL generation                    |
@@ -210,7 +210,6 @@ For complete documentation on:
 | `/api/admin/event-attachments/upload-url`     | `src/app/api/admin/event-attachments/upload-url/route.ts`     | Presigned PUT URL for PDF upload               |
 | `/api/public/event-attachments/[id]/download` | `src/app/api/public/event-attachments/[id]/download/route.ts` | Rate-limited public PDF download (302)         |
 | `/api/onboarding/household`                   | `src/app/api/onboarding/household/route.ts`                   | Onboarding household setup                     |
-| `/api/onboarding/dependent`                   | `src/app/api/onboarding/dependent/route.ts`                   | Onboarding dependent creation                  |
 | `/api/onboarding/complete`                    | `src/app/api/onboarding/complete/route.ts`                    | Complete onboarding                            |
 
 ## tRPC Router Structure
@@ -222,7 +221,6 @@ Routers are located in `src/server/routers/`:
 | `auth`          | `auth.router.ts`          | session, signIn, signOut, callback                                                                          |
 | `user`          | `user.router.ts`          | me, update, updatePreferences, completeOnboarding, linkHousehold                                            |
 | `household`     | `household.router.ts`     | create, get, getById, update, addMember, removeMember, getCumulativeHeadcount                               |
-| `dependent`     | `dependent.router.ts`     | create, update, remove, list                                                                                |
 | `event`         | `event.router.ts`         | create, list, getById, update, listAdmins, addAdmin, removeAdmin                                            |
 | `invitation`    | `invitation.router.ts`    | create, send, resend, track, consume                                                                        |
 | `rsvp`          | `rsvp.router.ts`          | confirm, decline, update, getByEvent, getMyRsvp, getHeadcount                                               |

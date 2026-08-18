@@ -55,7 +55,6 @@ const mockPrisma = {
     updateManyAndReturn: vi.fn(() => Promise.resolve([])),
     findFirst: vi.fn(),
   },
-  dependent: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
   household: {
     findUnique: vi.fn(),
     findFirst: vi.fn(),
@@ -110,7 +109,7 @@ const mockPrisma = {
     // FPP-65 audit: canAccessEvent + unassignHostRole read this in
     // every listAdmins / addAdmin / removeAdmin call. Default to
     // "no row" so super-admin tests (where the gate short-circuits)
-    // still pass; HOST / ADMIN_ADULT callers set it explicitly per
+    // still pass; HOST / ADMIN callers set it explicitly per
     // test. `count` powers the un-stamp guard in unassignHostRole.
     findUnique: vi.fn(() => Promise.resolve(null)),
     count: vi.fn(() => Promise.resolve(0)),
@@ -146,10 +145,9 @@ vi.mock('~/lib/audit', () => ({
   diff: vi.fn(),
 }));
 
-// FPP-103: the dependent router now logs the USER_HAS_NO_HOUSEHOLD
-// rejection and any Prisma write failure with structured fields. Mock
-// the logger so the test is hermetic and so the new test cases can
-// assert on the warn call.
+// The dependent router was dropped; the dependent.* keys it logged
+// are no longer present. The audit-log mocks remain for the routers
+// that still emit domain events.
 vi.mock('~/lib/logger', () => ({
   logger: {
     info: vi.fn(),
@@ -174,10 +172,10 @@ vi.mock('next-auth', () => ({
 vi.mock('~/lib/auth', () => ({
   authOptions: {},
   getServerSession: vi.fn(),
-  isAdminRole: (role: unknown) => role === 'SUPER_ADMIN' || role === 'ADMIN_ADULT',
+  isAdminRole: (role: unknown) => role === 'SUPER_ADMIN' || role === 'ADMIN',
   // FPP-65: canAccessEvent calls isSuperAdminRole to short-circuit
   // super-admin access without hitting EventAdmin. Mirror it here
-  // so HOST / ADMIN_ADULT callers fall through to the EventAdmin
+  // so HOST / ADMIN callers fall through to the EventAdmin
   // row check the per-event-access tests assert on.
   isSuperAdminRole: (role: unknown) => role === 'SUPER_ADMIN',
 }));
@@ -194,7 +192,7 @@ vi.mock('~/lib/invitation-token', () => ({
 vi.mock('~/lib/generated/enums', () => ({
   // FPP-65: stampHostRole reads Role.SUPER_ADMIN / Role.HOST when
   // building the where clause for the user.role updateManyAndReturn.
-  Role: { SUPER_ADMIN: 'SUPER_ADMIN', HOST: 'HOST', ADMIN_ADULT: 'ADMIN_ADULT' },
+  Role: { SUPER_ADMIN: 'SUPER_ADMIN', HOST: 'HOST', ADMIN: 'ADMIN', ADULT: 'ADULT' },
   EventStatus: { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED', CLOSED: 'CLOSED', CANCELLED: 'CANCELLED' },
   RSVPStatus: {
     CONFIRMED: 'CONFIRMED',
@@ -299,7 +297,7 @@ const userSession = {
     id: 'user-1',
     name: 'User',
     email: 'user@x.com',
-    role: 'ADMIN_ADULT' as const,
+    role: 'ADMIN' as const,
     householdId: 'h-1',
   },
   expires: 'x',
@@ -310,7 +308,7 @@ const otherUserSession = {
     id: 'user-2',
     name: 'Other',
     email: 'other@x.com',
-    role: 'ADMIN_ADULT' as const,
+    role: 'ADMIN' as const,
     householdId: 'h-2',
   },
   expires: 'x',
@@ -380,7 +378,7 @@ describe('_app.ts - appRouter', () => {
       'photo',
       'communication',
       'admin',
-      'dependent',
+      'payment',
     ];
     for (const key of expected) {
       expect(appRouter[key as keyof typeof appRouter]).toBeDefined();
@@ -425,7 +423,7 @@ describe('event.router', () => {
 
     const { eventRouter } = await import('~/server/routers/event.router');
     const { createCallerFactory } = await import('~/lib/trpc');
-    // userSession is ADMIN_ADULT, which isAdminRole treats as admin
+    // userSession is ADMIN, which isAdminRole treats as admin
     // so the archive filter does not apply — use a GUEST session to
     // exercise the non-admin path. Same shape as the new archive
     // filter tests below.
@@ -450,7 +448,7 @@ describe('event.router', () => {
     const { createCallerFactory } = await import('~/lib/trpc');
     // `GUEST` is a sentinel used elsewhere in this file for
     // "no admin role" — `isAdminRole` (mocked above) returns false
-    // for any string outside {SUPER_ADMIN, ADMIN_ADULT}.
+    // for any string outside {SUPER_ADMIN, ADMIN}.
     const guestSession = {
       ...userSession,
       user: { ...userSession.user, role: NON_ADMIN_ROLE },
@@ -1263,7 +1261,7 @@ describe('user.router', () => {
       id: 'user-1',
       name: 'Test',
       email: 'test@example.com',
-      role: 'ADMIN_ADULT',
+      role: 'ADMIN',
       household: { id: 'h-1', name: 'Test Fam' },
     };
     mockPrisma.user.findUnique.mockResolvedValue(mockUser);
@@ -1304,327 +1302,13 @@ describe('auth.router', () => {
   });
 });
 
-describe('dependent.router', () => {
-  it('list returns user dependents filtered by managedByUserId and not deleted', async () => {
-    const mockDependents = [{ id: 'dep-1', name: 'Alice', relationship: 'CHILD' }];
-    mockPrisma.dependent.findMany.mockResolvedValue(mockDependents);
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
+describe('auth.router', () => {
+  it('getSession returns the session from ctx', async () => {
+    const { authRouter } = await import('~/server/routers/auth.router');
     const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-    const result = await caller.list();
-
-    expect(mockPrisma.dependent.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { managedByUserId: 'user-1', deletedAt: null },
-        orderBy: { createdAt: 'asc' },
-      }),
-    );
-    expect(result).toEqual(mockDependents);
-  });
-
-  it('list returns empty when user has no dependents', async () => {
-    mockPrisma.dependent.findMany.mockResolvedValue([]);
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-    const result = await caller.list();
-
-    expect(result).toEqual([]);
-  });
-
-  it('create creates dependent with correct household data from user', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({
-      id: 'user-1',
-      householdId: 'h-1',
-      household: { id: 'h-1', deletedAt: null },
-    });
-    mockPrisma.dependent.create.mockResolvedValue({
-      id: 'dep-1',
-      name: 'Alice',
-      relationship: 'CHILD',
-    });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-    // FPP-122: age is required.
-    const result = await caller.create({ name: 'Alice', relationship: 'CHILD', age: 7 });
-
-    expect(mockPrisma.dependent.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          name: 'Alice',
-          relationship: 'CHILD',
-          managedByUserId: 'user-1',
-          householdId: 'h-1',
-        }),
-      }),
-    );
-    expect(result).toEqual({ id: 'dep-1', name: 'Alice', relationship: 'CHILD' });
-  });
-
-  it('create passes optional fields (age, dietaryLabels, isChild)', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({
-      id: 'user-1',
-      householdId: 'h-1',
-      household: { id: 'h-1', deletedAt: null },
-    });
-    mockPrisma.dependent.create.mockResolvedValue({ id: 'dep-1' });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-    await caller.create({
-      name: 'Bob',
-      relationship: 'CHILD',
-      age: 10,
-      dietaryLabels: ['VEGETARIAN'],
-      isChild: true,
-    });
-
-    expect(mockPrisma.dependent.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          name: 'Bob',
-          age: 10,
-          dietaryLabels: ['VEGETARIAN'],
-          isChild: true,
-        }),
-      }),
-    );
-  });
-
-  it('create throws when user not found', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue(null);
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-
-    await expect(caller.create({ name: 'Alice', relationship: 'CHILD', age: 5 })).rejects.toThrow(
-      'User not found',
-    );
-  });
-
-  it('create rejects with PRECONDITION_FAILED when user has no household (FPP-103)', async () => {
-    const { logger } = await import('~/lib/logger');
-    mockPrisma.user.findUnique.mockResolvedValue({
-      id: 'user-1',
-      householdId: null,
-      household: null,
-    });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-
-    await expect(
-      caller.create({ name: 'Alice', relationship: 'CHILD', age: 5 }),
-    ).rejects.toMatchObject({
-      code: 'PRECONDITION_FAILED',
-      message: 'USER_HAS_NO_HOUSEHOLD',
-    });
-    expect(mockPrisma.dependent.create).not.toHaveBeenCalled();
-    // The structured warn is the audit trail for the next incident —
-    // assert on the user/household fields the ticket comment asked for.
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 'user-1',
-        householdId: null,
-        householdDeletedAt: null,
-      }),
-      'dependent.create rejected: USER_HAS_NO_HOUSEHOLD',
-    );
-  });
-
-  it('create rejects with PRECONDITION_FAILED when user householdId points to a soft-deleted Household (FPP-103)', async () => {
-    const { logger } = await import('~/lib/logger');
-    const deletedAt = new Date('2026-08-01T00:00:00.000Z');
-    mockPrisma.user.findUnique.mockResolvedValue({
-      id: 'user-1',
-      householdId: 'h-deleted',
-      household: { id: 'h-deleted', deletedAt },
-    });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-
-    await expect(
-      caller.create({ name: 'Alice', relationship: 'CHILD', age: 5 }),
-    ).rejects.toMatchObject({
-      code: 'PRECONDITION_FAILED',
-      message: 'USER_HAS_NO_HOUSEHOLD',
-    });
-    expect(mockPrisma.dependent.create).not.toHaveBeenCalled();
-    expect(logger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 'user-1',
-        householdId: 'h-deleted',
-        householdDeletedAt: deletedAt,
-      }),
-      'dependent.create rejected: USER_HAS_NO_HOUSEHOLD',
-    );
-  });
-
-  it('create does not fall back to user.id when user has no householdId (FPP-103)', async () => {
-    // Regression: prior code set householdId = user.householdId || user.id
-    // which used a User PK where a Household FK was required.
-    mockPrisma.user.findUnique.mockResolvedValue({
-      id: 'user-1',
-      householdId: null,
-      household: null,
-    });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-
-    await expect(
-      caller.create({ name: 'Alice', relationship: 'CHILD', age: 5 }),
-    ).rejects.toBeDefined();
-    expect(mockPrisma.dependent.create).not.toHaveBeenCalled();
-  });
-
-  it('update updates dependent fields', async () => {
-    mockPrisma.dependent.findUnique.mockResolvedValue({
-      id: 'dep-1',
-      managedByUserId: 'user-1',
-      deletedAt: null,
-    });
-    mockPrisma.dependent.update.mockResolvedValue({ id: 'dep-1', name: 'Alice Updated', age: 12 });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-    const result = await caller.update({ id: 'dep-1', name: 'Alice Updated', age: 12 });
-
-    expect(mockPrisma.dependent.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'dep-1' },
-        data: expect.objectContaining({ name: 'Alice Updated', age: 12 }),
-      }),
-    );
-    expect(result).toEqual({ id: 'dep-1', name: 'Alice Updated', age: 12 });
-  });
-
-  it('update throws when dependent not found', async () => {
-    mockPrisma.dependent.findUnique.mockResolvedValue(null);
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-
-    await expect(caller.update({ id: 'dep-missing', name: 'Bob' })).rejects.toThrow(
-      'Dependent not found',
-    );
-  });
-
-  it('update throws when dependent is soft-deleted', async () => {
-    mockPrisma.dependent.findUnique.mockResolvedValue({
-      id: 'dep-1',
-      managedByUserId: 'user-1',
-      deletedAt: new Date(),
-    });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-
-    await expect(caller.update({ id: 'dep-1', name: 'Bob' })).rejects.toThrow(
-      'Dependent not found',
-    );
-  });
-
-  it('update throws when user is not the manager', async () => {
-    mockPrisma.dependent.findUnique.mockResolvedValue({
-      id: 'dep-1',
-      managedByUserId: 'other-user',
-      deletedAt: null,
-    });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-
-    await expect(caller.update({ id: 'dep-1', name: 'Bob' })).rejects.toThrow('Unauthorized');
-  });
-
-  it('delete soft-deletes dependent with deletedAt', async () => {
-    mockPrisma.dependent.findUnique.mockResolvedValue({
-      id: 'dep-1',
-      managedByUserId: 'user-1',
-      deletedAt: null,
-    });
-    mockPrisma.dependent.update.mockResolvedValue({ id: 'dep-1', deletedAt: new Date() });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-    await caller.delete({ id: 'dep-1' });
-
-    expect(mockPrisma.dependent.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 'dep-1' },
-        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
-      }),
-    );
-  });
-
-  it('delete throws when dependent not found', async () => {
-    mockPrisma.dependent.findUnique.mockResolvedValue(null);
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-
-    await expect(caller.delete({ id: 'dep-missing' })).rejects.toThrow('Dependent not found');
-  });
-
-  it('delete throws when dependent is already soft-deleted', async () => {
-    mockPrisma.dependent.findUnique.mockResolvedValue({
-      id: 'dep-1',
-      managedByUserId: 'user-1',
-      deletedAt: new Date(),
-    });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-
-    await expect(caller.delete({ id: 'dep-1' })).rejects.toThrow('Dependent not found');
-  });
-
-  it('delete throws when user is not the manager', async () => {
-    mockPrisma.dependent.findUnique.mockResolvedValue({
-      id: 'dep-1',
-      managedByUserId: 'other-user',
-      deletedAt: null,
-    });
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-
-    await expect(caller.delete({ id: 'dep-1' })).rejects.toThrow('Unauthorized');
-  });
-
-  it('getByHousehold calls prisma.dependent.findMany with householdId and deletedAt filter', async () => {
-    mockPrisma.dependent.findMany.mockResolvedValue([]);
-
-    const { dependentRouter } = await import('~/server/routers/dependent.router');
-    const { createCallerFactory } = await import('~/lib/trpc');
-    const caller = createCallerFactory(dependentRouter)({ session: userSession });
-    await caller.getByHousehold({ householdId: 'hh-1' });
-
-    expect(mockPrisma.dependent.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { householdId: 'hh-1', deletedAt: null },
-        orderBy: { createdAt: 'asc' },
-      }),
-    );
+    const caller = createCallerFactory(authRouter)({ session: userSession });
+    const result = await caller.getSession();
+    expect(result).toEqual(userSession);
   });
 });
 
@@ -1793,12 +1477,12 @@ describe('household.router', () => {
     await expect(caller.create({ name: 'Concurrent Name' })).rejects.toThrow(/already exists/i);
   });
 
-  it('getById returns household with users, dependents, and children', async () => {
+  it('getById returns household with users, members, and children', async () => {
     const mockHousehold = {
       id: 'hh-1',
       name: 'Family',
       users: [{ id: 'user-1', name: 'User' }],
-      dependents: [{ id: 'dep-1', name: 'Child' }],
+      members: [{ id: 'mem-1', name: 'Child' }],
       children: [],
     };
     mockPrisma.household.findUnique.mockResolvedValue(mockHousehold);
@@ -1811,7 +1495,7 @@ describe('household.router', () => {
     expect(mockPrisma.household.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'hh-1' },
-        include: { users: true, dependents: true, children: true },
+        include: { users: true, members: true, children: true },
       }),
     );
     expect(result).toEqual(mockHousehold);
@@ -1830,7 +1514,7 @@ describe('household.router', () => {
         where: { deletedAt: null },
         include: expect.objectContaining({
           users: true,
-          dependents: true,
+          members: true,
           children: expect.anything(),
         }),
       }),
@@ -1839,9 +1523,9 @@ describe('household.router', () => {
 
   it('getTree returns only root households (no parentHouseholdId)', async () => {
     mockPrisma.household.findMany.mockResolvedValue([
-      { id: 'hh-1', parentHouseholdId: null, users: [], dependents: [], children: [] },
-      { id: 'hh-2', parentHouseholdId: 'hh-1', users: [], dependents: [], children: [] },
-      { id: 'hh-3', parentHouseholdId: null, users: [], dependents: [], children: [] },
+      { id: 'hh-1', parentHouseholdId: null, users: [], members: [], children: [] },
+      { id: 'hh-2', parentHouseholdId: 'hh-1', users: [], members: [], children: [] },
+      { id: 'hh-3', parentHouseholdId: null, users: [], members: [], children: [] },
     ]);
 
     const { householdRouter } = await import('~/server/routers/household.router');
@@ -4377,7 +4061,7 @@ describe('photo.router', () => {
       url: 'https://example.com',
       event: { id: 'evt-1' },
     });
-    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', role: 'ADMIN_ADULT' });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', role: 'ADMIN' });
     mockPrisma.photo.update.mockResolvedValue({ id: 'photo-1', deletedAt: new Date() });
 
     const { photoRouter } = await import('~/server/routers/photo.router');
