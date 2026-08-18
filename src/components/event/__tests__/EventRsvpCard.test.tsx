@@ -25,6 +25,16 @@ vi.mock('~/hooks', () => ({
   }),
 }));
 
+vi.mock('~/lib/trpc-client', () => ({
+  trpc: {
+    payment: {
+      getMyRegistration: {
+        useQuery: () => ({ data: null, isLoading: false, error: null }),
+      },
+    },
+  },
+}));
+
 vi.mock('next/link', () => ({
   default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => (
     <a href={href} {...props}>

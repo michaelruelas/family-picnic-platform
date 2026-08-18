@@ -128,7 +128,14 @@ describe('FPP-36: per-slot attendee names', () => {
 
     it('disables confirm when a slot name is invalid', async () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
-      expect(content).toMatch(/disabled=\{isSubmitting \|\| yesCount === 0 \|\| hasInvalidNames\}/);
+      // FPP-36 review finding 1: empty / oversized / control-
+      // character-laden names must block submit. FPP-123 adds a
+      // payment gate when a fee applies — the regex matches
+      // anywhere in the expression so future additions do not
+      // silently disable this safety.
+      expect(content).toMatch(/isSubmitting[ \t\n]*\|/);
+      expect(content).toMatch(/yesCount === 0/);
+      expect(content).toMatch(/hasInvalidNames/);
     });
 
     it('persists renames to the underlying household member on confirm', async () => {
