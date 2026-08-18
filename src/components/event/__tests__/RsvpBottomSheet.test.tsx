@@ -9,6 +9,13 @@ const mockUpdatePreferences = { mutateAsync: vi.fn() };
 const mockRefresh = vi.fn();
 const mockRefetchFormState = vi.fn();
 
+// FPP-117: the RSVP form POSTs to /api/onboarding/household when
+// the caller has no household yet, and to /api/household-members
+// when adding a permanent ad-hoc guest. Stub global fetch so these
+// paths can be exercised without a live server.
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+
 const mockFormState = {
   data: null as unknown,
   isLoading: false,
@@ -58,6 +65,14 @@ beforeEach(() => {
   mockUpdatePreferences.mutateAsync.mockResolvedValue({});
   mockRefresh.mockReset();
   mockRefetchFormState.mockReset();
+  mockFetch.mockReset();
+  // Default: any unmocked fetch resolves with an empty JSON body and
+  // status 200. Individual tests override the responses they care about.
+  mockFetch.mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ householdId: 'new-h-1' }),
+  });
   mockFormState.data = null;
   mockFormState.isLoading = false;
   mockFormState.error = null;
@@ -80,6 +95,12 @@ function setRosterReady() {
   mockFormState.data = {
     householdId: 'h-1',
     householdName: 'The Garcia Family',
+    // FPP-117: the form uses this flag (not `householdId`, which the
+    // router falls back to the caller's id) to decide between create
+    // and rename. The previous code only checked the rename branch,
+    // so the flag defaulted to undefined and tests still passed; the
+    // new branch requires the explicit value.
+    hasHousehold: true,
     members,
     rsvp: null,
   };
@@ -421,6 +442,82 @@ describe('RsvpBottomSheet per-member attendance', () => {
       });
       expect(mockConfirm.mutateAsync).not.toHaveBeenCalled();
     });
+
+    // FPP-117: a household whose snapshot name is null (e.g. seeded
+    // before the rename flow landed) must still rename on the first
+    // RSVP after the user types a name. The previous guard
+    // `formState.householdName !== null` skipped this case.
+    it('renames the household when the snapshot name was null', async () => {
+      mockFormState.data = {
+        householdId: 'h-1',
+        householdName: null,
+        hasHousehold: true,
+        members,
+        rsvp: null,
+      };
+      render(<RsvpBottomSheet {...baseProps} />);
+      const input = screen.getByLabelText(/household name/i) as HTMLInputElement;
+      expect(input.value).toBe('');
+      fireEvent.change(input, { target: { value: 'The Garcia Family Picnic Crew' } });
+      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+
+      await waitFor(() => {
+        expect(mockUpdateName.mutateAsync).toHaveBeenCalledWith({
+          id: 'h-1',
+          name: 'The Garcia Family Picnic Crew',
+        });
+      });
+      await waitFor(() => {
+        expect(mockConfirm.mutateAsync).toHaveBeenCalled();
+      });
+    });
+
+    // FPP-117: when the caller has no household yet, the create
+    // branch must hit /api/onboarding/household (not the rename
+    // mutation, which would fail with NOT_FOUND). The previous
+    // `!effectiveHouseholdId` check was dead code because the router
+    // falls back to the caller's id, which is always truthy.
+    it('creates a household via the onboarding endpoint when hasHousehold is false', async () => {
+      mockFormState.data = {
+        householdId: 'caller-id',
+        householdName: null,
+        hasHousehold: false,
+        members: [],
+        rsvp: null,
+        userName: 'Maria Garcia',
+      };
+      render(<RsvpBottomSheet {...baseProps} />);
+      const input = screen.getByLabelText(/household name/i) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'The Garcia Family Picnic Crew' } });
+      // FPP-121: the seeded self-row has no age by default; the user
+      // must set one before confirming so the household-member POST
+      // does not 400.
+      const setAgeButton = screen.getByRole('button', { name: /set age/i });
+      fireEvent.click(setAgeButton);
+      const ageInput = screen.getByLabelText(/edit age/i) as HTMLInputElement;
+      fireEvent.change(ageInput, { target: { value: '40' } });
+      fireEvent.keyDown(ageInput, { key: 'Enter' });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /edit age/i })).toHaveTextContent('40 yrs');
+      });
+      fireEvent.click(screen.getByRole('button', { name: /confirm 1 guest/i }));
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/onboarding/household',
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({ name: 'The Garcia Family Picnic Crew' }),
+          }),
+        );
+      });
+      // The create branch must NOT also fire the rename mutation —
+      // a caller with no household has no household row to update.
+      expect(mockUpdateName.mutateAsync).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(mockConfirm.mutateAsync).toHaveBeenCalled();
+      });
+    });
   });
 
   describe('per-slot attendee name (FPP-36)', () => {
@@ -638,6 +735,33 @@ describe('RsvpBottomSheet per-member attendance', () => {
       await waitFor(() => {
         expect(screen.getByText(/Alice → Alicia, Ben → Alicia/i)).toBeInTheDocument();
       });
+    });
+
+    // FPP-121: when the user opts to save a new ad-hoc guest to
+    // the household but leaves the age blank, the schema rejects
+    // the POST with 400. The previous code silently swallowed the
+    // failure — the guest appeared in the attendance list but was
+    // never persisted. The fix surfaces a clear error before the
+    // confirm goes out.
+    it('refuses to save a permanent member without an age', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...baseProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /add household member/i }));
+      const memberNameInput = screen.getByLabelText(/member name/i);
+      fireEvent.change(memberNameInput, { target: { value: 'Grandma' } });
+      fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+      // Confirm with Grandma present (no age set on her).
+      fireEvent.click(screen.getByRole('button', { name: /confirm 3 guests/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Set an age for "Grandma" before saving them/i),
+        ).toBeInTheDocument();
+      });
+      // The POST never happens and the confirm is aborted so the
+      // attendance list is not committed with a half-saved roster.
+      expect(mockFetch).not.toHaveBeenCalledWith('/api/household-members', expect.anything());
+      expect(mockConfirm.mutateAsync).not.toHaveBeenCalled();
     });
   });
 });
