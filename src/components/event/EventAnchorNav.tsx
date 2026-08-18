@@ -11,19 +11,38 @@ export interface AnchorNavItem {
 
 interface EventAnchorNavProps {
   items: AnchorNavItem[];
-  value: string;
-  onValueChange: (key: string) => void;
+  /**
+   * Optional. When provided, the matching item gets the active
+   * visual treatment + `aria-current="true"`. Used by scroll-spy
+   * callers to highlight the section currently in view.
+   */
+  value?: string;
+  /** Optional. Fires with the clicked item's key. */
+  onValueChange?: (key: string) => void;
   ariaLabel: string;
+  className?: string;
 }
 
 /**
- * FPP-46: Mobile scroll-anchor strip used on the event overview page.
- * Visible only on small viewports; the desktop tab strip lives in
- * `~/components/ui/Tabs`. Each click smooth-scrolls to the matching
- * section id and notifies the parent so it can keep the active-tab
- * state in sync with the visible section.
+ * FPP-46 / FPP-154: in-page scroll-anchor strip used on the event
+ * overview page. Renders on every viewport (was mobile-only under
+ * the tabbed shell, promoted under the FPP-154 continuous-scroll
+ * redesign). Each click smooth-scrolls to the matching section id
+ * and updates the URL hash so the back button + refresh preserve
+ * the section.
+ *
+ * `value`/`onValueChange` are optional — the nav renders fine
+ * without highlight state, and callers can wire up scroll-spy via
+ * an IntersectionObserver if they want the in-view section to
+ * stay highlighted as the user scrolls.
  */
-export function EventAnchorNav({ items, value, onValueChange, ariaLabel }: EventAnchorNavProps) {
+export function EventAnchorNav({
+  items,
+  value,
+  onValueChange,
+  ariaLabel,
+  className,
+}: EventAnchorNavProps) {
   const handleClick = (item: AnchorNavItem) => (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     const target = document.getElementById(item.anchorId);
@@ -35,14 +54,17 @@ export function EventAnchorNav({ items, value, onValueChange, ariaLabel }: Event
         url.hash = item.anchorId;
         window.history.replaceState(null, '', url.toString());
       }
-      onValueChange(item.key);
+      onValueChange?.(item.key);
     }
   };
 
   return (
     <nav
       aria-label={ariaLabel}
-      className="border-border bg-card/60 no-scrollbar -mx-5 overflow-x-auto rounded-sm border px-5 py-1.5 shadow-sm backdrop-blur"
+      className={
+        'border-border bg-card/60 no-scrollbar overflow-x-auto rounded-sm border px-1.5 py-1.5 shadow-sm backdrop-blur' +
+        (className ? ` ${className}` : '')
+      }
       data-testid="event-anchor-nav"
     >
       <ul className="flex items-center gap-1">

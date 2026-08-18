@@ -1,53 +1,43 @@
 'use client';
 
-import { ReactNode, Suspense, useCallback, useMemo } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Tabs } from '~/components/ui/Tabs';
-import { EventAnchorNav } from './EventAnchorNav';
+import { ReactNode, Suspense, useMemo } from 'react';
+import { EventAnchorNav, type AnchorNavItem } from './EventAnchorNav';
 import { EventItinerarySection, type ItineraryItem } from './EventItinerarySection';
 import { EventAdditionalInfoSection } from './EventAdditionalInfoSection';
-import { EventGallerySection, type GalleryPhoto } from './EventGallerySection';
 import { type PublicEventAttachment } from './EventDownloadsSection';
-import { EVENT_TAB_KEYS, type EventTabKey } from '~/lib/event-tabs';
-
-function isEventTabKey(value: string | null): value is EventTabKey {
-  return value !== null && (EVENT_TAB_KEYS as readonly string[]).includes(value);
-}
 
 interface EventSectionTabsProps {
   eventId: string;
-  /** Initial tab derived server-side from `?tab=`. */
-  initialTab: EventTabKey;
+  /** The Overview panel — typically a fully-built <EventHeaderSection>. */
   headerPanel: ReactNode;
   itineraryItems: ItineraryItem[];
   additionalInfo: string | null;
-  /** FPP-137: PDF attachments rendered inside the Additional Info tab. */
+  /** FPP-137: PDF attachments rendered inside the Additional Info section. */
   attachments?: PublicEventAttachment[];
-  photos: GalleryPhoto[];
   eventName: string;
   /**
-   * Caller's user id and role.
+   * Caller's user id and role. Reserved for future scroll-spy
+   * highlighting (e.g. hiding RSVP-CTA in past sections).
    */
   userId?: string | null;
   userRole?: string | null;
 }
 
 /**
- * FPP-46: section-level tab control for `/events/[id]`.
+ * FPP-154: continuous-scroll event overview (formerly FPP-46's tabbed
+ * shell). The Overview / Itinerary / Additional Info blocks stack as
+ * a single long page on every viewport. An anchor nav at the top lets
+ * guests jump to any section.
  *
- * - Desktop (`md+`): renders the in-page tablist from `~/components/ui/Tabs`
- *   with proper keyboard navigation and ARIA wiring. Tab switches update
- *   `?tab=<key>` in the URL (via `router.replace`, no scroll).
- * - Mobile (`<md`): renders a horizontal scroll-anchor strip from
- *   `EventAnchorNav` plus every panel inline so guests scroll past
- *   the sections like a long landing page. Anchor clicks update the
- *   URL hash so the back button + refresh preserve the section.
+ * URL deep links use the native `#event-section-{key}` hash:
+ * - `/#event-section-itinerary` lands at the Itinerary block
+ * - the anchor nav updates `window.location.hash` on click so the
+ *   back button + refresh preserve the section
  *
- * The `useSearchParams` call lives in `EventSectionTabsContent` and is wrapped
- * in `<Suspense>` so Next.js can statically prerender the surrounding
- * page shell without blocking on the hook during partial prerendering.
- * Until the hook resolves, the `initialTab` value (read from the server
- * on the same render) is used as the active tab.
+ * No `?tab=` URL param is read or written — a tabbed shell is no
+ * longer in play. The Suspense boundary stays around the entire
+ * surface so Next.js can prerender the surrounding page shell without
+ * blocking on the client-only anchor handler.
  */
 export function EventSectionTabs(props: EventSectionTabsProps) {
   return (
@@ -58,152 +48,80 @@ export function EventSectionTabs(props: EventSectionTabsProps) {
 }
 
 function EventSectionTabsContent({
-  initialTab,
+  eventId,
   headerPanel,
   itineraryItems,
   additionalInfo,
   attachments,
-  photos,
-  eventName,
-  userId,
-  userRole,
 }: EventSectionTabsProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const urlTab = searchParams.get('tab');
-  const activeTab: EventTabKey = isEventTabKey(urlTab) ? urlTab : initialTab;
-
-  const handleTabChange = useCallback(
-    (key: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (key === 'header') {
-        params.delete('tab');
-      } else {
-        params.set('tab', key);
-      }
-      const query = params.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
-
-  const tabs = useMemo(
+  const sections = useMemo<Array<{ key: string; label: string; panel: ReactNode }>>(
     () => [
       {
-        key: 'header' as const,
+        key: 'header',
         label: 'Overview',
         panel: headerPanel,
       },
       {
-        key: 'itinerary' as const,
+        key: 'itinerary',
         label: 'Itinerary',
         panel: <EventItinerarySection items={itineraryItems} />,
       },
       {
-        key: 'additional-info' as const,
+        key: 'additional-info',
         label: 'Additional Info',
         panel: <EventAdditionalInfoSection body={additionalInfo} attachments={attachments ?? []} />,
       },
     ],
-    [headerPanel, itineraryItems, additionalInfo, attachments, photos, eventName, userId, userRole],
+    [headerPanel, itineraryItems, additionalInfo, attachments],
   );
 
-  const anchorItems = tabs.map((t) => ({
-    key: t.key,
-    label: t.label,
-    anchorId: `event-section-${t.key}`,
+  const anchorItems: AnchorNavItem[] = sections.map((s) => ({
+    key: s.key,
+    label: s.label,
+    anchorId: `event-section-${s.key}`,
   }));
 
   return (
-    <>
-      <div className="hidden md:block">
-        <Tabs
-          tabs={tabs}
-          value={activeTab}
-          onValueChange={handleTabChange}
-          ariaLabel="Event overview sections"
-          listClassName="w-full"
-        />
-      </div>
-      <div className="md:hidden">
-        <EventAnchorNav
-          items={anchorItems}
-          value={activeTab}
-          onValueChange={handleTabChange}
-          ariaLabel="Jump to event section"
-        />
-        <div className="mt-8 space-y-12">
-          {tabs.map((tab) => (
-            <section
-              key={tab.key}
-              id={`event-section-${tab.key}`}
-              aria-label={typeof tab.label === 'string' ? tab.label : undefined}
-            >
-              {tab.panel}
-            </section>
-          ))}
-        </div>
-      </div>
-    </>
-  );
-}
-
-/**
- * Suspense fallback. Renders every panel inline so the static shell
- * is on screen while the client-only `useSearchParams` boundary
- * resolves. Mirrors the mobile layout because that path doesn't
- * depend on the URL — guests who land on a cached render still see
- * all sections stacked, and the client takes over after hydrate.
- */
-function EventSectionTabsFallback({
-  initialTab,
-  headerPanel,
-  itineraryItems,
-  additionalInfo,
-  attachments,
-  photos,
-  eventName,
-  userId,
-  userRole,
-}: EventSectionTabsProps) {
-  return (
-    <div className="space-y-12">
-      <div className="border-border bg-card/60 inline-flex flex-wrap items-center gap-1 rounded-sm border p-1 text-sm opacity-60 shadow-sm backdrop-blur">
-        <span className="bg-foreground text-background rounded-sm px-4 py-2 font-semibold">
-          {labelFor(initialTab)}
-        </span>
-        {EVENT_TAB_KEYS.filter((k) => k !== initialTab).map((k) => (
-          <span
-            key={k}
-            className="text-muted-foreground rounded-sm px-4 py-2 font-medium"
-            aria-hidden="true"
-          >
-            {labelFor(k)}
-          </span>
-        ))}
-      </div>
+    <div data-event-id={eventId}>
+      <EventAnchorNav items={anchorItems} ariaLabel="Jump to event section" className="mb-8" />
       <div className="space-y-12">
-        <section aria-label="Overview">{headerPanel}</section>
-        <section aria-label="Itinerary">
-          <EventItinerarySection items={itineraryItems} />
-        </section>
-        <section aria-label="Additional Info">
-          <EventAdditionalInfoSection body={additionalInfo} attachments={attachments ?? []} />
-        </section>
+        {sections.map((section) => (
+          <section
+            key={section.key}
+            id={`event-section-${section.key}`}
+            aria-label={section.label}
+            className="scroll-mt-24"
+          >
+            <h2 className="font-display sr-only">{section.label}</h2>
+            {section.panel}
+          </section>
+        ))}
       </div>
     </div>
   );
 }
 
-function labelFor(key: EventTabKey): string {
-  switch (key) {
-    case 'header':
-      return 'Overview';
-    case 'itinerary':
-      return 'Itinerary';
-    case 'additional-info':
-      return 'Additional Info';
-  }
+/**
+ * Suspense fallback. Renders every section inline (no anchor nav,
+ * which depends on a client-side scroll handler). The static shell
+ * stays on screen until hydration so guests who land on a cached
+ * render see the full page regardless of viewport.
+ */
+function EventSectionTabsFallback({
+  headerPanel,
+  itineraryItems,
+  additionalInfo,
+  attachments,
+}: EventSectionTabsProps) {
+  return (
+    <div className="space-y-12">
+      <section aria-label="Overview">{headerPanel}</section>
+      <section aria-label="Itinerary">
+        <EventItinerarySection items={itineraryItems} />
+      </section>
+      <section aria-label="Additional Info">
+        <EventAdditionalInfoSection body={additionalInfo} attachments={attachments ?? []} />
+      </section>
+    </div>
+  );
 }

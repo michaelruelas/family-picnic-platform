@@ -6,7 +6,6 @@ import { EventStickyBar } from '~/components/event/EventStickyBar';
 import EventNav from '~/components/event/EventNav';
 import { BreatheSection } from '~/components/ui/BreatheSection';
 import { EventSectionTabs } from '~/components/event/EventSectionTabs';
-import { EVENT_TAB_KEYS, type EventTabKey } from '~/lib/event-tabs';
 import { EventHeaderSection } from '~/components/event/EventHeaderSection';
 import { formatItineraryTime } from '~/lib/itinerary-time';
 import type { RSVPStatus } from '~/lib/generated/enums';
@@ -16,31 +15,23 @@ export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string | string[] }>;
-}
-
-function resolveInitialTab(tabParam: string | string[] | undefined): EventTabKey {
-  const raw = Array.isArray(tabParam) ? tabParam[0] : tabParam;
-  return EVENT_TAB_KEYS.includes(raw as EventTabKey) ? (raw as EventTabKey) : 'header';
 }
 
 /**
- * FPP-46: tabbed event overview page.
+ * FPP-154: continuous-scroll event overview page.
  *
- * Renders the hero, route-level sub-nav (Overview / Potluck / Photos),
- * then delegates the within-page sections to `<EventSectionTabs>`. The tabbed
- * shell swaps between `Tabs` (desktop, with keyboard nav and URL deep
- * links) and `EventAnchorNav` (mobile, scroll anchors) under the hood.
+ * Renders the hero, route-level sub-nav (Overview / Potluck /
+ * Photos), then hands off to `<EventSectionTabs>` which stacks the
+ * Overview / Itinerary / Additional Info blocks as a single long
+ * page with a scroll anchor nav at the top.
  *
- * The desktop sticky RSVP card aside from earlier iterations has been
- * folded into the Header tab — see `EventHeaderSection` — to avoid
- * showing two competing RSVP affordances. The mobile sticky bar still
- * renders below the content.
+ * The desktop sticky RSVP card aside from earlier iterations has
+ * been folded into the Overview section — see `EventHeaderSection`
+ * — to avoid showing two competing RSVP affordances. The mobile
+ * sticky bar still renders below the content.
  */
-export default async function EventDetailPage({ params, searchParams }: Props) {
+export default async function EventDetailPage({ params }: Props) {
   const { id } = await params;
-  const { tab: tabParam } = await searchParams;
-  const initialTab = resolveInitialTab(tabParam);
 
   const session = await getServerSession(authOptions);
   const isLoggedIn = !!session?.user?.id;
@@ -288,7 +279,6 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
       <div className="mx-auto max-w-6xl px-5 pt-6 md:pt-10">
         <EventSectionTabs
           eventId={event.id}
-          initialTab={initialTab}
           headerPanel={
             <EventHeaderSection
               eventId={event.id}
@@ -336,7 +326,6 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
             filename: a.filename,
             sizeBytes: a.sizeBytes,
           }))}
-          photos={event.photos}
           eventName={event.name}
           userId={userId}
           userRole={userRole ?? null}

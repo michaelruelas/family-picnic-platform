@@ -3,20 +3,26 @@ import { promises as fs } from 'fs';
 import path from 'path';
 
 /**
- * FPP-46: convert the event overview page to a tabbed layout.
+ * FPP-154: convert the event overview page to a continuous-scroll
+ * layout (formerly FPP-46's tabbed shell).
  *
- * Structural assertions that lock in the tabbed layout contract:
- *   - desktop uses an ARIA tablist with keyboard navigation
- *   - mobile swaps to scroll-anchor navigation
- *   - the four sections (Header / Itinerary / Additional Info / Gallery)
- *     exist as dedicated components that the overview page delegates to
- *   - tab switches update `?tab=<key>` for deep linking
+ * Structural assertions that lock in the new architecture:
+ *   - the page renders every section (Overview / Itinerary /
+ *     Additional Info) as a stacked <section> with an anchor id
+ *   - the EventAnchorNav sits above the sections so guests can jump
+ *     between them via #event-section-<key> hash links
+ *   - no desktop-vs-mobile viewport branching remains in
+ *     EventSectionTabs — the SPA-style layout is the same everywhere
+ *   - URL deep links flow through native hash anchors, NOT a `?tab=`
+ *     query string and NOT router.replace calls inside the component
+ *   - the page no longer reads a `tab` query param; the previous
+ *     `?tab=<key>` shell is fully removed
  *
- * The component-level behaviour (URL sync, scroll, keyboard nav) is
- * covered in `src/components/ui/__tests__/Tabs.test.tsx` and
- * `src/components/event/__tests__/EventSectionTabs.test.tsx`.
+ * Component-level behaviour (scroll spy, URL hash writes) lives in
+ * `src/components/event/__tests__/EventSectionTabs.test.tsx` and
+ * `src/components/event/__tests__/EventAnchorNav.test.tsx`.
  */
-describe('FPP-46: event overview tabbed layout', () => {
+describe('FPP-154: event overview continuous-scroll layout', () => {
   const tabsPath = path.join(process.cwd(), 'src/components/ui/Tabs.tsx');
   const anchorNavPath = path.join(process.cwd(), 'src/components/event/EventAnchorNav.tsx');
   const eventTabsPath = path.join(process.cwd(), 'src/components/event/EventSectionTabs.tsx');
@@ -57,19 +63,26 @@ describe('FPP-46: event overview tabbed layout', () => {
       expect(content).toMatch(/scrollIntoView/);
     });
 
-    it('orchestrates desktop tabs vs mobile anchors via viewport-aware layout', async () => {
+    it('orchestrates a single SPA-style stacked layout — no desktop vs mobile fork', async () => {
       const content = await fs.readFile(eventTabsPath, 'utf-8');
-      expect(content).toContain('hidden md:block');
-      expect(content).toContain('md:hidden');
-      expect(content).toContain('<Tabs');
+      // The previous viewport-aware branching ("hidden md:block" +
+      // "md:hidden" wrappers around two different render trees) is gone.
+      expect(content).not.toContain('hidden md:block');
+      expect(content).not.toContain('md:hidden');
+      // A single EventAnchorNav now sits above the stacked sections
+      // for every viewport.
       expect(content).toContain('<EventAnchorNav');
+      // The Tabs primitive is no longer mounted on the event page.
+      expect(content).not.toContain('<Tabs');
     });
 
-    it('syncs the active tab to ?tab=<key> via router.replace', async () => {
+    it('does NOT sync any active tab to a ?tab=<key> URL param', async () => {
       const content = await fs.readFile(eventTabsPath, 'utf-8');
-      expect(content).toMatch(/searchParams\.get\(['"]tab['"]\)/);
-      expect(content).toMatch(/router\.replace/);
-      expect(content).toMatch(/params\.set\(['"]tab['"]/);
+      // URL syncing was the contract under the old tabbed shell —
+      // continuous scroll uses native #hash anchors instead.
+      expect(content).not.toMatch(/searchParams\.get\(['"]tab['"]\)/);
+      expect(content).not.toMatch(/router\.replace/);
+      expect(content).not.toMatch(/params\.set\(['"]tab['"]\)/);
     });
 
     it('mounts the sections declared by EventSectionTabs (Header / Itinerary / Additional Info) with Gallery removed per FPP-135', async () => {
@@ -82,19 +95,22 @@ describe('FPP-46: event overview tabbed layout', () => {
       expect(content).toContain('headerPanel');
     });
 
-    it('reads the initial tab from server-side searchParams', async () => {
+    it('does NOT read an initial tab from server-side searchParams', async () => {
+      // FPP-154: continuous scroll renders every section every render,
+      // so the page no longer needs to know which tab the user started
+      // on. The old `?tab=` plumbing is removed end-to-end.
       const content = await fs.readFile(eventPagePath, 'utf-8');
-      expect(content).toContain('searchParams');
-      expect(content).toContain('resolveInitialTab');
-      expect(content).toContain('initialTab=');
+      expect(content).not.toMatch(/searchParams\s*:\s*Promise/);
+      expect(content).not.toContain('resolveInitialTab');
+      expect(content).not.toContain('initialTab=');
     });
 
-    it('wraps the useSearchParams() consumer in a Suspense boundary', async () => {
-      // FPP-46 review fix #2: Next.js 14+ requires <Suspense> around
-      // any component that reads useSearchParams() so the page can
-      // statically prerender. EventSectionTabs keeps the public API but
-      // delegates the hook call to an inner component behind
-      // <Suspense> with a fallback that renders every panel.
+    it('still wraps the section content in a Suspense boundary for safe prerender', async () => {
+      // FPP-46 review fix #2 originally required <Suspense> around any
+      // component that reads useSearchParams(). FPP-154 keeps the
+      // boundary as a defensive measure so future client-only state
+      // (e.g. scroll-spy in the anchor nav) can land without re-shaping
+      // the page shell.
       const content = await fs.readFile(eventTabsPath, 'utf-8');
       expect(content).toContain('<Suspense');
       expect(content).toContain('EventSectionTabsContent');
