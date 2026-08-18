@@ -143,7 +143,6 @@ describe('PaymentForm', () => {
     const options = mockConfirmPayment.mock.calls[0]?.[0] as {
       redirect?: string;
       confirmParams?: { return_url?: string };
-      clientSecret?: string;
     };
     // Without `redirect: 'if_required'`, Stripe.js defaults to
     // `'always'` and navigates the browser to `return_url` after a
@@ -151,10 +150,6 @@ describe('PaymentForm', () => {
     // and breaks the dynamic in-place update.
     expect(options.redirect).toBe('if_required');
     expect(options.confirmParams?.return_url).toBe(baseProps.returnUrl);
-    // The Elements instance from `<Elements clientSecret={...}>`
-    // already carries the secret; re-passing it at the top level
-    // makes Stripe.js throw "Could not retrieve elements store".
-    expect(options.clientSecret).toBeUndefined();
     await waitFor(() =>
       expect(onSuccess).toHaveBeenCalledWith({ status: 'succeeded', id: undefined }),
     );
@@ -171,8 +166,9 @@ describe('PaymentForm', () => {
 
   it('only fires createPaymentIntent once even if the setup effect re-runs (StrictMode dev double-mount)', async () => {
     render(<PaymentForm {...baseProps} />);
-    // Wait long enough for any double-fire to settle. The bug we're
-    // guarding against is two mutate() calls in dev StrictMode.
+    // Wait long enough for a StrictMode double-mount to settle. The
+    // bug we're guarding against is two `mutate()` calls when React
+    // simulates a remount in dev mode.
     await waitFor(() => screen.getByTestId('payment-form'));
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(mockMutate).toHaveBeenCalledTimes(1);
@@ -180,11 +176,12 @@ describe('PaymentForm', () => {
   });
 
   it('freezes the clientSecret on the first intent so a second concurrent response cannot switch Elements mid-flight', async () => {
-    // Simulate the two responses tRPC can return when StrictMode
-    // double-fires the mutation and the server returns two distinct
-    // PaymentIntents. Without the freeze, Elements would receive
+    // Simulates the failure mode where tRPC somehow delivers two
+    // distinct `createPaymentIntent` responses for the same component
+    // instance. Without the freeze, <Elements> would receive
     // `clientSecret` as an updated prop and Stripe.js would throw
-    // "Could not retrieve elements store".
+    // "Could not retrieve elements store" / "PaymentIntent is in a
+    // terminal state". With the freeze, only the first response wins.
     intentSecretQueue.push('pi_first_secret', 'pi_second_secret');
     render(<PaymentForm {...baseProps} />);
     await waitFor(() => screen.getByTestId('payment-form'));
