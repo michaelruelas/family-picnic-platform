@@ -125,7 +125,7 @@ export default function UsersTable() {
                   <td className="text-muted-foreground max-w-[160px] truncate px-4 py-3">
                     {user.household?.name ?? '—'}
                   </td>
-                  <td className="text-muted-foreground whitespace-nowrap px-4 py-3 text-xs">
+                  <td className="text-muted-foreground px-4 py-3 text-xs whitespace-nowrap">
                     {formatDate(user.createdAt, 'date')}
                   </td>
                   <td className="px-4 py-3 text-right">
