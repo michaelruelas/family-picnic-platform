@@ -491,6 +491,10 @@ describe('FPP-78 payment audit coverage', () => {
             householdId: 'h-1',
           }),
         },
+        // FPP-124: createPaymentIntent reads the caller's RSVP roster
+        // to compute the live fee. The checkout-page scenario has no
+        // RSVP yet, so the mock returns null.
+        rSVP: { findUnique: vi.fn().mockResolvedValue(null) },
         registration: {
           findUnique: vi.fn().mockResolvedValue(null),
           create: vi.fn().mockResolvedValue({ id: 'reg-1', status: 'PENDING' }),
@@ -599,6 +603,10 @@ describe('FPP-78 payment audit coverage', () => {
             householdId: 'h-1',
           }),
         },
+        // FPP-124: createPaymentIntent reads the caller's RSVP roster
+        // to compute the live fee. The checkout-page scenario has no
+        // RSVP yet, so the mock returns null.
+        rSVP: { findUnique: vi.fn().mockResolvedValue(null) },
         registration: {
           findUnique: vi.fn().mockResolvedValue(null),
           create: vi.fn().mockResolvedValue({ id: 'reg-1', status: 'PENDING' }),

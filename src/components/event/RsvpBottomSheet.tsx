@@ -383,6 +383,45 @@ export function RsvpBottomSheet({
   const isPaid = registration?.status === 'PAID';
   const paymentChosen = isPaid || paymentChoice === 'payLater';
   const saveRequiresPayment = showFeeLine && !paymentChosen;
+  // FPP-124: when a PAID user edits attendance (the live fee has grown
+  // past what they have paid), Pay is gated on Save. The server-side
+  // fee is computed from the persisted RSVP roster, so paying before
+  // the user commits their changes would either under-charge or trip
+  // the `findOrCreateActiveCharge` "already registered" guard.
+  //
+  // We compare drafts to the server's memberAttendances snapshot
+  // (rather than tracking a `confirmedInSession` flag) so the gate
+  // works correctly after the user closes and reopens the sheet —
+  // `confirmedInSession` resets on close and would otherwise pin
+  // payRequiresSave=true even though the server already holds the
+  // latest roster.
+  const isAttendanceDirty = useMemo(() => {
+    const server = formState?.rsvp?.memberAttendances ?? [];
+    if (drafts.length !== server.length) return true;
+    const serverByKey = new Map<
+      string,
+      { attending: RsvpAttending; memberName: string; memberAge: number | null }
+    >();
+    for (const row of server) {
+      const key =
+        row.householdMemberId ?? `name:${row.memberNameSnapshot}:${row.memberAgeSnapshot ?? ''}`;
+      serverByKey.set(key, {
+        attending: row.attending,
+        memberName: row.memberNameSnapshot,
+        memberAge: row.memberAgeSnapshot,
+      });
+    }
+    for (const draft of drafts) {
+      const key = draft.householdMemberId ?? `name:${draft.memberName}:${draft.memberAge ?? ''}`;
+      const serverRow = serverByKey.get(key);
+      if (!serverRow) return true;
+      if (serverRow.attending !== draft.attending) return true;
+      if (serverRow.memberName !== draft.memberName) return true;
+      if (serverRow.memberAge !== draft.memberAge) return true;
+    }
+    return false;
+  }, [drafts, formState?.rsvp?.memberAttendances]);
+  const payRequiresSave = activeTab === 'attendance' && isPaid && isAttendanceDirty && showFeeLine;
 
   const updateAttendance = (index: number, value: RsvpAttending) => {
     setDrafts((current) => current.map((d, i) => (i === index ? { ...d, attending: value } : d)));
@@ -1127,6 +1166,7 @@ export function RsvpBottomSheet({
                 registration={registration}
                 choice={paymentChoice}
                 onChoiceChange={setPaymentChoice}
+                payRequiresSave={payRequiresSave}
               />
             </div>
           )}

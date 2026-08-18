@@ -37,9 +37,9 @@ describe('FeeTotalBlock', () => {
       expect(screen.getByText(expectedEur)).toBeInTheDocument();
     });
 
-    it('renders a snapshot caveat line so users know the total is frozen at RSVP time', () => {
+    it('renders a live-total caveat line so users know the figure tracks the current roster', () => {
       render(<FeeTotalBlock amountCents={2500} currency="usd" />);
-      expect(screen.getByText(/Snapshot at RSVP time/)).toBeInTheDocument();
+      expect(screen.getByText(/Live total for your current roster/i)).toBeInTheDocument();
     });
   });
 

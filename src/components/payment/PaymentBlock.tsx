@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { trpc } from '~/lib/trpc-client';
 import { formatAmount } from '~/lib/currency';
 import PaymentForm from './PaymentForm';
@@ -11,6 +11,14 @@ interface PaymentRegistration {
   status: 'PENDING' | 'PAID' | 'REFUNDED' | 'FORFEITED' | 'CANCELLED';
   amountCents: number;
   currency: string;
+  /**
+   * FPP-124: net of SUCCEEDED charges minus SUCCEEDED refunds. Used to
+   * derive the remaining balance against the live fee (event config +
+   * roster) when the user adds attendees after paying. Defaults to 0
+   * when the caller does not yet have the new field (e.g. older
+   * callers that pass a hand-built registration prop).
+   */
+  netPaidCents?: number;
 }
 
 interface PaymentBreakdown {
@@ -62,6 +70,16 @@ interface PaymentBlockProps {
    * URL here, so we cannot pass the path by itself).
    */
   returnUrl?: string;
+  /**
+   * FPP-124: when true, the Pay button is disabled until the caller
+   * commits the attendance drafts. The server-side fee is computed
+   * from the saved RSVP roster, so paying before the user clicks
+   * Save would either under-charge or throw "already registered"
+   * when the live fee has grown. The block swaps the Pay button
+   * for an inline hint that points at the surrounding Save
+   * control so the user knows what to do next.
+   */
+  payRequiresSave?: boolean;
 }
 
 function defaultReturnUrl(eventId: string): string {
@@ -91,8 +109,17 @@ export default function PaymentBlock({
   onChoiceChange,
   hint,
   returnUrl,
+  payRequiresSave = false,
 }: PaymentBlockProps) {
   const [error, setError] = useState<string | null>(null);
+  // FPP-124: set when Stripe confirms a payment client-side but the
+  // webhook has not yet flipped the registration status. Without this
+  // state the block reverts to "Pay $X" the moment `handlePaid`
+  // clears `choice`, which makes the user think the payment failed
+  // and reach for the browser refresh button. Keeping a sticky
+  // "payment received" panel until the cache refetch lands the new
+  // PAID status closes that gap.
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const utils = trpc.useUtils();
 
   const publishableKeyQuery = trpc.payment.getPublishableKey.useQuery();
@@ -113,8 +140,28 @@ export default function PaymentBlock({
   });
 
   const isPaid = registration?.status === 'PAID';
-  const isFormMode = choice === 'payNow' && !isPaid;
-  const isPayLaterMode = choice === 'payLater' && !isPaid;
+
+  // FPP-124: when the registration is PAID but the live fee has grown
+  // (user added attendees, admin raised the per-attendee fee), surface
+  // the outstanding balance instead of collapsing to the Paid badge.
+  // When `netPaidCents` is missing (older callers or hand-built test
+  // props), fall back to `registration.amountCents` so a PAID row
+  // without the new field still renders the Paid badge — that matches
+  // the historical "snapshot at charge time" semantics of amountCents.
+  const netPaid = registration?.netPaidCents ?? registration?.amountCents ?? 0;
+  const outstandingCents = isPaid && amountCents > netPaid ? amountCents - netPaid : 0;
+  const overpaidCents = isPaid && netPaid > amountCents ? netPaid - amountCents : 0;
+  const hasOutstanding = outstandingCents > 0;
+
+  // The form mounts in two cases — the legacy "fresh registration"
+  // flow (`payNow` while not yet paid) and the new "settle the
+  // outstanding delta" flow (`payNow` while paid but still owing).
+  // The block-level branches below decide which copy to render once
+  // the form is up.
+  const isFormMode = choice === 'payNow' && (!isPaid || hasOutstanding);
+  // Deferring is meaningless when there is an outstanding balance —
+  // the user needs to settle up, not push the work forward.
+  const isPayLaterMode = choice === 'payLater' && !isPaid && !hasOutstanding;
 
   const handlePayNow = () => {
     setError(null);
@@ -128,18 +175,169 @@ export default function PaymentBlock({
 
   const handlePaid = async () => {
     setError(null);
-    // The webhook flips status to PAID; invalidating the cache
-    // causes the parent (and this block, via the registration
-    // prop) to re-render the paid badge and unlock Save. No
-    // setState round-trip is needed here.
+    // Stripe just confirmed the payment client-side. We don't yet
+    // know the registration is PAID — that arrives on the webhook
+    // asynchronously — so hold the block in a "Payment received"
+    // state instead of bouncing the user out to a stale "Pay $X"
+    // button that would tempt them to retry.
+    setPaymentProcessing(true);
     await utils.payment.getMyRegistration.invalidate({ eventId });
-    onChoiceChange?.(null);
   };
 
   const handleCancelForm = () => {
     setError(null);
+    setPaymentProcessing(false);
     onChoiceChange?.(null);
   };
+
+  // FPP-124: clear the "Payment received" panel once the cache
+  // refetch reflects the new charge. The webhook flips the Charge
+  // to SUCCEEDED on Stripe's side, the cache refetch picks up the
+  // updated `netPaidCents`, the outstanding drops to zero, and the
+  // regular Paid badge (or overpaid note) takes over without a
+  // flash of the old Pay button.
+  useEffect(() => {
+    if (paymentProcessing && isPaid && outstandingCents === 0) {
+      /* eslint-disable react-hooks/set-state-in-effect */
+      setPaymentProcessing(false);
+      onChoiceChange?.(null);
+      /* eslint-enable react-hooks/set-state-in-effect */
+    }
+  }, [paymentProcessing, isPaid, outstandingCents, onChoiceChange]);
+
+  if (paymentProcessing) {
+    // FPP-124: Stripe confirmed a payment client-side but the webhook
+    // that flips the registration status / outstanding has not yet
+    // landed. Show a sticky panel so the user does not retry on
+    // what looks like a stale UI. Cleared by the useEffect above
+    // once the cache refetch reflects the new SUCCEEDED charge.
+    return (
+      <div
+        className="bg-sage/15 ring-sage/30 mt-3 rounded-sm px-4 py-3 text-sm ring-1"
+        data-testid="rsvp-payment-processing"
+        data-payment-processing="true"
+      >
+        <p className="text-foreground flex items-center gap-2 font-semibold">
+          <span className="bg-sage/30 text-sage inline-flex h-5 w-5 items-center justify-center rounded-sm text-xs font-bold">
+            ✓
+          </span>
+          Payment received
+        </p>
+        <p className="text-muted-foreground mt-2 text-xs">
+          Thanks — your payment is on its way. We&apos;re confirming it with Stripe now; this
+          message will switch to &quot;Paid&quot; as soon as the confirmation lands (usually a few
+          seconds).
+        </p>
+        <button
+          type="button"
+          onClick={handleCancelForm}
+          className="text-muted-foreground hover:text-foreground mt-2 text-xs font-medium underline underline-offset-4"
+          data-testid="rsvp-payment-cancel-processing"
+        >
+          Close
+        </button>
+      </div>
+    );
+  }
+
+  if (isPaid && hasOutstanding) {
+    return (
+      <div
+        className="bg-sunlight/15 ring-sunlight/30 mt-3 rounded-sm px-4 py-3 text-sm ring-1"
+        data-testid="rsvp-payment-block"
+        data-amount-due="true"
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-foreground font-semibold">
+            Amount due: {formatAmount(outstandingCents, currency)}
+          </span>
+          <span
+            className="bg-foreground/5 text-muted-foreground rounded-sm px-2 py-0.5 text-xs font-semibold"
+            data-testid="rsvp-payment-amount-due-badge"
+          >
+            Balance owed
+          </span>
+        </div>
+        <p className="text-muted-foreground mt-1 text-xs">
+          {breakdown && (
+            <>
+              Total registration fee: {formatAmount(amountCents, currency)} (
+              {breakdown.qualifyingAttendees}{' '}
+              {breakdown.qualifyingAttendees === 1 ? 'attendee' : 'attendees'} at{' '}
+              {formatAmount(breakdown.perAttendeeCents, currency)}). Paid so far:{' '}
+              {formatAmount(netPaid, currency)}.
+            </>
+          )}
+          {!breakdown && (
+            <>
+              Total registration fee: {formatAmount(amountCents, currency)}. Paid so far:{' '}
+              {formatAmount(netPaid, currency)}.
+            </>
+          )}
+        </p>
+
+        {payRequiresSave ? (
+          <p
+            className="text-muted-foreground mt-3 text-xs italic"
+            data-testid="rsvp-payment-save-first-hint"
+          >
+            Save your attendance changes first — the new total needs to be on file before we can
+            take the top-up payment.
+          </p>
+        ) : isFormMode ? (
+          <div className="mt-3" data-testid="rsvp-payment-form-wrapper">
+            {publishableKey ? (
+              <PaymentForm
+                eventId={eventId}
+                eventName={eventName}
+                amountCents={outstandingCents}
+                currency={currency}
+                publishableKey={publishableKey}
+                returnUrl={returnUrl ?? defaultReturnUrl(eventId)}
+                onSuccess={handlePaid}
+              />
+            ) : (
+              <div
+                className="bg-card rounded-sm p-4 text-sm"
+                data-testid="rsvp-payment-form-loading"
+              >
+                <p className="text-muted-foreground">
+                  {publishableKeyQuery.isLoading
+                    ? 'Loading payment form…'
+                    : 'Online payment is not available right now. Contact an admin to settle up.'}
+                </p>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleCancelForm}
+              className="text-muted-foreground hover:text-foreground mt-2 w-full text-center text-xs font-medium underline underline-offset-4"
+              data-testid="rsvp-payment-cancel-form"
+            >
+              Cancel and go back
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handlePayNow}
+              disabled={!publishableKey}
+              className="bg-terracotta shadow-soft press hover:bg-terracotta/90 rounded-sm px-4 py-2 text-sm font-semibold text-white transition-all disabled:opacity-60"
+              data-testid="rsvp-payment-pay-now"
+            >
+              Pay {formatAmount(outstandingCents, currency)}
+            </button>
+          </div>
+        )}
+        {error && (
+          <p className="text-destructive mt-2 text-xs" data-testid="rsvp-payment-error">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   if (isPaid) {
     return (
@@ -169,6 +367,15 @@ export default function PaymentBlock({
         <p className="text-muted-foreground mt-2 text-xs">
           {hint ?? 'Your registration is paid. You\u2019re all set.'}
         </p>
+        {overpaidCents > 0 && (
+          <p
+            className="text-muted-foreground mt-2 text-xs italic"
+            data-testid="rsvp-payment-overpaid-note"
+          >
+            You paid {formatAmount(overpaidCents, currency)} more than the current fee. Contact the
+            organizer if you&apos;d like a refund.
+          </p>
+        )}
       </div>
     );
   }

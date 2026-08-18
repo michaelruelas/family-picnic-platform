@@ -170,15 +170,15 @@ export function EventRsvpCard({
               {(existingRsvp.registrationFeeCents ?? 0) > 0 && (
                 <div className="bg-sunlight/20 ring-sunlight/40 mt-3 rounded-sm px-4 py-3 text-sm ring-1">
                   <span className="text-foreground font-semibold">
-                    Registration fee:{' '}
+                    First-charge total:{' '}
                     {formatAmount(
                       existingRsvp.registrationFeeCents ?? 0,
                       existingRsvp.registrationFeeCurrency ?? 'usd',
                     )}
                   </span>
                   <span className="text-muted-foreground ml-2 text-xs">
-                    Snapshot at RSVP time — changes to the event fee do not retroactively update
-                    this amount.
+                    Captured at the original payment. The bottom sheet shows the current total and
+                    any balance owed.
                   </span>
                 </div>
               )}

@@ -96,9 +96,18 @@ const baseProps = {
 function ControlledPaymentBlock(
   props: React.ComponentProps<typeof PaymentBlock> & { initialChoice?: PaymentChoice },
 ) {
-  const { initialChoice = null, onChoiceChange: _ignored, ...rest } = props;
+  const { initialChoice = null, onChoiceChange, ...rest } = props;
   const [choice, setChoice] = useState<PaymentChoice>(initialChoice);
-  return <PaymentBlock {...rest} choice={choice} onChoiceChange={setChoice} />;
+  return (
+    <PaymentBlock
+      {...rest}
+      choice={choice}
+      onChoiceChange={(next) => {
+        setChoice(next);
+        onChoiceChange?.(next);
+      }}
+    />
+  );
 }
 
 describe('PaymentBlock', () => {
@@ -166,7 +175,7 @@ describe('PaymentBlock', () => {
     }
   });
 
-  it('invalidates the registration cache and clears the local choice when the inline form succeeds', async () => {
+  it('invalidates the registration cache when the inline form succeeds', async () => {
     const onChoiceChange = vi.fn();
     render(<PaymentBlock {...baseProps} choice="payNow" onChoiceChange={onChoiceChange} />);
     await waitFor(() => screen.getByTestId('mock-payment-form'));
@@ -174,11 +183,64 @@ describe('PaymentBlock', () => {
     await waitFor(() => {
       expect(mockInvalidate).toHaveBeenCalledWith({ eventId: 'evt-1' });
     });
-    // The Paid badge is sourced from the registration prop, not the
-    // local choice. The block fires `onChoiceChange(null)` to clear
-    // the now-stale "payNow" so the parent's derived `isPaid` from
-    // the re-fetched registration is the source of truth.
-    expect(onChoiceChange).toHaveBeenCalledWith(null);
+    // FPP-124: handlePaid no longer fires `onChoiceChange(null)` itself.
+    // The block holds a sticky "Payment received" panel until the
+    // cache refetch lands a PAID status, then a useEffect clears the
+    // choice. That keeps the user from seeing a stale "Pay $X" button
+    // between Stripe's confirmation and the webhook that flips the
+    // registration status.
+    expect(onChoiceChange).not.toHaveBeenCalled();
+  });
+
+  it('clears the local choice once the cache refetch drops outstanding to zero', async () => {
+    const onChoiceChange = vi.fn();
+    const { rerender } = render(
+      <ControlledPaymentBlock
+        {...baseProps}
+        amountCents={1500}
+        onChoiceChange={onChoiceChange}
+        registration={{
+          status: 'PAID',
+          amountCents: 500,
+          currency: 'usd',
+          netPaidCents: 500,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('rsvp-payment-pay-now'));
+    await waitFor(() => screen.getByTestId('mock-payment-form'));
+    // Stripe confirms → handlePaid flips us into the processing panel.
+    fireEvent.click(screen.getByTestId('mock-payment-form-complete'));
+    await waitFor(() => {
+      expect(screen.getByTestId('rsvp-payment-processing')).toBeInTheDocument();
+    });
+    // The wrapper already fired onChoiceChange('payNow') when the
+    // user clicked Pay; handlePaid itself does not clear the choice
+    // — that only happens once the cache refetch reflects the
+    // reflected payment.
+    expect(onChoiceChange).not.toHaveBeenCalledWith(null);
+    // Webhook lands → cache invalidation re-renders with the new
+    // SUCCEEDED charge reflected in netPaidCents, outstanding drops
+    // to zero, the processing panel clears, and the Paid badge takes
+    // over.
+    rerender(
+      <ControlledPaymentBlock
+        {...baseProps}
+        amountCents={1500}
+        onChoiceChange={onChoiceChange}
+        registration={{
+          status: 'PAID',
+          amountCents: 1500,
+          currency: 'usd',
+          netPaidCents: 1500,
+        }}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('rsvp-payment-paid-badge')).toBeInTheDocument();
+      expect(screen.queryByTestId('rsvp-payment-processing')).not.toBeInTheDocument();
+      expect(onChoiceChange).toHaveBeenCalledWith(null);
+    });
   });
 
   it('lets the user back out of the inline form via the cancel link', async () => {
@@ -232,6 +294,151 @@ describe('PaymentBlock', () => {
     );
     expect(screen.getByTestId('rsvp-payment-paid-badge')).toBeInTheDocument();
     expect(screen.queryByTestId('rsvp-payment-pay-now')).not.toBeInTheDocument();
+  });
+
+  // FPP-124: when the live fee has grown (user added attendees, admin
+  // raised the per-attendee fee) but the registration is already PAID,
+  // surface the outstanding balance instead of collapsing to the Paid
+  // badge so the user can settle up.
+  it('shows an Amount due block when a PAID registration is behind on payments', () => {
+    render(
+      <PaymentBlock
+        {...baseProps}
+        amountCents={2500}
+        breakdown={{ qualifyingAttendees: 2, perAttendeeCents: 500 }}
+        registration={{
+          status: 'PAID',
+          amountCents: 500,
+          currency: 'usd',
+          netPaidCents: 500,
+        }}
+      />,
+    );
+    expect(screen.getByTestId('rsvp-payment-amount-due-badge')).toHaveTextContent(/balance owed/i);
+    expect(screen.getByText(/amount due: \$20\.00/i)).toBeInTheDocument();
+    // Per-attendee breakdown appears in the explanation paragraph.
+    expect(screen.getByText(/paid so far: \$5\.00/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 attendees at \$5\.00/i)).toBeInTheDocument();
+    // The Pay now button is offered and charges the delta, not the
+    // full live fee, so a top-up does not over-collect.
+    const payNow = screen.getByTestId('rsvp-payment-pay-now');
+    expect(payNow).toBeInTheDocument();
+    expect(payNow).toHaveTextContent(/pay \$20\.00/i);
+    // The deferred button is suppressed — there is nothing to defer.
+    expect(screen.queryByTestId('rsvp-payment-pay-later')).not.toBeInTheDocument();
+  });
+
+  it('mounts the inline payment form for the outstanding delta when Pay now is clicked', async () => {
+    render(
+      <ControlledPaymentBlock
+        {...baseProps}
+        amountCents={1500}
+        registration={{
+          status: 'PAID',
+          amountCents: 500,
+          currency: 'usd',
+          netPaidCents: 500,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('rsvp-payment-pay-now'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-payment-form')).toBeInTheDocument();
+    });
+  });
+
+  // FPP-124: when Stripe confirms a top-up client-side but the
+  // webhook that flips Registration.status to PAID hasn't landed yet,
+  // the block must not collapse back to the Pay button. Otherwise
+  // the user retries on what looks like a stale UI.
+  it('shows a sticky Payment received panel while the webhook confirms the top-up', async () => {
+    const { rerender } = render(
+      <ControlledPaymentBlock
+        {...baseProps}
+        amountCents={1500}
+        registration={{
+          status: 'PAID',
+          amountCents: 500,
+          currency: 'usd',
+          netPaidCents: 500,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('rsvp-payment-pay-now'));
+    await waitFor(() => screen.getByTestId('mock-payment-form'));
+    // Stripe confirms → handlePaid flips us into the processing panel.
+    fireEvent.click(screen.getByTestId('mock-payment-form-complete'));
+    await waitFor(() => {
+      expect(screen.getByTestId('rsvp-payment-processing')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('rsvp-payment-pay-now')).not.toBeInTheDocument();
+    expect(screen.getByText(/payment received/i)).toBeInTheDocument();
+    // Webhook lands → cache invalidation re-renders with the new
+    // SUCCEEDED charge reflected in netPaidCents, outstanding drops
+    // to zero, the processing panel clears, and the Paid badge takes
+    // over.
+    rerender(
+      <ControlledPaymentBlock
+        {...baseProps}
+        amountCents={1500}
+        registration={{
+          status: 'PAID',
+          amountCents: 1500,
+          currency: 'usd',
+          netPaidCents: 1500,
+        }}
+      />,
+    );
+    expect(screen.getByTestId('rsvp-payment-paid-badge')).toBeInTheDocument();
+    expect(screen.queryByTestId('rsvp-payment-processing')).not.toBeInTheDocument();
+  });
+
+  it('notes the overpayment when the user has paid more than the live fee', () => {
+    render(
+      <PaymentBlock
+        {...baseProps}
+        amountCents={500}
+        registration={{
+          status: 'PAID',
+          amountCents: 1500,
+          currency: 'usd',
+          netPaidCents: 1500,
+        }}
+      />,
+    );
+    expect(screen.getByTestId('rsvp-payment-paid-badge')).toHaveTextContent(/paid/i);
+    const note = screen.getByTestId('rsvp-payment-overpaid-note');
+    expect(note).toHaveTextContent(/paid \$10\.00 more/i);
+    expect(note).toHaveTextContent(/refund/i);
+    // No outstanding balance, so no Pay button.
+    expect(screen.queryByTestId('rsvp-payment-pay-now')).not.toBeInTheDocument();
+  });
+
+  // FPP-124: the server-side fee is computed from the saved RSVP
+  // roster, so paying before the user commits their attendance
+  // changes would either under-charge or trip the "already
+  // registered" guard. The block swaps the Pay button for a
+  // hint that points at the surrounding Save control.
+  it('replaces the Pay button with a save-first hint when payRequiresSave is set', () => {
+    render(
+      <PaymentBlock
+        {...baseProps}
+        amountCents={1500}
+        registration={{
+          status: 'PAID',
+          amountCents: 500,
+          currency: 'usd',
+          netPaidCents: 500,
+        }}
+        payRequiresSave
+      />,
+    );
+    expect(screen.getByTestId('rsvp-payment-amount-due-badge')).toHaveTextContent(/balance owed/i);
+    expect(screen.getByTestId('rsvp-payment-save-first-hint')).toHaveTextContent(
+      /save your attendance changes first/i,
+    );
+    expect(screen.queryByTestId('rsvp-payment-pay-now')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rsvp-payment-form-wrapper')).not.toBeInTheDocument();
   });
 
   it('surfaces a server error from payLater', async () => {

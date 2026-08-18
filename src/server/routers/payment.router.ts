@@ -2,12 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure, procedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import {
-  ChargeStatus,
-  EventStatus,
-  RegistrationStatus,
-  RsvpAttending,
-} from '~/lib/generated/enums';
+import { ChargeStatus, EventStatus, RegistrationStatus, RefundStatus } from '~/lib/generated/enums';
 import { writeAuditLog } from '~/lib/audit';
 import {
   createPaymentIntent,
@@ -51,6 +46,27 @@ const ACTIVE_CHARGE_STATUSES: ChargeStatus[] = [
  */
 function isTerminalIntentStatus(status: string | null | undefined): boolean {
   return status === 'succeeded' || status === 'canceled';
+}
+
+/**
+ * Sums SUCCEEDED charge amounts minus SUCCEEDED refund amounts for a
+ * registration. Used to compute the remaining balance when the user
+ * adds attendees after paying. Kept at module scope so both the
+ * `createPaymentIntent` pre-flight (via `getMyRegistration`-style
+ * queries) and the in-transaction `findOrCreateActiveCharge` PAID
+ * branch can share one definition.
+ */
+function netPaidCents(
+  charges: Array<{ amountCents: number; status: ChargeStatus }> | undefined | null,
+  refunds: Array<{ amountCents: number; status: RefundStatus }> | undefined | null,
+): number {
+  const paid = (charges ?? [])
+    .filter((c) => c.status === ChargeStatus.SUCCEEDED)
+    .reduce((sum, c) => sum + c.amountCents, 0);
+  const refunded = (refunds ?? [])
+    .filter((r) => r.status === RefundStatus.SUCCEEDED)
+    .reduce((sum, r) => sum + r.amountCents, 0);
+  return paid - refunded;
 }
 
 /**
@@ -114,6 +130,14 @@ export const paymentRouter = router({
    * Returns the caller's registration for the event with all charges and
    * refunds, used by the checkout page to render the current state. Null
    * when the user has not yet started registration.
+   *
+   * Also returns the running totals of successful charges and refunds so
+   * the UI can render "Amount due" / "Fully paid" copy when the live
+   * fee for the roster diverges from `Registration.amountCents` (e.g.
+   * the user added attendees after paying, or the admin raised the
+   * per-attendee fee). The historical snapshot on `amountCents` is
+   * preserved; `netPaidCents` is the source of truth for "what the
+   * user has actually paid toward this registration".
    */
   getMyRegistration: protectedProcedure
     .input(z.object({ eventId: z.string().min(1) }))
@@ -127,6 +151,13 @@ export const paymentRouter = router({
       });
       if (!registration) return null;
 
+      const amountPaidCents = (registration.charges ?? [])
+        .filter((c) => c.status === ChargeStatus.SUCCEEDED)
+        .reduce((sum, c) => sum + c.amountCents, 0);
+      const amountRefundedCents = (registration.refunds ?? [])
+        .filter((r) => r.status === RefundStatus.SUCCEEDED)
+        .reduce((sum, r) => sum + r.amountCents, 0);
+
       return {
         id: registration.id,
         status: registration.status,
@@ -137,6 +168,12 @@ export const paymentRouter = router({
         receiptSent: registration.charges.some((c) => c.receiptSentAt !== null),
         createdAt: registration.createdAt,
         updatedAt: registration.updatedAt,
+        // FPP-124: net of SUCCEEDED charges minus SUCCEEDED refunds so
+        // the caller can derive the remaining balance against the live
+        // fee (event config + roster) without re-summing themselves.
+        amountPaidCents,
+        amountRefundedCents,
+        netPaidCents: amountPaidCents - amountRefundedCents,
         charges: registration.charges.map((c) => ({
           id: c.id,
           status: c.status,
@@ -250,6 +287,7 @@ async function createPaymentIntentInner(
       name: true,
       status: true,
       registrationFeeCents: true,
+      registrationFeeMinAge: true,
       currency: true,
     },
   });
@@ -271,6 +309,41 @@ async function createPaymentIntentInner(
     });
   }
 
+  /**
+   * Computes the registration fee for the caller's RSVP roster on the
+   * given event. Returns `null` when the user has no RSVP yet (e.g.
+   * the checkout-page entry point). Falls back to the per-attendee
+   * fee when the RSVP exists but has no attendance rows, so a brand
+   * new registration defaults to one attendee's worth — matches the
+   * legacy checkout-page behavior.
+   */
+  async function resolveExpectedFee(
+    prismaClient: typeof prisma,
+    eventId: string,
+    userId: string,
+    perAttendeeCents: number,
+    minAge: number,
+  ): Promise<number | null> {
+    const rsvp = await prismaClient.rSVP.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+      select: {
+        memberAttendances: {
+          select: { attending: true, memberAgeSnapshot: true },
+        },
+      },
+    });
+    if (!rsvp) return null;
+    const attendees: FeeAttendee[] = rsvp.memberAttendances.map((a) => ({
+      attending: a.attending,
+      memberAge: a.memberAgeSnapshot,
+    }));
+    if (attendees.length === 0) return perAttendeeCents;
+    return calculateFeeFromEvent(attendees, {
+      registrationFeeCents: perAttendeeCents,
+      registrationFeeMinAge: minAge,
+    }).amountCents;
+  }
+
   const user = await prismaClient.user.findUnique({
     where: { id: ctx.session.user.id },
     select: { id: true, email: true, name: true, householdId: true },
@@ -278,6 +351,19 @@ async function createPaymentIntentInner(
   if (!user) {
     throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
   }
+
+  // FPP-124: compute the live registration fee from the RSVP roster so
+  // a multi-attendee RSVP charges the right total (the previous code
+  // always charged the per-attendee fee). Falls back to the per-attendee
+  // fee when the user has no RSVP yet (the checkout-page entry point).
+  const expectedFeeCents =
+    (await resolveExpectedFee(
+      prismaClient,
+      event.id,
+      user.id,
+      fee,
+      event.registrationFeeMinAge ?? 0,
+    )) ?? fee;
 
   // Serializable isolation so concurrent calls from the same user
   // cannot both pass the "existing && activeCharge" check and each
@@ -316,7 +402,7 @@ async function createPaymentIntentInner(
   }
 
   const { registration, charge } = await prismaClient.$transaction(
-    async (tx) => findOrCreateActiveCharge(tx, event.id, user, fee, event.currency),
+    async (tx) => findOrCreateActiveCharge(tx, event.id, user, expectedFeeCents, event.currency),
     { isolationLevel: 'Serializable' },
   );
 
@@ -412,14 +498,38 @@ async function findOrCreateActiveCharge(
     where: { eventId_userId: { eventId, userId: user.id } },
     include: {
       charges: { orderBy: { createdAt: 'desc' } },
+      refunds: { select: { amountCents: true, status: true } },
     },
   });
 
   if (existing?.status === RegistrationStatus.PAID) {
-    throw new TRPCError({
-      code: 'PRECONDITION_FAILED',
-      message: 'You are already registered for this event',
+    // FPP-124: a PAID registration may still owe a balance if the user
+    // added attendees after the first charge (or the admin raised the
+    // per-attendee fee). When the remaining balance is positive, allow
+    // a top-up charge; otherwise reject as before. Net paid is computed
+    // inside the tx so the sums reflect any just-reconciled stale
+    // charges from the pre-flight.
+    const netPaid = netPaidCents(existing.charges, existing.refunds);
+    const remaining = fee - netPaid;
+    if (remaining <= 0) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'You are already registered for this event',
+      });
+    }
+    const newCharge = await tx.charge.create({
+      data: {
+        registrationId: existing.id,
+        stripePaymentIntentId: `pending_${existing.id}_${Date.now()}`,
+        amountCents: remaining,
+        currency,
+        status: ChargeStatus.REQUIRES_PAYMENT_METHOD,
+      },
     });
+    return {
+      registration: { id: existing.id },
+      charge: { id: newCharge.id, amountCents: newCharge.amountCents, currency },
+    };
   }
   if (
     existing &&

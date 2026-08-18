@@ -6,6 +6,7 @@ const NON_ADMIN_ROLE = 'GUEST' as unknown as Role;
 const mockPrisma = {
   event: { findUnique: vi.fn() },
   user: { findUnique: vi.fn() },
+  rSVP: { findUnique: vi.fn() },
   registration: {
     findUnique: vi.fn(),
     findUniqueOrThrow: vi.fn(),
@@ -97,6 +98,7 @@ vi.mock('~/lib/generated/enums', () => ({
     FAILED: 'FAILED',
     CANCELED: 'CANCELED',
   },
+  RsvpAttending: { YES: 'YES', NO: 'NO', MAYBE: 'MAYBE' },
   CommunicationChannel: { EMAIL: 'EMAIL', SMS: 'SMS' },
   CommunicationStatus: { SENT: 'SENT', FAILED: 'FAILED' },
   CommunicationPreference: { EMAIL: 'EMAIL' },
@@ -153,6 +155,21 @@ beforeEach(() => {
     currency: 'usd',
   });
 });
+
+// FPP-124: when the procedure calls Stripe for a top-up charge the
+// intent amount comes from the call's `amountCents` argument, not
+// a hard-coded stub. The default beforeEach mock echoes a flat
+// 2500 cents which would mask assertions on the delta — tests that
+// care about the charge amount opt in to this passthrough.
+const echoAmountFromCall = () => {
+  mockCreatePaymentIntent.mockImplementation(async (input: { amountCents: number }) => ({
+    paymentIntentId: 'pi_1',
+    clientSecret: 'pi_1_secret_xyz',
+    status: 'requires_payment_method',
+    amountCents: input.amountCents,
+    currency: 'usd',
+  }));
+};
 
 describe('payment.getPublishableKey', () => {
   it('returns the publishable key when Stripe is configured', async () => {
@@ -224,7 +241,7 @@ describe('payment.createPaymentIntent', () => {
     );
   });
 
-  it('rejects when the user is already PAID', async () => {
+  it('rejects when the user is already PAID and has nothing left to pay', async () => {
     mockPrisma.event.findUnique.mockResolvedValue({
       id: 'evt-1',
       name: 'X',
@@ -238,10 +255,16 @@ describe('payment.createPaymentIntent', () => {
       name: 'Maria',
       householdId: 'h-1',
     });
+    // FPP-124: the PAID branch now compares against net paid, so the
+    // mock must reflect a successful charge for the full fee. Without
+    // it the procedure would treat the user as owing the full amount
+    // and create a top-up charge — covered by the dedicated test
+    // below.
     mockPrisma.registration.findUnique.mockResolvedValue({
       id: 'reg-1',
       status: 'PAID',
-      charges: [],
+      charges: [{ id: 'ch-1', amountCents: 2500, currency: 'usd', status: 'SUCCEEDED' }],
+      refunds: [],
     });
     const { paymentRouter } = await import('~/server/routers/payment.router');
     const { createCallerFactory } = await import('~/lib/trpc');
@@ -644,6 +667,226 @@ describe('payment.createPaymentIntent', () => {
     // Stripe got exactly one createPaymentIntent call (the second attempt).
     expect(mockCreatePaymentIntent).toHaveBeenCalledTimes(1);
   });
+
+  // FPP-124: when the user already paid for 1 attendee ($5) and then
+  // added a 2nd attendee (now $10 expected), the procedure must allow
+  // a top-up charge for the $5 delta instead of throwing
+  // "already registered".
+  it('creates a top-up charge for the outstanding delta when PAID with remaining balance', async () => {
+    echoAmountFromCall();
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      name: 'Picnic',
+      status: 'PUBLISHED',
+      registrationFeeCents: 500,
+      currency: 'usd',
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'maria@example.com',
+      name: 'Maria',
+      householdId: 'h-1',
+    });
+    // 2 attendees × $5 = $10 expected; user has paid $5 for 1 attendee
+    // so far and is now settling up for the 2nd.
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      memberAttendances: [
+        { attending: 'YES', memberAgeSnapshot: 35 },
+        { attending: 'YES', memberAgeSnapshot: 8 },
+      ],
+    });
+    // Both the pre-flight read and the in-transaction read return the
+    // same PAID registration with one SUCCEEDED $5 charge. The active-
+    // charge filter in the pre-flight select would normally hide it,
+    // but the mock returns the full record for both reads so the PAID
+    // branch fires.
+    mockPrisma.registration.findUnique.mockResolvedValue({
+      id: 'reg-paid',
+      status: 'PAID',
+      charges: [{ id: 'ch-old', amountCents: 500, currency: 'usd', status: 'SUCCEEDED' }],
+      refunds: [],
+    });
+    mockPrisma.charge.create.mockResolvedValue({
+      id: 'ch-topup',
+      amountCents: 500,
+      currency: 'usd',
+    });
+    mockPrisma.charge.update.mockResolvedValue({
+      id: 'ch-topup',
+      status: 'REQUIRES_PAYMENT_METHOD',
+    });
+
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    const result = await caller.createPaymentIntent({ eventId: 'evt-1' });
+
+    // The new charge is for the $5 delta, not the full $10 — so the
+    // top-up cannot over-collect.
+    expect(mockPrisma.charge.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          registrationId: 'reg-paid',
+          amountCents: 500,
+        }),
+      }),
+    );
+    expect(mockCreatePaymentIntent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amountCents: 500,
+        idempotencyKey: 'ch-topup',
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        registrationId: 'reg-paid',
+        chargeId: 'ch-topup',
+        amountCents: 500,
+      }),
+    );
+  });
+
+  it('nets SUCCEEDED refunds when computing the top-up delta', async () => {
+    // User paid $25, was refunded $10 (net $15). After adding another
+    // attendee the expected fee becomes $30, so the top-up charges $15.
+    echoAmountFromCall();
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      name: 'Picnic',
+      status: 'PUBLISHED',
+      registrationFeeCents: 1000,
+      currency: 'usd',
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'maria@example.com',
+      name: 'Maria',
+      householdId: 'h-1',
+    });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      memberAttendances: [
+        { attending: 'YES', memberAgeSnapshot: 35 },
+        { attending: 'YES', memberAgeSnapshot: 40 },
+        { attending: 'YES', memberAgeSnapshot: 10 },
+      ],
+    });
+    mockPrisma.registration.findUnique.mockResolvedValue({
+      id: 'reg-paid',
+      status: 'PAID',
+      charges: [{ id: 'ch-old', amountCents: 2500, currency: 'usd', status: 'SUCCEEDED' }],
+      refunds: [
+        { amountCents: 1000, status: 'SUCCEEDED' },
+        { amountCents: 500, status: 'PENDING' }, // ignored — only SUCCEEDED counts
+      ],
+    });
+    mockPrisma.charge.create.mockResolvedValue({
+      id: 'ch-topup',
+      amountCents: 1500,
+      currency: 'usd',
+    });
+    mockPrisma.charge.update.mockResolvedValue({
+      id: 'ch-topup',
+      status: 'REQUIRES_PAYMENT_METHOD',
+    });
+
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    await caller.createPaymentIntent({ eventId: 'evt-1' });
+
+    // $30 expected ($10 × 3 attendees) − ($25 paid − $10 refunded) = $15.
+    expect(mockPrisma.charge.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ amountCents: 1500 }),
+      }),
+    );
+  });
+
+  it('falls back to the per-attendee fee when the user has no RSVP yet (checkout page)', async () => {
+    echoAmountFromCall();
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      name: 'Picnic',
+      status: 'PUBLISHED',
+      registrationFeeCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'maria@example.com',
+      name: 'Maria',
+      householdId: 'h-1',
+    });
+    mockPrisma.rSVP.findUnique.mockResolvedValue(null);
+    mockPrisma.registration.findUnique.mockResolvedValue(null);
+    mockPrisma.registration.create.mockResolvedValue({ id: 'reg-checkout', status: 'PENDING' });
+    mockPrisma.charge.create.mockResolvedValue({
+      id: 'ch-checkout',
+      amountCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.charge.update.mockResolvedValue({
+      id: 'ch-checkout',
+      status: 'REQUIRES_PAYMENT_METHOD',
+    });
+
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    await caller.createPaymentIntent({ eventId: 'evt-1' });
+
+    expect(mockPrisma.charge.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ amountCents: 2500 }),
+      }),
+    );
+  });
+
+  it('uses the roster fee (not the per-attendee fee) when an RSVP exists', async () => {
+    // 2 qualifying attendees × $5 = $10 (not the per-attendee $5).
+    echoAmountFromCall();
+    mockPrisma.event.findUnique.mockResolvedValue({
+      id: 'evt-1',
+      name: 'Picnic',
+      status: 'PUBLISHED',
+      registrationFeeCents: 500,
+      currency: 'usd',
+    });
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'maria@example.com',
+      name: 'Maria',
+      householdId: 'h-1',
+    });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({
+      memberAttendances: [
+        { attending: 'YES', memberAgeSnapshot: 35 },
+        { attending: 'YES', memberAgeSnapshot: 40 },
+      ],
+    });
+    mockPrisma.registration.findUnique.mockResolvedValue(null);
+    mockPrisma.registration.create.mockResolvedValue({ id: 'reg-roster', status: 'PENDING' });
+    mockPrisma.charge.create.mockResolvedValue({
+      id: 'ch-roster',
+      amountCents: 1000,
+      currency: 'usd',
+    });
+    mockPrisma.charge.update.mockResolvedValue({
+      id: 'ch-roster',
+      status: 'REQUIRES_PAYMENT_METHOD',
+    });
+
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    await caller.createPaymentIntent({ eventId: 'evt-1' });
+
+    expect(mockPrisma.charge.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ amountCents: 1000 }),
+      }),
+    );
+  });
 });
 
 describe('payment.getMyRegistration', () => {
@@ -686,6 +929,73 @@ describe('payment.getMyRegistration', () => {
         status: 'PAID',
         amountCents: 2500,
         charges: expect.arrayContaining([expect.objectContaining({ status: 'SUCCEEDED' })]),
+      }),
+    );
+  });
+
+  // FPP-124: the bottom sheet derives the remaining balance from
+  // these sums. Only SUCCEEDED charges and SUCCEEDED refunds count;
+  // pending / failed / canceled rows are excluded so the UI does not
+  // show "Amount due: $0" when a charge is still in flight.
+  it('sums SUCCEEDED charges minus SUCCEEDED refunds into amountPaidCents / netPaidCents', async () => {
+    mockPrisma.registration.findUnique.mockResolvedValue({
+      id: 'reg-mixed',
+      status: 'PENDING',
+      amountCents: 2500,
+      refundedCents: 500,
+      currency: 'usd',
+      receiptSentAt: null,
+      createdAt: new Date('2026-07-01T00:00:00Z'),
+      updatedAt: new Date('2026-07-01T00:00:00Z'),
+      charges: [
+        {
+          id: 'ch-good',
+          status: 'SUCCEEDED',
+          amountCents: 2000,
+          receiptUrl: null,
+          createdAt: new Date(),
+        },
+        {
+          id: 'ch-failed',
+          status: 'FAILED',
+          amountCents: 2500,
+          receiptUrl: null,
+          createdAt: new Date(),
+        },
+        {
+          id: 'ch-pending',
+          status: 'REQUIRES_PAYMENT_METHOD',
+          amountCents: 2500,
+          receiptUrl: null,
+          createdAt: new Date(),
+        },
+      ],
+      refunds: [
+        {
+          id: 'rf-good',
+          amountCents: 500,
+          status: 'SUCCEEDED',
+          reason: null,
+          createdAt: new Date(),
+        },
+        {
+          id: 'rf-pending',
+          amountCents: 200,
+          status: 'PENDING',
+          reason: null,
+          createdAt: new Date(),
+        },
+      ],
+    });
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    const result = await caller.getMyRegistration({ eventId: 'evt-1' });
+    expect(result).toEqual(
+      expect.objectContaining({
+        amountPaidCents: 2000,
+        amountRefundedCents: 500,
+        netPaidCents: 1500,
       }),
     );
   });

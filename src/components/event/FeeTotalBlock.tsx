@@ -55,10 +55,10 @@ export function buildPerAttendeeTooltip({
 }
 
 /**
- * Confirmation-screen fee total block. Renders the snapshot total
- * from `Registration.amountCents` in `Event.currency` and a tooltip
- * that explains the per-attendee fee rule. Returns null when
- * `amountCents` is 0 so free events show nothing.
+ * Confirmation-screen fee total block. Renders the registration fee
+ * (current total from event config + roster) in `Event.currency`
+ * with a tooltip that explains the per-attendee fee rule. Returns
+ * null when `amountCents` is 0 so free events show nothing.
  *
  * Server-safe: no `'use client'`. The tooltip uses the native
  * `title` attribute so it works without JS.
@@ -84,6 +84,7 @@ export function FeeTotalBlock({
     <div
       className="bg-sunlight/20 ring-sunlight/40 rounded-sm px-4 py-3 text-sm ring-1"
       title={tooltip}
+      data-testid="confirmation-fee-total"
     >
       <p className="text-foreground flex items-center gap-2 font-semibold">
         <span>Registration fee total</span>
@@ -98,7 +99,7 @@ export function FeeTotalBlock({
       </p>
       <p className="text-foreground mt-1 text-2xl font-semibold">{formatted}</p>
       <p className="text-muted-foreground mt-1 text-xs">
-        Snapshot at RSVP time. Changes to the event fee do not retroactively update this amount.
+        Live total for your current roster. Adjust your attendance on the event page to update.
       </p>
     </div>
   );

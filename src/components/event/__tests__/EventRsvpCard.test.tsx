@@ -208,7 +208,7 @@ describe('EventRsvpCard', () => {
           }}
         />,
       );
-      expect(screen.getByText(/registration fee: \$50\.00/i)).toBeInTheDocument();
+      expect(screen.getByText(/first-charge total: \$50\.00/i)).toBeInTheDocument();
     });
 
     it('uses the snapshotted currency for the formatted fee', () => {
@@ -232,7 +232,7 @@ describe('EventRsvpCard', () => {
           existingRsvp={{ ...confirmedRsvp, registrationFeeCents: 1000 }}
         />,
       );
-      expect(screen.getByText(/registration fee: \$10\.00/i)).toBeInTheDocument();
+      expect(screen.getByText(/first-charge total: \$10\.00/i)).toBeInTheDocument();
     });
 
     it('does not show the fee line on the DECLINED card even with a snapshot', () => {
