@@ -146,6 +146,16 @@ spec:
                 secretKeyRef:
                   name: nextjs-secrets
                   key: posthog-host
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: aws-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: aws-secret-access-key
           envFrom:
             - configMapRef:
                 name: nextjs-env
