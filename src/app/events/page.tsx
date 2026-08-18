@@ -27,6 +27,7 @@ export default async function EventsPage() {
         date: true,
         location: true,
         description: true,
+        featuredImageUrl: true,
         mapImageUrl: true,
         rsvpDeadline: true,
         status: true,
@@ -44,6 +45,7 @@ export default async function EventsPage() {
         date: true,
         location: true,
         description: true,
+        featuredImageUrl: true,
         mapImageUrl: true,
         rsvpDeadline: true,
         status: true,
@@ -103,7 +105,14 @@ export default async function EventsPage() {
                         className="group bg-card shadow-card ring-border/60 hover-lift block overflow-hidden rounded-sm ring-1 transition-all duration-300"
                       >
                         <div className="bg-sage/15 relative aspect-[5/3] overflow-hidden">
-                          {event.mapImageUrl ? (
+                          {event.featuredImageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={event.featuredImageUrl}
+                              alt={event.name}
+                              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
+                          ) : event.mapImageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={event.mapImageUrl}
@@ -111,9 +120,12 @@ export default async function EventsPage() {
                               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                           ) : (
-                            <div className="from-sunlight/40 via-sage/20 to-terracotta/15 flex h-full w-full items-center justify-center bg-gradient-to-br">
-                              <span className="text-5xl">🌳</span>
-                            </div>
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src="/lake-banner.jpg"
+                              alt=""
+                              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
                           )}
                           <div className="bg-card/90 text-foreground shadow-soft absolute top-4 left-4 rounded-sm px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
                             {eventDate.toLocaleDateString('en-US', {
@@ -185,7 +197,14 @@ export default async function EventsPage() {
                         className="group bg-card shadow-card ring-border/60 hover-lift block overflow-hidden rounded-sm opacity-80 ring-1 transition-all duration-300 hover:opacity-100"
                       >
                         <div className="bg-muted relative aspect-[5/3] overflow-hidden">
-                          {event.mapImageUrl ? (
+                          {event.featuredImageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={event.featuredImageUrl}
+                              alt={event.name}
+                              className="h-full w-full object-cover grayscale transition-transform duration-700 group-hover:scale-105 group-hover:grayscale-0"
+                            />
+                          ) : event.mapImageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={event.mapImageUrl}
@@ -193,9 +212,12 @@ export default async function EventsPage() {
                               className="h-full w-full object-cover grayscale transition-transform duration-700 group-hover:scale-105 group-hover:grayscale-0"
                             />
                           ) : (
-                            <div className="from-sunlight/30 via-sage/15 to-terracotta/10 flex h-full w-full items-center justify-center bg-gradient-to-br">
-                              <span className="text-5xl">🌳</span>
-                            </div>
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src="/lake-banner.jpg"
+                              alt=""
+                              className="h-full w-full object-cover grayscale transition-transform duration-700 group-hover:scale-105 group-hover:grayscale-0"
+                            />
                           )}
                           <div className="bg-foreground/80 text-background absolute top-4 left-4 rounded-sm px-3 py-1 text-xs font-semibold backdrop-blur-sm">
                             Past
