@@ -89,4 +89,59 @@ describe('EventSectionTabs (FPP-154)', () => {
     expect(screen.queryByText('Gallery')).not.toBeInTheDocument();
     expect(screen.queryByTestId('event-anchor-gallery')).not.toBeInTheDocument();
   });
+
+  // FPP-151: Who's coming section shows up only when at least one
+  // household is in the publicAttendees prop. Empty/missing prop
+  // means early-lifecycle events stay quiet.
+  it('renders a "Who\'s coming" section when publicAttendees is non-empty', () => {
+    render(
+      <EventSectionTabs
+        eventId="event-123"
+        headerPanel={<div>Header Content</div>}
+        itineraryItems={[]}
+        additionalInfo="Some additional info"
+        publicAttendees={[{ householdName: 'The Garcia Family', attendingFirstNames: ['Maria'] }]}
+        eventName="Test Event"
+      />,
+    );
+
+    expect(screen.getByRole('region', { name: /who.s coming/i })).toBeInTheDocument();
+    expect(document.getElementById('event-section-attendees')).not.toBeNull();
+    expect(screen.getByTestId('event-anchor-attendees')).toHaveAttribute(
+      'href',
+      '#event-section-attendees',
+    );
+    expect(screen.getByText('The Garcia Family')).toBeInTheDocument();
+  });
+
+  it('hides the "Who\'s coming" section when publicAttendees is empty', () => {
+    render(
+      <EventSectionTabs
+        eventId="event-123"
+        headerPanel={<div>Header Content</div>}
+        itineraryItems={[]}
+        additionalInfo="Some additional info"
+        publicAttendees={[]}
+        eventName="Test Event"
+      />,
+    );
+
+    expect(screen.queryByRole('region', { name: /who.s coming/i })).not.toBeInTheDocument();
+    expect(document.getElementById('event-section-attendees')).toBeNull();
+    expect(screen.queryByTestId('event-anchor-attendees')).not.toBeInTheDocument();
+  });
+
+  it('hides the "Who\'s coming" section when publicAttendees is omitted', () => {
+    render(
+      <EventSectionTabs
+        eventId="event-123"
+        headerPanel={<div>Header Content</div>}
+        itineraryItems={[]}
+        additionalInfo="Some additional info"
+        eventName="Test Event"
+      />,
+    );
+
+    expect(document.getElementById('event-section-attendees')).toBeNull();
+  });
 });

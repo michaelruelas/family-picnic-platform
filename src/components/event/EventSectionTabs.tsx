@@ -4,7 +4,19 @@ import { ReactNode, Suspense, useMemo } from 'react';
 import { EventAnchorNav, type AnchorNavItem } from './EventAnchorNav';
 import { EventItinerarySection, type ItineraryItem } from './EventItinerarySection';
 import { EventAdditionalInfoSection } from './EventAdditionalInfoSection';
+import { PublicAttendeeList } from './PublicAttendeeList';
 import { type PublicEventAttachment } from './EventDownloadsSection';
+
+/**
+ * FPP-151: public-safe household-grouped attendance list. The
+ * `attendingFirstNames` array contains only the *first* token of each
+ * member's stored name (e.g. "Maria Garcia" -> "Maria") so the public
+ * surface never exposes full names or contact info.
+ */
+export interface PublicAttendee {
+  householdName: string;
+  attendingFirstNames: string[];
+}
 
 interface EventSectionTabsProps {
   eventId: string;
@@ -14,6 +26,13 @@ interface EventSectionTabsProps {
   additionalInfo: string | null;
   /** FPP-137: PDF attachments rendered inside the Additional Info section. */
   attachments?: PublicEventAttachment[];
+  /**
+   * FPP-151: Who's coming list. When provided and non-empty, a
+   * dedicated "Who's coming" section surfaces between Itinerary
+   * and Additional Info. Omit (or pass an empty array) to hide
+   * the section entirely so early-lifecycle events stay quiet.
+   */
+  publicAttendees?: PublicAttendee[];
   eventName: string;
   /**
    * Caller's user id and role. Reserved for future scroll-spy
@@ -53,9 +72,14 @@ function EventSectionTabsContent({
   itineraryItems,
   additionalInfo,
   attachments,
+  publicAttendees,
 }: EventSectionTabsProps) {
-  const sections = useMemo<Array<{ key: string; label: string; panel: ReactNode }>>(
-    () => [
+  const sections = useMemo<Array<{ key: string; label: string; panel: ReactNode }>>(() => {
+    // FPP-151: surface the "Who's coming" section only when at
+    // least one household has confirmed attendance. Inserted
+    // between Itinerary and Additional Info so the discoverable
+    // order reads "what is it → when → who's in → notes".
+    const base: Array<{ key: string; label: string; panel: ReactNode }> = [
       {
         key: 'header',
         label: 'Overview',
@@ -66,14 +90,21 @@ function EventSectionTabsContent({
         label: 'Itinerary',
         panel: <EventItinerarySection items={itineraryItems} />,
       },
-      {
-        key: 'additional-info',
-        label: 'Additional Info',
-        panel: <EventAdditionalInfoSection body={additionalInfo} attachments={attachments ?? []} />,
-      },
-    ],
-    [headerPanel, itineraryItems, additionalInfo, attachments],
-  );
+    ];
+    if (publicAttendees && publicAttendees.length > 0) {
+      base.push({
+        key: 'attendees',
+        label: "Who's coming",
+        panel: <PublicAttendeeList attendees={publicAttendees} />,
+      });
+    }
+    base.push({
+      key: 'additional-info',
+      label: 'Additional Info',
+      panel: <EventAdditionalInfoSection body={additionalInfo} attachments={attachments ?? []} />,
+    });
+    return base;
+  }, [headerPanel, itineraryItems, additionalInfo, attachments, publicAttendees]);
 
   const anchorItems: AnchorNavItem[] = sections.map((s) => ({
     key: s.key,
@@ -112,6 +143,7 @@ function EventSectionTabsFallback({
   itineraryItems,
   additionalInfo,
   attachments,
+  publicAttendees,
 }: EventSectionTabsProps) {
   return (
     <div className="space-y-12">
@@ -119,6 +151,11 @@ function EventSectionTabsFallback({
       <section aria-label="Itinerary">
         <EventItinerarySection items={itineraryItems} />
       </section>
+      {publicAttendees && publicAttendees.length > 0 && (
+        <section aria-label="Who's coming">
+          <PublicAttendeeList attendees={publicAttendees} />
+        </section>
+      )}
       <section aria-label="Additional Info">
         <EventAdditionalInfoSection body={additionalInfo} attachments={attachments ?? []} />
       </section>

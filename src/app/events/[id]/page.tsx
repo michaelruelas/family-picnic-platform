@@ -8,6 +8,7 @@ import { BreatheSection } from '~/components/ui/BreatheSection';
 import { EventSectionTabs } from '~/components/event/EventSectionTabs';
 import { EventHeaderSection } from '~/components/event/EventHeaderSection';
 import { formatItineraryTime } from '~/lib/itinerary-time';
+import { extractFirstName } from '~/lib/first-name';
 import type { RSVPStatus } from '~/lib/generated/enums';
 import { AdminPermission } from '~/lib/generated/enums';
 
@@ -111,7 +112,7 @@ export default async function EventDetailPage({ params }: Props) {
   const now = new Date();
   const isPast = eventDate < now;
 
-  const [confirmedHeadcount, userRsvp, userRole, hosts] = await Promise.all([
+  const [confirmedHeadcount, userRsvp, userRole, hosts, publicAttendeesRsvps] = await Promise.all([
     prisma.rSVP
       .aggregate({
         where: { eventId: id, status: 'CONFIRMED' },
@@ -173,6 +174,41 @@ export default async function EventDetailPage({ params }: Props) {
           email: row.user.email,
           phoneNumber: row.user.phoneNumber,
         })),
+      ),
+    // FPP-151: Who's Coming. Public-safe shape — household name +
+    // first names of members with `attending = YES`. No emails,
+    // no user ids, no decline message; the host's own RSVP is
+    // already covered by the user-side EventRsvpCard so we do not
+    // need to special-case the caller. Sorted by household name
+    // so the surface list is deterministic across renders.
+    prisma.rSVP
+      .findMany({
+        where: { eventId: id, status: 'CONFIRMED' },
+        select: {
+          user: {
+            select: {
+              household: { select: { name: true } },
+            },
+          },
+          memberAttendances: {
+            where: { attending: 'YES' },
+            select: { memberNameSnapshot: true },
+          },
+        },
+      })
+      .then((rsvps) =>
+        rsvps
+          .map((rsvp) => ({
+            householdName: rsvp.user.household?.name ?? 'Family',
+            // Per the ticket: first name of each member. The
+            // extractor trims, splits on whitespace, and falls
+            // back to the full snapshot for single-name inputs.
+            attendingFirstNames: rsvp.memberAttendances
+              .map((ma) => extractFirstName(ma.memberNameSnapshot))
+              .filter((name) => name.length > 0),
+          }))
+          .filter((group) => group.attendingFirstNames.length > 0)
+          .sort((a, b) => a.householdName.localeCompare(b.householdName)),
       ),
   ]);
 
@@ -332,6 +368,10 @@ export default async function EventDetailPage({ params }: Props) {
             filename: a.filename,
             sizeBytes: a.sizeBytes,
           }))}
+          // FPP-151: pre-shaped by the parallel Prisma query above.
+          // The tabs component hides the section entirely when the
+          // list is empty so we don't need to gate it here.
+          publicAttendees={publicAttendeesRsvps}
           eventName={event.name}
           userId={userId}
           userRole={userRole ?? null}
