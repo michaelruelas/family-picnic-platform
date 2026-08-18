@@ -346,16 +346,25 @@ async function main() {
     },
   });
 
-  // FPP-89: a second, non-expired invitation so the Playwright
-  // e2e suite can drive the wizard happy path without depending
-  // on Date.now() relative to the static 2026-08-01 deadline.
-  // The original token above exercises the "Invitation expired"
-  // pre-flight page; this one exercises Step 0 onwards.
+  // FPP-89: a second event + invitation so the Playwright e2e suite
+  // can drive the wizard happy path without depending on Date.now()
+  // relative to the static 2026-08-01 deadline.  A separate event is
+  // needed because Invitation has @@unique([eventId, householdId]).
+  const e2eEvent = await prisma.event.create({
+    data: {
+      name: 'E2E Test Picnic',
+      description: 'Auto-created by seed for Playwright e2e tests.',
+      date: new Date('2026-09-01T11:00:00Z'),
+      location: 'Test Park',
+      rsvpDeadline: new Date('2026-12-31T23:59:59Z'),
+      status: 'PUBLISHED',
+    },
+  });
   await prisma.invitation.upsert({
     where: { token: 'seed-invitation-token-patels-fresh' },
     update: {},
     create: {
-      eventId: event.id,
+      eventId: e2eEvent.id,
       householdId: patelHousehold.id,
       invitedByUserId: admin.id,
       status: 'PENDING',
