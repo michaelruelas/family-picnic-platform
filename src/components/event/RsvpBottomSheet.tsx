@@ -1144,11 +1144,7 @@ export function RsvpBottomSheet({
             disabled={isSubmitting || yesCount === 0 || hasInvalidNames}
             className="bg-terracotta shadow-soft press hover:bg-terracotta/90 mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all disabled:opacity-50"
           >
-            {isSubmitting
-              ? 'Saving...'
-              : isFull
-                ? `Join waitlist for ${yesCount}`
-                : `Confirm ${yesCount} ${yesCount === 1 ? 'guest' : 'guests'}`}
+            {isSubmitting ? 'Saving...' : 'Save'}
           </button>
 
           <button
@@ -1162,7 +1158,17 @@ export function RsvpBottomSheet({
       ) : (
         <div data-testid="rsvp-potluck-tab">
           {canEditPotluck ? (
-            <PotluckEditor eventId={eventId} hasRsvp isRsvpConfirmed />
+            <>
+              <PotluckEditor eventId={eventId} hasRsvp isRsvpConfirmed />
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-terracotta shadow-soft press hover:bg-terracotta/90 mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all"
+                data-testid="rsvp-potluck-done"
+              >
+                Done
+              </button>
+            </>
           ) : (
             <div className="py-6 text-center">
               <div className="text-4xl">🍽️</div>

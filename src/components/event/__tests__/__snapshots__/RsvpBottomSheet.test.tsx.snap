@@ -303,7 +303,7 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
         <button
           class="bg-terracotta shadow-soft press hover:bg-terracotta/90 mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all disabled:opacity-50"
         >
-          Confirm 2 guests
+          Save
         </button>
         <button
           class="text-muted-foreground hover:text-destructive mt-3 w-full rounded-sm px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
@@ -614,7 +614,7 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
         <button
           class="bg-terracotta shadow-soft press hover:bg-terracotta/90 mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all disabled:opacity-50"
         >
-          Confirm 2 guests
+          Save
         </button>
         <button
           class="text-muted-foreground hover:text-destructive mt-3 w-full rounded-sm px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
