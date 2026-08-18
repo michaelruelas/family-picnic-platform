@@ -44,6 +44,14 @@ vi.mock('../PotluckEditor', () => ({
   default: () => <div data-testid="mock-potluck-editor">Potluck editor</div>,
 }));
 
+vi.mock('~/components/payment/PaymentBlock', () => ({
+  default: (props: { eventId: string }) => (
+    <div data-testid="mock-payment-block" data-event-id={props.eventId}>
+      Payment block
+    </div>
+  ),
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh, push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
@@ -402,6 +410,38 @@ describe('RsvpBottomSheet per-member attendance', () => {
         />,
       );
       expect(screen.getByText(/registration fee: €20\.00/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('embedded fee / Pay Later (FPP-123)', () => {
+    it('renders the PaymentBlock on the Potluck tab after a paid confirm', async () => {
+      setRosterReady();
+      render(
+        <RsvpBottomSheet
+          {...baseProps}
+          registrationFeeConfig={{ amountCents: 1000, minAge: 0, currency: 'usd' }}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-payment-block')).toBeInTheDocument();
+        expect(screen.getByTestId('mock-payment-block')).toHaveAttribute('data-event-id', 'evt-1');
+      });
+    });
+
+    it('omits the PaymentBlock when the event is free', async () => {
+      setRosterReady();
+      render(
+        <RsvpBottomSheet
+          {...baseProps}
+          registrationFeeConfig={{ amountCents: 0, minAge: 0, currency: 'usd' }}
+        />,
+      );
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-potluck-editor')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('mock-payment-block')).not.toBeInTheDocument();
     });
   });
 
