@@ -710,7 +710,7 @@ export const rsvpRouter = router({
       for (const signup of existingRsvp?.potluckSignups || []) {
         await tx.potluckSlot.update({
           where: { id: signup.slotId },
-          data: { currentSignups: { decrement: signup.servings } },
+          data: { currentSignups: { decrement: 1 } },
         });
       }
 

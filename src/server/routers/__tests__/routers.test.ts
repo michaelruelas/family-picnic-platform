@@ -2195,7 +2195,7 @@ describe('rsvp.router', () => {
     expect(mockPrisma.potluckSlot.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'slot-1' },
-        data: { currentSignups: { decrement: 2 } },
+        data: { currentSignups: { decrement: 1 } },
       }),
     );
     expect(mockPrisma.potluckSignup.deleteMany).toHaveBeenCalledWith(
