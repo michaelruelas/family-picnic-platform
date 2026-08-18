@@ -148,7 +148,7 @@ export default async function EventPotluckPage({ params }: PageProps) {
               claim a slot.
             </p>
             <Link
-              href={`/events/${event.id}?rsvpOpen=1#dishes`}
+              href={`/events/${event.id}?rsvpOpen=1#potluck`}
               className="bg-foreground text-background press hover:bg-foreground/90 inline-flex items-center justify-center rounded-sm px-4 py-2 text-sm font-semibold transition-all"
               data-testid="potluck-edit-my-dishes"
             >

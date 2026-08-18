@@ -46,8 +46,8 @@ interface SlotListProps {
   /**
    * When true, hide all claim / edit / drop affordances. The
    * standalone /events/[id]/potluck page sets this so users reach
-   * the editor from the Dishes tab inside the RSVP sheet. The
-   * Dishes tab uses the editable default.
+   * the editor from the Potluck tab inside the RSVP sheet. The
+   * Potluck tab uses the editable default.
    */
   readOnly?: boolean;
 }

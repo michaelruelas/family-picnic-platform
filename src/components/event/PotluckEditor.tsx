@@ -11,10 +11,10 @@ interface PotluckEditorProps {
   isRsvpConfirmed: boolean;
   /**
    * When true, render only the read-only SlotList. Used by the
-   * Dishes tab on the event page before the user has confirmed
+   * Potluck tab on the event page before the user has confirmed
    * their RSVP. The full editor flow lives in the standalone
    * /events/[id]/potluck page (readOnly=true) and the RSVP
-   * sheet's Dishes tab (readOnly=false).
+   * sheet's Potluck tab (readOnly=false).
    */
   readOnly?: boolean;
 }

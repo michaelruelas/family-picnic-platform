@@ -137,7 +137,7 @@ export const potluckRouter = router({
 
   /**
    * Returns the event's slots in the EventSlot shape the client
-   * `SlotList` component consumes. Used by the Dishes tab inside
+   * `SlotList` component consumes. Used by the Potluck tab inside
    * the RSVP bottom sheet to mount the same UI as the standalone
    * /events/[id]/potluck page without going through the tRPC
    * `listSlots` route which returns the raw Prisma rows. Excludes

@@ -56,11 +56,11 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           <button
             aria-selected="false"
             class="text-muted-foreground hover:text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-medium transition-all"
-            data-testid="rsvp-tab-dishes"
+            data-testid="rsvp-tab-potluck"
             role="tab"
             type="button"
           >
-            Dishes
+            Potluck
           </button>
         </div>
         <div
@@ -372,11 +372,11 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
           <button
             aria-selected="false"
             class="text-muted-foreground hover:text-foreground flex-1 rounded-sm px-4 py-2 text-sm font-medium transition-all"
-            data-testid="rsvp-tab-dishes"
+            data-testid="rsvp-tab-potluck"
             role="tab"
             type="button"
           >
-            Dishes
+            Potluck
           </button>
         </div>
         <div

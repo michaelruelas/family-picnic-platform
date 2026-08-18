@@ -82,7 +82,7 @@ export function EventRsvpCard({
   // mobile stacked section); the hidden copy is `display:none`.
   // offsetParent is null for hidden elements, so only the visible
   // instance auto-opens the RSVP sheet — prevents duplicate modals
-  // when landing on /events/[id]?rsvpOpen=1#dishes.
+  // when landing on /events/[id]?rsvpOpen=1#potluck.
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (shouldAutoOpen) {
