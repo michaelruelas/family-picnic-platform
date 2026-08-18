@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
+const mockRouterRefresh = vi.fn();
+const mockUseRouter = vi.fn(() => ({ refresh: mockRouterRefresh }));
+
+vi.mock('next/navigation', () => ({
+  useRouter: mockUseRouter,
+}));
+
 function mockQueryResult(overrides: Record<string, unknown> = {}) {
   return {
     data: null,
@@ -106,6 +113,7 @@ vi.mock('~/lib/trpc-client', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockRouterRefresh.mockClear();
   for (const namespace of Object.values(mockQueries)) {
     for (const query of Object.values(namespace)) {
       if (typeof query === 'function') query.mockReturnValue(mockQueryResult());
@@ -334,6 +342,55 @@ describe('useRsvpMutation', () => {
         onSuccess: expect.any(Function),
       }),
     );
+  });
+
+  // The event page is a server component that reads the caller's
+  // RSVP via Prisma. Invalidating tRPC cache alone leaves the
+  // server-rendered card stuck on the pre-RSVP state, so the
+  // mutations must call router.refresh() to re-fetch the route.
+  it('refreshes the route after a successful confirm', async () => {
+    mockQueries.rsvp.confirm.useMutation.mockClear();
+    const { useRsvpMutation } = await import('~/hooks/useRsvp');
+    renderHook(() => useRsvpMutation());
+    const opts = (
+      mockQueries.rsvp.confirm.useMutation.mock.calls[0] as unknown as
+        | Array<{ onSuccess: (data: unknown, variables: { eventId: string }) => Promise<void> }>
+        | undefined
+    )?.[0];
+    expect(opts).toBeDefined();
+    await opts!.onSuccess({}, { eventId: 'evt-1' });
+    expect(mockRouterRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes the route after a successful decline', async () => {
+    mockQueries.rsvp.decline.useMutation.mockClear();
+    const { useRsvpMutation } = await import('~/hooks/useRsvp');
+    renderHook(() => useRsvpMutation());
+    const opts = (
+      mockQueries.rsvp.decline.useMutation.mock.calls[0] as unknown as
+        | Array<{ onSuccess: (data: unknown, variables: { eventId: string }) => Promise<void> }>
+        | undefined
+    )?.[0];
+    expect(opts).toBeDefined();
+    await opts!.onSuccess({}, { eventId: 'evt-1' });
+    expect(mockRouterRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('still invalidates the trpc cache after confirm', async () => {
+    mockQueries.rsvp.confirm.useMutation.mockClear();
+    const { useRsvpMutation } = await import('~/hooks/useRsvp');
+    renderHook(() => useRsvpMutation());
+    const opts = (
+      mockQueries.rsvp.confirm.useMutation.mock.calls[0] as unknown as
+        | Array<{ onSuccess: (data: unknown, variables: { eventId: string }) => Promise<void> }>
+        | undefined
+    )?.[0];
+    const lastUtils = mockUseUtils.mock.results.at(-1)?.value;
+    expect(lastUtils).toBeDefined();
+    await opts!.onSuccess({}, { eventId: 'evt-1' });
+    expect(lastUtils!.rsvp.getMyRsvp.invalidate).toHaveBeenCalled();
+    expect(lastUtils!.rsvp.getHeadcount.invalidate).toHaveBeenCalled();
+    expect(lastUtils!.rsvp.getRsvpFormState.invalidate).toHaveBeenCalled();
   });
 });
 
