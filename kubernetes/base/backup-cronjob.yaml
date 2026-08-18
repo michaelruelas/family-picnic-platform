@@ -31,11 +31,28 @@ data:
 
     WORK_DIR="/backup"
 
+    # Use `aws s3api create-bucket` (idempotent: returns Location on
+    # success, BucketAlreadyExists on conflict) so we don't need a
+    # second container with the seaweedfs `weed` binary. `$AWS_ENDPOINT_URL`
+    # is wired through by the CronJob's env entry.
+    if [ -z "${AWS_ENDPOINT_URL:-}" ]; then
+      echo "ERROR: AWS_ENDPOINT_URL is not set" >&2
+      exit 1
+    fi
+
     echo "==> Ensuring bucket ${S3_BUCKET} exists (no-op if already present)"
-    weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888 >/tmp/weed.out 2>&1 <<EOF || true
-    s3.bucket.create -name ${S3_BUCKET}
-    EOF
-    cat /tmp/weed.out
+    if aws --endpoint-url "${AWS_ENDPOINT_URL}" s3api create-bucket \
+        --bucket "${S3_BUCKET}" >/tmp/cb.out 2>&1; then
+      echo "  created"
+    else
+      if grep -qi "BucketAlreadyOwnedByYou\|BucketAlreadyExists" /tmp/cb.out; then
+        echo "  already exists"
+      else
+        echo "  failed:"
+        cat /tmp/cb.out >&2
+        exit 1
+      fi
+    fi
 
     echo "==> Uploading dumps from ${WORK_DIR}"
     found=0
@@ -44,7 +61,7 @@ data:
       found=1
       key="${S3_PREFIX}/$(basename "$f")"
       echo "  Uploading $(basename "$f") -> s3://${S3_BUCKET}/${key}"
-      aws --endpoint-url "${S3_ENDPOINT}" s3 cp "$f" "s3://${S3_BUCKET}/${key}"
+      aws --endpoint-url "${AWS_ENDPOINT_URL}" s3 cp "$f" "s3://${S3_BUCKET}/${key}"
       rm -f "$f"
     done
     if [ "$found" -eq 0 ]; then
@@ -54,7 +71,7 @@ data:
 
     echo "==> Pruning backups past retention (${RETENTION})"
     list="${WORK_DIR}/list.txt"
-    aws --endpoint-url "${S3_ENDPOINT}" s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" > "$list"
+    aws --endpoint-url "${AWS_ENDPOINT_URL}" s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" > "$list"
     total=$(wc -l < "$list" | tr -d ' ')
     if [ "$total" -gt "$RETENTION" ]; then
       prune_count=$((total - RETENTION))
@@ -62,7 +79,7 @@ data:
       awk '{print $NF}' "$list" | sort | head -n "$prune_count" | while IFS= read -r key; do
         [ -n "$key" ] || continue
         echo "  Removing s3://${S3_BUCKET}/${key}"
-        aws --endpoint-url "${S3_ENDPOINT}" s3 rm "s3://${S3_BUCKET}/${key}" >/dev/null
+        aws --endpoint-url "${AWS_ENDPOINT_URL}" s3 rm "s3://${S3_BUCKET}/${key}" >/dev/null
       done
     else
       echo "  ${total} backup(s) within retention; nothing to prune"
@@ -170,7 +187,14 @@ spec:
                   mountPath: /var/run/postgresql
           containers:
             - name: upload
-              image: ghcr.io/seaweedfs/seaweedfs:v3.77
+              # The upload container only needs the AWS CLI; the
+              # seaweedfs image is now distroless in 4.42+, so we
+              # use amazon/aws-cli for a shell + aws-cli toolchain.
+              # The bucket is created via `aws s3api create-bucket`,
+              # so no separate weed init container is needed. Patches
+              # to this image (e.g. for an internal mirror) belong in
+              # the overlay.
+              image: docker.io/amazon/aws-cli:latest
               imagePullPolicy: IfNotPresent
               command:
                 - /bin/sh
@@ -186,6 +210,10 @@ spec:
                     secretKeyRef:
                       name: seaweedfs-credentials
                       key: secret-access-key
+                # AWS_ENDPOINT_URL is the in-cluster S3 gateway. Base
+                # defaults to the seaweedfs Service from
+                # kubernetes/base/seaweedfs.yaml; overlays override
+                # this when a different S3-compatible target is used.
                 - name: AWS_ENDPOINT_URL
                   value: http://seaweedfs:8333
                 - name: S3_BUCKET

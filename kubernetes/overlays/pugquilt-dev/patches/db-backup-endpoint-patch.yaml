@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: upload
+              env:
+                - name: AWS_ENDPOINT_URL
+                  value: http://seaweedfs-all-in-one:8333
