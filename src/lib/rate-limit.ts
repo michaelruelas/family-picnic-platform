@@ -27,6 +27,13 @@ const RECIPIENT_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const PDF_DOWNLOADS_PER_MINUTE = 10;
 export const PDF_DOWNLOAD_WINDOW_MS = 60 * 1000;
 
+// User-submitted feedback. Capped to keep the inbox usable and to
+// stop a runaway script from spamming info@foliapicnic.com. 3/hour is
+// generous for a real user reporting a few things; tight enough that
+// an attacker has to spread across many IPs to keep going.
+export const FEEDBACK_SUBMITS_PER_HOUR = 3;
+export const FEEDBACK_SUBMIT_WINDOW_MS = 60 * 60 * 1000;
+
 export async function checkAdminBroadcastRateLimit(adminUserId: string): Promise<RateLimitResult> {
   const oneHourAgo = new Date(Date.now() - BROADCAST_WINDOW_MS);
 
@@ -246,4 +253,27 @@ export function checkInMemoryIpRateLimit(
     remaining: Math.max(0, maxRequests - bucket.timestamps.length),
     resetAt,
   };
+}
+
+// Convenience wrappers so callers don't have to know the bucket shape.
+// `actor` is whichever identity is most trustworthy — signed-in user
+// id first, then IP. Both paths share the same backing map so a
+// determined attacker rotating identities still hits the limit.
+export function checkFeedbackSubmitRateLimit(
+  actor: string | null,
+  now: number = Date.now(),
+): RateLimitResult {
+  const key = actor ? `feedback:actor:${actor}` : 'feedback:anonymous';
+  return checkInMemoryIpRateLimit(
+    key,
+    FEEDBACK_SUBMITS_PER_HOUR,
+    FEEDBACK_SUBMIT_WINDOW_MS,
+    now,
+  );
+}
+
+export function resetFeedbackRateLimits(): void {
+  for (const key of ipBuckets.keys()) {
+    if (key.startsWith('feedback:')) ipBuckets.delete(key);
+  }
 }

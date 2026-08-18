@@ -1,5 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+
+// The Footer just embeds <FeedbackButton /> in the link slot; the
+// full behaviour of the modal + tRPC submit is covered by the
+// FeedbackButton + feedback router tests. Stubbing it here keeps the
+// Footer test focused on layout.
+vi.mock('../FeedbackButton', () => ({
+  default: ({ variant }: { variant?: string }) => (
+    <button type="button" data-testid={`feedback-${variant ?? 'link'}`}>
+      Send feedback
+    </button>
+  ),
+}));
+
 import Footer from '../Footer';
 import { APP_VERSION } from '~/lib/constants';
 
@@ -19,14 +32,14 @@ describe('Footer component', () => {
     expect(screen.getByText(new RegExp(`Build v${APP_VERSION}`))).toBeInTheDocument();
   });
 
-  it('renders navigation links to legal pages and contact', () => {
+  it('renders navigation links to legal pages and a feedback trigger', () => {
     render(<Footer />);
     const termsLink = screen.getByRole('link', { name: 'Terms of Service' });
     const privacyLink = screen.getByRole('link', { name: 'Privacy Policy' });
-    const contactLink = screen.getByRole('link', { name: 'Contact' });
+    const feedbackTrigger = screen.getByRole('button', { name: 'Send feedback' });
 
     expect(termsLink).toHaveAttribute('href', '/terms-of-service');
     expect(privacyLink).toHaveAttribute('href', '/privacy-policy');
-    expect(contactLink).toHaveAttribute('href', 'mailto:support@foliapicnic.com');
+    expect(feedbackTrigger).toBeInTheDocument();
   });
 });
