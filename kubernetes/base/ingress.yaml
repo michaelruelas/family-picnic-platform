@@ -27,3 +27,28 @@ spec:
                 name: nextjs
                 port:
                   number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: seaweedfs
+  labels:
+    app.kubernetes.io/name: seaweedfs
+spec:
+  ingressClassName: cloudflare-tunnel
+  rules:
+    - host: i.foliapicnic.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # The SeaweedFS chart (deployed by ArgoCD in
+                # homelab-infra) creates this Service when
+                # allInOne.enabled is true. The Ingress lives in
+                # this repo so the cluster-tunnel Ingress controller
+                # picks up the hostname.
+                name: seaweedfs-all-in-one
+                port:
+                  number: 8333

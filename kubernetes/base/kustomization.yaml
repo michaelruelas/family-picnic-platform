@@ -14,3 +14,4 @@ resources:
   - configmap.yaml
   - ingressroute.yaml
   - ingress.yaml
+  - backup-cronjob.yaml

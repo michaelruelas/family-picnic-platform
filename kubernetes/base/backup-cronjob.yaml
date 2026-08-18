@@ -1,0 +1,278 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: db-backup
+  labels:
+    app.kubernetes.io/name: db-backup
+    app.kubernetes.io/component: backup
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-backup-script
+  labels:
+    app.kubernetes.io/name: db-backup
+    app.kubernetes.io/component: backup
+data:
+  # SeaweedFS ships an Alpine image with the AWS CLI preinstalled (the
+  # seaweedfs-bootstrap Job relies on the same binary). The init
+  # container in the CronJob runs pg_dump and writes a .dump file into
+  # the shared /backup emptyDir; this script uploads it and prunes
+  # anything past the retention window.
+  upload.sh: |
+    #!/bin/sh
+    set -eu
+
+    : "${S3_BUCKET:=family-picnic-backups}"
+    : "${S3_ENDPOINT:=http://seaweedfs:8333}"
+    : "${S3_PREFIX:=db}"
+    : "${RETENTION:=30}"
+
+    WORK_DIR="/backup"
+
+    echo "==> Ensuring bucket ${S3_BUCKET} exists (no-op if already present)"
+    weed shell -master=seaweedfs:9333 -filer=seaweedfs:8888 >/tmp/weed.out 2>&1 <<EOF || true
+    s3.bucket.create -name ${S3_BUCKET}
+    EOF
+    cat /tmp/weed.out
+
+    echo "==> Uploading dumps from ${WORK_DIR}"
+    found=0
+    for f in "${WORK_DIR}"/*.dump; do
+      [ -e "$f" ] || continue
+      found=1
+      key="${S3_PREFIX}/$(basename "$f")"
+      echo "  Uploading $(basename "$f") -> s3://${S3_BUCKET}/${key}"
+      aws --endpoint-url "${S3_ENDPOINT}" s3 cp "$f" "s3://${S3_BUCKET}/${key}"
+      rm -f "$f"
+    done
+    if [ "$found" -eq 0 ]; then
+      echo "ERROR: no .dump file found in ${WORK_DIR}" >&2
+      exit 1
+    fi
+
+    echo "==> Pruning backups past retention (${RETENTION})"
+    list="${WORK_DIR}/list.txt"
+    aws --endpoint-url "${S3_ENDPOINT}" s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" > "$list"
+    total=$(wc -l < "$list" | tr -d ' ')
+    if [ "$total" -gt "$RETENTION" ]; then
+      prune_count=$((total - RETENTION))
+      echo "  Found ${total} backups, keeping ${RETENTION}, removing ${prune_count} oldest"
+      awk '{print $NF}' "$list" | sort | head -n "$prune_count" | while IFS= read -r key; do
+        [ -n "$key" ] || continue
+        echo "  Removing s3://${S3_BUCKET}/${key}"
+        aws --endpoint-url "${S3_ENDPOINT}" s3 rm "s3://${S3_BUCKET}/${key}" >/dev/null
+      done
+    else
+      echo "  ${total} backup(s) within retention; nothing to prune"
+    fi
+
+    echo "==> Done"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup
+  labels:
+    app.kubernetes.io/name: db-backup
+    app.kubernetes.io/component: backup
+spec:
+  # Daily at 02:00 UTC. Mirrors scripts/install-cron.sh so the local
+  # and in-cluster backup schedules stay aligned; production overlays
+  # can patch this to suit their maintenance window.
+  schedule: '0 2 * * *'
+  timeZone: 'Etc/UTC'
+  # Prevent overlapping runs if a previous backup is still in flight
+  # (e.g., a slow pg_dump on a large dataset).
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # Allow up to 10 minutes of clock drift before the controller gives
+  # up on a scheduled run.
+  startingDeadlineSeconds: 600
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: db-backup
+            app.kubernetes.io/component: backup
+        spec:
+          serviceAccountName: db-backup
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            # PostgreSQL image runs as 999 by default; matching at the
+            # pod level lets the seaweedfs upload container (running
+            # the aws CLI) also drop to a non-root UID. fsGroup keeps
+            # the shared /backup volume writable across both UIDs.
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          initContainers:
+            - name: dump
+              image: postgres:16.2-bookworm
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -eu
+                - -c
+                - |
+                  : $${PGHOST:=postgres}
+                  : $${PGPORT:=5432}
+                  : $${PGUSER:=postgres}
+                  : $${PGDATABASE:=familypicnic}
+
+                  TS=$$(date -u +%Y%m%d_%H%M%S)
+                  DUMP_FILE="/backup/$${PGDATABASE}_$${TS}.dump"
+                  echo "==> Dumping $${PGDATABASE} (host=$${PGHOST}:$${PGPORT}) to $${DUMP_FILE}"
+                  pg_dump \
+                    --clean --if-exists \
+                    --format=custom \
+                    --no-owner --no-acl \
+                    --host="$${PGHOST}" \
+                    --port="$${PGPORT}" \
+                    --username="$${PGUSER}" \
+                    --dbname="$${PGDATABASE}" \
+                    --file="$${DUMP_FILE}"
+                  chmod 0644 "$${DUMP_FILE}"
+                  echo "==> Wrote $${DUMP_FILE}"
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-credentials
+                      key: password
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: '1'
+                  memory: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+                - name: tmp
+                  mountPath: /tmp
+                - name: run
+                  mountPath: /var/run/postgresql
+          containers:
+            - name: upload
+              image: ghcr.io/seaweedfs/seaweedfs:v3.77
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - /etc/db-backup/upload.sh
+              env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: seaweedfs-credentials
+                      key: access-key-id
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: seaweedfs-credentials
+                      key: secret-access-key
+                - name: AWS_ENDPOINT_URL
+                  value: http://seaweedfs:8333
+                - name: S3_BUCKET
+                  value: family-picnic-backups
+                - name: S3_PREFIX
+                  value: db
+                - name: RETENTION
+                  value: '30'
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 250m
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+                - name: script
+                  mountPath: /etc/db-backup
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: backup
+              emptyDir:
+                # 500Mi comfortably fits a compressed dump of the
+                # dev pilot dataset (~50Mi today). Bump via patch for
+                # production if the database grows beyond this.
+                sizeLimit: 500Mi
+            - name: tmp
+              emptyDir:
+                sizeLimit: 50Mi
+            - name: run
+              emptyDir:
+                sizeLimit: 5Mi
+            - name: script
+              configMap:
+                name: db-backup-script
+                defaultMode: 0755
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-backup-netpol
+  labels:
+    app.kubernetes.io/name: db-backup
+    app.kubernetes.io/component: backup
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: db-backup
+      app.kubernetes.io/component: backup
+  policyTypes:
+    - Egress
+  egress:
+    # DNS resolution.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # PostgreSQL (read the source data).
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+              app.kubernetes.io/component: database
+      ports:
+        - protocol: TCP
+          port: 5432
+    # SeaweedFS S3 gateway (write the backup).
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: seaweedfs
+              app.kubernetes.io/component: object-storage
+      ports:
+        - protocol: TCP
+          port: 8333

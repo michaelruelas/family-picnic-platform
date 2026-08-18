@@ -185,6 +185,9 @@ spec:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: photoprism
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: db-backup
       ports:
         - protocol: TCP
           port: 5432
