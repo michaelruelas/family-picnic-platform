@@ -176,21 +176,17 @@ describe('FPP-58: RSVP names + decline path + phone capture', () => {
 
     it('renders the phone input + consent checkbox on the RSVP form', async () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
+      expect(content).toMatch(/data-testid="rsvp-contact-section"/);
       expect(content).toMatch(/data-testid="rsvp-phone-input"/);
       expect(content).toMatch(/data-testid="rsvp-sms-consent"/);
       expect(content).toMatch(/data-testid="rsvp-sms-consent-error"/);
-      // Collapsed by default — the user has to opt in by clicking
-      // the toggle so the phone field is not in the user's face.
-      expect(content).toMatch(/!showContact\s*\?\s*\(/);
+      expect(content).not.toMatch(/showContact/);
     });
 
     it('hydrates the contact section from the form-state snapshot', async () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
       expect(content).toMatch(/setPhone\(formState\.phoneNumber\s*\?\?\s*''\)/);
       expect(content).toMatch(/setSmsConsent\(Boolean\(formState\.smsConsent\)\)/);
-      // Open the section automatically when a phone is already on
-      // file, so a returning user does not have to click again.
-      expect(content).toMatch(/setShowContact\(Boolean\(formState\.phoneNumber\)\)/);
     });
 
     it('shares the contact validate + diff + PATCH helper across confirm and decline', async () => {

@@ -200,7 +200,6 @@ export function RsvpBottomSheet({
   // a returning user sees what is already on file.
   const [phone, setPhone] = useState('');
   const [smsConsent, setSmsConsent] = useState(false);
-  const [showContact, setShowContact] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // FPP-107: tracks which member row is currently editing their age inline.
@@ -240,7 +239,6 @@ export function RsvpBottomSheet({
       setShowAddMember(false);
       setPhone('');
       setSmsConsent(false);
-      setShowContact(false);
       setSubmitError(null);
       setEditingAgeIndex(null);
       setEditingAgeValue('');
@@ -287,7 +285,6 @@ export function RsvpBottomSheet({
     setHouseholdName(formState.householdName ?? '');
     setPhone(formState.phoneNumber ?? '');
     setSmsConsent(Boolean(formState.smsConsent));
-    setShowContact(Boolean(formState.phoneNumber));
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [isOpen, hydrated, formState]);
@@ -1079,63 +1076,44 @@ export function RsvpBottomSheet({
             </div>
           )}
 
-          {/*
-            FPP-34: optional phone + comms consent. Collapsed by
-            default; opening it pre-fills the user's saved phone so a
-            returning user sees what is on file. The consent checkbox
-            is required when a phone is present so we never store a
-            number without explicit opt-in. Both values flow through
-            `user.updatePreferences` on submit so the Twilio
-            sms-dispatch gate (QUB-8) can honor the consent.
-          */}
           <div className="mt-3" data-testid="rsvp-contact-section">
-            {!showContact ? (
-              <button
-                type="button"
-                onClick={() => setShowContact(true)}
-                className="text-terracotta decoration-terracotta/30 hover:decoration-terracotta text-sm font-semibold underline underline-offset-4 transition-colors"
-              >
-                {phone ? 'Edit SMS updates (phone saved)' : '+ Get SMS updates (optional)'}
-              </button>
-            ) : (
-              <div className="bg-secondary/40 mt-1 rounded-sm p-4">
-                <label htmlFor="rsvp-phone" className="text-foreground block text-sm font-medium">
-                  Mobile phone
-                </label>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  We&apos;ll text event updates only with your consent. Standard rates may apply.
-                </p>
+            <div className="bg-secondary/40 mt-1 rounded-sm p-4">
+              <label htmlFor="rsvp-phone" className="text-foreground block text-sm font-medium">
+                Mobile phone
+              </label>
+              <p className="text-muted-foreground mt-1 text-xs">
+                We&apos;ll text event updates only with your consent. Standard rates may apply.
+              </p>
+              <input
+                id="rsvp-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+15551234567"
+                data-testid="rsvp-phone-input"
+                className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+              />
+              <label className="text-foreground mt-4 flex items-start gap-2 text-sm">
                 <input
-                  id="rsvp-phone"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+15551234567"
-                  data-testid="rsvp-phone-input"
-                  className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
+                  type="checkbox"
+                  checked={smsConsent}
+                  onChange={(e) => setSmsConsent(e.target.checked)}
+                  data-testid="rsvp-sms-consent"
+                  className="border-border text-terracotta focus:ring-foreground/20 mt-0.5 h-4 w-4 rounded"
                 />
-                <label className="text-foreground mt-4 flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={smsConsent}
-                    onChange={(e) => setSmsConsent(e.target.checked)}
-                    data-testid="rsvp-sms-consent"
-                    className="border-border text-terracotta focus:ring-foreground/20 mt-0.5 h-4 w-4 rounded"
-                  />
-                  <span>
-                    I agree to receive SMS updates about events from this organizer. I can opt out
-                    at any time by clearing the phone number above.
-                  </span>
-                </label>
-                {phone.trim().length > 0 && !smsConsent && (
-                  <p className="text-destructive mt-2 text-xs" data-testid="rsvp-sms-consent-error">
-                    Check the consent box above to save this phone number.
-                  </p>
-                )}
-              </div>
-            )}
+                <span>
+                  I agree to receive SMS updates about events from this organizer. I can opt out at
+                  any time by clearing the phone number above.
+                </span>
+              </label>
+              {phone.trim().length > 0 && !smsConsent && (
+                <p className="text-destructive mt-2 text-xs" data-testid="rsvp-sms-consent-error">
+                  Check the consent box above to save this phone number.
+                </p>
+              )}
+            </div>
           </div>
 
           {submitError && (

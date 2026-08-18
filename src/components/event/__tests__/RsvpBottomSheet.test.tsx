@@ -129,6 +129,39 @@ describe('RsvpBottomSheet per-member attendance', () => {
     expect(screen.getByLabelText('Attendance for Ben')).toBeInTheDocument();
   });
 
+  it('always shows phone and SMS consent fields', () => {
+    setRosterReady();
+    render(<RsvpBottomSheet {...baseProps} />);
+    expect(screen.getByTestId('rsvp-phone-input')).toBeInTheDocument();
+    expect(screen.getByTestId('rsvp-sms-consent')).toBeInTheDocument();
+  });
+
+  it('hydrates saved phone and SMS consent values', async () => {
+    mockFormState.data = {
+      householdId: 'h-1',
+      householdName: 'The Garcia Family',
+      hasHousehold: true,
+      members,
+      rsvp: null,
+      phoneNumber: '+15551234567',
+      smsConsent: true,
+    };
+    render(<RsvpBottomSheet {...baseProps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('rsvp-phone-input')).toHaveValue('+15551234567');
+      expect(screen.getByTestId('rsvp-sms-consent')).toBeChecked();
+    });
+  });
+
+  it('shows consent validation when a phone is entered without consent', () => {
+    setRosterReady();
+    render(<RsvpBottomSheet {...baseProps} />);
+    fireEvent.change(screen.getByTestId('rsvp-phone-input'), {
+      target: { value: '+15551234567' },
+    });
+    expect(screen.getByTestId('rsvp-sms-consent-error')).toBeInTheDocument();
+  });
+
   it('defaults every member to Going', () => {
     setRosterReady();
     render(<RsvpBottomSheet {...baseProps} />);
