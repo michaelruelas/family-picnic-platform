@@ -314,11 +314,7 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$(resolve \
   "printf ''")
 [ -n "$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" ] && PRESERVED+=("nextjs/google-maps-api-key") || true
 
-SENDGRID_API_KEY=$(resolve \
-  "$(extract "$NEXTJS_JSON" sendgrid-api-key)" \
-  "$(env_dev_get SENDGRID_API_KEY)" \
-  "printf ''")
-[ -n "$SENDGRID_API_KEY" ] && PRESERVED+=("nextjs/sendgrid-api-key") || true
+TWILIO_FROM_EMAIL="dev@${APP_DOMAIN}"
 
 TWILIO_ACCOUNT_SID=$(resolve \
   "$(extract "$NEXTJS_JSON" twilio-account-sid)" \
@@ -457,9 +453,8 @@ TWILIO_ACCOUNT_SID="${TWILIO_ACCOUNT_SID}"
 TWILIO_AUTH_TOKEN="${TWILIO_AUTH_TOKEN}"
 TWILIO_PHONE_NUMBER="${TWILIO_PHONE_NUMBER}"
 
-# --- SendGrid (leave empty) ---
-SENDGRID_API_KEY="${SENDGRID_API_KEY}"
-SENDGRID_FROM_EMAIL="dev@${APP_DOMAIN}"
+# --- Twilio Email (sender address is non-secret; SID + Token are shared with the SMS block above) ---
+TWILIO_FROM_EMAIL="dev@${APP_DOMAIN}"
 
 # --- Stripe (leave empty until you paste real test keys) ---
 # STRIPE_*_KEY values are used at runtime by the Next.js app; STRIPE_API_KEY
@@ -513,7 +508,6 @@ EOF
   [ -n "$AUTH_FACEBOOK_SECRET" ] && nextjs_patch_args+=("auth-facebook-secret=\"$AUTH_FACEBOOK_SECRET\"")
   [ -n "$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" ] && nextjs_patch_args+=("google-maps-api-key=\"$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY\"")
   [ -n "$NEXTAUTH_SECRET" ] && nextjs_patch_args+=("nextauth-secret=\"$NEXTAUTH_SECRET\"")
-  [ -n "$SENDGRID_API_KEY" ] && nextjs_patch_args+=("sendgrid-api-key=\"$SENDGRID_API_KEY\"")
   [ -n "$TWILIO_ACCOUNT_SID" ] && nextjs_patch_args+=("twilio-account-sid=\"$TWILIO_ACCOUNT_SID\"")
   [ -n "$TWILIO_AUTH_TOKEN" ] && nextjs_patch_args+=("twilio-auth-token=\"$TWILIO_AUTH_TOKEN\"")
   [ -n "$TWILIO_PHONE_NUMBER" ] && nextjs_patch_args+=("twilio-phone-number=\"$TWILIO_PHONE_NUMBER\"")
@@ -570,7 +564,6 @@ bao_exec kv put "${SECRET_PREFIX}/nextjs" \
   auth-facebook-secret="$AUTH_FACEBOOK_SECRET" \
   google-maps-api-key="$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" \
   nextauth-secret="$NEXTAUTH_SECRET" \
-  sendgrid-api-key="$SENDGRID_API_KEY" \
   twilio-account-sid="$TWILIO_ACCOUNT_SID" \
   twilio-auth-token="$TWILIO_AUTH_TOKEN" \
   twilio-phone-number="$TWILIO_PHONE_NUMBER" \
@@ -656,9 +649,8 @@ TWILIO_ACCOUNT_SID="${TWILIO_ACCOUNT_SID}"
 TWILIO_AUTH_TOKEN="${TWILIO_AUTH_TOKEN}"
 TWILIO_PHONE_NUMBER="${TWILIO_PHONE_NUMBER}"
 
-# --- SendGrid (leave empty) ---
-SENDGRID_API_KEY="${SENDGRID_API_KEY}"
-SENDGRID_FROM_EMAIL="dev@${APP_DOMAIN}"
+# --- Twilio Email (sender address is non-secret; SID + Token are shared with the SMS block above) ---
+TWILIO_FROM_EMAIL="dev@${APP_DOMAIN}"
 
 # --- Stripe (leave empty until you paste real test keys) ---
 # STRIPE_*_KEY values are used at runtime by the Next.js app; STRIPE_API_KEY

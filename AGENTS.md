@@ -280,7 +280,7 @@ src/
 │   ├── exif-stripper.ts # Client-side EXIF removal
 │   ├── photo-prism.ts  # PhotoPrism integration
 │   ├── twilio.ts       # Twilio SMS wrapper
-│   ├── sendgrid.ts     # SendGrid email wrapper
+│   ├── twilio-email.ts  # Twilio Comms API email wrapper
 │   ├── rate-limit.ts   # Rate limiting helpers
 │   ├── csv-parser.ts   # CSV parsing utilities
 │   ├── constants.ts    # Shared constants
@@ -361,19 +361,19 @@ Copy `.env.example` to `.env` and fill in:
 cp .env.example .env
 ```
 
-| Variable             | Description                                  | Required            |
-| -------------------- | -------------------------------------------- | ------------------- |
-| `DATABASE_URL`       | PostgreSQL connection string                 | Yes                 |
-| `NEXTAUTH_URL`       | App URL (http://localhost:3000 for dev)      | Yes                 |
-| `NEXTAUTH_SECRET`    | Random string for session encryption         | Yes                 |
-| `AUTH_GOOGLE_ID`     | Google OAuth client ID                       | Yes                 |
-| `AUTH_GOOGLE_SECRET` | Google OAuth client secret                   | Yes                 |
-| `TWILIO_*`           | Twilio SMS credentials                       | For SMS             |
-| `SENDGRID_*`         | SendGrid email credentials                   | For email           |
-| `S3_*`               | S3-compatible storage                        | For photo uploads   |
-| `STRIPE_*`           | Stripe Payment Element + webhook credentials | For paid events     |
-| `CRON_SECRET`        | Secret for authenticating cron job requests  | For scheduled tasks |
-| `RENOVATE_TOKEN`     | GitHub PAT used by the Renovate workflow     | For dep updates     |
+| Variable             | Description                                               | Required            |
+| -------------------- | --------------------------------------------------------- | ------------------- |
+| `DATABASE_URL`       | PostgreSQL connection string                              | Yes                 |
+| `NEXTAUTH_URL`       | App URL (http://localhost:3000 for dev)                   | Yes                 |
+| `NEXTAUTH_SECRET`    | Random string for session encryption                      | Yes                 |
+| `AUTH_GOOGLE_ID`     | Google OAuth client ID                                    | Yes                 |
+| `AUTH_GOOGLE_SECRET` | Google OAuth client secret                                | Yes                 |
+| `TWILIO_*`           | Twilio SMS credentials                                    | For SMS             |
+| `TWILIO_FROM_EMAIL`  | Twilio Email sender address (SID + Token shared with SMS) | For email           |
+| `S3_*`               | S3-compatible storage                                     | For photo uploads   |
+| `STRIPE_*`           | Stripe Payment Element + webhook credentials              | For paid events     |
+| `CRON_SECRET`        | Secret for authenticating cron job requests               | For scheduled tasks |
+| `RENOVATE_TOKEN`     | GitHub PAT used by the Renovate workflow                  | For dep updates     |
 
 ## Prisma
 

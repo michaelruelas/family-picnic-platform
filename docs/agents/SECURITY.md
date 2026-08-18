@@ -235,7 +235,7 @@ Set `TRUSTED_PROXY_IPS` to your edge proxy's egress IPs (e.g. the ALB's internal
 | Apple OAuth    | `AUTH_APPLE_*`            | User email, name  |
 | Facebook OAuth | `AUTH_FACEBOOK_ID/SECRET` | User email, name  |
 | Twilio         | `TWILIO_*`                | Send SMS only     |
-| SendGrid       | `SENDGRID_*`              | Send email only   |
+| Twilio Email   | `TWILIO_FROM_EMAIL`       | Sender address    |
 | S3             | `S3_*`                    | Read/write photos |
 | PhotoPrism     | `PHOTOPRISM_*`            | Photo processing  |
 

@@ -9,7 +9,7 @@ import {
   CommunicationLogKind,
   CommunicationPreference,
 } from '~/lib/generated/enums';
-import { sendEmail } from '~/lib/sendgrid';
+import { sendEmail } from '~/lib/twilio-email';
 import { sendSMS, isValidE164, isConfigured as twilioConfigured } from '~/lib/twilio';
 import { writeAuditLog } from '~/lib/audit';
 import { logger } from '~/lib/logger';
@@ -671,8 +671,8 @@ export async function deliverOne(log: DeliverLogRow): Promise<DeliverOutcome> {
     where: { id: log.id },
     data: {
       status: CommunicationStatus.FAILED,
-      errorCode: 'SENDGRID_ERROR',
-      errorMessage: result.error ?? 'SendGrid send failed',
+      errorCode: 'TWILIO_EMAIL_ERROR',
+      errorMessage: result.error ?? 'Twilio Email send failed',
     },
   });
   return { status: 'FAILED' };

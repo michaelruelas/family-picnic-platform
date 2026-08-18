@@ -8,7 +8,7 @@ const mockPrisma = vi.hoisted(() => ({
 vi.mock('~/lib/prisma', () => ({ prisma: mockPrisma }));
 
 const mockSendEmail = vi.hoisted(() => vi.fn());
-vi.mock('~/lib/sendgrid', () => ({
+vi.mock('~/lib/twilio-email', () => ({
   sendEmail: (...args: unknown[]) => mockSendEmail(...args),
 }));
 
@@ -164,13 +164,13 @@ describe('deliverOne (FPP-101)', () => {
     });
   });
 
-  describe('EMAIL SendGrid error', () => {
+  describe('EMAIL Twilio Email error', () => {
     it('marks the log FAILED with the error message and does not throw', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         email: 'maria@example.com',
         communicationPreference: 'EMAIL',
       });
-      mockSendEmail.mockResolvedValue({ success: false, error: 'SendGrid rejected' });
+      mockSendEmail.mockResolvedValue({ success: false, error: 'Twilio Email rejected' });
       const { deliverOne } = await import('../ow-workflows');
 
       const result = await deliverOne(emailLog);
@@ -180,13 +180,13 @@ describe('deliverOne (FPP-101)', () => {
         where: { id: 'log-1' },
         data: {
           status: 'FAILED',
-          errorCode: 'SENDGRID_ERROR',
-          errorMessage: 'SendGrid rejected',
+          errorCode: 'TWILIO_EMAIL_ERROR',
+          errorMessage: 'Twilio Email rejected',
         },
       });
     });
 
-    it('falls back to a generic message when SendGrid returns no error', async () => {
+    it('falls back to a generic message when Twilio Email returns no error', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         email: 'maria@example.com',
         communicationPreference: 'EMAIL',
@@ -201,15 +201,15 @@ describe('deliverOne (FPP-101)', () => {
         where: { id: 'log-1' },
         data: {
           status: 'FAILED',
-          errorCode: 'SENDGRID_ERROR',
-          errorMessage: 'SendGrid send failed',
+          errorCode: 'TWILIO_EMAIL_ERROR',
+          errorMessage: 'Twilio Email send failed',
         },
       });
     });
   });
 
   describe('EMAIL skip rules', () => {
-    it('SKIPS when communicationPreference === NONE and does not call SendGrid', async () => {
+    it('SKIPS when communicationPreference === NONE and does not call Twilio Email', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         email: 'maria@example.com',
         communicationPreference: 'NONE',
@@ -230,7 +230,7 @@ describe('deliverOne (FPP-101)', () => {
       });
     });
 
-    it('SKIPS when the recipient email is missing and does not call SendGrid', async () => {
+    it('SKIPS when the recipient email is missing and does not call Twilio Email', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         email: null,
         communicationPreference: 'EMAIL',

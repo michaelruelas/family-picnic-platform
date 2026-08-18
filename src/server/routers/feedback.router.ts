@@ -1,7 +1,7 @@
 import { router, procedure } from '~/lib/trpc';
 import { TRPCError } from '@trpc/server';
 import { feedbackSubmitSchema, FEEDBACK_CATEGORY_LABELS } from '~/lib/schemas/feedback';
-import { sendEmail, isConfigured as sendGridConfigured } from '~/lib/sendgrid';
+import { sendEmail, isConfigured as emailConfigured } from '~/lib/twilio-email';
 import { writeDomainAuditLog } from '~/lib/audit';
 import { extractClientIp, parseTrustedProxyIps } from '~/lib/client-ip';
 import { checkFeedbackSubmitRateLimit, rateLimitError } from '~/lib/rate-limit';
@@ -107,7 +107,7 @@ export const feedbackRouter = router({
       rateLimitError(limit, 'feedback submissions');
     }
 
-    if (!sendGridConfigured()) {
+    if (!emailConfigured()) {
       // Refuse rather than silently swallowing the message; the user
       // should know we couldn't deliver it.
       throw new TRPCError({

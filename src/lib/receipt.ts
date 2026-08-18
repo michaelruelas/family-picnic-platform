@@ -1,4 +1,4 @@
-import { sendEmail } from './sendgrid';
+import { sendEmail } from './twilio-email';
 import { formatAmount } from './currency';
 
 export type ReceiptInput = {
@@ -118,7 +118,7 @@ export type SendReceiptResult =
 /**
  * Sends a registration receipt to the user. Used by the Stripe webhook on
  * payment_intent.succeeded and by the admin "resend receipt" action. Safe
- * to call when SendGrid is not configured; the returned error is
+ * to call when Twilio Email is not configured; the returned error is
  * non-fatal so the webhook can still acknowledge the event.
  */
 export async function sendRegistrationReceipt(input: ReceiptInput): Promise<SendReceiptResult> {
@@ -132,5 +132,5 @@ export async function sendRegistrationReceipt(input: ReceiptInput): Promise<Send
   if (result.success) {
     return { success: true, ...(result.messageId ? { messageId: result.messageId } : {}) };
   }
-  return { success: false, error: result.error ?? 'SendGrid error' };
+  return { success: false, error: result.error ?? 'Twilio Email error' };
 }

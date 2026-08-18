@@ -98,7 +98,7 @@ and that no overlay has stripped them.
 ### "SMS/Email not sending"
 
 1. Verify Twilio credentials (`TWILIO_*` vars)
-2. Verify SendGrid credentials (`SENDGRID_*` vars)
+2. Verify Twilio Email credentials (`TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_FROM_EMAIL`)
 3. Check service is not in sandbox mode (Twilio)
 
 ## Getting Help

@@ -7,7 +7,7 @@ const prismaMock = vi.hoisted(() => ({
   feedbackMessage: { create: vi.fn() },
 }));
 
-const sendGridMock = vi.hoisted(() => ({
+const emailMock = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   isConfigured: vi.fn(() => true),
 }));
@@ -17,7 +17,7 @@ const auditMock = vi.hoisted(() => ({
 }));
 
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
-vi.mock('~/lib/sendgrid', () => sendGridMock);
+vi.mock('~/lib/twilio-email', () => emailMock);
 vi.mock('~/lib/audit', () => auditMock);
 
 // Make the in-memory rate limiter a no-op so tests stay independent.
@@ -65,8 +65,8 @@ const fakeHeaders = (entries: Record<string, string>) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  sendGridMock.isConfigured.mockReturnValue(true);
-  sendGridMock.sendEmail.mockResolvedValue({ success: true, messageId: 'msg-1' });
+  emailMock.isConfigured.mockReturnValue(true);
+  emailMock.sendEmail.mockResolvedValue({ success: true, messageId: 'msg-1' });
 });
 
 describe('feedback.submit', () => {
@@ -75,8 +75,8 @@ describe('feedback.submit', () => {
     const result = await caller.submit(baseInput);
     expect(result).toEqual({ success: true });
 
-    expect(sendGridMock.sendEmail).toHaveBeenCalledTimes(1);
-    const message = sendGridMock.sendEmail.mock.calls[0]?.[0];
+    expect(emailMock.sendEmail).toHaveBeenCalledTimes(1);
+    const message = emailMock.sendEmail.mock.calls[0]?.[0];
     expect(message).toBeDefined();
     expect(message?.to).toBe('info@foliapicnic.com');
     expect(message?.subject).toContain('Something is broken');
@@ -102,7 +102,7 @@ describe('feedback.submit', () => {
   it('requires an email when the caller is anonymous', async () => {
     const caller = anonymousCaller();
     await expect(caller.submit({ ...baseInput, email: '' })).rejects.toThrow(/share an email/i);
-    expect(sendGridMock.sendEmail).not.toHaveBeenCalled();
+    expect(emailMock.sendEmail).not.toHaveBeenCalled();
   });
 
   it('falls back to the provided name when no session name is available', async () => {
@@ -113,21 +113,21 @@ describe('feedback.submit', () => {
       name: '  Casey  ',
     });
 
-    const message = sendGridMock.sendEmail.mock.calls[0]?.[0];
+    const message = emailMock.sendEmail.mock.calls[0]?.[0];
     expect(message?.subject).toContain('Casey');
     expect(message?.html).toContain('Casey');
   });
 
-  it('refuses when SendGrid is not configured', async () => {
-    sendGridMock.isConfigured.mockReturnValue(false);
+  it('refuses when Twilio Email is not configured', async () => {
+    emailMock.isConfigured.mockReturnValue(false);
     const caller = signedInCaller();
 
     await expect(caller.submit(baseInput)).rejects.toThrow(/not configured/i);
     expect(auditMock.writeDomainAuditLog).not.toHaveBeenCalled();
   });
 
-  it('audits and surfaces an error when SendGrid returns a failure', async () => {
-    sendGridMock.sendEmail.mockResolvedValueOnce({
+  it('audits and surfaces an error when Twilio Email returns a failure', async () => {
+    emailMock.sendEmail.mockResolvedValueOnce({
       success: false,
       error: 'provider exploded',
     });

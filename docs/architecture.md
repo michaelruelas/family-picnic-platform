@@ -420,8 +420,8 @@ Admin initiates broadcast
 │  └──────┬──────┘     └─────────────┘     └─────────────┘        │
 │         │                                                       │
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐        │
-│  │  SendGrid   │◀───│  API Key    │────▶│ Transactional│        │
-│  │   Email     │     │ (SENDGRID) │     │ Email        │        │
+│  │ Twilio Email │◀──│  Basic Auth │────▶│ Transactional│        │
+│  │  (Comms)    │     │  (TWILIO_*) │     │ Email        │        │
 │  └──────┬──────┘     └─────────────┘     └─────────────┘        │
 │         │                                                       │
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐        │
@@ -451,9 +451,10 @@ const externalServices = {
     TWILIO_AUTH_TOKEN: string,
     TWILIO_PHONE_NUMBER: string,
   },
-  sendgrid: {
-    SENDGRID_API_KEY: string,
-    SENDGRID_FROM_EMAIL: string,
+  twilioEmail: {
+    TWILIO_ACCOUNT_SID: string,
+    TWILIO_AUTH_TOKEN: string,
+    TWILIO_FROM_EMAIL: string,
   },
   storage: {
     S3_ENDPOINT: string, // MinIO endpoint or R2 endpoint

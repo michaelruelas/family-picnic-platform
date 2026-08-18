@@ -602,12 +602,12 @@ describe('admin.resendReceipt', () => {
         event: { id: 'evt-1', name: 'E', date: new Date('2026-08-15T11:00:00Z') },
       },
     });
-    mockSendRegistrationReceipt.mockResolvedValue({ success: false, error: 'sendgrid down' });
+    mockSendRegistrationReceipt.mockResolvedValue({ success: false, error: 'twilio email down' });
     const { adminRouter } = await import('~/server/routers/admin.router');
     const { createCallerFactory } = await import('~/lib/trpc');
     const caller = createCallerFactory(adminRouter)({ session: adminSession });
     const result = await caller.resendReceipt({ chargeId: 'ch-1' });
-    expect(result).toEqual({ success: false, error: 'sendgrid down' });
+    expect(result).toEqual({ success: false, error: 'twilio email down' });
     expect(mockPrisma.charge.update).not.toHaveBeenCalled();
   });
 });

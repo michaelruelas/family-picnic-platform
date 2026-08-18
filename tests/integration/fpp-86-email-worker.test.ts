@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 
 // FPP-101: happy path through the deliverCommunications workflow.
-// We mock the prisma layer and SendGrid, then run the workflow's
+// We mock the prisma layer and Twilio Email, then run the workflow's
 // inner function with a no-op step runner so the test exercises the
 // same queue-read + deliver + status-update sequence the worker
 // runs in production.
@@ -21,7 +21,7 @@ const mockPrisma = vi.hoisted(() => ({
 vi.mock('~/lib/prisma', () => ({ prisma: mockPrisma }));
 
 const mockSendEmail = vi.hoisted(() => vi.fn());
-vi.mock('~/lib/sendgrid', () => ({
+vi.mock('~/lib/twilio-email', () => ({
   sendEmail: (...args: unknown[]) => mockSendEmail(...args),
 }));
 
@@ -113,7 +113,7 @@ beforeEach(() => {
 
 // No-op step runner. The openworkflow worker would persist each
 // step's output and retry on failure; the integration tests only
-// care about the orchestration and the prisma/sendgrid calls, so
+// care about the orchestration and the prisma/twilio-email calls, so
 // the inner function runs synchronously.
 const mockStep = {
   run: vi.fn(async (_opts: { name: string }, fn: () => unknown) => fn()),

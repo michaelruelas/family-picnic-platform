@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockSendEmail = vi.hoisted(() => vi.fn());
 
-vi.mock('../sendgrid', () => ({
+vi.mock('../twilio-email', () => ({
   sendEmail: (...args: unknown[]) => mockSendEmail(...args),
 }));
 
@@ -13,7 +13,7 @@ beforeEach(() => {
 });
 
 describe('sendRegistrationReceipt', () => {
-  it('returns success when SendGrid succeeds', async () => {
+  it('returns success when Twilio Email succeeds', async () => {
     mockSendEmail.mockResolvedValue({ success: true, messageId: 'msg-1' });
     const { sendRegistrationReceipt } = await import('../receipt');
     const result = await sendRegistrationReceipt({
@@ -88,8 +88,8 @@ describe('sendRegistrationReceipt', () => {
     expect(callArgs.text).toContain('https://example.com/events/evt-1');
   });
 
-  it('returns failure when SendGrid fails', async () => {
-    mockSendEmail.mockResolvedValue({ success: false, error: 'SendGrid rejected' });
+  it('returns failure when Twilio Email fails', async () => {
+    mockSendEmail.mockResolvedValue({ success: false, error: 'Twilio Email rejected' });
     const { sendRegistrationReceipt } = await import('../receipt');
     const result = await sendRegistrationReceipt({
       to: 'user@example.com',
@@ -103,11 +103,11 @@ describe('sendRegistrationReceipt', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toBe('SendGrid rejected');
+      expect(result.error).toBe('Twilio Email rejected');
     }
   });
 
-  it('returns a generic error when SendGrid returns no error message', async () => {
+  it('returns a generic error when Twilio Email returns no error message', async () => {
     mockSendEmail.mockResolvedValue({ success: false });
     const { sendRegistrationReceipt } = await import('../receipt');
     const result = await sendRegistrationReceipt({
@@ -122,7 +122,7 @@ describe('sendRegistrationReceipt', () => {
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toBe('SendGrid error');
+      expect(result.error).toBe('Twilio Email error');
     }
   });
 });

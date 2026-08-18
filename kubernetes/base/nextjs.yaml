@@ -101,11 +101,8 @@ spec:
                 secretKeyRef:
                   name: nextjs-secrets
                   key: nextauth-secret
-            - name: SENDGRID_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: nextjs-secrets
-                  key: sendgrid-api-key
+            - name: TWILIO_FROM_EMAIL
+              value: 'noreply@family-picnic.example.com'
             - name: TWILIO_ACCOUNT_SID
               valueFrom:
                 secretKeyRef:

@@ -451,7 +451,7 @@ describe('POST /api/stripe/webhook', () => {
       id: 'reg-7',
       status: 'PAID',
     });
-    mockSendRegistrationReceipt.mockResolvedValue({ success: false, error: 'sendgrid down' });
+    mockSendRegistrationReceipt.mockResolvedValue({ success: false, error: 'twilio email down' });
 
     const res = await POST(makeWebhookRequest('{"id":"evt_7"}'));
     expect(res.status).toBe(200);
