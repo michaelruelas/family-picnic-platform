@@ -1,0 +1,14 @@
+[test]
+# This project uses Vitest 4.x (run via "bun run test" or "npx vitest run").
+# Bun's native "bun test" runner does not support Vitest features like
+# jsdom, vi.hoisted(), and importOriginal in vi.mock() factories, causing
+# hundreds of false failures. Exclude all test files from native discovery.
+pathIgnorePatterns = [
+  "**/__tests__/**",
+  "**/*.test.ts",
+  "**/*.test.tsx",
+  "**/*.spec.ts",
+  "**/*.spec.tsx",
+  "tests/**",
+  "playwright-tests/**",
+]

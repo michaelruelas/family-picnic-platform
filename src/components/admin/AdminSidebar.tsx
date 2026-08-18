@@ -206,12 +206,12 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
           className="group flex items-center gap-2.5"
           onClick={onNavigate}
         >
-          <div className="shadow-soft h-10 w-10 overflow-hidden rounded-sm transition-transform group-hover:scale-105">
+          <div className="border-border bg-card shadow-soft flex h-10 w-10 items-center justify-center overflow-hidden rounded-sm border p-1 transition-transform group-hover:scale-105">
             <Image
               src="/folia-family-picnic-logo.png"
               alt="Folia Family Picnic logo"
-              width={500}
-              height={500}
+              width={32}
+              height={32}
               priority
               className="h-full w-full object-contain"
             />
@@ -220,7 +220,7 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
             <p className="font-display text-foreground text-base leading-none font-semibold tracking-tight">
               Admin
             </p>
-            <p className="text-muted-foreground mt-1 text-xs">The Family Picnic</p>
+            <p className="text-muted-foreground mt-1 text-xs">Folia Family Picnic</p>
           </div>
         </Link>
       </div>

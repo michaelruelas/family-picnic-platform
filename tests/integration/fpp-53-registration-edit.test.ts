@@ -63,7 +63,7 @@ describe('FPP-53 registration-cannot-be-edited close-out', () => {
         html,
       );
       expect(timeMatch).not.toBeNull();
-      expect(timeMatch?.[1]).toMatch(/Aug 4[\s,]+3:30 PM\s+UTC/);
+      expect(timeMatch?.[1]).toMatch(/Aug 4(?:[\s,]+| at )3:30 PM\s+UTC/);
       expect(html).not.toContain('undefined');
       expect(html).not.toMatch(/class="[^"]*  +/);
     });

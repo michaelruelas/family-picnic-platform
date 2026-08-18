@@ -1,16 +1,16 @@
 import type { Metadata, Viewport } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
+import { Alfa_Slab_One, Inter } from 'next/font/google';
 import './globals.css';
 import Providers from '~/components/Providers';
 import NavBarClient from '~/components/NavBarClient';
 import Footer from '~/components/Footer';
 import { themeColors, getThemeCss, getThemeScript } from '~/lib/theme';
 
-const fraunces = Fraunces({
+const alfaSlabOne = Alfa_Slab_One({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-display',
-  axes: ['SOFT', 'opsz'],
+  weight: '400',
 });
 
 const inter = Inter({
@@ -21,11 +21,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Folia Picnic — Fun, Food, and Memories',
+  title: 'Folia Family Picnic — Fun, Food, and Memories',
   description:
     'A private family engagement hub for our annual picnic — RSVP, potluck coordination, photo sharing, and family communication.',
   appleWebApp: {
-    title: 'Folia Picnic',
+    title: 'Folia Family Picnic',
   },
 };
 
@@ -35,7 +35,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${inter.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${alfaSlabOne.variable} ${inter.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <style
           id="dynamic-theme"

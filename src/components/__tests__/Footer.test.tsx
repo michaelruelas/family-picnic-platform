@@ -7,7 +7,7 @@ describe('Footer component', () => {
   it('renders footer with title and copyright', () => {
     render(<Footer />);
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
-    expect(screen.getByText('The Family Picnic')).toBeInTheDocument();
+    expect(screen.getByText('Folia Family Picnic')).toBeInTheDocument();
     const currentYear = new Date().getFullYear();
     expect(
       screen.getByText(new RegExp(`© ${currentYear} Folia Picnic\\. All rights reserved\\.`)),

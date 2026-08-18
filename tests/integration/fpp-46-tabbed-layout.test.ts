@@ -72,11 +72,11 @@ describe('FPP-46: event overview tabbed layout', () => {
       expect(content).toMatch(/params\.set\(['"]tab['"]/);
     });
 
-    it('mounts the four sections declared by FPP-46 (Header / Itinerary / Additional Info / Gallery)', async () => {
+    it('mounts the sections declared by EventTabs (Header / Itinerary / Additional Info) with Gallery removed per FPP-135', async () => {
       const content = await fs.readFile(eventTabsPath, 'utf-8');
       expect(content).toContain('<EventItinerarySection');
       expect(content).toContain('<EventAdditionalInfoSection');
-      expect(content).toContain('<EventGallerySection');
+      expect(content).not.toContain('<EventGallerySection');
       // The Header section is passed in as a pre-rendered panel so the
       // parent page can decide what data it receives.
       expect(content).toContain('headerPanel');
@@ -87,24 +87,6 @@ describe('FPP-46: event overview tabbed layout', () => {
       expect(content).toContain('searchParams');
       expect(content).toContain('resolveInitialTab');
       expect(content).toContain('initialTab=');
-    });
-
-    it('threads the viewer userId + role through to the Gallery panel', async () => {
-      // FPP-46 review fix #1: PhotoCard needs userId / userRole for
-      // reaction + delete affordances. The page must fetch userRole
-      // (it was dropped during the refactor) and pass both into the
-      // tabs orchestrator so the Gallery tab is interactive.
-      const tabsContent = await fs.readFile(eventTabsPath, 'utf-8');
-      expect(tabsContent).toMatch(/userId:\s*string\s*\|\s*null/);
-      expect(tabsContent).toMatch(/userRole:\s*string\s*\|\s*null/);
-      // The Gallery panel must NOT hardcode null for either field.
-      expect(tabsContent).not.toMatch(/userId=\{null\}/);
-      expect(tabsContent).not.toMatch(/userRole=\{null\}/);
-
-      const pageContent = await fs.readFile(eventPagePath, 'utf-8');
-      expect(pageContent).toMatch(/prisma\.user[\s\S]*?findUnique[\s\S]*?role:\s*true/);
-      expect(pageContent).toContain('userId={userId}');
-      expect(pageContent).toMatch(/userRole=\{userRole\s*\?\?\s*null\}/);
     });
 
     it('wraps the useSearchParams() consumer in a Suspense boundary', async () => {

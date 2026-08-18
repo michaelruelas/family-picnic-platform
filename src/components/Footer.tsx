@@ -9,7 +9,7 @@ export default function Footer() {
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 text-center sm:flex-row sm:text-left">
         <div className="flex flex-col gap-1">
           <p className="font-display text-foreground font-semibold tracking-tight">
-            The Family Picnic
+            Folia Family Picnic
           </p>
           <p className="text-xs">
             © {currentYear} Folia Picnic. All rights reserved. • Build v{APP_VERSION}
