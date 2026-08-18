@@ -3,6 +3,7 @@ import { render, waitFor } from '@testing-library/react';
 
 vi.mock('next-auth/react', () => ({
   SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+  useSession: () => ({ data: null, status: 'unauthenticated', update: () => undefined }),
 }));
 
 vi.mock('~/components/theme-provider', () => ({
@@ -23,6 +24,14 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('./TRPCProvider', () => ({
   default: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+vi.mock('./AnalyticsProvider', () => ({
+  default: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+vi.mock('./ui/Toast', () => ({
+  ToastProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock('./ui/OfflineBanner', () => ({

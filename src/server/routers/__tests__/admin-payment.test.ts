@@ -65,6 +65,12 @@ vi.mock('~/lib/auth', () => ({
 }));
 
 vi.mock('~/lib/generated/enums', () => ({
+  Role: {
+    SUPER_ADMIN: 'SUPER_ADMIN',
+    ADMIN: 'ADMIN',
+    ADULT: 'ADULT',
+    HOST: 'HOST',
+  },
   EventStatus: { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED' },
   RSVPStatus: { CONFIRMED: 'CONFIRMED', DECLINED: 'DECLINED' },
   InvitationStatus: { PENDING: 'PENDING', USED: 'USED' },

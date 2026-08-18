@@ -97,8 +97,8 @@ describe('FPP-46: event overview tabbed layout', () => {
       // <Suspense> with a fallback that renders every panel.
       const content = await fs.readFile(eventTabsPath, 'utf-8');
       expect(content).toContain('<Suspense');
-      expect(content).toContain('EventTabsContent');
-      expect(content).toContain('EventTabsFallback');
+      expect(content).toContain('EventSectionTabsContent');
+      expect(content).toContain('EventSectionTabsFallback');
     });
   });
 
