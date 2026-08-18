@@ -185,7 +185,7 @@ describe('FPP-58: RSVP names + decline path + phone capture', () => {
 
     it('hydrates the contact section from the form-state snapshot', async () => {
       const content = await fs.readFile(rsvpBottomSheetPath, 'utf-8');
-      expect(content).toMatch(/setPhone\(formState\.phoneNumber\s*\?\?\s*''\)/);
+      expect(content).toMatch(/phoneField\.reset\(formState\.phoneNumber\s*\?\?\s*''\)/);
       expect(content).toMatch(/setSmsConsent\(Boolean\(formState\.smsConsent\)\)/);
     });
 

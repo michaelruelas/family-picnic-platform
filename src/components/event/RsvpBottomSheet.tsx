@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import {
   useHouseholdMemberNameMutation,
   useHouseholdNameMutation,
@@ -10,6 +9,7 @@ import {
   useRsvpMutation,
   useUserProfileMutation,
 } from '~/hooks';
+import { trpc } from '~/lib/trpc-client';
 import { RsvpAttending } from '~/lib/generated/enums';
 import { attendingLabel } from '~/lib/schemas/rsvp-member-attendance';
 import { ATTENDEE_NAME_MAX, attendeeNameSchema } from '~/lib/schemas/attendee-name';
@@ -18,7 +18,8 @@ import { householdNameSchema, HOUSEHOLD_NAME_MAX } from '~/lib/schemas/household
 import { calculateFee, type FeeAttendee } from '~/lib/fee';
 import { formatAmount } from '~/lib/currency';
 import Modal from '~/components/ui/Modal';
-import PaymentBlock from '~/components/payment/PaymentBlock';
+import PaymentBlock, { type PaymentChoice } from '~/components/payment/PaymentBlock';
+import { usePhoneInput } from '~/hooks/usePhoneInput';
 import PotluckEditor from './PotluckEditor';
 import type { ExistingRsvp } from './types';
 
@@ -199,7 +200,12 @@ export function RsvpBottomSheet({
   // E.164 string the user types; the consent checkbox gates saving a
   // non-empty value. We hydrate both from the formState snapshot so
   // a returning user sees what is already on file.
-  const [phone, setPhone] = useState('');
+  //
+  // The hook re-formats the raw input as `+1 (xxx) xxx-xxxx` on
+  // every keystroke, so the user sees the canonical US shape while
+  // we hand the API a clean E.164 (`+15551234567`).
+  const phoneField = usePhoneInput('');
+  const phone = phoneField.e164;
   const [smsConsent, setSmsConsent] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -234,6 +240,27 @@ export function RsvpBottomSheet({
   // races with the confirm mutation cannot overwrite in-progress
   // edits.
   const [hydrated, setHydrated] = useState(false);
+  // FPP-123: local payment choice (sticky Pay later, inline Pay
+  // now form, or back-to-buttons). The Paid state is derived from
+  // `registration?.status === 'PAID'` so we do not have to mirror
+  // server truth into local state — that keeps the form in sync
+  // when the user reopens the sheet after paying on a previous
+  // visit, and avoids the cascading-render trap a `useEffect ->
+  // setState` sync would introduce.
+  const [paymentChoice, setPaymentChoice] = useState<'payLater' | 'payNow' | null>(null);
+  // FPP-123: pull the caller's existing registration so we can
+  // collapse the payment block into a "Paid" badge instead of
+  // re-prompting. Only fetch when the sheet is open and a fee
+  // applies — otherwise we are not going to render the block at
+  // all and the request is wasted bandwidth.
+  const registrationQuery = trpc.payment.getMyRegistration.useQuery(
+    { eventId },
+    {
+      enabled:
+        isOpen && registrationFeeConfig != null && (registrationFeeConfig?.amountCents ?? 0) > 0,
+    },
+  );
+  const registration = registrationQuery.data ?? null;
 
   useEffect(() => {
     if (!isOpen) {
@@ -243,7 +270,7 @@ export function RsvpBottomSheet({
       setDrafts([]);
       setNewMember({ name: '', age: '', saveToHousehold: true });
       setShowAddMember(false);
-      setPhone('');
+      phoneField.reset('');
       setSmsConsent(false);
       setSubmitError(null);
       setEditingAgeIndex(null);
@@ -254,6 +281,7 @@ export function RsvpBottomSheet({
       setActiveTab('attendance');
       setShowSuccess(false);
       setConfirmedInSession(false);
+      setPaymentChoice(null);
       /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [isOpen]);
@@ -290,7 +318,10 @@ export function RsvpBottomSheet({
     // their own. The required-name validation on save will catch
     // any blank value.
     setHouseholdName(formState.householdName ?? '');
-    setPhone(formState.phoneNumber ?? '');
+    // Seed the phone field from the server snapshot. The hook
+    // re-formats the E.164 (`+15551234567`) into the canonical
+    // `+1 (555) 123-4567` display on mount.
+    phoneField.reset(formState.phoneNumber ?? '');
     setSmsConsent(Boolean(formState.smsConsent));
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -342,6 +373,16 @@ export function RsvpBottomSheet({
   }, [drafts, registrationFeeConfig]);
   const showFeeLine = registrationFeeConfig !== null && feeBreakdown.amountCents > 0;
   const feeCurrency = registrationFeeConfig?.currency ?? 'usd';
+  // FPP-123: Save is gated on the payment choice when a fee
+  // applies. `'payLater'` covers the explicit deferral; `'paid'`
+  // is derived from the server snapshot so a user who paid on a
+  // previous visit (or completed the inline form moments ago) does
+  // not have to re-pick. While the inline form is mounting
+  // (`'payNow'`) we leave Save disabled so the user does not race
+  // the network with their submission.
+  const isPaid = registration?.status === 'PAID';
+  const paymentChosen = isPaid || paymentChoice === 'payLater';
+  const saveRequiresPayment = showFeeLine && !paymentChosen;
 
   const updateAttendance = (index: number, value: RsvpAttending) => {
     setDrafts((current) => current.map((d, i) => (i === index ? { ...d, attending: value } : d)));
@@ -1073,27 +1114,19 @@ export function RsvpBottomSheet({
           </p>
 
           {showFeeLine && (
-            <div
-              data-testid="rsvp-fee-line"
-              className="bg-sunlight/15 ring-sunlight/30 mt-3 rounded-sm px-4 py-3 text-sm ring-1"
-            >
-              <span className="text-foreground font-semibold">
-                Registration fee: {formatAmount(feeBreakdown.amountCents, feeCurrency)}
-              </span>
-              <span className="text-muted-foreground ml-2 text-xs">
-                ({feeBreakdown.qualifyingAttendees}{' '}
-                {feeBreakdown.qualifyingAttendees === 1 ? 'attendee' : 'attendees'} at{' '}
-                {formatAmount(
-                  registrationFeeConfig?.amountCents ?? 0,
-                  registrationFeeConfig?.currency ?? 'usd',
-                )}
-                )
-              </span>
+            <div data-testid="rsvp-fee-line" className="mt-3">
               <PaymentBlock
                 eventId={eventId}
+                eventName={eventName ?? 'this event'}
                 amountCents={feeBreakdown.amountCents}
                 currency={feeCurrency}
-                deferredHint={`Pay $${(feeBreakdown.amountCents / 100).toFixed(2)} now or settle up later — Save still works either if you choose.`}
+                breakdown={{
+                  qualifyingAttendees: feeBreakdown.qualifyingAttendees,
+                  perAttendeeCents: registrationFeeConfig?.amountCents ?? 0,
+                }}
+                registration={registration}
+                choice={paymentChoice}
+                onChoiceChange={setPaymentChoice}
               />
             </div>
           )}
@@ -1111,9 +1144,9 @@ export function RsvpBottomSheet({
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+15551234567"
+                value={phoneField.display}
+                onChange={phoneField.onChange}
+                placeholder="+1 (555) 123-4567"
                 data-testid="rsvp-phone-input"
                 className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-foreground mt-3 block w-full rounded-sm border px-4 py-3 text-base focus:shadow-[0_0_0_3px_rgba(43,45,66,0.08)] focus:outline-none"
               />
@@ -1144,18 +1177,9 @@ export function RsvpBottomSheet({
             </p>
           )}
 
-          <Link
-            href={`/events/${eventId}/potluck`}
-            onClick={onClose}
-            className="text-terracotta decoration-terracotta/30 hover:decoration-terracotta mt-3 block text-center text-sm font-semibold underline underline-offset-4"
-            data-testid="rsvp-form-potluck-link"
-          >
-            See who is bringing what →
-          </Link>
-
           <button
             onClick={handleConfirm}
-            disabled={isSubmitting || yesCount === 0 || hasInvalidNames}
+            disabled={isSubmitting || yesCount === 0 || hasInvalidNames || saveRequiresPayment}
             className="bg-terracotta shadow-soft press hover:bg-terracotta/90 mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all disabled:opacity-50"
             data-testid="rsvp-save-button"
           >
@@ -1176,15 +1200,25 @@ export function RsvpBottomSheet({
             <>
               <PotluckEditor eventId={eventId} hasRsvp isRsvpConfirmed />
               {showFeeLine && (
-                <PaymentBlock
-                  eventId={eventId}
-                  amountCents={feeBreakdown.amountCents}
-                  currency={feeCurrency}
-                  deferredHint={`You can pay ${formatAmount(
-                    feeBreakdown.amountCents,
-                    feeCurrency,
-                  )} for ${eventName ?? 'this event'} any time before the event.`}
-                />
+                <div className="mt-3" data-testid="rsvp-fee-line">
+                  <PaymentBlock
+                    eventId={eventId}
+                    eventName={eventName ?? 'this event'}
+                    amountCents={feeBreakdown.amountCents}
+                    currency={feeCurrency}
+                    breakdown={{
+                      qualifyingAttendees: feeBreakdown.qualifyingAttendees,
+                      perAttendeeCents: registrationFeeConfig?.amountCents ?? 0,
+                    }}
+                    registration={registration}
+                    choice={paymentChoice}
+                    onChoiceChange={setPaymentChoice}
+                    hint={`You can pay ${formatAmount(
+                      feeBreakdown.amountCents,
+                      feeCurrency,
+                    )} for ${eventName ?? 'this event'} any time before the event.`}
+                  />
+                </div>
               )}
               <button
                 type="button"

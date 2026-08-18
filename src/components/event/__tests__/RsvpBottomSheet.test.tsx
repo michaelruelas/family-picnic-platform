@@ -23,6 +23,16 @@ const mockFormState = {
   refetch: mockRefetchFormState,
 };
 
+// FPP-123: the bottom sheet reads the caller's existing registration
+// so a paid user does not get re-prompted. The test default is null
+// (no prior registration) — individual tests override when they want
+// to exercise the PAID branch.
+const mockRegistrationQuery = {
+  data: null as unknown,
+  isLoading: false,
+  error: null as Error | null,
+};
+
 vi.mock('~/hooks', () => ({
   useRsvpMutation: () => ({
     confirm: mockConfirm,
@@ -40,25 +50,70 @@ vi.mock('~/hooks', () => ({
   }),
 }));
 
+vi.mock('~/lib/trpc-client', () => ({
+  trpc: {
+    payment: {
+      getMyRegistration: {
+        useQuery: () => mockRegistrationQuery,
+      },
+    },
+  },
+}));
+
 vi.mock('../PotluckEditor', () => ({
   default: () => <div data-testid="mock-potluck-editor">Potluck editor</div>,
 }));
 
 vi.mock('~/components/payment/PaymentBlock', () => ({
-  default: (props: { eventId: string; onPayNow?: () => void; onPayLater?: () => void }) => (
-    <div data-testid="mock-payment-block" data-event-id={props.eventId}>
-      <button type="button" data-testid="mock-payment-pay-now" onClick={() => props.onPayNow?.()}>
-        Pay now
-      </button>
-      <button
-        type="button"
-        data-testid="mock-payment-pay-later"
-        onClick={() => props.onPayLater?.()}
-      >
-        Pay later
-      </button>
-    </div>
-  ),
+  default: (props: {
+    eventId: string;
+    amountCents: number;
+    currency: string;
+    breakdown?: { qualifyingAttendees: number; perAttendeeCents: number };
+    registration?: { status: string; amountCents: number; currency: string } | null;
+    choice?: string | null;
+    onChoiceChange?: (choice: string | null) => void;
+  }) => {
+    const formatAmount = (cents: number, currency: string) =>
+      new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency.toUpperCase(),
+      }).format(cents / 100);
+    return (
+      <div data-testid="mock-payment-block" data-event-id={props.eventId}>
+        <p data-testid="mock-payment-fee-line">
+          Registration fee: {formatAmount(props.amountCents, props.currency)}
+        </p>
+        {props.breakdown && (
+          <p data-testid="mock-payment-breakdown">
+            ({props.breakdown.qualifyingAttendees}{' '}
+            {props.breakdown.qualifyingAttendees === 1 ? 'attendee' : 'attendees'} at{' '}
+            {formatAmount(props.breakdown.perAttendeeCents, props.currency)})
+          </p>
+        )}
+        {props.registration?.status === 'PAID' ? (
+          <span data-testid="mock-payment-paid-badge">Paid</span>
+        ) : (
+          <>
+            <button
+              type="button"
+              data-testid="mock-payment-pay-now"
+              onClick={() => props.onChoiceChange?.('payNow')}
+            >
+              Pay now
+            </button>
+            <button
+              type="button"
+              data-testid="mock-payment-pay-later"
+              onClick={() => props.onChoiceChange?.('payLater')}
+            >
+              Pay later
+            </button>
+          </>
+        )}
+      </div>
+    );
+  },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -97,6 +152,9 @@ beforeEach(() => {
   mockFormState.data = null;
   mockFormState.isLoading = false;
   mockFormState.error = null;
+  mockRegistrationQuery.data = null;
+  mockRegistrationQuery.isLoading = false;
+  mockRegistrationQuery.error = null;
 });
 
 const baseProps = {
@@ -169,7 +227,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
     };
     render(<RsvpBottomSheet {...baseProps} />);
     await waitFor(() => {
-      expect(screen.getByTestId('rsvp-phone-input')).toHaveValue('+15551234567');
+      expect(screen.getByTestId('rsvp-phone-input')).toHaveValue('+1 (555) 123-4567');
       expect(screen.getByTestId('rsvp-sms-consent')).toBeChecked();
     });
   });
@@ -435,24 +493,17 @@ describe('RsvpBottomSheet per-member attendance', () => {
       expect(screen.getByTestId('mock-payment-block')).toHaveAttribute('data-event-id', 'evt-1');
     });
 
-    it('does not gate Save on the payment choice — Pay later is a secondary option', () => {
+    it('disables Save until the caller picks Pay later or Pay now (gates on payment choice)', () => {
       setRosterReady();
       render(<RsvpBottomSheet {...paidProps} />);
       const save = screen.getByTestId('rsvp-save-button');
+      expect(save).toBeDisabled();
+      // Pick Pay later — Save unlocks.
+      fireEvent.click(screen.getByTestId('mock-payment-pay-later'));
       expect(save).not.toBeDisabled();
     });
 
-    it('keeps the PaymentBlock on the Potluck tab after confirm so the user can re-pay', async () => {
-      setRosterReady();
-      render(<RsvpBottomSheet {...paidProps} />);
-      fireEvent.click(screen.getByTestId('rsvp-save-button'));
-      await waitFor(() => {
-        expect(screen.getByTestId('mock-payment-block')).toBeInTheDocument();
-        expect(screen.getByTestId('mock-potluck-editor')).toBeInTheDocument();
-      });
-    });
-
-    it('omits the PaymentBlock when the event is free', () => {
+    it('does not render a fee line when the event is free', () => {
       setRosterReady();
       render(
         <RsvpBottomSheet
@@ -461,6 +512,45 @@ describe('RsvpBottomSheet per-member attendance', () => {
         />,
       );
       expect(screen.queryByTestId('mock-payment-block')).not.toBeInTheDocument();
+    });
+
+    it('does not render a potluck cross-link from the Attendance tab', () => {
+      // FPP-123 review: the "See who is bringing what →" link used
+      // to live at the bottom of the Attendance tab. Removing it
+      // prevents users from leaving the sheet before settling the
+      // fee. The Potluck tab still surfaces dish management after
+      // confirmation.
+      setRosterReady();
+      render(<RsvpBottomSheet {...paidProps} />);
+      expect(screen.queryByTestId('rsvp-form-potluck-link')).not.toBeInTheDocument();
+    });
+
+    it('collapses the payment block into a paid badge when the registration is already PAID', async () => {
+      setRosterReady();
+      mockRegistrationQuery.data = {
+        status: 'PAID',
+        amountCents: 1000,
+        currency: 'usd',
+      };
+      render(<RsvpBottomSheet {...paidProps} />);
+      // The paid badge replaces the buttons — no re-prompt for money.
+      expect(screen.getByTestId('mock-payment-paid-badge')).toBeInTheDocument();
+      expect(screen.queryByTestId('mock-payment-pay-now')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('mock-payment-pay-later')).not.toBeInTheDocument();
+      // Save is enabled because the fee is already settled.
+      expect(screen.getByTestId('rsvp-save-button')).not.toBeDisabled();
+    });
+
+    it('keeps the PaymentBlock on the Potluck tab after confirm so the user can re-pay', async () => {
+      setRosterReady();
+      render(<RsvpBottomSheet {...paidProps} />);
+      // Pick a payment choice so Save is enabled.
+      fireEvent.click(screen.getByTestId('mock-payment-pay-later'));
+      fireEvent.click(screen.getByTestId('rsvp-save-button'));
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-payment-block')).toBeInTheDocument();
+        expect(screen.getByTestId('mock-potluck-editor')).toBeInTheDocument();
+      });
     });
   });
 
