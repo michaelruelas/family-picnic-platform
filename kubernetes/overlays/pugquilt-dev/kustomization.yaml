@@ -16,8 +16,8 @@ patches:
   - path: nextjs-patch.yaml
   - path: postgres-patch.yaml
   - path: photoprism-patch.yaml
-  - path: seaweedfs-patch.yaml
   - path: pvc-patch.yaml
+  - path: patches/postgres-netpol-patch.yaml
   - patch: |-
       - op: remove
         path: /spec/template/spec/topologySpreadConstraints

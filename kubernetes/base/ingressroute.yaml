@@ -31,20 +31,3 @@ spec:
         - name: photoprism
           port: 8080
   tls: {}
----
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: seaweedfs-route
-  labels:
-    app.kubernetes.io/name: seaweedfs
-spec:
-  entryPoints:
-    - websecure
-  routes:
-    - kind: Rule
-      match: Host(`i.foliapicnic.com`) && PathPrefix(`/`)
-      services:
-        - name: seaweedfs
-          port: 8333
-  tls: {}

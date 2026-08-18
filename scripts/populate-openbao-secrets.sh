@@ -244,6 +244,21 @@ else
   GENERATED+=("seaweedfs/bucket-name")
 fi
 
+# FPP-69: chart-managed `s3.existingConfigSecret` expects a Secret with
+# the `seaweedfs_s3_config` key holding the inline identity JSON. We
+# render it here from the access/secret keys so rotation is a single
+# edit in OpenBao. The chart then mounts the Secret and the cluster
+# never sees cleartext credentials.
+S3_CONFIG_JSON=$(resolve \
+  "$(extract "$SEAWEEDFS_JSON" s3-config-json)" \
+  "" \
+  "printf '{\"identities\":[{\"name\":\"family-picnic\",\"credentials\":[{\"accessKey\":\"%s\",\"secretKey\":\"%s\"}],\"actions\":[\"Admin\",\"Read\",\"Write\",\"List\",\"Tagging\"]}]}' \"$S3_ACCESS_KEY_ID\" \"$S3_SECRET_ACCESS_KEY\"")
+if [ -n "$(extract "$SEAWEEDFS_JSON" s3-config-json)" ]; then
+  PRESERVED+=("seaweedfs/s3-config-json")
+else
+  GENERATED+=("seaweedfs/s3-config-json")
+fi
+
 # External-service keys: never auto-generated.
 AUTH_GOOGLE_ID=$(resolve \
   "$(extract "$NEXTJS_JSON" auth-google-id)" \
@@ -393,6 +408,7 @@ PHOTOPRISM_ADMIN_PASS=$PHOTOPRISM_ADMIN_PASS
 S3_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID
 S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY
 S3_BUCKET_NAME=$S3_BUCKET_NAME
+S3_CONFIG_JSON='$S3_CONFIG_JSON'
 DATABASE_URL=$DATABASE_URL
 EOF
   chmod 600 "$LOCAL_OUTPUT"
@@ -521,7 +537,8 @@ EOF
   print_patch_cmd "${SECRET_PREFIX}/seaweedfs" \
     "access-key-id=\"$S3_ACCESS_KEY_ID\"" \
     "secret-access-key=\"$S3_SECRET_ACCESS_KEY\"" \
-    "bucket-name=\"$S3_BUCKET_NAME\""
+    "bucket-name=\"$S3_BUCKET_NAME\"" \
+    "s3-config-json=\"$S3_CONFIG_JSON\""
 
   echo ""
   echo "================================================================================"
@@ -574,6 +591,7 @@ bao_exec kv put "${SECRET_PREFIX}/seaweedfs" \
   access-key-id="$S3_ACCESS_KEY_ID" \
   secret-access-key="$S3_SECRET_ACCESS_KEY" \
   bucket-name="$S3_BUCKET_NAME" \
+  s3-config-json="$S3_CONFIG_JSON" \
   >/dev/null
 
 # --- save local copy ---------------------------------------------------------
