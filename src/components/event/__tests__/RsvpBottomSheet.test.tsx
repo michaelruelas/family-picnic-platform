@@ -188,7 +188,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
     render(<RsvpBottomSheet {...baseProps} />);
     fireEvent.change(screen.getByLabelText('Attendance for Alice'), { target: { value: 'NO' } });
     fireEvent.change(screen.getByLabelText('Attendance for Ben'), { target: { value: 'NO' } });
-    const submit = screen.getByRole('button', { name: /confirm 0 guests/i });
+    const submit = screen.getByRole('button', { name: /^save$/i });
     expect(submit).toBeDisabled();
   });
 
@@ -200,7 +200,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
     });
     fireEvent.change(screen.getByLabelText('Attendance for Alice'), { target: { value: 'YES' } });
     fireEvent.change(screen.getByLabelText('Attendance for Ben'), { target: { value: 'NO' } });
-    fireEvent.click(screen.getByRole('button', { name: /confirm 1 guest/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     await waitFor(() => {
       expect(mockConfirm.mutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -219,7 +219,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
   it('moves directly to the Potluck tab after confirmation', async () => {
     setRosterReady();
     render(<RsvpBottomSheet {...baseProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     await waitFor(() => {
       expect(screen.getByTestId('rsvp-tab-potluck')).toHaveAttribute('aria-selected', 'true');
       expect(screen.getByTestId('mock-potluck-editor')).toBeInTheDocument();
@@ -227,11 +227,21 @@ describe('RsvpBottomSheet per-member attendance', () => {
     });
   });
 
+  it('closes from the explicit Potluck completion action', async () => {
+    const onClose = vi.fn();
+    setRosterReady();
+    render(<RsvpBottomSheet {...baseProps} onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    const done = await screen.findByRole('button', { name: /^done$/i });
+    fireEvent.click(done);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps waitlisted RSVPs on the Attendance tab', async () => {
     mockConfirm.mutateAsync.mockResolvedValueOnce({ id: 'rsvp-1', isWaitlisted: true });
     setRosterReady();
     render(<RsvpBottomSheet {...baseProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     await waitFor(() => {
       expect(mockConfirm.mutateAsync).toHaveBeenCalled();
     });
@@ -259,7 +269,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
     fireEvent.change(guestNameInput, { target: { value: 'Cousin' } });
     fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
     expect(screen.getByLabelText('Attendance for Cousin')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /confirm 3 guests/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
     await waitFor(() => {
       expect(mockConfirm.mutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -435,7 +445,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       const { container } = render(<RsvpBottomSheet {...baseProps} />);
       const input = screen.getByLabelText(/household name/i) as HTMLInputElement;
       fireEvent.change(input, { target: { value: '   ' } });
-      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
       await waitFor(() => {
         expect(screen.getByText('Household name is required')).toBeInTheDocument();
@@ -452,7 +462,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       render(<RsvpBottomSheet {...baseProps} />);
       const input = screen.getByLabelText(/household name/i) as HTMLInputElement;
       fireEvent.change(input, { target: { value: 'The Garcia-Martinez Family' } });
-      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
       await waitFor(() => {
         expect(mockUpdateName.mutateAsync).toHaveBeenCalledWith({
@@ -478,7 +488,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       setRosterReady();
       render(<RsvpBottomSheet {...baseProps} />);
       // No edit; the user clicks confirm with the same name.
-      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
       await waitFor(() => {
         expect(mockUpdateName.mutateAsync).not.toHaveBeenCalled();
         expect(mockConfirm.mutateAsync).toHaveBeenCalledWith(
@@ -495,7 +505,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       render(<RsvpBottomSheet {...baseProps} />);
       const input = screen.getByLabelText(/household name/i) as HTMLInputElement;
       fireEvent.change(input, { target: { value: 'The Smith Family' } });
-      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
       await waitFor(() => {
         expect(screen.getByText('A household with this name already exists')).toBeInTheDocument();
@@ -519,7 +529,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       const input = screen.getByLabelText(/household name/i) as HTMLInputElement;
       expect(input.value).toBe('');
       fireEvent.change(input, { target: { value: 'The Garcia Family Picnic Crew' } });
-      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
       await waitFor(() => {
         expect(mockUpdateName.mutateAsync).toHaveBeenCalledWith({
@@ -560,7 +570,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /edit age/i })).toHaveTextContent('40 yrs');
       });
-      fireEvent.click(screen.getByRole('button', { name: /confirm 1 guest/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
@@ -603,7 +613,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       render(<RsvpBottomSheet {...baseProps} />);
       const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
       fireEvent.change(inputs[0]!, { target: { value: 'Alicia' } });
-      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
       await waitFor(() => {
         expect(mockUpdateMemberName.mutateAsync).toHaveBeenCalledWith({
@@ -626,7 +636,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
     it('skips the PATCH when no slot name changed', async () => {
       setRosterReady();
       render(<RsvpBottomSheet {...baseProps} />);
-      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
       await waitFor(() => {
         expect(mockUpdateMemberName.mutateAsync).not.toHaveBeenCalled();
         expect(mockConfirm.mutateAsync).toHaveBeenCalled();
@@ -638,7 +648,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       render(<RsvpBottomSheet {...baseProps} />);
       const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
       fireEvent.change(inputs[0]!, { target: { value: '   ' } });
-      const submit = screen.getByRole('button', { name: /confirm 2 guests/i });
+      const submit = screen.getByRole('button', { name: /^save$/i });
       expect(submit).toBeDisabled();
       expect(screen.getByTestId('rsvp-attendee-name-error').textContent).toMatch(
         /name is required/i,
@@ -757,7 +767,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
       fireEvent.change(inputs[0]!, { target: { value: 'Alicia' } });
       fireEvent.change(inputs[1]!, { target: { value: 'Benjamin' } });
-      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
       // Confirm was not called because the second rename failed.
       await waitFor(() => {
@@ -787,7 +797,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       const inputs = screen.getAllByTestId('rsvp-attendee-name') as HTMLInputElement[];
       fireEvent.change(inputs[0]!, { target: { value: 'Alicia' } });
       fireEvent.change(inputs[1]!, { target: { value: 'Alicia' } });
-      fireEvent.click(screen.getByRole('button', { name: /confirm 2 guests/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
       // The summary names both rows with their original names so
       // the user can tell which household members were renamed
@@ -811,7 +821,7 @@ describe('RsvpBottomSheet per-member attendance', () => {
       fireEvent.change(memberNameInput, { target: { value: 'Grandma' } });
       fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
       // Confirm with Grandma present (no age set on her).
-      fireEvent.click(screen.getByRole('button', { name: /confirm 3 guests/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
       await waitFor(() => {
         expect(
