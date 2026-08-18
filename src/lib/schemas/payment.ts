@@ -7,6 +7,12 @@ export const createPaymentIntentInputSchema = z.object({
 
 export type CreatePaymentIntentInput = z.infer<typeof createPaymentIntentInputSchema>;
 
+export const payLaterInputSchema = z.object({
+  eventId: z.string().min(1, 'Event ID is required'),
+});
+
+export type PayLaterInput = z.infer<typeof payLaterInputSchema>;
+
 export const paymentIntentResponseSchema = z.object({
   registrationId: z.string(),
   chargeId: z.string(),

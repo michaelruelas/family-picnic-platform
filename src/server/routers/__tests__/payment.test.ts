@@ -17,6 +17,7 @@ const mockPrisma = {
     create: vi.fn(),
     update: vi.fn(),
     findMany: vi.fn(),
+    updateMany: vi.fn(),
   },
   refund: { findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
   $transaction: vi.fn(),
@@ -486,6 +487,72 @@ describe('payment.getMyRegistration', () => {
         status: 'PAID',
         amountCents: 2500,
         charges: expect.arrayContaining([expect.objectContaining({ status: 'SUCCEEDED' })]),
+      }),
+    );
+  });
+});
+
+describe('payment.payLater', () => {
+  it('is a no-op when the user has no registration row', async () => {
+    mockPrisma.registration.findUnique.mockResolvedValue(null);
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    const result = await caller.payLater({ eventId: 'evt-1' });
+    expect(result).toEqual({ changed: false, status: 'PENDING' });
+    expect(mockPrisma.charge.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op when the registration has no fee', async () => {
+    mockPrisma.registration.findUnique.mockResolvedValue({
+      id: 'reg-1',
+      status: 'PENDING',
+      amountCents: 0,
+      currency: 'usd',
+    });
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    const result = await caller.payLater({ eventId: 'evt-1' });
+    expect(result.changed).toBe(false);
+    expect(mockPrisma.charge.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('leaves settled registrations alone', async () => {
+    mockPrisma.registration.findUnique.mockResolvedValue({
+      id: 'reg-1',
+      status: 'PAID',
+      amountCents: 2500,
+      currency: 'usd',
+    });
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    const result = await caller.payLater({ eventId: 'evt-1' });
+    expect(result).toEqual({ changed: false, status: 'PAID' });
+    expect(mockPrisma.charge.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('cancels active charges and keeps the registration PENDING', async () => {
+    mockPrisma.registration.findUnique.mockResolvedValue({
+      id: 'reg-1',
+      status: 'PENDING',
+      amountCents: 2500,
+      currency: 'usd',
+    });
+    mockPrisma.charge.updateMany.mockResolvedValue({ count: 1 });
+    const { paymentRouter } = await import('~/server/routers/payment.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(paymentRouter)({ session: userSession });
+    const result = await caller.payLater({ eventId: 'evt-1' });
+    expect(result).toEqual({ changed: true, status: 'PENDING' });
+    expect(mockPrisma.charge.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          registrationId: 'reg-1',
+          status: { in: expect.any(Array) },
+        }),
+        data: { status: 'CANCELED' },
       }),
     );
   });

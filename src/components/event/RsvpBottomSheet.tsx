@@ -18,6 +18,7 @@ import { householdNameSchema, HOUSEHOLD_NAME_MAX } from '~/lib/schemas/household
 import { calculateFee, type FeeAttendee } from '~/lib/fee';
 import { formatAmount } from '~/lib/currency';
 import Modal from '~/components/ui/Modal';
+import PaymentBlock from '~/components/payment/PaymentBlock';
 import PotluckEditor from './PotluckEditor';
 import type { ExistingRsvp } from './types';
 
@@ -1160,6 +1161,18 @@ export function RsvpBottomSheet({
           {canEditPotluck ? (
             <>
               <PotluckEditor eventId={eventId} hasRsvp isRsvpConfirmed />
+              {showFeeLine && (
+                <PaymentBlock
+                  eventId={eventId}
+                  eventName={eventName ?? ''}
+                  amountCents={feeBreakdown.amountCents}
+                  currency={feeCurrency}
+                  deferredHint={`You can pay ${formatAmount(
+                    feeBreakdown.amountCents,
+                    feeCurrency,
+                  )} for ${eventName ?? 'this event'} any time before the event.`}
+                />
+              )}
               <button
                 type="button"
                 onClick={onClose}

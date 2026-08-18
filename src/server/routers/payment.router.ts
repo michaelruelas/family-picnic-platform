@@ -14,7 +14,7 @@ import {
   getPublishableKey,
   isConfigured as stripeConfigured,
 } from '~/lib/stripe';
-import { createPaymentIntentInputSchema } from '~/lib/schemas/payment';
+import { createPaymentIntentInputSchema, payLaterInputSchema } from '~/lib/schemas/payment';
 import { withSerializableRetry } from '~/lib/transaction-retry';
 import { calculateFeeFromEvent, type FeeAttendee } from '~/lib/fee';
 import type { PrismaClient } from '~/lib/generated/client';
@@ -114,6 +114,57 @@ export const paymentRouter = router({
           createdAt: r.createdAt,
         })),
       };
+    }),
+
+  /**
+   * Marks the caller's registration for an event as deferred to
+   * "pay later". Idempotent: re-running it on an already-pending
+   * registration is a no-op (returns the existing record). The status
+   * stays PENDING so the existing checkout, admin refund, and forfeit
+   * flows continue to handle the row consistently. Only the caller's
+   * own registration is touched, and only when the event still
+   * expects a fee — a zero amount means there is nothing to collect
+   * and we no-op.
+   */
+  payLater: protectedProcedure
+    .input(payLaterInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const registration = await prisma.registration.findUnique({
+        where: {
+          eventId_userId: { eventId: input.eventId, userId: ctx.session.user.id },
+        },
+        select: {
+          id: true,
+          status: true,
+          amountCents: true,
+          currency: true,
+        },
+      });
+
+      if (!registration || registration.amountCents <= 0) {
+        return { changed: false, status: registration?.status ?? RegistrationStatus.PENDING };
+      }
+
+      if (
+        registration.status === RegistrationStatus.PAID ||
+        registration.status === RegistrationStatus.REFUNDED ||
+        registration.status === RegistrationStatus.FORFEITED ||
+        registration.status === RegistrationStatus.CANCELLED
+      ) {
+        return { changed: false, status: registration.status };
+      }
+
+      // Cancel any in-flight charges so a later Pay Now attempt builds a
+      // fresh intent; the registration stays PENDING.
+      await prisma.charge.updateMany({
+        where: {
+          registrationId: registration.id,
+          status: { in: ACTIVE_CHARGE_STATUSES },
+        },
+        data: { status: ChargeStatus.CANCELED },
+      });
+
+      return { changed: true, status: RegistrationStatus.PENDING };
     }),
 });
 
