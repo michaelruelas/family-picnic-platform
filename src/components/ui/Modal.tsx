@@ -70,6 +70,36 @@ export default function Modal({
     }
   }, []);
 
+  // FPP-118: mobile bottom sheets should also dismiss when the user
+  // taps the scrim above the sheet, not only when they hit the X. The
+  // backdrop already wires onClick to onClose (line 111), but a touch
+  // that begins inside the scrolling content can otherwise prevent the
+  // backdrop from receiving the gesture. Tracking here ensures
+  // touchend always invokes onClose, while keeping click behavior
+  // unchanged for mouse users.
+  const touchStartRef = useRef<{ y: number } | null>(null);
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    touchStartRef.current = { y: touch.clientY };
+  }, []);
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      const start = touchStartRef.current;
+      touchStartRef.current = null;
+      if (!start) return;
+      const end = e.changedTouches[0]?.clientY ?? start.y;
+      // Swipe-down threshold (≥96px) so a tap on a sticky tab or
+      // checkbox does not accidentally close the sheet. Only bottom
+      // sheets opt into the swipe; centered modals ignore it so
+      // dragging inside their content does not dismiss them.
+      if (variant === 'bottom-sheet' && end - start.y >= 96) {
+        onCloseRef.current();
+      }
+    },
+    [variant],
+  );
+
   useEffect(() => {
     if (isOpen) {
       previousActiveElement.current = document.activeElement;
@@ -118,6 +148,8 @@ export default function Modal({
             ? 'animate-breathe-in rounded-t-[2rem] md:rounded-[2rem]'
             : 'shadow-pop animate-breathe-in rounded-sm'
         } bg-card p-7 pt-9 pb-10 ${className} `}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         {...props}
       >
         {isBottomSheet && (

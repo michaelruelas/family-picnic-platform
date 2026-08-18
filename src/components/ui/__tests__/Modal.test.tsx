@@ -170,7 +170,10 @@ describe('Modal focus trap', () => {
 });
 
 describe('Modal variants', () => {
-  const onClose = vi.fn();
+  let onClose: () => void;
+  beforeEach(() => {
+    onClose = vi.fn();
+  });
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -182,6 +185,56 @@ describe('Modal variants', () => {
       </Modal>,
     );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('closes the bottom sheet when the backdrop is clicked', () => {
+    render(
+      <Modal isOpen={true} onClose={onClose} variant="bottom-sheet">
+        <p>Sheet</p>
+      </Modal>,
+    );
+    const backdrop = screen.getByRole('dialog').querySelector('[aria-hidden="true"]');
+    fireEvent.click(backdrop!);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('dismisses the bottom sheet on a downward swipe', () => {
+    render(
+      <Modal isOpen={true} onClose={onClose} variant="bottom-sheet">
+        <p>Sheet</p>
+      </Modal>,
+    );
+    // The inner panel sits inside the dialog wrapper but is not the
+    // backdrop. Walk every child until we find one with `bg-card`.
+    const panel = screen.getByRole('dialog').querySelector<HTMLElement>('.bg-card');
+    expect(panel).toBeInTheDocument();
+    fireEvent.touchStart(panel!, { touches: [{ clientY: 100 }] });
+    fireEvent.touchEnd(panel!, { changedTouches: [{ clientY: 250 }] });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores short swipes inside the bottom sheet', () => {
+    render(
+      <Modal isOpen={true} onClose={onClose} variant="bottom-sheet">
+        <p>Sheet</p>
+      </Modal>,
+    );
+    const panel = screen.getByRole('dialog').querySelector<HTMLElement>('.bg-card');
+    fireEvent.touchStart(panel!, { touches: [{ clientY: 200 }] });
+    fireEvent.touchEnd(panel!, { changedTouches: [{ clientY: 220 }] });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('ignores downward swipes on the centered modal variant', () => {
+    render(
+      <Modal isOpen={true} onClose={onClose}>
+        <p>Centered</p>
+      </Modal>,
+    );
+    const panel = screen.getByRole('dialog').querySelector<HTMLElement>('.bg-card');
+    fireEvent.touchStart(panel!, { touches: [{ clientY: 100 }] });
+    fireEvent.touchEnd(panel!, { changedTouches: [{ clientY: 400 }] });
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('renders different size variants', () => {
