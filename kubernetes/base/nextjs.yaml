@@ -136,6 +136,16 @@ spec:
                 secretKeyRef:
                   name: nextjs-secrets
                   key: stripe-webhook-secret
+            - name: NEXT_PUBLIC_POSTHOG_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: posthog-key
+            - name: NEXT_PUBLIC_POSTHOG_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: nextjs-secrets
+                  key: posthog-host
           envFrom:
             - configMapRef:
                 name: nextjs-env
