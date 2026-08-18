@@ -265,12 +265,26 @@ describe('usePotluckSignupMutation', () => {
     renderHook(() => usePotluckSignupMutation());
     const opts = (
       mockQueries.potluck.signup.useMutation.mock.calls[0] as unknown as
-        Array<{ onSuccess: () => Promise<void> }> | undefined
+        | Array<{
+            onSuccess: (
+              data: unknown,
+              variables: {
+                slotId: string;
+                dishName: string;
+                servings: number;
+                dietaryLabels: string[];
+              },
+            ) => Promise<void>;
+          }>
+        | undefined
     )?.[0];
     const lastUtils = mockUseUtils.mock.results.at(-1)?.value;
     expect(opts).toBeDefined();
     expect(lastUtils).toBeDefined();
-    await opts!.onSuccess();
+    await opts!.onSuccess(
+      {},
+      { slotId: 'slot-1', dishName: 'Mac and Cheese', servings: 4, dietaryLabels: [] },
+    );
     expect(lastUtils!.potluck.listSlots.invalidate).toHaveBeenCalled();
     expect(lastUtils!.potluck.getSlotsForEvent.invalidate).toHaveBeenCalled();
     expect(lastUtils!.potluck.getMySignups.invalidate).toHaveBeenCalled();
@@ -283,12 +297,13 @@ describe('usePotluckSignupMutation', () => {
     renderHook(() => usePotluckSignupMutation());
     const opts = (
       mockQueries.potluck.cancelSignup.useMutation.mock.calls[0] as unknown as
-        Array<{ onSuccess: () => Promise<void> }> | undefined
+        | Array<{ onSuccess: (data: unknown, variables: { signupId: string }) => Promise<void> }>
+        | undefined
     )?.[0];
     expect(opts).toBeDefined();
     const lastUtils = mockUseUtils.mock.results.at(-1)?.value;
     expect(lastUtils).toBeDefined();
-    await opts!.onSuccess();
+    await opts!.onSuccess({}, { signupId: 'signup-1' });
     expect(lastUtils!.potluck.getMySignups.invalidate).toHaveBeenCalled();
   });
 });

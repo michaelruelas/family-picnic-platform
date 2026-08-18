@@ -105,6 +105,12 @@ const ACTION = {
 // place stops the copies from drifting apart — a new enum value the
 // real module exports will start MockInvalidEnum on the spot.
 const enumMock = () => ({
+  Role: {
+    SUPER_ADMIN: 'SUPER_ADMIN',
+    ADMIN: 'ADMIN',
+    ADULT: 'ADULT',
+    HOST: 'HOST',
+  },
   EventStatus: {
     DRAFT: 'DRAFT',
     PUBLISHED: 'PUBLISHED',
