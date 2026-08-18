@@ -1,4 +1,10 @@
-import { router, protectedProcedure, auditedAdminProcedure, eventAdminProcedure } from '~/lib/trpc';
+import {
+  router,
+  procedure,
+  protectedProcedure,
+  auditedAdminProcedure,
+  eventAdminProcedure,
+} from '~/lib/trpc';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
@@ -7,8 +13,15 @@ import { writeDomainAuditLog, writeAuditLog } from '~/lib/audit';
 import { stampHostRole, unassignHostRole, canAccessEvent } from '~/lib/event-access';
 import { isAdminRole } from '~/lib/auth';
 import { toEventCreateData } from '~/lib/event-data';
+import { getLatestPublishedEvent } from '~/lib/events';
 
 export const eventRouter = router({
+  // FPP-148: navbar "Event" link target. Public so guests see it
+  // before they sign in. Delegates to getLatestPublishedEvent so the
+  // helper + procedure stay in lockstep and the helper can be unit
+  // tested in isolation.
+  getLatest: procedure.query(() => getLatestPublishedEvent()),
+
   create: auditedAdminProcedure
     .input(
       z.object({

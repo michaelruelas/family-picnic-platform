@@ -8,6 +8,7 @@ import { useTheme } from 'next-themes';
 import { usePathname } from 'next/navigation';
 import { useMounted } from '~/hooks/useMounted';
 import { isAdminRole } from '~/lib/constants';
+import { trpc } from '~/lib/trpc-client';
 
 interface NavItem {
   href: string;
@@ -31,16 +32,20 @@ export default function NavBarClient() {
 
   const isAdmin = session?.user?.role ? isAdminRole(session.user.role) : false;
 
-  const publicNavItems: NavItem[] = [
-    { href: '/', label: 'Home' },
-    { href: '/events', label: 'Events' },
-  ];
+  // FPP-148: navbar "Event" link resolves to the latest non-archived
+  // PUBLISHED event. Hidden until the query resolves so the navbar
+  // does not flash an empty href.
+  const { data: latestEvent } = trpc.event.getLatest.useQuery();
+  const latestEventHref = latestEvent ? `/events/${latestEvent.id}` : null;
+
+  const publicNavItems: NavItem[] = latestEventHref
+    ? [{ href: latestEventHref, label: 'Event' }]
+    : [];
 
   const authenticatedNavItems: NavItem[] = session
     ? [
         { href: '/household', label: 'Household' },
         { href: '/profile', label: 'Profile' },
-        { href: '/my-events', label: 'My Events' },
         ...(isAdmin ? [{ href: '/admin/dashboard', label: 'Admin' }] : []),
       ]
     : [];

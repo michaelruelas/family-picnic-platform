@@ -21,6 +21,24 @@ vi.mock('next-themes', () => ({
   useTheme: () => ({ resolvedTheme: 'light', setTheme: mockSetTheme }),
 }));
 
+// FPP-148: navbar reads the latest published event via tRPC so it can
+// render the "Event" link. Mock the trpc-client so the test does not
+// need a tRPC provider.
+const mockLatestEventQuery = {
+  data: null as { id: string; name: string } | null,
+  isLoading: false,
+  error: null as Error | null,
+};
+vi.mock('~/lib/trpc-client', () => ({
+  trpc: {
+    event: {
+      getLatest: {
+        useQuery: () => mockLatestEventQuery,
+      },
+    },
+  },
+}));
+
 const { default: NavBarClient } = await import('../NavBarClient');
 
 beforeEach(() => {
@@ -31,6 +49,8 @@ beforeEach(() => {
     data: null,
     status: 'unauthenticated',
   });
+  mockLatestEventQuery.data = null;
+  mockLatestEventQuery.isLoading = false;
 });
 
 afterEach(() => {
@@ -38,7 +58,7 @@ afterEach(() => {
   mockPathname = '/';
 });
 
-describe('NavBarClient (FPP-114)', () => {
+describe('NavBarClient (FPP-114, FPP-148, FPP-146, FPP-147, FPP-150)', () => {
   it('hides nav on /login', () => {
     mockPathname = '/login';
     const { container } = render(<NavBarClient />);
@@ -61,22 +81,56 @@ describe('NavBarClient (FPP-114)', () => {
     expect(screen.getByRole('button', { name: /switch to dark mode/i })).toBeInTheDocument();
   });
 
-  it('renders simplified header for non-admin authenticated users with household and profile links', () => {
+  it('does not render Home, Events, or My Events nav links (FPP-146/147/150)', () => {
     mockUseSession.mockReturnValue({
       data: {
         user: { id: 'u1', name: 'Maria Garcia', email: 'maria@example.com', role: 'USER' },
       },
       status: 'authenticated',
     });
+    mockLatestEventQuery.data = { id: 'evt-1', name: 'Annual Picnic' };
     mockPathname = '/events/event-123';
     render(<NavBarClient />);
 
-    expect(screen.getByRole('navigation')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^home$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^events$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^my events$/i })).not.toBeInTheDocument();
+  });
+
+  it('renders Event link to the latest published event for everyone (FPP-148)', () => {
+    mockUseSession.mockReturnValue({
+      data: {
+        user: { id: 'u1', name: 'Maria Garcia', email: 'maria@example.com', role: 'USER' },
+      },
+      status: 'authenticated',
+    });
+    mockLatestEventQuery.data = { id: 'evt-42', name: 'Annual Picnic' };
+    mockPathname = '/events/event-123';
+    render(<NavBarClient />);
+
+    const eventLink = screen.getByRole('link', { name: /^event$/i });
+    expect(eventLink).toHaveAttribute('href', '/events/evt-42');
     expect(screen.getByRole('link', { name: /household/i })).toHaveAttribute('href', '/household');
     expect(screen.getByRole('link', { name: /profile/i })).toHaveAttribute('href', '/profile');
-    expect(screen.getByRole('link', { name: /my events/i })).toHaveAttribute('href', '/my-events');
     expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /admin/i })).not.toBeInTheDocument();
+  });
+
+  it('renders Event link when unauthenticated (FPP-148)', () => {
+    mockLatestEventQuery.data = { id: 'evt-99', name: 'Annual Picnic' };
+    mockPathname = '/';
+    render(<NavBarClient />);
+
+    const eventLink = screen.getByRole('link', { name: /^event$/i });
+    expect(eventLink).toHaveAttribute('href', '/events/evt-99');
+  });
+
+  it('hides the Event link when no published event exists (FPP-148)', () => {
+    mockLatestEventQuery.data = null;
+    mockPathname = '/';
+    render(<NavBarClient />);
+
+    expect(screen.queryByRole('link', { name: /^event$/i })).not.toBeInTheDocument();
   });
 
   it('renders admin link for super admin users', () => {

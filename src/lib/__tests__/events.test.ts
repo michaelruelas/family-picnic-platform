@@ -10,8 +10,12 @@ vi.mock('~/lib/prisma', () => ({
   },
 }));
 
-const { getLatestEvent, shouldRedirectToLatestEvent, buildEventInvitationUrl } =
-  await import('../events');
+const {
+  getLatestEvent,
+  getLatestPublishedEvent,
+  shouldRedirectToLatestEvent,
+  buildEventInvitationUrl,
+} = await import('../events');
 
 describe('events helper library', () => {
   beforeEach(() => {
@@ -60,6 +64,45 @@ describe('events helper library', () => {
 
       const result = await getLatestEvent();
       expect(result).toBeNull();
+    });
+  });
+
+  // FPP-148: navbar-only event lookup. Restricts to PUBLISHED +
+  // non-archived so guests never land on a draft or retired event.
+  describe('getLatestPublishedEvent', () => {
+    it('returns upcoming published event when present', async () => {
+      const upcoming = { id: 'evt-upcoming', name: 'Upcoming Picnic' };
+      mockFindFirst.mockResolvedValueOnce(upcoming);
+
+      const result = await getLatestPublishedEvent();
+      expect(result).toEqual(upcoming);
+      expect(mockFindFirst).toHaveBeenCalledTimes(1);
+      expect(mockFindFirst.mock.calls[0]?.[0]).toMatchObject({
+        where: expect.objectContaining({
+          status: 'PUBLISHED',
+          archivedAt: null,
+        }),
+        select: { id: true, name: true },
+      });
+    });
+
+    it('falls back to past published event when no upcoming event', async () => {
+      const past = { id: 'evt-past', name: 'Past Picnic' };
+      mockFindFirst.mockResolvedValueOnce(null); // upcoming
+      mockFindFirst.mockResolvedValueOnce(past); // past
+
+      const result = await getLatestPublishedEvent();
+      expect(result).toEqual(past);
+      expect(mockFindFirst).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns null when no published events exist (does not fall back to drafts)', async () => {
+      mockFindFirst.mockResolvedValueOnce(null); // upcoming
+      mockFindFirst.mockResolvedValueOnce(null); // past
+
+      const result = await getLatestPublishedEvent();
+      expect(result).toBeNull();
+      expect(mockFindFirst).toHaveBeenCalledTimes(2);
     });
   });
 
