@@ -469,7 +469,12 @@ export function RsvpBottomSheet({
         return;
       }
 
-      let effectiveHouseholdId = formState.householdId;
+      // The router populates `householdId` with `caller.householdId ?? caller.id`
+      // so the value is always truthy — the `!effectiveHouseholdId` check that
+      // used to live here was dead code. Use the explicit `hasHousehold` flag
+      // to decide between create and rename, and the real `householdId` as
+      // the rename target.
+      let effectiveHouseholdId: string;
       const trimmedHName = householdName.trim();
 
       const parsedHName = householdNameSchema.safeParse(trimmedHName);
@@ -479,8 +484,11 @@ export function RsvpBottomSheet({
         return;
       }
 
-      // If user does not have a household in DB, create one
-      if (!effectiveHouseholdId) {
+      if (!formState.hasHousehold) {
+        // FPP-117: caller has no household yet — create one and seed a
+        // self-member via the onboarding endpoint, then rename the new
+        // household by writing through to the same mutation used by the
+        // profile page.
         const createHRes = await fetch('/api/onboarding/household', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -492,11 +500,18 @@ export function RsvpBottomSheet({
         }
         const createHData = (await createHRes.json()) as { householdId: string };
         effectiveHouseholdId = createHData.householdId;
-      } else if (formState.householdName !== null && parsedHName.data !== formState.householdName) {
-        await updateName.mutateAsync({
-          id: effectiveHouseholdId,
-          name: parsedHName.data,
-        });
+      } else {
+        // FPP-117: when the household already exists, the rename gate must
+        // trigger on any change — including the snapshot being null (e.g.
+        // a household with no name yet). The previous guard
+        // `formState.householdName !== null` silently dropped that case.
+        effectiveHouseholdId = formState.householdId;
+        if (parsedHName.data !== formState.householdName) {
+          await updateName.mutateAsync({
+            id: effectiveHouseholdId,
+            name: parsedHName.data,
+          });
+        }
       }
 
       // Save any new members to household if saveToHousehold is selected
@@ -504,6 +519,16 @@ export function RsvpBottomSheet({
       for (let i = 0; i < finalDrafts.length; i++) {
         const draft = finalDrafts[i]!;
         if (!draft.householdMemberId && draft.saveToHousehold && effectiveHouseholdId) {
+          // FPP-121: surface a POST failure instead of silently dropping the
+          // member from the household roster. A 400 here usually means the
+          // member has no age — schema requires it — so the user should see
+          // the error and add one rather than confirm with a half-saved
+          // roster.
+          if (draft.memberAge == null) {
+            throw new Error(
+              `Set an age for "${draft.memberName.trim()}" before saving them to your household.`,
+            );
+          }
           const addMemRes = await fetch('/api/household-members', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -513,14 +538,18 @@ export function RsvpBottomSheet({
               age: draft.memberAge,
             }),
           });
-          if (addMemRes.ok) {
-            const memberData = (await addMemRes.json()) as { id: string };
-            finalDrafts[i] = {
-              ...draft,
-              householdMemberId: memberData.id,
-              originalMemberName: draft.memberName.trim(),
-            };
+          if (!addMemRes.ok) {
+            const errData = (await addMemRes.json().catch(() => ({}))) as { error?: string };
+            throw new Error(
+              errData.error || `Could not save "${draft.memberName.trim()}" to your household`,
+            );
           }
+          const memberData = (await addMemRes.json()) as { id: string };
+          finalDrafts[i] = {
+            ...draft,
+            householdMemberId: memberData.id,
+            originalMemberName: draft.memberName.trim(),
+          };
         } else if (draft.householdMemberId) {
           const nameChanged = draft.memberName !== draft.originalMemberName;
           const ageChanged = draft.memberAge !== draft.originalMemberAge;
