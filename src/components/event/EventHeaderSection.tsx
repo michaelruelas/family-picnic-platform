@@ -72,9 +72,11 @@ export interface EventHeaderSectionProps {
 }
 
 /**
- * FPP-46 / FPP-10 / FPP-140 / FPP-139: Header tab content.
- * Renders the "Welcome" heading, event name, prominent consolidated
- * date/time/location metadata, RSVP card, host block, and location map.
+ * FPP-46 / FPP-10 / FPP-140 / FPP-139 / FPP-144: Overview section content.
+ * Renders the "Welcome" heading, event name, the consolidated
+ * date/time/location strip, a secondary strip under it (attendees,
+ * dishes claimed, RSVP deadline — FPP-144), the RSVP card, the
+ * location map, and the host block.
  */
 export function EventHeaderSection(props: EventHeaderSectionProps) {
   const {
@@ -98,7 +100,6 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
     hosts,
   } = props;
 
-  const now = new Date();
   const totalPotluckDishes = potluckSlots.reduce((sum, slot) => sum + slot.signups.length, 0);
   const registrationFeeConfig =
     registrationFeeCents && registrationFeeCents > 0
@@ -149,6 +150,15 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
             <span className="text-foreground font-semibold">{eventLocation}</span>
           </span>
         </div>
+        {/* FPP-144: secondary "fact strip" directly under the event main
+            details. Lists attendees, dishes claimed, and the RSVP
+            deadline together so guests see engagement + commitment info
+            without scrolling past the RSVP card. */}
+        <MetaStrip
+          attending={currentAttending}
+          dishesClaimed={totalPotluckDishes}
+          rsvpDeadline={rsvpDeadline}
+        />
       </header>
 
       <EventRsvpCard
@@ -165,63 +175,80 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
         existingRsvp={existingRsvp}
       />
 
-      <MetaStrip
-        eventDate={eventDate}
-        eventLocation={eventLocation}
-        attending={currentAttending}
-        dishesClaimed={totalPotluckDishes}
-      />
-
       {eventLat !== null && eventLng !== null && (
         <EventLocationMap lat={eventLat} lng={eventLng} location={eventLocation} />
       )}
 
       <HostBlock description={eventDescription} maxCapacity={maxCapacity} hosts={hosts} />
-
-      {rsvpDeadline && rsvpDeadline > now && (
-        <p className="text-muted-foreground -mt-4 text-sm">
-          Please RSVP by{' '}
-          <span className="text-foreground font-semibold">
-            {rsvpDeadline.toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </span>
-          .
-        </p>
-      )}
     </div>
   );
 }
 
+/**
+ * FPP-144: secondary "fact strip" sitting directly under the main
+ * date/time/location line. Aggregates the at-a-glance engagement
+ * signals (attendees, dishes claimed, RSVP deadline) so the
+ * Overview section reads as one consolidated info block rather than
+ * three scattered modules.
+ *
+ * The strip hides itself when there is nothing meaningful to show
+ * (e.g. a brand-new event with no RSVPs and no deadline yet), so the
+ * header stays quiet for early-lifecycle events.
+ */
 function MetaStrip({
-  eventDate: _eventDate,
-  eventLocation: _eventLocation,
   attending,
   dishesClaimed,
+  rsvpDeadline,
 }: {
-  eventDate?: Date;
-  eventLocation?: string;
   attending: number;
   dishesClaimed: number;
+  rsvpDeadline: Date | null;
 }) {
+  const now = new Date();
+  const showRsvpDeadline = rsvpDeadline !== null && rsvpDeadline > now;
+
+  if (attending === 0 && dishesClaimed === 0 && !showRsvpDeadline) {
+    return null;
+  }
+
   return (
     <div
-      className="text-muted-foreground flex flex-wrap items-center gap-x-5 gap-y-2"
+      className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-2 text-sm"
       data-testid="event-meta-strip"
     >
-      <span className="flex items-center gap-2 text-base">
-        <span className="text-sage">👥</span>
-        <span className="text-foreground font-medium">{attending} attending</span>
+      <span className="flex items-center gap-1.5">
+        <span aria-hidden="true">👥</span>
+        <span className="text-foreground font-medium">
+          {attending} {attending === 1 ? 'person' : 'people'} attending
+        </span>
       </span>
       {dishesClaimed > 0 && (
         <>
-          <span className="text-border hidden sm:inline">·</span>
-          <span className="flex items-center gap-2 text-base">
-            <span className="text-terracotta">🍴</span>
+          <span className="text-border hidden sm:inline" aria-hidden="true">
+            ·
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden="true">🍴</span>
             <span className="text-foreground font-medium">
               {dishesClaimed} {dishesClaimed === 1 ? 'dish' : 'dishes'} claimed
+            </span>
+          </span>
+        </>
+      )}
+      {showRsvpDeadline && (
+        <>
+          <span className="text-border hidden sm:inline" aria-hidden="true">
+            ·
+          </span>
+          <span className="flex items-center gap-1.5" data-testid="event-meta-rsvp-deadline">
+            <span aria-hidden="true">⏰</span>
+            <span className="text-foreground font-medium">
+              RSVP by{' '}
+              {rsvpDeadline!.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+              })}
             </span>
           </span>
         </>

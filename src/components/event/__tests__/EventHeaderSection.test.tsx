@@ -15,6 +15,23 @@ vi.mock('~/hooks', () => ({
   }),
 }));
 
+// FPP-144 helper: build a potluck slot array with `count` fake signups
+// so the dishes-claimed aggregation can be exercised deterministically.
+function makePotluckSlots(count: number) {
+  return [
+    {
+      id: 'slot-1',
+      category: 'MAIN',
+      signups: Array.from({ length: count }, (_, i) => ({
+        id: `signup-${i}`,
+        dishName: `Dish ${i}`,
+        servings: 4,
+        rsvp: { user: { name: `User ${i}`, household: null } },
+      })),
+    },
+  ];
+}
+
 describe('EventHeaderSection (FPP-140 / FPP-139)', () => {
   const baseProps = {
     eventId: 'evt-1',
@@ -52,7 +69,56 @@ describe('EventHeaderSection (FPP-140 / FPP-139)', () => {
       screen.getByRole('heading', { level: 2, name: 'Annual Folia Family Picnic' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Golden Gate Park, San Francisco, CA/)).toBeInTheDocument();
-    expect(screen.getByText('42 attending')).toBeInTheDocument();
+    expect(screen.getByText('42 people attending')).toBeInTheDocument();
+  });
+
+  // FPP-144: attendees count now lives directly under the date/time/
+  // location strip, grouping the at-a-glance engagement signals
+  // with the event main details (not buried below the RSVP card).
+  it('renders the meta strip as a sibling of the main details strip', () => {
+    render(<EventHeaderSection {...baseProps} />);
+    const meta = screen.getByTestId('event-meta-strip');
+    expect(meta).toBeInTheDocument();
+    expect(screen.getByText('42 people attending')).toBeInTheDocument();
+  });
+
+  // FPP-144: RSVP deadline joins attendees + dishes in the
+  // secondary strip under the main details.
+  it('surfaces the RSVP deadline in the secondary strip when in the future', () => {
+    const future = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 days out
+    render(
+      <EventHeaderSection
+        {...baseProps}
+        rsvpDeadline={future}
+        potluckSlots={makePotluckSlots(2)}
+      />,
+    );
+    const deadlineNode = screen.getByTestId('event-meta-rsvp-deadline');
+    expect(deadlineNode).toBeInTheDocument();
+    expect(deadlineNode).toHaveTextContent(/RSVP by /);
+  });
+
+  it('hides the RSVP deadline when it has passed', () => {
+    const past = new Date(Date.now() - 1000 * 60 * 60 * 24);
+    render(<EventHeaderSection {...baseProps} rsvpDeadline={past} />);
+    expect(screen.queryByTestId('event-meta-rsvp-deadline')).not.toBeInTheDocument();
+  });
+
+  it('hides the entire meta strip when nothing meaningful to show', () => {
+    render(
+      <EventHeaderSection
+        {...baseProps}
+        currentAttending={0}
+        potluckSlots={[]}
+        rsvpDeadline={null}
+      />,
+    );
+    expect(screen.queryByTestId('event-meta-strip')).not.toBeInTheDocument();
+  });
+
+  it('uses "person" for a single attendee (FPP-144 pluralization)', () => {
+    render(<EventHeaderSection {...baseProps} currentAttending={1} />);
+    expect(screen.getByText('1 person attending')).toBeInTheDocument();
   });
 
   it('does not render potluck slider preview carousel on Overview tab (FPP-139)', () => {
