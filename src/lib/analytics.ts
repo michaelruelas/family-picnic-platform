@@ -28,6 +28,7 @@ let initialized = false;
 function getClient(): typeof posthog | null {
   if (typeof window === 'undefined') return null;
   if (!POSTHOG_KEY) return null;
+  if (process.env.NODE_ENV !== 'production') return null;
   if (!initialized) {
     posthog.init(POSTHOG_KEY, {
       api_host: POSTHOG_HOST,
