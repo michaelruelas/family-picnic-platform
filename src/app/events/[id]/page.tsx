@@ -221,7 +221,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
 
   return (
     <main className="bg-background pb-32">
-      <BreatheSection className="relative h-[55vh] min-h-[420px] w-full overflow-hidden md:h-[40vh]">
+      <BreatheSection className="relative -mt-[73px] h-[55vh] min-h-[420px] w-full overflow-hidden md:h-[40vh]">
         {/* FPP-60: hero precedence is featuredImageUrl -> mapImageUrl
             -> default banner. The featured image is whatever the
             host uploaded through the admin form; the map preview is
