@@ -223,9 +223,9 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     <main className="bg-background pb-32">
       <BreatheSection className="relative h-[55vh] min-h-[420px] w-full overflow-hidden md:h-[40vh]">
         {/* FPP-60: hero precedence is featuredImageUrl -> mapImageUrl
-            -> default gradient. The featured image is whatever the
+            -> default banner. The featured image is whatever the
             host uploaded through the admin form; the map preview is
-            the legacy fallback (QUB-15); the gradient is the
+            the legacy fallback (QUB-15); the banner is the
             pre-map default. The static-map fallback intentionally
             remains so existing events without a featured image keep
             rendering exactly as before this ticket. */}
@@ -240,7 +240,8 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={event.mapImageUrl} alt={event.name} className="h-full w-full object-cover" />
         ) : (
-          <div className="from-sunlight/40 via-sage/20 to-terracotta/15 h-full w-full bg-gradient-to-br" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src="/lake-banner.jpg" alt="" className="h-full w-full object-cover" />
         )}
         <div className="from-foreground/40 absolute inset-0 bg-gradient-to-t via-transparent to-transparent" />
         <div className="absolute top-5 right-5 left-5 flex flex-wrap items-center justify-between gap-3">

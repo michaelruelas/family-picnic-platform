@@ -197,7 +197,8 @@ export default function InvitationClient({
       <div className="mx-auto max-w-3xl px-5 py-8">
         {step === 0 ? (
           <Card className="overflow-hidden">
-            <div className="from-sunlight/50 via-sage/20 to-terracotta/20 h-44 bg-gradient-to-br" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/lake-banner.jpg" alt="" className="h-44 w-full object-cover" />
             <CardContent className="space-y-5 p-7">
               <p className="text-terracotta text-sm font-semibold tracking-wide uppercase">
                 You’re invited
