@@ -174,11 +174,12 @@ describe('FPP-46: event overview tabbed layout', () => {
       expect(content).not.toContain('<EmptyState');
     });
 
-    it('supports a minimal inline markdown (bold / italic / code / links / lists)', async () => {
+    it('renders sanitized TipTap-style rich text (bold / italic / links / lists)', async () => {
       const content = await fs.readFile(additionalInfoSectionPath, 'utf-8');
-      expect(content).toMatch(/\*\*[^*]+\*\*/);
-      expect(content).toMatch(/\[([^\]]+)\]\(([^)]+)\)/);
-      expect(content).toContain('list-disc');
+      expect(content).toContain("from '~/lib/sanitize-html'");
+      expect(content).toContain('sanitizeRichText');
+      expect(content).toContain('dangerouslySetInnerHTML');
+      expect(content).toContain('rich-text-content');
     });
 
     it('receives the event additional-info body as a prop', async () => {
