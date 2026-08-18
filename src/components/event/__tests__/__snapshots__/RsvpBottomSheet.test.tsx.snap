@@ -302,6 +302,7 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
         </a>
         <button
           class="bg-terracotta shadow-soft press hover:bg-terracotta/90 mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all disabled:opacity-50"
+          data-testid="rsvp-save-button"
         >
           Save
         </button>
@@ -613,6 +614,7 @@ exports[`RsvpBottomSheet per-member attendance > household name editing (FPP-80)
         </a>
         <button
           class="bg-terracotta shadow-soft press hover:bg-terracotta/90 mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all disabled:opacity-50"
+          data-testid="rsvp-save-button"
         >
           Save
         </button>

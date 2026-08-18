@@ -222,6 +222,13 @@ export function RsvpBottomSheet({
   const [activeTab, setActiveTab] = useState<Tab>('attendance');
   const [showSuccess, setShowSuccess] = useState(false);
   const [confirmedInSession, setConfirmedInSession] = useState(false);
+  // FPP-123: a paid event requires the user to make an explicit payment
+  // choice on the RSVP stage itself. The Save button stays disabled until
+  // either Pay later or Pay now is recorded. After a successful confirm
+  // with Pay now, we hand the user off to the hosted checkout page so
+  // the registration moves from PENDING → PAID without bouncing.
+  type PaymentChoice = 'payLater' | 'payNow';
+  const [paymentChoice, setPaymentChoice] = useState<PaymentChoice | null>(null);
   const searchParams = useSearchParams();
   // Household name is editable from the RSVP form.
   const [householdName, setHouseholdName] = useState('');
@@ -250,6 +257,7 @@ export function RsvpBottomSheet({
       setActiveTab('attendance');
       setShowSuccess(false);
       setConfirmedInSession(false);
+      setPaymentChoice(null);
       /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [isOpen]);
@@ -591,6 +599,16 @@ export function RsvpBottomSheet({
       if (!result.isWaitlisted) {
         setConfirmedInSession(true);
         setActiveTab('potluck');
+        if (paymentChoice === 'payNow') {
+          // The user picked Pay now: hand them off to the hosted checkout
+          // so the registration can move PENDING → PAID. Closing the sheet
+          // here avoids showing the Potluck tab for a second before the
+          // navigation completes.
+          onClose();
+          if (typeof window !== 'undefined') {
+            window.location.assign(`/events/${eventId}/checkout`);
+          }
+        }
       }
     } catch (err) {
       const base = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
@@ -1069,7 +1087,10 @@ export function RsvpBottomSheet({
           </p>
 
           {showFeeLine && (
-            <div className="bg-sunlight/15 ring-sunlight/30 mt-3 rounded-sm px-4 py-3 text-sm ring-1">
+            <div
+              data-testid="rsvp-fee-line"
+              className="bg-sunlight/15 ring-sunlight/30 mt-3 rounded-sm px-4 py-3 text-sm ring-1"
+            >
               <span className="text-foreground font-semibold">
                 Registration fee: {formatAmount(feeBreakdown.amountCents, feeCurrency)}
               </span>
@@ -1082,6 +1103,17 @@ export function RsvpBottomSheet({
                 )}
                 )
               </span>
+              <PaymentBlock
+                eventId={eventId}
+                eventName={eventName ?? ''}
+                amountCents={feeBreakdown.amountCents}
+                currency={feeCurrency}
+                onPayNow={() => setPaymentChoice('payNow')}
+                onPayLater={() => setPaymentChoice('payLater')}
+                deferredHint={`Pick how you want to handle the fee. You can pay $${(
+                  feeBreakdown.amountCents / 100
+                ).toFixed(2)} now or settle up later — Save stays disabled until you choose.`}
+              />
             </div>
           )}
 
@@ -1142,8 +1174,14 @@ export function RsvpBottomSheet({
 
           <button
             onClick={handleConfirm}
-            disabled={isSubmitting || yesCount === 0 || hasInvalidNames}
+            disabled={
+              isSubmitting ||
+              yesCount === 0 ||
+              hasInvalidNames ||
+              (showFeeLine && paymentChoice === null)
+            }
             className="bg-terracotta shadow-soft press hover:bg-terracotta/90 mt-7 w-full rounded-sm px-6 py-3.5 font-semibold text-white transition-all disabled:opacity-50"
+            data-testid="rsvp-save-button"
           >
             {isSubmitting ? 'Saving...' : 'Save'}
           </button>
