@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { track } from '~/lib/analytics';
 import WizardStep from './WizardStep';
+import HouseholdCreateForm from '~/components/household/HouseholdCreateForm';
 
 interface HouseholdOption {
   id: string;
@@ -40,7 +41,6 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
   }, []);
 
   const [householdMode, setHouseholdMode] = useState<'create' | 'join' | null>(null);
-  const [newHouseholdName, setNewHouseholdName] = useState('');
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
 
   const [familyMembers, setFamilyMembers] = useState<
@@ -69,35 +69,6 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
   >('EMAIL');
 
   const currentStepIndex = STEPS.findIndex((s) => s.key === currentStep);
-
-  const handleCreateHousehold = async () => {
-    if (!newHouseholdName.trim()) return;
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/onboarding/household', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newHouseholdName.trim() }),
-      });
-
-      if (!res.ok) {
-        // FPP-117: surface the server's actual validation / conflict
-        // message (e.g. "A household with this name already exists") so
-        // the user knows why the save didn't land.
-        const errBody = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(errBody.error || 'Failed to create household');
-      }
-
-      setCurrentStep('family');
-      track('onboarding_household_created');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleJoinHousehold = async () => {
     if (!selectedHouseholdId) return;
@@ -269,29 +240,15 @@ export default function OnboardingClient({ user: _user, households }: Onboarding
           >
             ← Change option
           </button>
-          <div>
-            <label className="text-foreground/85 block text-lg font-medium">Household Name</label>
-            <p className="text-muted-foreground mb-2 text-sm">
-              This is how your family will appear to other members
-            </p>
-            <input
-              type="text"
-              value={newHouseholdName}
-              onChange={(e) => setNewHouseholdName(e.target.value)}
-              // FPP-120: placeholder no longer pre-fills a real
-              // surname. The user picks a name that fits their
-              // family; we don't want to seed one.
-              placeholder="e.g. The Garcia Family Picnic Crew"
-              className="border-border focus:border-terracotta focus:ring-foreground/20 mt-1 block w-full rounded-sm border px-4 py-3 text-lg shadow-sm focus:ring-1 focus:outline-none"
-            />
-          </div>
-          <button
-            onClick={handleCreateHousehold}
-            disabled={!newHouseholdName.trim() || isLoading}
-            className="bg-terracotta hover:bg-terracotta w-full rounded-sm px-6 py-3 text-lg font-medium text-white disabled:opacity-50"
-          >
-            {isLoading ? 'Creating...' : 'Create Household'}
-          </button>
+          <HouseholdCreateForm
+            variant="wizard"
+            title="Household Name"
+            description="This is how your family will appear to other members"
+            onCreated={() => {
+              track('onboarding_household_created');
+              setCurrentStep('family');
+            }}
+          />
         </div>
       ) : (
         <div className="space-y-6">
