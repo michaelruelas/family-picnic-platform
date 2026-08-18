@@ -10,7 +10,7 @@ import path from 'path';
  *   2. Items shown in stored order.
  *
  * These are structural assertions that lock in the wiring between
- * the page-level Prisma query, the `EventTabs` orchestrator, and the
+ * the page-level Prisma query, the `EventSectionTabs` orchestrator, and the
  * `EventItinerarySection` rendering component. The runtime behaviour
  * (rendering time / title / description, empty state, in-order
  * rendering) is covered in
@@ -22,7 +22,7 @@ import path from 'path';
  */
 describe('FPP-4: render itinerary on the event page', () => {
   const eventPagePath = path.join(process.cwd(), 'src/app/events/[id]/page.tsx');
-  const eventTabsPath = path.join(process.cwd(), 'src/components/event/EventTabs.tsx');
+  const eventTabsPath = path.join(process.cwd(), 'src/components/event/EventSectionTabs.tsx');
   const itinerarySectionPath = path.join(
     process.cwd(),
     'src/components/event/EventItinerarySection.tsx',
@@ -40,7 +40,7 @@ describe('FPP-4: render itinerary on the event page', () => {
       expect(content).not.toContain('PLACEHOLDER_ITINERARY');
     });
 
-    it('EventTabs mounts EventItinerarySection on the itinerary tab', async () => {
+    it('EventSectionTabs mounts EventItinerarySection on the itinerary tab', async () => {
       const content = await fs.readFile(eventTabsPath, 'utf-8');
       // The itinerary tab key is wired to the section component.
       expect(content).toContain("key: 'itinerary'");

@@ -14,12 +14,12 @@ import path from 'path';
  *
  * The component-level behaviour (URL sync, scroll, keyboard nav) is
  * covered in `src/components/ui/__tests__/Tabs.test.tsx` and
- * `src/components/event/__tests__/EventTabs.test.tsx`.
+ * `src/components/event/__tests__/EventSectionTabs.test.tsx`.
  */
 describe('FPP-46: event overview tabbed layout', () => {
   const tabsPath = path.join(process.cwd(), 'src/components/ui/Tabs.tsx');
   const anchorNavPath = path.join(process.cwd(), 'src/components/event/EventAnchorNav.tsx');
-  const eventTabsPath = path.join(process.cwd(), 'src/components/event/EventTabs.tsx');
+  const eventTabsPath = path.join(process.cwd(), 'src/components/event/EventSectionTabs.tsx');
   const eventPagePath = path.join(process.cwd(), 'src/app/events/[id]/page.tsx');
   const headerSectionPath = path.join(process.cwd(), 'src/components/event/EventHeaderSection.tsx');
   const itinerarySectionPath = path.join(
@@ -72,7 +72,7 @@ describe('FPP-46: event overview tabbed layout', () => {
       expect(content).toMatch(/params\.set\(['"]tab['"]/);
     });
 
-    it('mounts the sections declared by EventTabs (Header / Itinerary / Additional Info) with Gallery removed per FPP-135', async () => {
+    it('mounts the sections declared by EventSectionTabs (Header / Itinerary / Additional Info) with Gallery removed per FPP-135', async () => {
       const content = await fs.readFile(eventTabsPath, 'utf-8');
       expect(content).toContain('<EventItinerarySection');
       expect(content).toContain('<EventAdditionalInfoSection');
@@ -92,7 +92,7 @@ describe('FPP-46: event overview tabbed layout', () => {
     it('wraps the useSearchParams() consumer in a Suspense boundary', async () => {
       // FPP-46 review fix #2: Next.js 14+ requires <Suspense> around
       // any component that reads useSearchParams() so the page can
-      // statically prerender. EventTabs keeps the public API but
+      // statically prerender. EventSectionTabs keeps the public API but
       // delegates the hook call to an inner component behind
       // <Suspense> with a fallback that renders every panel.
       const content = await fs.readFile(eventTabsPath, 'utf-8');

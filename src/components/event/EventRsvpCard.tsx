@@ -78,7 +78,7 @@ export function EventRsvpCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // FPP-115: EventTabs renders this card twice (desktop tab panel +
+  // FPP-115: EventSectionTabs renders this card twice (desktop tab panel +
   // mobile stacked section); the hidden copy is `display:none`.
   // offsetParent is null for hidden elements, so only the visible
   // instance auto-opens the RSVP sheet — prevents duplicate modals
