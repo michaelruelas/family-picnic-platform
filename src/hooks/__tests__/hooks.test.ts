@@ -265,8 +265,7 @@ describe('usePotluckSignupMutation', () => {
     renderHook(() => usePotluckSignupMutation());
     const opts = (
       mockQueries.potluck.signup.useMutation.mock.calls[0] as unknown as
-        | Array<{ onSuccess: () => Promise<void> }>
-        | undefined
+        Array<{ onSuccess: () => Promise<void> }> | undefined
     )?.[0];
     const lastUtils = mockUseUtils.mock.results.at(-1)?.value;
     expect(opts).toBeDefined();
@@ -284,8 +283,7 @@ describe('usePotluckSignupMutation', () => {
     renderHook(() => usePotluckSignupMutation());
     const opts = (
       mockQueries.potluck.cancelSignup.useMutation.mock.calls[0] as unknown as
-        | Array<{ onSuccess: () => Promise<void> }>
-        | undefined
+        Array<{ onSuccess: () => Promise<void> }> | undefined
     )?.[0];
     expect(opts).toBeDefined();
     const lastUtils = mockUseUtils.mock.results.at(-1)?.value;

@@ -126,46 +126,44 @@ export const paymentRouter = router({
    * expects a fee — a zero amount means there is nothing to collect
    * and we no-op.
    */
-  payLater: protectedProcedure
-    .input(payLaterInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const registration = await prisma.registration.findUnique({
-        where: {
-          eventId_userId: { eventId: input.eventId, userId: ctx.session.user.id },
-        },
-        select: {
-          id: true,
-          status: true,
-          amountCents: true,
-          currency: true,
-        },
-      });
+  payLater: protectedProcedure.input(payLaterInputSchema).mutation(async ({ ctx, input }) => {
+    const registration = await prisma.registration.findUnique({
+      where: {
+        eventId_userId: { eventId: input.eventId, userId: ctx.session.user.id },
+      },
+      select: {
+        id: true,
+        status: true,
+        amountCents: true,
+        currency: true,
+      },
+    });
 
-      if (!registration || registration.amountCents <= 0) {
-        return { changed: false, status: registration?.status ?? RegistrationStatus.PENDING };
-      }
+    if (!registration || registration.amountCents <= 0) {
+      return { changed: false, status: registration?.status ?? RegistrationStatus.PENDING };
+    }
 
-      if (
-        registration.status === RegistrationStatus.PAID ||
-        registration.status === RegistrationStatus.REFUNDED ||
-        registration.status === RegistrationStatus.FORFEITED ||
-        registration.status === RegistrationStatus.CANCELLED
-      ) {
-        return { changed: false, status: registration.status };
-      }
+    if (
+      registration.status === RegistrationStatus.PAID ||
+      registration.status === RegistrationStatus.REFUNDED ||
+      registration.status === RegistrationStatus.FORFEITED ||
+      registration.status === RegistrationStatus.CANCELLED
+    ) {
+      return { changed: false, status: registration.status };
+    }
 
-      // Cancel any in-flight charges so a later Pay Now attempt builds a
-      // fresh intent; the registration stays PENDING.
-      await prisma.charge.updateMany({
-        where: {
-          registrationId: registration.id,
-          status: { in: ACTIVE_CHARGE_STATUSES },
-        },
-        data: { status: ChargeStatus.CANCELED },
-      });
+    // Cancel any in-flight charges so a later Pay Now attempt builds a
+    // fresh intent; the registration stays PENDING.
+    await prisma.charge.updateMany({
+      where: {
+        registrationId: registration.id,
+        status: { in: ACTIVE_CHARGE_STATUSES },
+      },
+      data: { status: ChargeStatus.CANCELED },
+    });
 
-      return { changed: true, status: RegistrationStatus.PENDING };
-    }),
+    return { changed: true, status: RegistrationStatus.PENDING };
+  }),
 });
 
 function mapStripeIntentStatusToChargeStatus(status: string): ChargeStatus {

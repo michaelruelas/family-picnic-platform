@@ -42,9 +42,7 @@ beforeEach(() => {
 
 describe('PaymentBlock', () => {
   it('renders the fee, a Pay now button, and a Pay later link', () => {
-  render(
-<PaymentBlock eventId="evt-1" amountCents={2500} currency="usd" />,
-    );
+    render(<PaymentBlock eventId="evt-1" amountCents={2500} currency="usd" />);
     expect(screen.getByText(/registration fee: \$25\.00/i)).toBeInTheDocument();
     const payNow = screen.getByTestId('rsvp-payment-pay-now');
     expect(payNow).toBeInTheDocument();
@@ -71,9 +69,7 @@ describe('PaymentBlock', () => {
 
   it('hides Pay later once Pay now is selected', async () => {
     const onPayNow = vi.fn();
-    render(
-      <PaymentBlock eventId="evt-1" amountCents={2500} currency="usd" onPayNow={onPayNow} />,
-    );
+    render(<PaymentBlock eventId="evt-1" amountCents={2500} currency="usd" onPayNow={onPayNow} />);
     fireEvent.click(screen.getByTestId('rsvp-payment-pay-now'));
     await waitFor(() => {
       expect(screen.queryByTestId('rsvp-payment-pay-later')).not.toBeInTheDocument();
@@ -82,14 +78,12 @@ describe('PaymentBlock', () => {
   });
 
   it('surfaces a server error from payLater', async () => {
-    mockPayment.payLater.useMutation.mockImplementationOnce(
-      (opts: PaymentMutationOptions) => ({
-        mutate: () => {
-          opts?.onError?.(new Error('Payments are offline'));
-        },
-        isPending: false,
-      }),
-    );
+    mockPayment.payLater.useMutation.mockImplementationOnce((opts: PaymentMutationOptions) => ({
+      mutate: () => {
+        opts?.onError?.(new Error('Payments are offline'));
+      },
+      isPending: false,
+    }));
     render(<PaymentBlock eventId="evt-1" amountCents={2500} currency="usd" />);
     fireEvent.click(screen.getByTestId('rsvp-payment-pay-later'));
     await waitFor(() => {
