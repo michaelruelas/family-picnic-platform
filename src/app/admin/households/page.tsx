@@ -8,10 +8,7 @@ export default async function AdminHouseholdsPage() {
   await requireAdminPage();
 
   return (
-    <AdminShell
-      title="Households"
-      description="Create and manage households and their members."
-    >
+    <AdminShell title="Households" description="Create and manage households and their members.">
       <HouseholdsTable />
     </AdminShell>
   );

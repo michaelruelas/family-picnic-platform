@@ -147,7 +147,9 @@ export default function UserDetailPage({ userId }: UserDetailPageProps) {
               className="space-y-4"
             >
               {editError ? (
-                <p className="text-destructive rounded-sm bg-red-50 px-3 py-2 text-sm">{editError}</p>
+                <p className="text-destructive rounded-sm bg-red-50 px-3 py-2 text-sm">
+                  {editError}
+                </p>
               ) : null}
 
               <label className="block">
@@ -240,17 +242,29 @@ export default function UserDetailPage({ userId }: UserDetailPageProps) {
                   )
                 }
               />
-              <InfoRow label="Phone" value={user.phoneNumber ?? <span className="text-muted-foreground">—</span>} />
-              <InfoRow label="SMS consent" value={user.smsConsent ? 'Yes' : 'No'} />
               <InfoRow
-                label="Communication pref"
-                value={user.communicationPreference}
+                label="Phone"
+                value={user.phoneNumber ?? <span className="text-muted-foreground">—</span>}
               />
-              <InfoRow label="Onboarding completed" value={user.onboardingCompletedAt ? formatDate(user.onboardingCompletedAt) : <span className="text-muted-foreground">No</span>} />
+              <InfoRow label="SMS consent" value={user.smsConsent ? 'Yes' : 'No'} />
+              <InfoRow label="Communication pref" value={user.communicationPreference} />
+              <InfoRow
+                label="Onboarding completed"
+                value={
+                  user.onboardingCompletedAt ? (
+                    formatDate(user.onboardingCompletedAt)
+                  ) : (
+                    <span className="text-muted-foreground">No</span>
+                  )
+                }
+              />
               <InfoRow label="Created" value={formatDate(user.createdAt)} />
               <InfoRow label="Updated" value={formatDate(user.updatedAt)} />
               {user.deletedAt ? (
-                <InfoRow label="Deleted" value={<span className="text-destructive">{formatDate(user.deletedAt)}</span>} />
+                <InfoRow
+                  label="Deleted"
+                  value={<span className="text-destructive">{formatDate(user.deletedAt)}</span>}
+                />
               ) : null}
               <div className="mt-4 flex justify-end">
                 <button
@@ -288,7 +302,7 @@ export default function UserDetailPage({ userId }: UserDetailPageProps) {
                       {identity.provider}
                     </span>
                     <div>
-                      <p className="text-foreground text-sm font-mono text-xs">
+                      <p className="text-foreground font-mono text-sm text-xs">
                         {identity.providerAccountId}
                       </p>
                       {identity.emailSnapshot ? (
@@ -418,7 +432,9 @@ export default function UserDetailPage({ userId }: UserDetailPageProps) {
                           <span className="text-foreground">{member.name}</span>
                           <span className="text-muted-foreground text-xs">age {member.age}</span>
                           {member.relationship ? (
-                            <span className="text-muted-foreground text-xs">{member.relationship}</span>
+                            <span className="text-muted-foreground text-xs">
+                              {member.relationship}
+                            </span>
                           ) : null}
                         </div>
                         <button
@@ -457,7 +473,9 @@ export default function UserDetailPage({ userId }: UserDetailPageProps) {
                   className="text-terracotta hover:text-terracotta/80 flex items-center justify-between rounded-sm px-3 py-2 text-sm transition-colors hover:bg-orange-50"
                 >
                   <span>{ea.event.name}</span>
-                  <span className="text-muted-foreground text-xs">{new Date(ea.event.date).toLocaleDateString()}</span>
+                  <span className="text-muted-foreground text-xs">
+                    {new Date(ea.event.date).toLocaleDateString()}
+                  </span>
                 </Link>
               ))}
             </div>
@@ -522,7 +540,12 @@ export default function UserDetailPage({ userId }: UserDetailPageProps) {
 
       {/* Confirm clear dev password modal */}
       {confirmClearDevPassword ? (
-        <Modal isOpen onClose={() => setConfirmClearDevPassword(false)} title="Clear dev password" size="sm">
+        <Modal
+          isOpen
+          onClose={() => setConfirmClearDevPassword(false)}
+          title="Clear dev password"
+          size="sm"
+        >
           <div className="space-y-4">
             <p className="text-foreground">
               Clear the dev password for <span className="font-semibold">{user.name}</span>?

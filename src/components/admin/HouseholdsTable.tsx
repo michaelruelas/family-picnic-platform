@@ -93,7 +93,9 @@ export default function HouseholdsTable() {
             className="space-y-4"
           >
             {createError ? (
-              <p className="text-destructive rounded-sm bg-red-50 px-3 py-2 text-sm">{createError}</p>
+              <p className="text-destructive rounded-sm bg-red-50 px-3 py-2 text-sm">
+                {createError}
+              </p>
             ) : null}
             <label className="block">
               <span className="text-foreground text-sm font-medium">Household name</span>

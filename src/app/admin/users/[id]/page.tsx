@@ -29,10 +29,7 @@ export default async function AdminUserDetailPage({ params }: PageProps) {
   }
 
   return (
-    <AdminShell
-      title={user.name}
-      description={`User detail and management · ${user.id}`}
-    >
+    <AdminShell title={user.name} description={`User detail and management · ${user.id}`}>
       <UserDetailPage userId={id} />
     </AdminShell>
   );

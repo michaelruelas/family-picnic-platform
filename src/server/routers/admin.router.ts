@@ -2,7 +2,13 @@ import { TRPCError } from '@trpc/server';
 import { router, auditedAdminProcedure } from '~/lib/trpc';
 import { z } from 'zod';
 import { prisma } from '~/lib/prisma';
-import { ChargeStatus, RefundStatus, RegistrationStatus, RSVPStatus, Role } from '~/lib/generated/enums';
+import {
+  ChargeStatus,
+  RefundStatus,
+  RegistrationStatus,
+  RSVPStatus,
+  Role,
+} from '~/lib/generated/enums';
 import { writeAuditLog } from '~/lib/audit';
 import { listAuditLogEntries } from '~/server/audit-entries';
 import { createRefund, isConfigured as stripeConfigured } from '~/lib/stripe';
@@ -412,7 +418,13 @@ export const adminRouter = router({
           },
           linkedIdentities: {
             orderBy: { createdAt: 'asc' },
-            select: { id: true, provider: true, providerAccountId: true, emailSnapshot: true, createdAt: true },
+            select: {
+              id: true,
+              provider: true,
+              providerAccountId: true,
+              emailSnapshot: true,
+              createdAt: true,
+            },
           },
           eventAdmins: {
             select: {
@@ -600,7 +612,7 @@ export const adminRouter = router({
           orderBy: { name: 'asc' },
           select: { id: true, name: true, age: true, relationship: true },
         },
-},
+      },
     });
   }),
 

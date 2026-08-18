@@ -92,9 +92,7 @@ export default function HouseholdDetailPage({ householdId }: HouseholdDetailPage
     onError: (err) => toast.addToast('error', err.message),
   });
 
-  const unlinkedUsers = users?.filter(
-    (u) => !household?.users.some((hu) => hu.id === u.id),
-  );
+  const unlinkedUsers = users?.filter((u) => !household?.users.some((hu) => hu.id === u.id));
 
   if (!household) {
     return <div className="text-muted-foreground py-12 text-center">Loading…</div>;
@@ -146,7 +144,9 @@ export default function HouseholdDetailPage({ householdId }: HouseholdDetailPage
               {household.deletedAt ? (
                 <InfoRow
                   label="Deleted"
-                  value={<span className="text-destructive">{formatDate(household.deletedAt)}</span>}
+                  value={
+                    <span className="text-destructive">{formatDate(household.deletedAt)}</span>
+                  }
                 />
               ) : null}
               <div className="mt-4 flex justify-end">
@@ -330,7 +330,12 @@ export default function HouseholdDetailPage({ householdId }: HouseholdDetailPage
 
       {/* Link user modal */}
       {showLinkUser ? (
-        <Modal isOpen onClose={() => setShowLinkUser(false)} title="Link user to household" size="sm">
+        <Modal
+          isOpen
+          onClose={() => setShowLinkUser(false)}
+          title="Link user to household"
+          size="sm"
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
