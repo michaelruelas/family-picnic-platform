@@ -37,7 +37,7 @@ describe('ow-workflows module exports', () => {
     const { scheduledBroadcastDelivery, rsvpConfirm, rsvpDecline, deliverCommunications } =
       await import('../ow-workflows');
     const workflows = [scheduledBroadcastDelivery, rsvpConfirm, rsvpDecline, deliverCommunications];
-    workflows.forEach((wf, i) => {
+    workflows.forEach((wf) => {
       expect(wf).toBeTruthy();
       expect(typeof wf).toBe('object');
     });

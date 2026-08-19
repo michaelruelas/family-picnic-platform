@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen, act, renderHook } from '@testing-library/react';
 import { ToastProvider, useToast, Toast } from '../Toast';
 
@@ -78,8 +78,6 @@ describe('useToast', () => {
 
 describe('Toast component', () => {
   it('auto-adds toast via addToast', () => {
-    const addToast = vi.fn();
-    const removeToast = vi.fn();
     const TestWrapper = ({ children }: { children: React.ReactNode }) => (
       <ToastProvider>{children}</ToastProvider>
     );

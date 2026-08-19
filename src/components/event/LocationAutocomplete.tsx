@@ -21,8 +21,6 @@ interface LocationAutocompleteProps {
   customNameValue: string;
   /** Google Places formatted address (auto-filled when host picks a pin). */
   resolvedAddress: string;
-  /** True when lat/lng are already populated (event already had a Google pick). */
-  hasGeocodedAddress: boolean;
   /** Fires when the host types in the top free-form input. */
   onCustomNameChange: (value: string) => void;
   /**
@@ -54,7 +52,6 @@ interface LocationAutocompleteProps {
 export function LocationAutocomplete({
   customNameValue,
   resolvedAddress,
-  hasGeocodedAddress,
   onCustomNameChange,
   onResolvedChange,
 }: LocationAutocompleteProps) {
@@ -62,7 +59,6 @@ export function LocationAutocomplete({
   const elementRef = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [scriptError, setScriptError] = useState(false);
-  const [geoSelected, setGeoSelected] = useState(hasGeocodedAddress);
 
   useEffect(() => {
     loadGoogleMapsScript()
@@ -84,7 +80,6 @@ export function LocationAutocomplete({
         fields: ['formattedAddress', 'location', 'id'],
       });
       if (!place.location) return;
-      setGeoSelected(true);
       // Only the resolved location + coordinates flow up. The host's
       // typed custom name stays in its own input and its own column.
       onResolvedChange({

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { resetPrismaMock, makeJsonRequest } from 'tests/helpers/route';
+import { resetPrismaMock } from 'tests/helpers/route';
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
 

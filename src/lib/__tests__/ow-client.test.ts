@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const originalEnv = { ...process.env };
-
 const mockOwInstance = vi.hoisted(() => ({ _mock: true }));
 
 beforeEach(() => {

@@ -245,7 +245,6 @@ export default function EventForm({ initialData, mode }: EventFormProps) {
           <LocationAutocomplete
             customNameValue={formData.customLocationName ?? ''}
             resolvedAddress={formData.location}
-            hasGeocodedAddress={formData.lat !== null && formData.lng !== null}
             onCustomNameChange={handleCustomNameChange}
             onResolvedChange={handleResolvedChange}
           />

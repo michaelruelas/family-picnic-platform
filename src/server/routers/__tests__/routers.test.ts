@@ -360,13 +360,6 @@ describe('_app.ts - appRouter', () => {
   it('exports appRouter with all 11 sub-routers', async () => {
     const { appRouter } = await import('~/server/routers/_app');
     expect(appRouter).toBeDefined();
-    const def = appRouter._def as unknown as Record<string, unknown>;
-    const procedures = (def.procedures as Record<string, unknown>) ?? {};
-    const allKeys = new Set(
-      [...Object.keys(def), ...Object.keys(procedures)].filter(
-        (k) => k !== '_config' && k !== '_errorFormatter',
-      ),
-    );
     const expected = [
       'auth',
       'household',
@@ -3134,7 +3127,6 @@ describe('potluck.router', () => {
   });
 
   it('getFoodSummary returns categorized food items', async () => {
-    const futureDate = new Date(Date.now() + 86400000 * 30);
     mockPrisma.potluckSlot.findMany.mockResolvedValue([
       {
         id: 'slot-1',

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '~/lib/admin-auth';
 import { prisma } from '~/lib/prisma';
-import { RSVPStatus, Role } from '~/lib/generated/enums';
+import { RSVPStatus } from '~/lib/generated/enums';
 import { z } from 'zod';
 import { findOrCreateUserByEmail } from '~/lib/user-identity';
 

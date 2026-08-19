@@ -9,7 +9,6 @@ export async function POST(request: Request) {
   // delivery summary via the events page, not this bulk endpoint.
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;
-  const { session } = auth;
 
   try {
     const { id, status } = await request.json();

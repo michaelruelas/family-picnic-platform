@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { trpc } from '~/lib/trpc-client';
 
 /**
  * Household create form used by both the onboarding wizard

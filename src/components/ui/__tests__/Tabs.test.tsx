@@ -2,10 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Tabs } from '../Tabs';
 
-interface TestPanelProps {
-  label: string;
-}
-
 function buildTabs() {
   return [
     { key: 'one', label: 'Tab One', panel: <div>Panel One</div> },

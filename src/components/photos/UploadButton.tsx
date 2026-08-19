@@ -89,7 +89,7 @@ export default function UploadButton({
       }
 
       const { uploadUrl: fullUrl, key: fullKey } = await fullRes.json();
-      const { uploadUrl: thumbUrl, key: thumbKey } = await thumbRes.json();
+      const { uploadUrl: thumbUrl } = await thumbRes.json();
 
       updateFileStatus(id, { status: 'uploading', progress: 30 });
 

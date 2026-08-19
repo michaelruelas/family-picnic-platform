@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
   // status via the events page.
   const auth = await requireAdminApi();
   if (!auth.ok) return auth.response;
-  const { session } = auth;
 
   try {
     const eventId = request.nextUrl.searchParams.get('eventId');

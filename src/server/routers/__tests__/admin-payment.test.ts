@@ -112,17 +112,6 @@ const adminSession = {
   expires: 'x',
 };
 
-const userSession = {
-  user: {
-    id: 'user-1',
-    name: 'User',
-    email: 'user@x.com',
-    role: 'ADMIN' as Role,
-    householdId: 'h-1',
-  },
-  expires: 'x',
-};
-
 beforeEach(() => {
   vi.clearAllMocks();
   mockPrisma.$transaction.mockImplementation((ops: unknown) => {

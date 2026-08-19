@@ -18,7 +18,7 @@ import { householdNameSchema, HOUSEHOLD_NAME_MAX } from '~/lib/schemas/household
 import { calculateFee, type FeeAttendee } from '~/lib/fee';
 import { formatAmount } from '~/lib/currency';
 import Modal from '~/components/ui/Modal';
-import PaymentBlock, { type PaymentChoice } from '~/components/payment/PaymentBlock';
+import PaymentBlock from '~/components/payment/PaymentBlock';
 import { usePhoneInput } from '~/hooks/usePhoneInput';
 import PotluckEditor from './PotluckEditor';
 import type { ExistingRsvp } from './types';
@@ -284,6 +284,10 @@ export function RsvpBottomSheet({
       setPaymentChoice(null);
       /* eslint-enable react-hooks/set-state-in-effect */
     }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- phoneField is the
+       result of usePhoneInput; its identity changes per render and we only need
+       the stable `reset` callback inside it. Adding it to deps would re-fire
+       the effect on every render. */
   }, [isOpen]);
 
   // FPP-21: honor the ?rsvpOpen=1#potluck deep link from the
@@ -325,6 +329,10 @@ export function RsvpBottomSheet({
     setSmsConsent(Boolean(formState.smsConsent));
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- phoneField is the
+       result of usePhoneInput; its identity changes per render and we only
+       need the stable `reset` callback inside it. Adding it to deps would
+       re-fire the effect on every render. */
   }, [isOpen, hydrated, formState]);
 
   const spotsRemaining = maxCapacity ? maxCapacity - currentAttending : null;
