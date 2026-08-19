@@ -406,7 +406,10 @@ export async function POST(request: Request) {
                   },
                 },
                 include: {
+                  // FPP-Postmortem: filter soft-deleted signups so the
+                  // decline path doesn't double-decrement slot counters.
                   potluckSignups: {
+                    where: { deletedAt: null },
                     include: { slot: true },
                   },
                   memberAttendances: { orderBy: { createdAt: 'asc' } },
@@ -431,8 +434,11 @@ export async function POST(request: Request) {
                 });
               }
 
-              await tx.potluckSignup.deleteMany({
-                where: { rsvpId: existingRsvp?.id },
+              // FPP-Postmortem: soft-delete (set deletedAt) instead of
+              // hard delete. The DB trigger blocks direct DELETE.
+              await tx.potluckSignup.updateMany({
+                where: { rsvpId: existingRsvp?.id, deletedAt: null },
+                data: { deletedAt: new Date() },
               });
 
               const declined = await tx.rSVP.upsert({

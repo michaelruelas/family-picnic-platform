@@ -120,7 +120,9 @@ export const eventRouter = router({
       include: {
         potluckSlots: {
           include: {
+            // FPP-Postmortem: exclude soft-deleted signups.
             signups: {
+              where: { deletedAt: null },
               include: {
                 rsvp: {
                   include: {

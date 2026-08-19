@@ -98,7 +98,10 @@ export const adminRouter = router({
       const potluckSlots = await prisma.potluckSlot.findMany({
         where: { eventId: input.eventId },
         include: {
+          // FPP-Postmortem: exclude soft-deleted signups from the
+          // admin dietary summary.
           signups: {
+            where: { deletedAt: null },
             include: {
               rsvp: true,
             },

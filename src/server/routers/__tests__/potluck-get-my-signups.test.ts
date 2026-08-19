@@ -68,9 +68,10 @@ describe('potluck.getMySignups', () => {
     expect(result).toHaveLength(2);
     expect(result[0]?.dishName).toBe('Mac and cheese');
     expect(result[1]?.dishName).toBe('Brownies');
+    // FPP-Postmortem: getMySignups filters soft-deleted rows.
     expect(prismaMock.potluckSignup.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { rsvpId: 'r-1' },
+        where: expect.objectContaining({ rsvpId: 'r-1', deletedAt: null }),
         orderBy: { claimedAt: 'asc' },
       }),
     );

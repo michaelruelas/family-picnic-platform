@@ -44,7 +44,10 @@ export default async function MyEventsPage() {
             household: true,
           },
         },
+        // FPP-Postmortem: exclude soft-deleted signups from the
+        // my-events dashboard.
         potluckSignups: {
+          where: { deletedAt: null },
           include: {
             slot: true,
           },
@@ -74,7 +77,10 @@ export default async function MyEventsPage() {
             household: true,
           },
         },
+        // FPP-Postmortem: exclude soft-deleted signups from the
+        // my-events dashboard.
         potluckSignups: {
+          where: { deletedAt: null },
           include: {
             slot: true,
           },

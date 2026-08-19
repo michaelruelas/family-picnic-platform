@@ -98,8 +98,23 @@ export const potluckRouter = router({
     }
     return slot.eventId;
   }).mutation(async ({ input }) => {
-    return prisma.potluckSlot.delete({
-      where: { id: input.id },
+    // FPP-Postmortem: the PotluckSignup_no_delete trigger blocks direct
+    // DELETE on signup rows. Soft-delete every live signup for this slot
+    // first (so the cascade from slot.delete has no rows left to
+    // touch), then hard-delete the slot inside a transaction that opts
+    // in to the bypass flag. The flag is scoped to this transaction only.
+    return prisma.$transaction(async (tx) => {
+      await tx.potluckSignup.updateMany({
+        where: { slotId: input.id, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      // SET LOCAL is scoped to the current transaction so the bypass
+      // does not leak to other queries. After this transaction returns,
+      // the trigger is back to blocking direct DELETEs.
+      await tx.$executeRawUnsafe("SET LOCAL app.potluck_signup_allow_hard_delete = 'true'");
+      return tx.potluckSlot.delete({
+        where: { id: input.id },
+      });
     });
   }),
 
@@ -109,7 +124,10 @@ export const potluckRouter = router({
       return prisma.potluckSlot.findMany({
         where: { eventId: input.eventId },
         include: {
+          // FPP-Postmortem: filter out soft-deleted signups so
+          // cancelled claims don't appear on the potluck list.
           signups: {
+            where: { deletedAt: null },
             include: {
               // FPP-127: surface the household name as the primary
               // identity handle on every potluck claim. The RSVP
@@ -152,7 +170,8 @@ export const potluckRouter = router({
         orderBy: { category: 'asc' },
         include: {
           signups: {
-            where: { rsvp: { status: RSVPStatus.CONFIRMED } },
+            // FPP-Postmortem: also exclude soft-deleted signups.
+            where: { deletedAt: null, rsvp: { status: RSVPStatus.CONFIRMED } },
             orderBy: { id: 'asc' },
             include: {
               rsvp: {
@@ -246,8 +265,10 @@ export const potluckRouter = router({
         // check and exceed `maxSignups`.
         return prisma.$transaction(
           async (tx) => {
+            // FPP-Postmortem: only live (non soft-deleted) signups
+            // count against the LIMITED-slot capacity.
             const currentSignups = await tx.potluckSignup.count({
-              where: { slotId: input.slotId },
+              where: { slotId: input.slotId, deletedAt: null },
             });
             const maxSignups = slot.maxSignups || 0;
 
@@ -341,11 +362,13 @@ export const potluckRouter = router({
     .mutation(async ({ ctx, input }) => {
       // Multi-claim: edits target a single signup row identified by
       // its `id`. The caller must own the signup (via their RSVP).
+      // FPP-Postmortem: refuse to update a soft-deleted row so the
+      // edit path can't accidentally resurrect a cancelled signup.
       const signup = await prisma.potluckSignup.findUnique({
         where: { id: input.signupId },
         include: { slot: true },
       });
-      if (!signup) {
+      if (!signup || signup.deletedAt !== null) {
         throw new Error('Signup not found');
       }
 
@@ -366,9 +389,16 @@ export const potluckRouter = router({
       // FPP-50 review: wrap the update + audit write in a transaction
       // so the audit log row is atomic with the signup write.
       return prisma.$transaction(async (tx) => {
+        // FPP-Postmortem: a soft-deleted row would be filtered out
+        // by the before-update trigger, but skip it here for a clear
+        // audit-log `before` payload (null means nothing to log).
         const before = await tx.potluckSignup.findUnique({
           where: { id: input.signupId },
         });
+
+        if (!before || before.deletedAt !== null) {
+          throw new Error('Signup not found');
+        }
 
         const updated = await tx.potluckSignup.update({
           where: { id: input.signupId },
@@ -415,12 +445,15 @@ export const potluckRouter = router({
     .mutation(async ({ ctx, input }) => {
       // Multi-claim: cancellation targets a single signup row by its
       // `id`. The caller must own the signup (via their RSVP).
+      // FPP-Postmortem: filter `deletedAt: null` so an already-cancelled
+      // signup returns 404 instead of being silently re-cancelled
+      // (which would double-decrement the slot counter).
       const signup = await prisma.potluckSignup.findUnique({
         where: { id: input.signupId },
         include: { slot: true },
       });
 
-      if (!signup) {
+      if (!signup || signup.deletedAt !== null) {
         throw new Error('Signup not found');
       }
 
@@ -438,12 +471,15 @@ export const potluckRouter = router({
         throw new Error('Signup not found');
       }
 
-      // FPP-50 review: wrap the delete + counter decrement + audit
-      // write in a transaction so the audit log row is atomic with
-      // the signup removal.
+      // FPP-Postmortem: soft-delete (set deletedAt) instead of hard
+      // delete. The DB trigger `PotluckSignup_no_delete` raises on any
+      // direct DELETE statement; legitimate cancel paths mark the row.
+      // Counter decrement + audit write remain in the same transaction
+      // so all three stay atomic.
       await prisma.$transaction(async (tx) => {
-        await tx.potluckSignup.delete({
+        await tx.potluckSignup.update({
           where: { id: signup.id },
+          data: { deletedAt: new Date() },
         });
 
         await tx.potluckSlot.update({
@@ -495,8 +531,10 @@ export const potluckRouter = router({
       if (!rsvp) {
         return [];
       }
+      // FPP-Postmortem: filter out soft-deleted signups so the
+      // "my signups" summary only lists live claims.
       return prisma.potluckSignup.findMany({
-        where: { rsvpId: rsvp.id },
+        where: { rsvpId: rsvp.id, deletedAt: null },
         orderBy: { claimedAt: 'asc' },
         select: {
           id: true,
@@ -523,7 +561,10 @@ export const potluckRouter = router({
       const slots = await prisma.potluckSlot.findMany({
         where: { eventId: input.eventId },
         include: {
+          // FPP-Postmortem: exclude soft-deleted signups from the
+          // food summary so cancelled dishes don't appear.
           signups: {
+            where: { deletedAt: null },
             include: {
               rsvp: true,
             },

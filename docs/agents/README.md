@@ -13,6 +13,7 @@ This directory contains centralized documentation for AI agents working on the F
 | [ROUTING.md](ROUTING.md)         | Route structure and API endpoint reference          |
 | [TRPC.md](TRPC.md)               | tRPC router structure and procedure types           |
 | [SECURITY.md](SECURITY.md)       | Auth model, permissions, and data isolation         |
+| [RUNBOOKS.md](RUNBOOKS.md)       | Operational runbooks for rare but urgent incidents  |
 
 ## Quick Reference
 

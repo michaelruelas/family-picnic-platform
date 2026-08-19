@@ -465,13 +465,19 @@ model PotluckSlot {
 }
 
 model PotluckSignup {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   slotId        String
   rsvpId        String
   dishName      String
-  servings      Int      @default(1)
+  servings      Int       @default(1)
   dietaryLabels String[]
-  claimedAt     DateTime @default(now())
+  claimedAt     DateTime  @default(now())
+  // FPP-Postmortem: soft-delete column. Hard delete is blocked at the DB
+  // level by the `PotluckSignup_no_delete` trigger (see migration). Every
+  // read path MUST filter `deletedAt: null` so soft-deleted rows never
+  // surface to users; the trigger prevents an accidental psql/Studio wipe
+  // like the 2026-08-19 incident that wiped 19 signups for one event.
+  deletedAt     DateTime?
 
   slot PotluckSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
   rsvp RSVP        @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
@@ -483,6 +489,7 @@ model PotluckSignup {
   // against the slot.
   @@index([slotId])
   @@index([rsvpId])
+  @@index([deletedAt])
 }
 
 model CommunicationLog {

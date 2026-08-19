@@ -252,6 +252,7 @@ describe('POST /api/potluck-signup', () => {
     prismaMock.potluckSignup.findUnique.mockResolvedValue({
       id: 'ps-1',
       rsvpId: 'other-rsvp',
+      deletedAt: null,
       slot: { id: 's1', eventId: 'e1' },
     } as never);
     prismaMock.rSVP.findUnique.mockResolvedValue({ id: 'r-1' } as never);
@@ -259,21 +260,48 @@ describe('POST /api/potluck-signup', () => {
     expect(res.status).toBe(404);
   });
 
-  it('cancels a signup by signupId and decrements currentSignups', async () => {
+  it('cancels a signup by signupId (soft-deletes) and decrements currentSignups', async () => {
+    // FPP-Postmortem: hard delete is blocked by the
+    // PotluckSignup_no_delete DB trigger. Cancel path soft-deletes
+    // (sets deletedAt) instead.
     mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1' } as never);
     prismaMock.potluckSignup.findUnique.mockResolvedValue({
       id: 'ps-1',
       rsvpId: 'r-1',
+      deletedAt: null,
       slot: { id: 's1', eventId: 'e1' },
     } as never);
     prismaMock.rSVP.findUnique.mockResolvedValue({ id: 'r-1' } as never);
-    prismaMock.potluckSignup.delete.mockResolvedValue({} as never);
+    prismaMock.potluckSignup.update.mockResolvedValue({} as never);
     prismaMock.potluckSlot.update.mockResolvedValue({} as never);
     const res = await POST(makeJsonRequest('http://x', { action: 'cancel', signupId: 'ps-1' }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.action).toBe('cancelled');
+    expect(prismaMock.potluckSignup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'ps-1' },
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+      }),
+    );
+    expect(prismaMock.potluckSignup.delete).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when cancelling an already soft-deleted signup', async () => {
+    // FPP-Postmortem: an already-cancelled signup must look like a
+    // 404 so a stray re-cancel doesn't double-decrement the counter.
+    mockedSession.mockResolvedValue({ user: { id: 'u-1' } } as never);
+    prismaMock.user.findUnique.mockResolvedValue({ id: 'u-1' } as never);
+    prismaMock.potluckSignup.findUnique.mockResolvedValue({
+      id: 'ps-1',
+      rsvpId: 'r-1',
+      deletedAt: new Date('2026-08-19T20:00:00Z'),
+      slot: { id: 's1', eventId: 'e1' },
+    } as never);
+    const res = await POST(makeJsonRequest('http://x', { action: 'cancel', signupId: 'ps-1' }));
+    expect(res.status).toBe(404);
+    expect(prismaMock.potluckSignup.update).not.toHaveBeenCalled();
   });
 
   it('returns 500 on unexpected error', async () => {

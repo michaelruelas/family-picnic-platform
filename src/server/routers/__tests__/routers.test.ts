@@ -83,6 +83,7 @@ const mockPrisma = {
     findMany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
     delete: vi.fn(),
     deleteMany: vi.fn(),
     count: vi.fn(),
@@ -134,6 +135,13 @@ const mockPrisma = {
 mockPrisma.$transaction = vi.fn(async <T>(fn: (tx: typeof mockPrisma) => Promise<T>) => {
   return fn(mockPrisma);
 }) as never;
+// FPP-Postmortem: deleteSlot and admin event DELETE run
+// `SET LOCAL app.potluck_signup_allow_hard_delete = 'true'`
+// inside the transaction so the cascade can bypass the no_delete
+// trigger. Mock the raw helper.
+(mockPrisma as unknown as { $executeRawUnsafe: ReturnType<typeof vi.fn> }).$executeRawUnsafe = vi
+  .fn()
+  .mockResolvedValue(undefined);
 
 vi.mock('~/lib/prisma', () => ({
   prisma: mockPrisma,
@@ -2168,7 +2176,11 @@ describe('rsvp.router', () => {
     expect(writeAuditLog).not.toHaveBeenCalled();
   });
 
-  it('decline cancels RSVP and releases potluck slots', async () => {
+  it('decline cancels RSVP and soft-deletes potluck signups', async () => {
+    // FPP-Postmortem: hard delete is blocked by the
+    // PotluckSignup_no_delete DB trigger. Decline path now
+    // soft-deletes (sets deletedAt) so future un-cancels or
+    // restores can resurrect the rows.
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', householdId: 'h-1' });
     mockPrisma.rSVP.findUnique.mockResolvedValue({
       id: 'rsvp-1',
@@ -2191,9 +2203,13 @@ describe('rsvp.router', () => {
         data: { currentSignups: { decrement: 1 } },
       }),
     );
-    expect(mockPrisma.potluckSignup.deleteMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { rsvpId: 'rsvp-1' } }),
+    expect(mockPrisma.potluckSignup.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { rsvpId: 'rsvp-1', deletedAt: null },
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+      }),
     );
+    expect(mockPrisma.potluckSignup.deleteMany).not.toHaveBeenCalled();
     expect(result?.status).toBe('DECLINED');
   });
 
@@ -3334,9 +3350,13 @@ describe('potluck.router', () => {
     );
   });
 
-  it('deleteSlot deletes a potluck slot', async () => {
+  it('deleteSlot soft-deletes signups then deletes the slot (Postmortem 2026-08-19)', async () => {
     // FPP-104: the deleteSlot getEventId resolver looks the slot
     // up to find its parent event.
+    // FPP-Postmortem: the DB trigger blocks direct DELETE on signup
+    // rows. deleteSlot now soft-deletes every live signup for the
+    // slot, then runs the cascade-friendly `SET LOCAL` bypass
+    // inside the same transaction before deleting the slot.
     mockPrisma.potluckSlot.findUnique.mockResolvedValue({ eventId: 'event-1' });
     mockPrisma.potluckSlot.delete.mockResolvedValue({ id: 'slot-1' });
 
@@ -3345,6 +3365,12 @@ describe('potluck.router', () => {
     const caller = createCallerFactory(potluckRouter)({ session: adminSession });
     await caller.deleteSlot({ id: 'slot-1' });
 
+    expect(mockPrisma.potluckSignup.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { slotId: 'slot-1', deletedAt: null },
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+      }),
+    );
     expect(mockPrisma.potluckSlot.delete).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'slot-1' } }),
     );
@@ -3514,6 +3540,8 @@ describe('potluck.router', () => {
 
   it('updateSignup updates the dish by signup id', async () => {
     // Multi-claim: updateSignup targets the signup row directly by id.
+    // FPP-Postmortem: include deletedAt: null so the soft-delete
+    // filter lets the test proceed.
     mockPrisma.potluckSignup.findUnique.mockResolvedValue({
       id: 'ps-1',
       slotId: 'slot-1',
@@ -3521,6 +3549,7 @@ describe('potluck.router', () => {
       dishName: 'Original',
       servings: 2,
       dietaryLabels: [],
+      deletedAt: null,
       slot: { id: 'slot-1', eventId: 'evt-1' },
     });
     mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
@@ -3590,19 +3619,23 @@ describe('potluck.router', () => {
     ).rejects.toThrow('Signup not found');
   });
 
-  it('cancelSignup deletes signup by id and decrements slot count', async () => {
+  it('cancelSignup soft-deletes signup by id and decrements slot count', async () => {
     // Multi-claim: cancel targets one signup row by id, so dropping
     // one of several rows on the same slot is supported.
+    // FPP-Postmortem: hard-delete is blocked by the
+    // PotluckSignup_no_delete DB trigger. Cancel paths set
+    // `deletedAt` instead.
     mockPrisma.potluckSignup.findUnique.mockResolvedValue({
       id: 'ps-1',
       slotId: 'slot-1',
       rsvpId: 'rsvp-1',
       dishName: 'Salad',
       servings: 2,
+      deletedAt: null,
       slot: { id: 'slot-1', eventId: 'evt-1' },
     });
     mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
-    mockPrisma.potluckSignup.delete.mockResolvedValue({ id: 'ps-1' });
+    mockPrisma.potluckSignup.update.mockResolvedValue({ id: 'ps-1' });
     mockPrisma.potluckSlot.update.mockResolvedValue({ id: 'slot-1' });
 
     const { potluckRouter } = await import('~/server/routers/potluck.router');
@@ -3610,9 +3643,13 @@ describe('potluck.router', () => {
     const caller = createCallerFactory(potluckRouter)({ session: userSession });
     const result = await caller.cancelSignup({ signupId: 'ps-1' });
 
-    expect(mockPrisma.potluckSignup.delete).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'ps-1' } }),
+    expect(mockPrisma.potluckSignup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'ps-1' },
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+      }),
     );
+    expect(mockPrisma.potluckSignup.delete).not.toHaveBeenCalled();
     expect(mockPrisma.potluckSlot.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'slot-1' },
@@ -3620,6 +3657,27 @@ describe('potluck.router', () => {
       }),
     );
     expect(result.success).toBe(true);
+  });
+
+  it('cancelSignup throws when signup is already soft-deleted', async () => {
+    // FPP-Postmortem: an already-cancelled signup must look like a
+    // 404 so a stray re-cancel doesn't double-decrement the counter.
+    mockPrisma.potluckSignup.findUnique.mockResolvedValue({
+      id: 'ps-1',
+      slotId: 'slot-1',
+      rsvpId: 'rsvp-1',
+      dishName: 'Salad',
+      servings: 2,
+      deletedAt: new Date('2026-08-19T20:00:00Z'),
+      slot: { id: 'slot-1', eventId: 'evt-1' },
+    });
+    mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
+
+    const { potluckRouter } = await import('~/server/routers/potluck.router');
+    const { createCallerFactory } = await import('~/lib/trpc');
+    const caller = createCallerFactory(potluckRouter)({ session: userSession });
+    await expect(caller.cancelSignup({ signupId: 'ps-1' })).rejects.toThrow('Signup not found');
+    expect(mockPrisma.potluckSignup.update).not.toHaveBeenCalled();
   });
 
   it('cancelSignup throws when signup not found', async () => {
@@ -3636,6 +3694,7 @@ describe('potluck.router', () => {
       id: 'ps-1',
       slotId: 'slot-1',
       rsvpId: 'other-rsvp',
+      deletedAt: null,
       slot: { id: 'slot-1', eventId: 'evt-1' },
     });
     mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1' });
@@ -3690,10 +3749,11 @@ describe('potluck.router', () => {
       rsvpId: 'rsvp-1',
       dishName: 'Salad',
       servings: 3,
+      deletedAt: null,
       slot: { id: 'slot-1', eventId: 'evt-1' },
     });
     mockPrisma.rSVP.findUnique.mockResolvedValue({ id: 'rsvp-1', status: 'CONFIRMED' });
-    mockPrisma.potluckSignup.delete.mockResolvedValue({ id: 'ps-1' });
+    mockPrisma.potluckSignup.update.mockResolvedValue({ id: 'ps-1' });
     mockPrisma.potluckSlot.update.mockResolvedValue({ id: 'slot-1' });
 
     const { potluckRouter } = await import('~/server/routers/potluck.router');

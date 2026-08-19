@@ -23,7 +23,8 @@ async function getDashboardRows(): Promise<AdminDashboardRow[]> {
     prisma.potluckSlot.findMany({
       select: {
         eventId: true,
-        _count: { select: { signups: true } },
+        // FPP-Postmortem: count only live signups (exclude soft-deleted).
+        _count: { select: { signups: { where: { deletedAt: null } } } },
       },
     }),
     prisma.charge.findMany({

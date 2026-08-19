@@ -309,7 +309,10 @@ export const rsvpDecline = defineWorkflow<RsvpDeclineInput, RsvpDeclineOutput>(
     const existingRsvp = await step.run({ name: 'fetch-existing-rsvp' }, () =>
       prisma.rSVP.findUnique({
         where: { eventId_userId: { eventId: input.eventId, userId: input.userId } },
-        include: { potluckSignups: { include: { slot: true } } },
+        // FPP-Postmortem: filter out soft-deleted signups so the
+        // decline path doesn't double-decrement slot counters for
+        // rows already cancelled.
+        include: { potluckSignups: { where: { deletedAt: null }, include: { slot: true } } },
       }),
     );
 
@@ -326,7 +329,12 @@ export const rsvpDecline = defineWorkflow<RsvpDeclineInput, RsvpDeclineOutput>(
             data: { currentSignups: { decrement: 1 } },
           });
         }
-        await tx.potluckSignup.deleteMany({ where: { rsvpId: existingRsvp.id } });
+        // FPP-Postmortem: soft-delete (set deletedAt) instead of
+        // hard delete. The DB trigger blocks direct DELETE.
+        await tx.potluckSignup.updateMany({
+          where: { rsvpId: existingRsvp.id, deletedAt: null },
+          data: { deletedAt: new Date() },
+        });
       });
       return existingRsvp.potluckSignups.length;
     });

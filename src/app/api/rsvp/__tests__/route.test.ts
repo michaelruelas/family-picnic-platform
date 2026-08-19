@@ -17,7 +17,7 @@ const prismaMock = vi.hoisted(() => ({
     update: vi.fn(),
     updateMany: vi.fn(),
   },
-  potluckSignup: { deleteMany: vi.fn() },
+  potluckSignup: { deleteMany: vi.fn(), updateMany: vi.fn() },
   potluckSlot: { update: vi.fn() },
   rsvpMemberAttendance: {
     createMany: vi.fn(),
@@ -247,7 +247,7 @@ describe('POST /api/rsvp', () => {
     } as never);
     prismaMock.rSVP.upsert.mockResolvedValue({} as never);
     prismaMock.potluckSlot.update.mockResolvedValue({} as never);
-    prismaMock.potluckSignup.deleteMany.mockResolvedValue({} as never);
+    prismaMock.potluckSignup.updateMany.mockResolvedValue({} as never);
     prismaMock.adminAuditLog.create.mockResolvedValue({} as never);
     prismaMock.rSVP.findFirst.mockResolvedValue(null);
 
@@ -255,7 +255,15 @@ describe('POST /api/rsvp', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.status).toBe('DECLINED');
-    expect(prismaMock.potluckSignup.deleteMany).toHaveBeenCalled();
+    // FPP-Postmortem: decline soft-deletes (set deletedAt) instead of
+    // hard delete. The DB trigger blocks direct DELETE.
+    expect(prismaMock.potluckSignup.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ deletedAt: null }),
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+      }),
+    );
+    expect(prismaMock.potluckSignup.deleteMany).not.toHaveBeenCalled();
     expect(prismaMock.potluckSlot.update).toHaveBeenCalled();
     expect(prismaMock.adminAuditLog.create).toHaveBeenCalled();
   });

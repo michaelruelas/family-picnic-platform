@@ -33,7 +33,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
         potluckSlots: {
           include: {
             _count: {
-              select: { signups: true },
+              // FPP-Postmortem: exclude soft-deleted signups from the
+              // admin event payload.
+              select: { signups: { where: { deletedAt: null } } },
             },
           },
         },
@@ -198,7 +200,22 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    await prisma.event.delete({ where: { id } });
+    // FPP-Postmortem: the cascade from `event.delete` lands on every
+    // PotluckSignup row for the event. The PotluckSignup_no_delete
+    // trigger blocks direct DELETE statements, so we soft-delete the
+    // live signups first, then opt in to the bypass flag for the
+    // event delete itself. The cascade runs with the flag still set
+    // and the trigger lets it through. Both the soft-delete and the
+    // SET LOCAL / event.delete share one transaction so the bypass
+    // scope is exactly the cascade chain.
+    await prisma.$transaction(async (tx) => {
+      await tx.potluckSignup.updateMany({
+        where: { slot: { eventId: id }, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      await tx.$executeRawUnsafe("SET LOCAL app.potluck_signup_allow_hard_delete = 'true'");
+      await tx.event.delete({ where: { id } });
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

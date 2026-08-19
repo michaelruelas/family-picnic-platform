@@ -171,12 +171,14 @@ export async function POST(request: Request) {
         // action === 'cancel'
         const { signupId } = body as { signupId: string };
 
+        // FPP-Postmortem: filter `deletedAt: null` so an already-cancelled
+        // signup returns 404 instead of being silently re-cancelled.
         const signup = await prisma.potluckSignup.findUnique({
           where: { id: signupId },
           include: { slot: true },
         });
 
-        if (!signup) {
+        if (!signup || signup.deletedAt !== null) {
           return NextResponse.json(
             { error: 'Signup not found', code: 'NOT_FOUND' },
             { status: 404 },
@@ -203,8 +205,11 @@ export async function POST(request: Request) {
           );
         }
 
-        await prisma.potluckSignup.delete({
+        // FPP-Postmortem: soft-delete (set deletedAt) instead of hard
+        // delete. The DB trigger blocks direct DELETE statements.
+        await prisma.potluckSignup.update({
           where: { id: signup.id },
+          data: { deletedAt: new Date() },
         });
 
         await prisma.potluckSlot.update({

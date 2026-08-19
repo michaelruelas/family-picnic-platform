@@ -11,6 +11,12 @@ const prismaMock = vi.hoisted(() => ({
   // 401/404/400 behaviour; per-event access for the GUEST role
   // is the subject of `src/lib/__tests__/event-access.test.ts`.
   eventAdmin: { findUnique: vi.fn(() => Promise.resolve(null)) },
+  // FPP-Postmortem: event DELETE soft-deletes potluck signups
+  // first then runs the cascade inside a transaction with
+  // `SET LOCAL app.potluck_signup_allow_hard_delete = 'true'`.
+  potluckSignup: { updateMany: vi.fn(() => Promise.resolve({ count: 0 })) },
+  $transaction: vi.fn(async (fn: (tx: typeof prismaMock) => Promise<unknown>) => fn(prismaMock)),
+  $executeRawUnsafe: vi.fn(),
 }));
 vi.mock('~/lib/prisma', () => ({ prisma: prismaMock }));
 

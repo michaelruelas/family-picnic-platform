@@ -22,10 +22,16 @@ describe('RSVP Decline Auto-Release Potluck Slots', () => {
     expect(routeContent).not.toContain('decrement: signup.servings');
   });
 
-  it('deletes all potluck signups tied to the RSVP', async () => {
+  it('soft-deletes all potluck signups tied to the RSVP (Postmortem 2026-08-19)', async () => {
+    // FPP-Postmortem: the DB trigger blocks direct DELETE on
+    // PotluckSignup. The decline path now uses updateMany to set
+    // `deletedAt` instead. The route content is read at test time
+    // so any regression that re-introduces deleteMany would fail.
     const routeContent = await fs.readFile(routePath, 'utf-8');
-    expect(routeContent).toContain('potluckSignup.deleteMany');
+    expect(routeContent).toContain('potluckSignup.updateMany');
     expect(routeContent).toContain('rsvpId: existingRsvp?.id');
+    expect(routeContent).toContain('deletedAt: null');
+    expect(routeContent).not.toContain('potluckSignup.deleteMany');
   });
 
   it('creates audit log entry for RSVP update with diff', async () => {
