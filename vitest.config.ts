@@ -16,6 +16,14 @@ export default defineConfig({
     setupFiles: ['./src/lib/__tests__/setup.ts'],
     include: ['**/*.test.{ts,tsx}'],
     exclude: ['node_modules', '.next', 'src/lib/generated', '**/playwright-tests/**'],
+    // Silence the pino logger under test. Many route tests
+    // intentionally throw errors to verify error-handling paths
+    // — without this, every one of them floods the pre-commit /
+    // pre-push hook output with `{"level":"error"...}` lines
+    // and drowns the actual pass/fail signal.
+    env: {
+      LOG_LEVEL: 'silent',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
