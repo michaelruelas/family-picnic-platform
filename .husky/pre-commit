@@ -1,13 +1,20 @@
 #!/bin/sh
+set -e
 
-echo "[wrkflw] Validating CI pipeline..."
-wrkflw validate .github/workflows/ci.yml
+# Cheap gate — only validate CI YAML when it actually changed.
+if git diff --cached --name-only | grep -q '\.github/workflows/'; then
+  echo "[wrkflw] Validating CI pipeline..."
+  wrkflw validate .github/workflows/ci.yml
+fi
 
-echo "[format] Auto-fixing formatting..."
-bun run format
-
-echo "[lint] Running lint..."
-bun run lint
-
+# Critical: real bugs first. With errexit active, a failure here short-circuits
+# the hook so we never pay the cost of lint/format on a broken commit.
 echo "[typecheck] Running type check..."
 bun run typecheck
+
+echo "[test] Running tests related to staged changes..."
+bunx vitest --changed=HEAD --run --passWithNoTests
+
+# Style: only reached when typecheck and tests pass.
+echo "[lint-staged] Formatting and linting staged files..."
+bunx lint-staged

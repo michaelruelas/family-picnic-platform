@@ -26,10 +26,19 @@ bun run ci           # Full CI suite: typecheck + lint + format:check + test:cov
 
 ### Local CI (wrkflw)
 
-The pre-commit hook validates the CI YAML with `wrkflw`, auto-formats, and runs
-`bun run lint` and `bun run typecheck` (fast). The full test suite plus the
-coverage gate run in CI on every push; `lint-staged` also runs
-`vitest run --passWithNoTests` per staged file as a partial local mirror.
+The pre-commit hook runs in fail-fast order with `set -e`, so a broken commit
+short-circuits before paying the cost of style checks:
+
+1. `wrkflw validate .github/workflows/ci.yml` — only when `.github/workflows/`
+   files are staged
+2. `bun run typecheck` — `tsc --noEmit` on the whole project
+3. `bunx vitest --changed=HEAD --run --passWithNoTests` — tests related to
+   staged changes (single run, not per file)
+4. `bunx lint-staged` — `prettier --write` + `eslint --fix` on staged files
+   (only reached if typecheck and tests pass)
+
+The full test suite plus the coverage gate run in CI on every push; `bun run ci`
+runs the full local suite.
 
 Install wrkflw for local CI validation:
 
