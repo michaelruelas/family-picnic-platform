@@ -1,5 +1,6 @@
 import { prisma } from '~/lib/prisma';
 import { writeAuditLog } from '~/lib/audit';
+import { isRelayEmail } from '~/lib/email-relay';
 import type { Role } from '~/lib/generated/enums';
 
 export const SUPPORTED_OAUTH_PROVIDERS = ['google', 'apple', 'facebook'] as const;
@@ -95,6 +96,22 @@ export async function findOrCreateUserByIdentity(
       });
       return null;
     }
+    if (existing.user.emailIsRelay) {
+      // The account was created with a third-party relay email. The
+      // user must have an admin replace the email before they can
+      // sign in again. Audit and throw so the signIn callback can
+      // surface a specific error to the login form.
+      await writeAuditLog({
+        userId: existing.user.id,
+        action: 'auth.signIn.refused',
+        newValue: {
+          provider: link.provider,
+          reason: 'relay_email_blocked',
+          variant: 'existing_user',
+        },
+      });
+      throw new RelayEmailBlockedError('existing_user');
+    }
     await writeAuditLog({
       userId: existing.user.id,
       action: 'auth.signIn.succeeded',
@@ -129,6 +146,23 @@ export async function findOrCreateUserByIdentity(
       },
     });
     return null;
+  }
+
+  if (isRelayEmail(email)) {
+    // The OAuth provider returned a third-party relay alias (e.g.
+    // Apple Private Relay). The platform has no real way to contact
+    // the user at that address, so refuse and direct them to sign in
+    // with a real email instead.
+    await writeAuditLog({
+      userId: 'unknown',
+      action: 'auth.signIn.refused',
+      newValue: {
+        provider: link.provider,
+        reason: 'relay_email_blocked',
+        variant: 'new_user',
+      },
+    });
+    throw new RelayEmailBlockedError('new_user');
   }
 
   const activeByEmail = await prisma.user.findFirst({
@@ -187,6 +221,7 @@ export async function findOrCreateUserByIdentity(
         email,
         name: deriveInitialName(link.displayName, email),
         role: 'ADULT',
+        emailIsRelay: isRelayEmail(email),
       },
     });
     const identity = await tx.linkedIdentity.create({
@@ -311,6 +346,7 @@ export async function findOrCreateUserByEmail(
       email: normalized,
       name,
       householdId,
+      emailIsRelay: isRelayEmail(normalized),
       ...(role ? { role } : {}),
     },
   });
@@ -321,6 +357,33 @@ export class IdentityAlreadyLinkedError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'IdentityAlreadyLinkedError';
+  }
+}
+
+/**
+ * Thrown by `findOrCreateUserByIdentity` when a sign-in is refused
+ * because the user has a third-party relay email (e.g. Apple Private
+ * Relay). The `signIn` callback catches this and redirects the user
+ * to /login?error=RelayEmail so the login form can show a specific
+ * message instead of the generic "Invalid credentials".
+ *
+ * `variant` distinguishes the two cases the audit log records:
+ *  - `existing_user`: the account is already in the DB and its
+ *    `emailIsRelay` flag is true. The user must update their email
+ *    (via the admin, since they cannot sign in) before signing in.
+ *  - `new_user`: the email returned by the OAuth provider is a
+ *    relay. The user must sign in again with a real email (e.g.
+ *    "Share My Email" in Apple, or use Google).
+ */
+export class RelayEmailBlockedError extends Error {
+  readonly code = 'RelayEmail' as const;
+  readonly variant: 'existing_user' | 'new_user';
+  constructor(variant: 'existing_user' | 'new_user') {
+    super(
+      `Sign-in refused: ${variant === 'existing_user' ? 'existing user' : 'new user'} email is a third-party relay`,
+    );
+    this.name = 'RelayEmailBlockedError';
+    this.variant = variant;
   }
 }
 

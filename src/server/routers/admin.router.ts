@@ -17,6 +17,7 @@ import { sendRegistrationReceipt } from '~/lib/receipt';
 import { withSerializableRetry } from '~/lib/transaction-retry';
 import { randomUUID } from 'node:crypto';
 import { findOrCreateUserByEmail } from '~/lib/user-identity';
+import { isRelayEmail } from '~/lib/email-relay';
 import {
   forfeitInputSchema,
   listChargesInputSchema,
@@ -265,6 +266,7 @@ export const adminRouter = router({
           name: true,
           email: true,
           role: true,
+          emailIsRelay: true,
           createdAt: true,
           household: { select: { id: true, name: true } },
         },
@@ -314,6 +316,7 @@ export const adminRouter = router({
           name: true,
           email: true,
           role: true,
+          emailIsRelay: true,
           householdId: true,
           phoneNumber: true,
           communicationPreference: true,
@@ -366,6 +369,7 @@ export const adminRouter = router({
           email: input.email,
           role: input.role,
           phoneNumber: input.phoneNumber,
+          emailIsRelay: isRelayEmail(input.email),
         },
       });
 
@@ -394,6 +398,7 @@ export const adminRouter = router({
           id: true,
           name: true,
           email: true,
+          emailIsRelay: true,
           role: true,
           householdId: true,
           phoneNumber: true,

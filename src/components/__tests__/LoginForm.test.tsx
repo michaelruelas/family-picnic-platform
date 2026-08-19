@@ -7,8 +7,9 @@ vi.mock('next-auth/react', () => ({
   signIn: vi.fn(),
 }));
 
+const useSearchParamsMock = vi.fn(() => new URLSearchParams());
 vi.mock('next/navigation', () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => useSearchParamsMock(),
 }));
 
 vi.mock('next/link', () => ({
@@ -24,6 +25,8 @@ const mockedSignIn = vi.mocked(signIn);
 beforeEach(() => {
   vi.clearAllMocks();
   mockedSignIn.mockReset();
+  useSearchParamsMock.mockReset();
+  useSearchParamsMock.mockImplementation(() => new URLSearchParams());
 });
 
 describe('LoginForm', () => {
@@ -126,5 +129,11 @@ describe('LoginForm', () => {
   it('hides back to home link when showBackLink is false', () => {
     render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} showBackLink={false} />);
     expect(screen.queryByRole('link', { name: /back to home/i })).not.toBeInTheDocument();
+  });
+
+  it('shows the relay-blocked banner when ?error=RelayEmail is present', () => {
+    useSearchParamsMock.mockImplementation(() => new URLSearchParams('error=RelayEmail'));
+    render(<LoginForm devAuthEnabled={false} enabledProviders={['google']} />);
+    expect(screen.getByText(/sign-in blocked: email is a relay alias/i)).toBeInTheDocument();
   });
 });

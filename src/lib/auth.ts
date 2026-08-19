@@ -5,7 +5,12 @@ import FacebookProvider from 'next-auth/providers/facebook';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from './prisma';
 import type { Role } from './generated/enums';
-import { findOrCreateUserByIdentity, isOAuthProvider, type OAuthProvider } from './user-identity';
+import {
+  findOrCreateUserByIdentity,
+  isOAuthProvider,
+  RelayEmailBlockedError,
+  type OAuthProvider,
+} from './user-identity';
 import {
   getAppleClientSecret,
   getAppleClientSecretCached,
@@ -277,13 +282,22 @@ export const authOptions: NextAuthOptions = {
       // tombstone gets refused before the redirect back to the app.
       const email = extractEmail(profile);
       const displayName = extractDisplayName(provider, profile, undefined);
-      const resolved = await findOrCreateUserByIdentity({
-        provider,
-        providerAccountId,
-        emailSnapshot: email,
-        displayName,
-      });
-      return resolved !== null;
+      try {
+        const resolved = await findOrCreateUserByIdentity({
+          provider,
+          providerAccountId,
+          emailSnapshot: email,
+          displayName,
+        });
+        return resolved !== null;
+      } catch (err) {
+        if (err instanceof RelayEmailBlockedError) {
+          // Surface a specific error to the login form so the user
+          // knows the issue is a relay alias, not bad credentials.
+          return `/login?error=${err.code}`;
+        }
+        throw err;
+      }
     },
   },
 };

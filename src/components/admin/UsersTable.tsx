@@ -12,6 +12,7 @@ interface UserRow {
   name: string;
   email: string;
   role: string;
+  emailIsRelay: boolean;
   createdAt: Date;
   household: { id: string; name: string } | null;
 }
@@ -115,7 +116,17 @@ export default function UsersTable() {
                     </Link>
                   </td>
                   <td className="text-muted-foreground max-w-[280px] truncate px-4 py-3">
-                    {user.email}
+                    <span className="inline-flex items-center gap-2">
+                      <span className="truncate">{user.email}</span>
+                      {user.emailIsRelay ? (
+                        <span
+                          title="Apple Private Relay or similar alias. Inbound mail is not delivered."
+                          className="shrink-0 rounded-sm bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 uppercase"
+                        >
+                          Relay
+                        </span>
+                      ) : null}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <span className="bg-terracotta/10 text-terracotta rounded-sm px-2 py-0.5 text-xs font-medium">

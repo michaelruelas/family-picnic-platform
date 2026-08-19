@@ -112,6 +112,36 @@ export default function UserDetailPage({ userId }: UserDetailPageProps) {
 
   return (
     <div className="max-w-3xl">
+      {user.emailIsRelay ? (
+        <div
+          role="alert"
+          className="mb-6 flex items-start gap-3 rounded-sm border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          <svg
+            aria-hidden="true"
+            className="mt-0.5 h-4 w-4 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+            />
+          </svg>
+          <div>
+            <p className="font-semibold">Email is a relay alias</p>
+            <p className="mt-0.5 text-xs text-amber-800">
+              {user.email} looks like a third-party alias (e.g. Apple Hide My Email). The user
+              controls the underlying address and can rotate or revoke it at any time, so emails
+              sent here may never reach them. Reach out via SMS, the household tree, or update the
+              address to a real email.
+            </p>
+          </div>
+        </div>
+      ) : null}
       {/* Profile Section */}
       <Section title="Profile">
         <div className="bg-card border-border rounded-sm border p-5">

@@ -317,6 +317,7 @@ describe('findOrCreateUserByIdentity', () => {
           email: 'maria@example.com',
           name: 'Maria Garcia',
           role: 'ADULT',
+          emailIsRelay: false,
         },
       });
     });
@@ -360,6 +361,7 @@ describe('findOrCreateUserByIdentity', () => {
           email: 'returning@example.com',
           name: 'returning@example.com',
           role: 'ADULT',
+          emailIsRelay: false,
         },
       });
     });
@@ -401,6 +403,94 @@ describe('findOrCreateUserByIdentity', () => {
       const call = createUser.mock.calls[0]?.[0] as { data: { name: string } };
       expect(call.data.name).toHaveLength(200);
       expect(call.data.name).toBe('x'.repeat(200));
+    });
+
+    it('throws RelayEmailBlockedError and refuses to create a relay user', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      const createUser = vi.fn();
+      const createIdentity = vi.fn();
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+        return fn({
+          user: { create: createUser },
+          linkedIdentity: { create: createIdentity },
+        } as never);
+      });
+
+      const { findOrCreateUserByIdentity, RelayEmailBlockedError } =
+        await import('../user-identity');
+      await expect(
+        findOrCreateUserByIdentity({
+          provider: 'apple',
+          providerAccountId: 'apple-sub-relay',
+          emailSnapshot: 'cty74tsk8y@privaterelay.appleid.com',
+        }),
+      ).rejects.toBeInstanceOf(RelayEmailBlockedError);
+
+      const err = await findOrCreateUserByIdentity({
+        provider: 'apple',
+        providerAccountId: 'apple-sub-relay-2',
+        emailSnapshot: 'cty74tsk8y@privaterelay.appleid.com',
+      }).catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(RelayEmailBlockedError);
+      expect((err as InstanceType<typeof RelayEmailBlockedError>).variant).toBe('new_user');
+
+      expect(createUser).not.toHaveBeenCalled();
+      expect(createIdentity).not.toHaveBeenCalled();
+      expect(prisma.adminAuditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          action: 'auth.signIn.refused',
+          newValue: expect.objectContaining({
+            provider: 'apple',
+            reason: 'relay_email_blocked',
+            variant: 'new_user',
+          }),
+        }),
+      });
+    });
+
+    it('throws RelayEmailBlockedError when an existing user has emailIsRelay=true', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue({
+        id: 'ident-1',
+        userId: 'user-1',
+        provider: 'apple',
+        providerAccountId: 'apple-sub-existing',
+        emailSnapshot: 'abc@privaterelay.appleid.com',
+        createdAt: new Date(),
+        user: {
+          id: 'user-1',
+          email: 'abc@privaterelay.appleid.com',
+          name: 'A',
+          role: 'ADULT',
+          emailIsRelay: true,
+          deletedAt: null,
+        },
+      } as never);
+
+      const { findOrCreateUserByIdentity, RelayEmailBlockedError } =
+        await import('../user-identity');
+      const err = await findOrCreateUserByIdentity({
+        provider: 'apple',
+        providerAccountId: 'apple-sub-existing',
+        emailSnapshot: 'abc@privaterelay.appleid.com',
+      }).catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(RelayEmailBlockedError);
+      expect((err as InstanceType<typeof RelayEmailBlockedError>).variant).toBe('existing_user');
+      expect(prisma.user.findFirst).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.adminAuditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-1',
+          action: 'auth.signIn.refused',
+          newValue: expect.objectContaining({
+            reason: 'relay_email_blocked',
+            variant: 'existing_user',
+          }),
+        }),
+      });
     });
 
     it('normalizes the email (trim + lowercase) before lookup', async () => {

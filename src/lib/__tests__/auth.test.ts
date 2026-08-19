@@ -332,6 +332,7 @@ describe('authOptions session callback', () => {
           email: 'apple@example.com',
           name: 'Apple User',
           role: 'ADULT',
+          emailIsRelay: false,
         },
       });
     });
@@ -379,6 +380,7 @@ describe('authOptions session callback', () => {
           email: 'maria@example.com',
           name: 'Maria Garcia',
           role: 'ADULT',
+          emailIsRelay: false,
         },
       });
     });
@@ -422,6 +424,7 @@ describe('authOptions session callback', () => {
           email: 'returning@example.com',
           name: 'returning@example.com',
           role: 'ADULT',
+          emailIsRelay: false,
         },
       });
     });
@@ -472,6 +475,48 @@ describe('authOptions session callback', () => {
         profile: { email: 'test@example.com' },
       });
       expect(result).toBe(false);
+    });
+
+    it('redirects to /login?error=RelayEmail when the new email is a relay', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean | string>;
+      const result = await signInCallback({
+        account: { provider: 'apple' },
+        profile: { sub: 'apple-sub-relay', email: 'cty74tsk8y@privaterelay.appleid.com' },
+      });
+      expect(result).toBe('/login?error=RelayEmail');
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('redirects to /login?error=RelayEmail when an existing user has a relay email', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue({
+        id: 'ident-1',
+        userId: 'user-1',
+        provider: 'apple',
+        providerAccountId: 'apple-sub-existing',
+        user: {
+          id: 'user-1',
+          email: 'abc@privaterelay.appleid.com',
+          name: 'A',
+          role: 'ADULT',
+          emailIsRelay: true,
+          deletedAt: null,
+        },
+      } as any);
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean | string>;
+      const result = await signInCallback({
+        account: { provider: 'apple' },
+        profile: { sub: 'apple-sub-existing', email: 'abc@privaterelay.appleid.com' },
+      });
+      expect(result).toBe('/login?error=RelayEmail');
     });
 
     it('refuses sign in when facebook provider returns no id', async () => {

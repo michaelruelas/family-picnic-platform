@@ -193,6 +193,12 @@ model User {
   smsConsent              Boolean                 @default(false)
   smsConsentAt            DateTime?
   smsConsentIp            String?
+  // True when the user's email is a third-party alias (Apple Private
+  // Relay and similar). Inbound mail to these addresses is not
+  // delivered to the user, so the admin UI surfaces a warning and
+  // invitation/broadcast flows should prefer phone or household
+  // channels for these accounts.
+  emailIsRelay            Boolean                 @default(false)
   onboardingCompletedAt   DateTime?
   createdAt               DateTime                @default(now())
   updatedAt               DateTime                @updatedAt

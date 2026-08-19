@@ -22,6 +22,8 @@ export default function LoginForm({
 }: LoginFormProps) {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams?.get('callbackUrl') || SIGNED_IN_REDIRECT;
+  const oauthError = searchParams?.get('error');
+  const relayBlocked = oauthError === 'RelayEmail';
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -64,6 +66,19 @@ export default function LoginForm({
         </div>
 
         <div className="bg-card shadow-card ring-border/60 rounded-sm p-8 ring-1">
+          {relayBlocked ? (
+            <div
+              role="alert"
+              className="mb-4 rounded-sm bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-300"
+            >
+              <p className="font-semibold">Sign-in blocked: email is a relay alias.</p>
+              <p className="mt-1 text-xs text-amber-800">
+                This sign-in used a third-party alias (e.g. Apple Hide My Email) that we cannot
+                reliably deliver mail to. Sign in with Google, or in Apple choose &ldquo;Share My
+                Email&rdquo; instead of &ldquo;Hide My Email&rdquo; for this app.
+              </p>
+            </div>
+          ) : null}
           {devAuthEnabled && (
             <form onSubmit={handleDevLogin} className="space-y-4">
               <div>

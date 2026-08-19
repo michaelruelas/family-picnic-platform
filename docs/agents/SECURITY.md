@@ -51,6 +51,14 @@ no `LinkedIdentity` row exists for the Apple `sub` and no email is returned. The
 surfaces "Invalid credentials" in that case. Users who rely on private relay should keep their
 initial sign-in session active (the `LinkedIdentity` row is what links future silent sign-ins).
 
+Relay aliases are not deliverable inbound: the user controls the underlying address and can
+revoke it at any time, so any mail the platform sends to them is at risk of being dropped. To
+flag these accounts in the admin UI, the `User` row carries an `emailIsRelay` boolean set by
+`isRelayEmail()` in `src/lib/email-relay.ts` at creation time and recomputed whenever an admin
+edits the email. The admin user list shows a "Relay" badge next to the email, and the user
+detail page surfaces an amber banner explaining the contact limitation. Add new relay domains
+to `RELAY_EMAIL_DOMAINS` rather than hardcoding them at the call sites.
+
 ### Dev Credentials (Local Only)
 
 ```bash
