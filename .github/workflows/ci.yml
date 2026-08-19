@@ -104,3 +104,13 @@ jobs:
 
       - name: Build
         run: bun run build
+
+      # Hand the Next.js build cache off to the Docker workflow so
+      # its `next build` can run incrementally. Both sides key on
+      # the commit SHA so the cache always matches the code being
+      # built. ~2-3 minutes saved per Docker push.
+      - name: Cache Next.js build cache for Docker
+        uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: next-build-cache-${{ github.sha }}

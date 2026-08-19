@@ -18,13 +18,20 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=prisma /app/src/lib/generated ./src/lib/generated
 COPY . .
+# Pre-populate .next/cache with CI's incremental build cache so
+# `next build` reuses the cache instead of compiling every page
+# from scratch. Empty nextcache (cache miss) is a no-op and the
+# build falls back to a full rebuild.
+COPY --from=nextcache . .next/cache/
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
 ARG NEXT_PUBLIC_POSTHOG_KEY
 ARG NEXT_PUBLIC_POSTHOG_HOST
 ENV NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
 ENV NEXT_PUBLIC_POSTHOG_HOST=${NEXT_PUBLIC_POSTHOG_HOST}
-RUN rm -rf .next && NEXT_IGNORE_BUILD_ERRORS=true bun run build
+# Drop prior output dirs but preserve .next/cache so the
+# incremental build actually reuses the cached compilation.
+RUN rm -rf .next/standalone .next/static && NEXT_IGNORE_BUILD_ERRORS=true bun run build
 
 FROM base AS runner
 WORKDIR /app

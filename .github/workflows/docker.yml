@@ -46,6 +46,22 @@ jobs:
           ref: ${{ steps.ref.outputs.value }}
           fetch-depth: 1
 
+      # Restore the Next.js build cache that CI just wrote so our
+      # `next build` runs incrementally instead of from scratch.
+      # Falls back to a full build on cache miss (manual rebuild
+      # on a SHA that hasn't run CI yet, or cache eviction).
+      - name: Restore Next.js build cache from CI
+        uses: actions/cache@v5
+        with:
+          path: ./nextcache
+          key: next-build-cache-${{ steps.ref.outputs.value }}
+
+      # BuildKit fails on `COPY --from=name` if the context is
+      # absent. Create an empty directory so the cache-miss path
+      # is a no-op COPY rather than a build failure.
+      - name: Ensure nextcache directory exists
+        run: mkdir -p ./nextcache
+
       - name: Set up Docker Buildx (k8s driver)
         uses: docker/setup-buildx-action@v4
         with:
@@ -78,6 +94,8 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
+          build-contexts: |
+            nextcache=./nextcache
           file: ./Dockerfile
           platforms: linux/arm64
           push: true
