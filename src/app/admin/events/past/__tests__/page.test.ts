@@ -56,21 +56,6 @@ describe('getPastEvents (FPP-68)', () => {
     expect(now - ltValue.getTime()).toBeLessThan(60_000);
   });
 
-  it('includes the rsvp + potluck-slot counts for the table', async () => {
-    prismaMock.event.findMany.mockResolvedValue([]);
-
-    await getPastEvents();
-
-    const call = prismaMock.event.findMany.mock.calls[0]?.[0] as {
-      include: { _count: { select: { rsvps: true; potluckSlots: true } } };
-    };
-
-    expect(call.include._count.select).toEqual({
-      rsvps: true,
-      potluckSlots: true,
-    });
-  });
-
   it('returns the rows Prisma resolves', async () => {
     const row = {
       id: 'e1',

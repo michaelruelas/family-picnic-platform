@@ -33,14 +33,6 @@ export async function getPastEvents() {
       OR: [{ archivedAt: { not: null } }, { archivedAt: null, date: { lt: now } }],
     },
     orderBy: { date: 'desc' },
-    include: {
-      _count: {
-        select: {
-          rsvps: true,
-          potluckSlots: true,
-        },
-      },
-    },
   });
   return events;
 }
@@ -55,12 +47,6 @@ export default async function PastEventsPage() {
     name: e.name,
     date: e.date.toISOString(),
     status: e.status,
-    location: e.location,
-    rsvpCount: e._count.rsvps,
-    potluckSlotCount: e._count.potluckSlots,
-    maxCapacity: e.maxCapacity ?? null,
-    rsvpDeadline: e.rsvpDeadline ? e.rsvpDeadline.toISOString() : null,
-    archivedAt: e.archivedAt ? e.archivedAt.toISOString() : null,
   }));
 
   return (

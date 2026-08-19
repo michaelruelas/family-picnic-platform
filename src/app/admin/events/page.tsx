@@ -15,14 +15,6 @@ async function getEvents() {
   return prisma.event.findMany({
     where: { archivedAt: null },
     orderBy: { date: 'desc' },
-    include: {
-      _count: {
-        select: {
-          rsvps: true,
-          potluckSlots: true,
-        },
-      },
-    },
   });
 }
 
@@ -43,12 +35,6 @@ export default async function AdminEventsPage() {
     name: e.name,
     date: e.date.toISOString(),
     status: e.status,
-    location: e.location,
-    rsvpCount: e._count.rsvps,
-    potluckSlotCount: e._count.potluckSlots,
-    maxCapacity: e.maxCapacity ?? null,
-    rsvpDeadline: e.rsvpDeadline ? e.rsvpDeadline.toISOString() : null,
-    archivedAt: e.archivedAt ? e.archivedAt.toISOString() : null,
   }));
 
   return (

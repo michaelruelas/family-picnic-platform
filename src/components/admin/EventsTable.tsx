@@ -18,16 +18,6 @@ export interface AdminEventRow {
   name: string;
   date: string;
   status: EventStatus;
-  location: string;
-  rsvpCount: number;
-  potluckSlotCount: number;
-  maxCapacity: number | null;
-  rsvpDeadline: string | null;
-  // FPP-68 / QUB-12: archived timestamp. Null when the event has
-  // never been archived (pre-FPP-68 rows + future rows). Serialised
-  // as an ISO string from the server component so the client can
-  // render "Archived on <date>" inline.
-  archivedAt: string | null;
 }
 
 interface EventsTableProps {
@@ -200,87 +190,6 @@ export default function EventsTable({
         accessorKey: 'status',
         enableSorting: true,
         cell: ({ row }) => <EventStatusBadge status={row.status} />,
-      },
-      {
-        id: 'location',
-        header: 'Location',
-        accessorKey: 'location',
-        enableSorting: true,
-        sortFn: 'alphanumeric',
-        cell: ({ value }) => <span className="text-muted-foreground">📍 {String(value)}</span>,
-      },
-      {
-        id: 'rsvps',
-        header: 'RSVPs',
-        accessorKey: 'rsvpCount',
-        enableSorting: true,
-        sortFn: 'basic',
-        align: 'right',
-        className: 'tabular-nums',
-      },
-      {
-        id: 'potluckSlots',
-        header: 'Slots',
-        accessorKey: 'potluckSlotCount',
-        enableSorting: true,
-        sortFn: 'basic',
-        align: 'right',
-        className: 'tabular-nums',
-      },
-      {
-        id: 'capacity',
-        header: 'Capacity',
-        accessorKey: 'maxCapacity',
-        enableSorting: true,
-        sortFn: 'basic',
-        align: 'right',
-        cell: ({ value }) => {
-          const v = value as number | null;
-          if (v === null || v === undefined) {
-            return <span className="text-muted-foreground/60">—</span>;
-          }
-          return <span className="tabular-nums">{v}</span>;
-        },
-      },
-      {
-        id: 'rsvpDeadline',
-        header: 'RSVP by',
-        accessorKey: 'rsvpDeadline',
-        enableSorting: true,
-        sortFn: 'datetime',
-        cell: ({ value }) => {
-          if (!value) return <span className="text-muted-foreground/60">—</span>;
-          const deadline = new Date(String(value));
-          const daysUntil = Math.ceil((deadline.getTime() - Date.now()) / 86_400_000);
-          const isImminent = daysUntil >= 0 && daysUntil <= 14;
-          return (
-            <span className={`whitespace-nowrap ${isImminent ? 'text-terracotta' : ''}`}>
-              {formatDate(value, 'date')}
-              {isImminent ? (
-                <span className="text-muted-foreground ml-1 text-xs">({daysUntil}d)</span>
-              ) : null}
-            </span>
-          );
-        },
-      },
-      // FPP-68 / QUB-12: "Archived on" column. Shows the archive
-      // timestamp when present, "—" otherwise. Past events surface
-      // here even when archivedAt is null (legacy rows whose date
-      // has passed but were never explicitly archived).
-      {
-        id: 'archivedAt',
-        header: 'Archived on',
-        accessorKey: 'archivedAt',
-        enableSorting: true,
-        sortFn: 'datetime',
-        cell: ({ value }) => {
-          if (!value) return <span className="text-muted-foreground/60">—</span>;
-          return (
-            <span className="text-muted-foreground whitespace-nowrap">
-              {formatDate(value, 'date')}
-            </span>
-          );
-        },
       },
       {
         id: 'actions',
