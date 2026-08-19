@@ -32,16 +32,11 @@ export default async function EventMembersPage({ params }: PageProps) {
       name: true,
       date: true,
       status: true,
-      potluckSlots: {
-        select: {
-          signups: {
-            select: {
-              dishName: true,
-              rsvp: { select: { id: true } },
-            },
-          },
-        },
-      },
+      // FPP-138: potluck slot data is intentionally NOT pulled
+      // here. The members view is scoped to attendance; potluck
+      // details live on the event edit page and on the public
+      // potluck page. Joining here would re-fetch one row per
+      // rsvp.id and noise up the table.
       rsvps: {
         where: {
           status: {
@@ -73,18 +68,6 @@ export default async function EventMembersPage({ params }: PageProps) {
     [RsvpAttending.MAYBE]: 0,
   };
 
-  // Index dish by rsvp id so we can join in O(1) per member.
-  const dishByRsvpId = new Map<string, string | null>();
-  for (const slot of event.potluckSlots) {
-    for (const signup of slot.signups) {
-      const existing = dishByRsvpId.get(signup.rsvp.id);
-      // Keep the first non-empty dish name for each RSVP — one row per rsvp.
-      if (!existing && signup.dishName) {
-        dishByRsvpId.set(signup.rsvp.id, signup.dishName);
-      }
-    }
-  }
-
   const rows: AdminMemberRow[] = [];
   for (const rsvp of event.rsvps) {
     for (const att of rsvp.memberAttendances) {
@@ -100,7 +83,6 @@ export default async function EventMembersPage({ params }: PageProps) {
         householdName: rsvp.user.household?.name ?? rsvp.user.name,
         rsvpId: rsvp.id,
         respondedAt: rsvp.respondedAt ? rsvp.respondedAt.toISOString() : null,
-        dishName: dishByRsvpId.get(rsvp.id) ?? null,
         // FPP-102: surfaced on the row so the MembersTable modal
         // does not have to re-derive them from the rsvp query.
         userId: rsvp.userId,

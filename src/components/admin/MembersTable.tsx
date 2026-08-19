@@ -19,7 +19,6 @@ export interface AdminMemberRow {
   householdName: string;
   rsvpId: string;
   respondedAt: string | null;
-  dishName: string | null;
   /**
    * FPP-102: the userId the RSVP belongs to. Surfaced so the
    * modal can re-fetch via tRPC.getById keyed on rsvpId (which is
@@ -30,6 +29,8 @@ export interface AdminMemberRow {
   userName: string;
   userEmail: string;
 }
+
+type AttendanceFilter = 'all' | RsvpAttending;
 
 export interface AdminHouseholdOption {
   userId: string;
@@ -87,9 +88,20 @@ export default function MembersTable({
   const [editingRow, setEditingRow] = useState<AdminMemberRow | null>(null);
   const [addingHousehold, setAddingHousehold] = useState<AdminHouseholdOption | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [attendanceFilter, setAttendanceFilter] = useState<AttendanceFilter>('all');
   const pickerRef = useRef<HTMLDivElement | null>(null);
 
   const isReadOnly = eventStatus === 'CANCELLED';
+
+  // FPP-138: focus the page on members + going/not-coming. The
+  // toolbar filter narrows the table to one bucket at a time;
+  // the per-member Attendance badge + the Going/Maybe/Not-going
+  // counter tiles keep the bucket context visible above and
+  // inside the table.
+  const filteredRows = useMemo(() => {
+    if (attendanceFilter === 'all') return initialRows;
+    return initialRows.filter((row) => row.attending === attendanceFilter);
+  }, [initialRows, attendanceFilter]);
 
   // Close the household picker on click-outside or Escape so it
   // does not dangle after the admin has scrolled away. Mirrors
@@ -179,17 +191,6 @@ export default function MembersTable({
         cell: ({ value }) => <span className="text-muted-foreground">{String(value)}</span>,
       },
       {
-        id: 'dishName',
-        header: 'Dish',
-        accessorKey: 'dishName',
-        cell: ({ value }) =>
-          value ? (
-            <span className="text-foreground">{String(value)}</span>
-          ) : (
-            <span className="text-muted-foreground/60">—</span>
-          ),
-      },
-      {
         id: 'respondedAt',
         header: 'Responded',
         accessorKey: 'respondedAt',
@@ -231,6 +232,15 @@ export default function MembersTable({
 
   function closeAdd() {
     setAddingHousehold(null);
+  }
+
+  function toggleAttendanceFilter(bucket: RsvpAttending) {
+    // Clicking the already-active counter clears the filter back
+    // to All; clicking an inactive counter narrows the table to
+    // that bucket. The toggle matches the user's mental model
+    // ("I want everyone" → "I want just Going" → "I want everyone
+    // again") and keeps the tiles useful as a quick clear control.
+    setAttendanceFilter((current) => (current === bucket ? 'all' : bucket));
   }
 
   return (
@@ -299,37 +309,91 @@ export default function MembersTable({
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-card rounded-sm p-4 shadow-sm">
+        <button
+          type="button"
+          onClick={() => toggleAttendanceFilter(RsvpAttending.YES)}
+          aria-pressed={attendanceFilter === RsvpAttending.YES}
+          className={`bg-card hover:bg-secondary/40 rounded-sm p-4 text-left shadow-sm transition ${
+            attendanceFilter === RsvpAttending.YES ? 'ring-sage ring-2' : ''
+          }`}
+          data-testid="counter-going"
+        >
           <p className="text-muted-foreground text-xs">Going</p>
           <p className="text-sage mt-1 text-2xl font-semibold tabular-nums">
             {counts[RsvpAttending.YES]}
           </p>
-        </div>
-        <div className="bg-card rounded-sm p-4 shadow-sm">
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleAttendanceFilter(RsvpAttending.MAYBE)}
+          aria-pressed={attendanceFilter === RsvpAttending.MAYBE}
+          className={`bg-card hover:bg-secondary/40 rounded-sm p-4 text-left shadow-sm transition ${
+            attendanceFilter === RsvpAttending.MAYBE ? 'ring-sunlight ring-2' : ''
+          }`}
+          data-testid="counter-maybe"
+        >
           <p className="text-muted-foreground text-xs">Maybe</p>
           <p className="text-sunlight-foreground mt-1 text-2xl font-semibold tabular-nums">
             {counts[RsvpAttending.MAYBE]}
           </p>
-        </div>
-        <div className="bg-card rounded-sm p-4 shadow-sm">
+        </button>
+        <button
+          type="button"
+          onClick={() => toggleAttendanceFilter(RsvpAttending.NO)}
+          aria-pressed={attendanceFilter === RsvpAttending.NO}
+          className={`bg-card hover:bg-secondary/40 rounded-sm p-4 text-left shadow-sm transition ${
+            attendanceFilter === RsvpAttending.NO ? 'ring-destructive ring-2' : ''
+          }`}
+          data-testid="counter-not-going"
+        >
           <p className="text-muted-foreground text-xs">Not going</p>
           <p className="text-destructive mt-1 text-2xl font-semibold tabular-nums">
             {counts[RsvpAttending.NO]}
           </p>
-        </div>
+        </button>
       </div>
 
       <DataTable
         columns={columns}
-        data={initialRows}
+        data={filteredRows}
         rowKey="id"
         pageSize={50}
         onRowClick={isReadOnly ? undefined : openEdit}
-        emptyState={{
-          title: 'No members yet',
-          description: 'Once households respond, you’ll see per-member attendance here.',
-          icon: 'users',
-        }}
+        emptyState={
+          attendanceFilter === 'all'
+            ? {
+                title: 'No members yet',
+                description: 'Once households respond, you’ll see per-member attendance here.',
+                icon: 'users',
+              }
+            : {
+                title: `No ${attendingLabel(attendanceFilter).toLowerCase()} members`,
+                description: 'Switch the filter to "All" to see every member.',
+                icon: 'users',
+              }
+        }
+        toolbar={
+          <div>
+            <label
+              htmlFor="attendance-filter"
+              className="text-muted-foreground block text-xs font-medium tracking-wider uppercase"
+            >
+              Attendance
+            </label>
+            <select
+              id="attendance-filter"
+              value={attendanceFilter}
+              onChange={(e) => setAttendanceFilter(e.target.value as AttendanceFilter)}
+              className="border-border mt-1 rounded-sm border px-3 py-1.5 text-sm"
+              data-testid="attendance-filter"
+            >
+              <option value="all">All ({initialRows.length})</option>
+              <option value={RsvpAttending.YES}>Going ({counts[RsvpAttending.YES]})</option>
+              <option value={RsvpAttending.MAYBE}>Maybe ({counts[RsvpAttending.MAYBE]})</option>
+              <option value={RsvpAttending.NO}>Not going ({counts[RsvpAttending.NO]})</option>
+            </select>
+          </div>
+        }
       />
 
       {editingRsvpId && editingRow ? (

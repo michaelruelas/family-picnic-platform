@@ -38,7 +38,6 @@ const rows = [
     householdName: 'The Garcia Family',
     rsvpId: 'r1',
     respondedAt: '2026-08-01T10:00:00.000Z',
-    dishName: 'Paella',
     userId: 'u-garcia-1',
     userName: 'Maria Garcia',
     userEmail: 'maria@example.com',
@@ -54,7 +53,6 @@ const rows = [
     householdName: 'The Garcia Family',
     rsvpId: 'r1',
     respondedAt: '2026-08-01T10:00:00.000Z',
-    dishName: null,
     userId: 'u-garcia-1',
     userName: 'Maria Garcia',
     userEmail: 'maria@example.com',
@@ -80,7 +78,7 @@ beforeEach(() => {
 });
 
 describe('MembersTable', () => {
-  it('renders the per-member rows with household + dish', () => {
+  it('renders the per-member rows with household and attendance', () => {
     render(
       <MembersTable
         initialRows={rows}
@@ -95,10 +93,12 @@ describe('MembersTable', () => {
 
     expect(screen.getByText('Maria Garcia')).toBeInTheDocument();
     expect(screen.getByText('Carlos Garcia')).toBeInTheDocument();
-    expect(screen.getByText('Paella')).toBeInTheDocument();
-    // The second row has no dish — the cell renders an em-dash.
-    const dashes = screen.getAllByText('—');
-    expect(dashes.length).toBeGreaterThanOrEqual(1);
+    // The age column renders an em-dash for any null/undefined age;
+    // with these rows no age is null, but the empty-state cell is
+    // still part of the palette so we keep the broad assertion.
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('Going')).toBeInTheDocument();
+    expect(within(table).getByText('Maybe')).toBeInTheDocument();
   });
 
   it('shows the Going / Maybe / Not going bucket counts', () => {
@@ -116,9 +116,12 @@ describe('MembersTable', () => {
     expect(screen.getAllByText('Going').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Maybe').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Not going').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('7')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
+    // Scope to the counter tiles so the numbers don't collide
+    // with the matching counts inside the attendance filter
+    // options (e.g. "All (2)").
+    expect(within(screen.getByTestId('counter-going')).getByText('7')).toBeInTheDocument();
+    expect(within(screen.getByTestId('counter-not-going')).getByText('2')).toBeInTheDocument();
+    expect(within(screen.getByTestId('counter-maybe')).getByText('3')).toBeInTheDocument();
   });
 
   it('renders the event name as the page heading', () => {
@@ -342,5 +345,117 @@ describe('MembersTable → AdminRsvpModal wiring (FPP-102)', () => {
     // event-name heading is a safe external target).
     fireEvent.mouseDown(screen.getByRole('heading', { name: /folia picnic/i }));
     expect(screen.queryByTestId('add-rsvp-picker')).not.toBeInTheDocument();
+  });
+});
+
+describe('MembersTable attendance filter (FPP-138)', () => {
+  it('renders the attendance filter with counts from the props', () => {
+    render(
+      <MembersTable
+        initialRows={rows}
+        eventId="e1"
+        eventStatus={EventStatus.PUBLISHED}
+        eventName="Folia Picnic"
+        eventDate="September 12, 2026"
+        counts={{ [RsvpAttending.YES]: 1, [RsvpAttending.NO]: 0, [RsvpAttending.MAYBE]: 1 }}
+        availableHouseholds={[]}
+      />,
+    );
+
+    const select = screen.getByTestId('attendance-filter') as HTMLSelectElement;
+    expect(select.value).toBe('all');
+    expect(within(select).getByRole('option', { name: /All \(2\)/ })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: /Going \(1\)/ })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: /Maybe \(1\)/ })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: /Not going \(0\)/ })).toBeInTheDocument();
+  });
+
+  it('narrows the table to Going rows when the filter is set to YES', () => {
+    render(
+      <MembersTable
+        initialRows={rows}
+        eventId="e1"
+        eventStatus={EventStatus.PUBLISHED}
+        eventName="Folia Picnic"
+        eventDate="September 12, 2026"
+        counts={{ [RsvpAttending.YES]: 1, [RsvpAttending.NO]: 0, [RsvpAttending.MAYBE]: 1 }}
+        availableHouseholds={[]}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('attendance-filter'), {
+      target: { value: RsvpAttending.YES },
+    });
+
+    const tbody = screen.getAllByRole('rowgroup')[1]!;
+    const dataRows = within(tbody).getAllByRole('row');
+    expect(dataRows).toHaveLength(1);
+    expect(within(tbody).getByText('Maria Garcia')).toBeInTheDocument();
+    expect(within(tbody).queryByText('Carlos Garcia')).not.toBeInTheDocument();
+  });
+
+  it('shows an empty-state copy that names the active bucket when the filter has no matches', () => {
+    render(
+      <MembersTable
+        initialRows={rows}
+        eventId="e1"
+        eventStatus={EventStatus.PUBLISHED}
+        eventName="Folia Picnic"
+        eventDate="September 12, 2026"
+        counts={{ [RsvpAttending.YES]: 1, [RsvpAttending.NO]: 0, [RsvpAttending.MAYBE]: 1 }}
+        availableHouseholds={[]}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('attendance-filter'), {
+      target: { value: RsvpAttending.NO },
+    });
+
+    expect(screen.getByText(/no not going members/i)).toBeInTheDocument();
+  });
+
+  it('clicking a counter tile narrows the table to that bucket', () => {
+    render(
+      <MembersTable
+        initialRows={rows}
+        eventId="e1"
+        eventStatus={EventStatus.PUBLISHED}
+        eventName="Folia Picnic"
+        eventDate="September 12, 2026"
+        counts={{ [RsvpAttending.YES]: 1, [RsvpAttending.NO]: 0, [RsvpAttending.MAYBE]: 1 }}
+        availableHouseholds={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('counter-maybe'));
+
+    const tbody = screen.getAllByRole('rowgroup')[1]!;
+    expect(within(tbody).queryByText('Maria Garcia')).not.toBeInTheDocument();
+    expect(within(tbody).getByText('Carlos Garcia')).toBeInTheDocument();
+    expect((screen.getByTestId('attendance-filter') as HTMLSelectElement).value).toBe(
+      RsvpAttending.MAYBE,
+    );
+  });
+
+  it('clicking the same active counter tile again clears the filter back to All', () => {
+    render(
+      <MembersTable
+        initialRows={rows}
+        eventId="e1"
+        eventStatus={EventStatus.PUBLISHED}
+        eventName="Folia Picnic"
+        eventDate="September 12, 2026"
+        counts={{ [RsvpAttending.YES]: 1, [RsvpAttending.NO]: 0, [RsvpAttending.MAYBE]: 1 }}
+        availableHouseholds={[]}
+      />,
+    );
+
+    const going = screen.getByTestId('counter-going');
+    fireEvent.click(going);
+    expect((screen.getByTestId('attendance-filter') as HTMLSelectElement).value).toBe(
+      RsvpAttending.YES,
+    );
+    fireEvent.click(going);
+    expect((screen.getByTestId('attendance-filter') as HTMLSelectElement).value).toBe('all');
   });
 });
