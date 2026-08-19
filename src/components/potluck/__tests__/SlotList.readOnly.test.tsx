@@ -126,4 +126,80 @@ describe('SlotList readOnly mode (FPP-21)', () => {
     );
     expect(screen.getByTestId('yours-badge')).toBeInTheDocument();
   });
+
+  // Auth gate: anonymous viewers (userId=null) must NOT see
+  // household names or user names next to claimed dishes. Dish
+  // names stay visible — they're about the food, not the family.
+  describe('anonymous viewer (userId=null)', () => {
+    it('strips the household name suffix from claimed-dish rows', () => {
+      render(
+        <SlotList
+          eventId="evt-1"
+          slots={baseSlots}
+          userId={null}
+          hasRsvp={false}
+          isRsvpConfirmed={false}
+        />,
+      );
+      // The dish name still renders — it's not personal data.
+      expect(screen.getByText('Lemon bars')).toBeInTheDocument();
+      // The household + user names must NOT render.
+      expect(screen.queryByText(/The Pat Family/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Pat/)).not.toBeInTheDocument();
+    });
+
+    it('strips the user name fallback when no household name is set', () => {
+      const slotsWithoutHousehold = [
+        {
+          id: 's-1',
+          name: 'Mac and cheese',
+          category: 'MAIN',
+          slotType: 'UNLIMITED',
+          maxSignups: null,
+          currentSignups: 1,
+          signups: [
+            {
+              id: 'ps-1',
+              dishName: 'Mac and cheese',
+              servings: 1,
+              dietaryLabels: [],
+              rsvp: {
+                userId: 'u-99',
+                user: { id: 'u-99', name: 'Pat' },
+                householdName: null,
+              },
+            },
+          ],
+        },
+      ];
+      render(
+        <SlotList
+          eventId="evt-1"
+          slots={slotsWithoutHousehold}
+          userId={null}
+          hasRsvp={false}
+          isRsvpConfirmed={false}
+        />,
+      );
+      // The dish name + slot name both contain "Mac and cheese"
+      // — use getAllByText to confirm the row is present without
+      // coupling to a specific count, then assert the user name is
+      // absent.
+      expect(screen.getAllByText('Mac and cheese').length).toBeGreaterThan(0);
+      expect(screen.queryByText(/Pat/)).not.toBeInTheDocument();
+    });
+
+    it('still surfaces the existing "Sign in" hint banner', () => {
+      render(
+        <SlotList
+          eventId="evt-1"
+          slots={baseSlots}
+          userId={null}
+          hasRsvp={false}
+          isRsvpConfirmed={false}
+        />,
+      );
+      expect(screen.getByText(/Sign in/i)).toBeInTheDocument();
+    });
+  });
 });

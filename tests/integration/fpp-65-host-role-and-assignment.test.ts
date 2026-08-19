@@ -184,9 +184,12 @@ describe('FPP-65: host role and assignment to events', () => {
       expect(page).toMatch(/phoneNumber:\s*true/);
     });
 
-    it('event page passes hosts into EventHeaderSection', async () => {
+    it('event page passes hosts into EventHeaderSection (gated by auth)', async () => {
       const page = await fs.readFile(eventPagePath, 'utf-8');
-      expect(page).toMatch(/hosts=\{hosts\}/);
+      // Host contact details are personal data — the page must
+      // hand EventHeaderSection an empty array when the viewer is
+      // anonymous so HostBlock renders nothing.
+      expect(page).toMatch(/hosts=\{isLoggedIn\s*\?\s*hosts\s*:\s*\[\]\}/);
     });
 
     it('HostBlock renders host name + email + phone when present', async () => {

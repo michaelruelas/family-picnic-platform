@@ -346,7 +346,12 @@ export default async function EventDetailPage({ params }: Props) {
               // host is assigned — the HostBlock component hides
               // itself in that case so we don't render an empty
               // section.
-              hosts={hosts}
+              //
+              // Auth gate: host names + contact info are personal
+              // data, so anonymous guests see an empty array here
+              // and HostBlock renders nothing. The host's email /
+              // phone are *not* public to logged-out visitors.
+              hosts={isLoggedIn ? hosts : []}
               // FPP-43 / FPP-1: surface the host's PDF attachments.
               // EventHeaderSection renders nothing when the list is
               // empty so draft events stay quiet.
@@ -370,9 +375,10 @@ export default async function EventDetailPage({ params }: Props) {
             sizeBytes: a.sizeBytes,
           }))}
           // FPP-151: pre-shaped by the parallel Prisma query above.
-          // The tabs component hides the section entirely when the
-          // list is empty so we don't need to gate it here.
+          // The tabs component decides what to render — see
+          // EventSectionTabs for the auth-gated branch.
           publicAttendees={publicAttendeesRsvps}
+          isLoggedIn={isLoggedIn}
           eventName={event.name}
           userId={userId}
           userRole={userRole ?? null}

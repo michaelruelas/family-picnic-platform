@@ -6,6 +6,7 @@ import UploadButton from '~/components/photos/UploadButton';
 import PhotoGallery from '~/components/photos/PhotoGallery';
 import EventNav from '~/components/event/EventNav';
 import { BreatheSection } from '~/components/ui/BreatheSection';
+import { SignInPrompt } from '~/components/event/SignInPrompt';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,7 +99,19 @@ export default async function EventPhotosPage({ params }: PageProps) {
           </div>
         )}
 
-        {event.photos.length === 0 ? (
+        {!userId ? (
+          // Auth gate: photo gallery contents are personal — uploader
+          // identity (via household name) + the candid moments
+          // themselves stay private until the viewer signs in.
+          // Counts in the EventNav (e.g. "12") stay public so guests
+          // see there's something to come back for.
+          <div className="mt-10">
+            <SignInPrompt
+              title="Photos are just for family"
+              description="Sign in to see the candid moments shared from this gathering."
+            />
+          </div>
+        ) : event.photos.length === 0 ? (
           <div className="bg-secondary mt-10 rounded-sm p-12 text-center">
             <div className="text-5xl">📷</div>
             <h3 className="font-display text-foreground mt-4 text-2xl font-semibold">

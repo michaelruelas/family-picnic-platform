@@ -300,12 +300,17 @@ export default function SlotList({
                               Fall back to the user name for legacy
                               rows where householdName is not yet
                               surfaced, and finally omit the suffix
-                              when neither is set. */}
-                            {s.rsvp.householdName
-                              ? ` · ${s.rsvp.householdName}`
-                              : s.rsvp.user?.name
-                                ? ` · ${s.rsvp.user.name}`
-                                : ''}
+                              when neither is set.
+                              Auth gate: household + user names are
+                              personal data, so anonymous guests see
+                              the dish name only. */}
+                            {!userId
+                              ? ''
+                              : s.rsvp.householdName
+                                ? ` · ${s.rsvp.householdName}`
+                                : s.rsvp.user?.name
+                                  ? ` · ${s.rsvp.user.name}`
+                                  : ''}
                           </li>
                         ))}
                         {slot.signups.length > 3 && (

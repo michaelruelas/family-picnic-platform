@@ -5,6 +5,7 @@ import { EventAnchorNav, type AnchorNavItem } from './EventAnchorNav';
 import { EventItinerarySection, type ItineraryItem } from './EventItinerarySection';
 import { EventAdditionalInfoSection } from './EventAdditionalInfoSection';
 import { PublicAttendeeList } from './PublicAttendeeList';
+import { SignInPrompt } from './SignInPrompt';
 import { type PublicEventAttachment } from './EventDownloadsSection';
 
 /**
@@ -40,6 +41,14 @@ interface EventSectionTabsProps {
    */
   userId?: string | null;
   userRole?: string | null;
+  /**
+   * Auth gate for the "Who's coming" section. When false and
+   * `publicAttendees` is non-empty, the section is replaced by a
+   * sign-in prompt so anonymous guests know the data exists
+   * behind login. When `publicAttendees` is empty the section is
+   * hidden regardless of auth (early-lifecycle events stay quiet).
+   */
+  isLoggedIn?: boolean;
 }
 
 /**
@@ -73,12 +82,18 @@ function EventSectionTabsContent({
   additionalInfo,
   attachments,
   publicAttendees,
+  isLoggedIn = false,
 }: EventSectionTabsProps) {
   const sections = useMemo<Array<{ key: string; label: string; panel: ReactNode }>>(() => {
     // FPP-151: surface the "Who's coming" section only when at
     // least one household has confirmed attendance. Inserted
     // between Itinerary and Additional Info so the discoverable
     // order reads "what is it → when → who's in → notes".
+    //
+    // Auth gate: when the viewer is anonymous, replace the
+    // household/member table with a sign-in prompt so the data
+    // isn't silently absent. Logged-out viewers with no
+    // attendees stay quiet (same as early-lifecycle events).
     const base: Array<{ key: string; label: string; panel: ReactNode }> = [
       {
         key: 'header',
@@ -95,7 +110,14 @@ function EventSectionTabsContent({
       base.push({
         key: 'attendees',
         label: "Who's coming",
-        panel: <PublicAttendeeList attendees={publicAttendees} />,
+        panel: isLoggedIn ? (
+          <PublicAttendeeList attendees={publicAttendees} />
+        ) : (
+          <SignInPrompt
+            title="Who's coming is just for family"
+            description="Sign in to see which households have RSVP'd and who's planning to join the table."
+          />
+        ),
       });
     }
     base.push({
@@ -104,7 +126,7 @@ function EventSectionTabsContent({
       panel: <EventAdditionalInfoSection body={additionalInfo} attachments={attachments ?? []} />,
     });
     return base;
-  }, [headerPanel, itineraryItems, additionalInfo, attachments, publicAttendees]);
+  }, [headerPanel, itineraryItems, additionalInfo, attachments, publicAttendees, isLoggedIn]);
 
   const anchorItems: AnchorNavItem[] = sections.map((s) => ({
     key: s.key,
@@ -144,6 +166,7 @@ function EventSectionTabsFallback({
   additionalInfo,
   attachments,
   publicAttendees,
+  isLoggedIn = false,
 }: EventSectionTabsProps) {
   return (
     <div className="space-y-12">
@@ -153,7 +176,14 @@ function EventSectionTabsFallback({
       </section>
       {publicAttendees && publicAttendees.length > 0 && (
         <section aria-label="Who's coming">
-          <PublicAttendeeList attendees={publicAttendees} />
+          {isLoggedIn ? (
+            <PublicAttendeeList attendees={publicAttendees} />
+          ) : (
+            <SignInPrompt
+              title="Who's coming is just for family"
+              description="Sign in to see which households have RSVP'd and who's planning to join the table."
+            />
+          )}
         </section>
       )}
       <section aria-label="Additional Info">
