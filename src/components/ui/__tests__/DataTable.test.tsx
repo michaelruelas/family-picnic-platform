@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { StrictMode } from 'react';
 import DataTable, { type DataTableColumn } from '../DataTable';
 
 const mockPush = vi.fn();
@@ -207,6 +208,43 @@ describe('DataTable', () => {
     mockPathname = '/admin/people';
     render(<DataTable columns={baseColumns} data={sampleData} rowKey="id" syncWithUrl />);
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('does not push an unchanged URL when effects run again', () => {
+    mockPathname = '/admin/audit-log';
+    const { rerender } = render(
+      <StrictMode>
+        <DataTable
+          columns={baseColumns}
+          data={sampleData}
+          rowKey="id"
+          syncWithUrl
+          paramPrefix="audit_"
+        />
+      </StrictMode>,
+    );
+
+    expect(mockPush).not.toHaveBeenCalled();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /sort by name/i }));
+    });
+    expect(mockPush).toHaveBeenCalledTimes(1);
+
+    mockSearchParams = new URLSearchParams('audit_sort=name&audit_sortDir=asc');
+    rerender(
+      <StrictMode>
+        <DataTable
+          columns={baseColumns}
+          data={sampleData}
+          rowKey="id"
+          syncWithUrl
+          paramPrefix="audit_"
+        />
+      </StrictMode>,
+    );
+
+    expect(mockPush).toHaveBeenCalledTimes(1);
   });
 
   it('clamps the page index to 0 when the data shrinks below the current page', () => {

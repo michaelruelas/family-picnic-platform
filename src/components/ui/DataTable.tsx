@@ -158,6 +158,7 @@ export default function DataTable<TData extends RowData>({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const searchParamsString = searchParams.toString();
 
   const sortKey = `${effectivePrefix}sort`;
   const sortDirKey = `${effectivePrefix}sortDir`;
@@ -220,14 +221,10 @@ export default function DataTable<TData extends RowData>({
   const currentSortDesc = currentSort?.desc ?? null;
   const currentPageIndex = table.getState().pagination.pageIndex;
 
-  const firstRender = useRef(true);
   useEffect(() => {
     if (!syncWithUrl) return;
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-    const params = new URLSearchParams(searchParams.toString());
+
+    const params = new URLSearchParams(searchParamsString);
     if (currentSortId) {
       params.set(sortKey, currentSortId);
       params.set(sortDirKey, currentSortDesc ? 'desc' : 'asc');
@@ -241,9 +238,8 @@ export default function DataTable<TData extends RowData>({
       params.delete(pageKey);
     }
     const query = params.toString();
+    if (query === searchParamsString) return;
     router.push(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
-    // Deps are primitives (strings + number), so the effect only fires on
-    // genuine state change, not on every render the way `table` identity would.
   }, [
     currentSortId,
     currentSortDesc,
@@ -251,7 +247,7 @@ export default function DataTable<TData extends RowData>({
     syncWithUrl,
     pathname,
     router,
-    searchParams,
+    searchParamsString,
     sortKey,
     sortDirKey,
     pageKey,
