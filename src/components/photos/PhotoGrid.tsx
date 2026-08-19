@@ -11,8 +11,7 @@ interface Photo {
   thumbnailUrl: string | null;
   createdAt: Date;
   uploadedByUserId: string;
-  uploadedBy?: {
-    id: string;
+  household?: {
     name: string;
   };
   reactions: {
@@ -97,9 +96,9 @@ export default function PhotoGrid({
             {selectedPhoto.caption && (
               <p className="mt-4 text-center text-white">{selectedPhoto.caption}</p>
             )}
-            {selectedPhoto.uploadedBy && (
+            {selectedPhoto.household && (
               <p className="text-muted-foreground/70 mt-2 text-center text-sm">
-                Uploaded by {selectedPhoto.uploadedBy.name}
+                Uploaded by {selectedPhoto.household.name}
               </p>
             )}
             <div className="mt-4 flex justify-center">

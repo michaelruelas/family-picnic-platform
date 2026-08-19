@@ -35,14 +35,14 @@ export default async function EventPhotosPage({ params }: PageProps) {
       photos: {
         where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
-        include: {
-          reactions: {
-            select: { reaction: true, userId: true },
+include: {
+            reactions: {
+              select: { reaction: true, userId: true },
+            },
+            household: {
+              select: { name: true },
+            },
           },
-          uploadedBy: {
-            select: { id: true, name: true },
-          },
-        },
       },
       potluckSlots: {
         select: { signups: { where: { rsvp: { status: 'CONFIRMED' } } } },
@@ -119,7 +119,7 @@ export default async function EventPhotosPage({ params }: PageProps) {
               thumbnailUrl: p.thumbnailUrl,
               createdAt: p.createdAt,
               uploadedByUserId: p.uploadedByUserId,
-              uploadedBy: p.uploadedBy,
+              household: p.household,
               reactions: p.reactions,
             }))}
             eventName={event.name}

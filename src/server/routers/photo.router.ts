@@ -12,7 +12,7 @@ export const photoRouter = router({
     return prisma.photo.findMany({
       where: { eventId: input.eventId, deletedAt: null },
       include: {
-        uploadedBy: {
+        household: {
           select: {
             id: true,
             name: true,
@@ -44,7 +44,7 @@ export const photoRouter = router({
       if (input.query) {
         where.OR = [
           { caption: { contains: input.query, mode: 'insensitive' } },
-          { uploadedBy: { name: { contains: input.query, mode: 'insensitive' } } },
+          { household: { name: { contains: input.query, mode: 'insensitive' } } },
         ];
       }
 
@@ -80,7 +80,7 @@ export const photoRouter = router({
       const photos = await prisma.photo.findMany({
         where,
         include: {
-          uploadedBy: {
+          household: {
             select: {
               id: true,
               name: true,
@@ -285,14 +285,13 @@ export const photoRouter = router({
     return prisma.photo.findUnique({
       where: { id: input.id },
       include: {
-        uploadedBy: {
+        reactions: true,
+        household: {
           select: {
             id: true,
             name: true,
           },
         },
-        reactions: true,
-        household: true,
       },
     });
   }),

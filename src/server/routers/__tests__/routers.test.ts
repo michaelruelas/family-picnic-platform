@@ -3742,7 +3742,7 @@ describe('photo.router', () => {
     expect(mockPrisma.photo.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { eventId: 'evt-1', deletedAt: null },
-        include: expect.objectContaining({ uploadedBy: expect.anything(), reactions: true }),
+        include: expect.objectContaining({ household: expect.anything(), reactions: true }),
         orderBy: { createdAt: 'desc' },
       }),
     );
@@ -4050,9 +4050,8 @@ describe('photo.router', () => {
     const mockPhoto = {
       id: 'photo-1',
       url: 'https://example.com',
-      uploadedBy: { id: 'user-1', name: 'User' },
       reactions: [],
-      household: { id: 'h-1' },
+      household: { id: 'h-1', name: 'The Smiths' },
     };
     mockPrisma.photo.findUnique.mockResolvedValue(mockPhoto);
 
@@ -4065,9 +4064,8 @@ describe('photo.router', () => {
       expect.objectContaining({
         where: { id: 'photo-1' },
         include: expect.objectContaining({
-          uploadedBy: expect.anything(),
           reactions: true,
-          household: true,
+          household: expect.anything(),
         }),
       }),
     );

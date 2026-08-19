@@ -53,7 +53,7 @@ export default function PhotoSearch({ eventId }: { eventId: string }) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Input
           type="text"
-          placeholder="Search captions or uploader name..."
+          placeholder="Search captions or household name..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}

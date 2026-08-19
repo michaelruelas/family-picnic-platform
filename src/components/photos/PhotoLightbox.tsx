@@ -12,7 +12,7 @@ export interface LightboxPhoto {
   thumbnailUrl: string | null;
   createdAt: Date;
   uploadedByUserId: string;
-  uploadedBy?: { id: string; name: string } | null;
+  household?: { name: string } | null;
   reactions: { reaction: string; userId: string }[];
 }
 
@@ -141,8 +141,8 @@ export default function PhotoLightbox({
 
       <div className="mt-4 max-w-[90vw] text-center" onClick={(e) => e.stopPropagation()}>
         {photo.caption && <p className="text-base text-white">{photo.caption}</p>}
-        {photo.uploadedBy && (
-          <p className="mt-1 text-sm text-white/60">Uploaded by {photo.uploadedBy.name}</p>
+        {photo.household && (
+          <p className="mt-1 text-sm text-white/60">Uploaded by {photo.household.name}</p>
         )}
         <div className="mt-3 flex justify-center">
           <PhotoReactionButton photoId={photo.id} reactions={photo.reactions} userId={userId} />

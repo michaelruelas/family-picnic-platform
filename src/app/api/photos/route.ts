@@ -75,9 +75,8 @@ export async function GET(request: Request) {
     const photos = await prisma.photo.findMany({
       where,
       include: {
-        uploadedBy: {
+        household: {
           select: {
-            id: true,
             name: true,
           },
         },
