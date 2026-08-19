@@ -86,7 +86,8 @@ follow-up audits, and post-release hardening. All merged to `main`.
 | FPP-61  | Event location map with directions               | #71      | Done                                                                     |
 | FPP-68  | Past events archive view                         | #79      | Done                                                                     |
 | FPP-70  | Reopen closed events                             | #70      | Done                                                                     |
-| FPP-145 | Custom display name for event location | (inline) | Done |
+| FPP-145 | Custom display name for event location           | (inline) | Done                                                                     |
+| FPP-152 | Re-resolve location from stored Google `placeId` | (inline) | Done                                                                     |
 
 #### RSVP & Potluck
 
