@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: nextjs
 spec:
-  replicas: 1
+  replicas: 2
   template:
     spec:
       containers:
@@ -26,5 +26,5 @@ kind: HorizontalPodAutoscaler
 metadata:
   name: nextjs
 spec:
-  minReplicas: 1
+  minReplicas: 2
   maxReplicas: 3
