@@ -60,6 +60,116 @@ Tickets are ordered by suggested implementation priority. Lower numbers = higher
 | 40     | Backup and data export   | Done                   |
 | 43     | Dev onramp and AGENTS.md | Done                   |
 
+### Iteration (Phase 3+ — post-MVP)
+
+Tickets opened after MVP completion via stakeholder bug-bash sessions,
+follow-up audits, and post-release hardening. All merged to `main`.
+
+#### Auth & Permissions
+
+| Ticket  | Description                                                      | PR  | Status |
+| ------- | ---------------------------------------------------------------- | --- | ------ |
+| FPP-65  | Host role + per-event assignment                                 | #67 | Done   |
+| FPP-103 | Dependent FK error returns `USER_HAS_NO_HOUSEHOLD`               | #59 | Done   |
+| FPP-104 | Complete per-event host scoping (potluck, RSVP, event lifecycle) | #69 | Done   |
+| FPP-110 | Apple login `invalid_client` error                               | #83 | Done   |
+
+#### Event Features
+
+| Ticket  | Description                                      | PR       | Status                                                                   |
+| ------- | ------------------------------------------------ | -------- | ------------------------------------------------------------------------ |
+| FPP-4   | Render itinerary on event page                   | #74      | Done                                                                     |
+| FPP-43  | Allow PDF attachments to events                  | #76      | Done (sub-tickets in [`43-pdf-attachments.md`](./43-pdf-attachments.md)) |
+| FPP-45  | Itinerary management                             | #66      | Done                                                                     |
+| FPP-46  | Tabbed layout on event page                      | #54      | Done                                                                     |
+| FPP-60  | Featured image on event page                     | #75      | Done                                                                     |
+| FPP-61  | Event location map with directions               | #71      | Done                                                                     |
+| FPP-68  | Past events archive view                         | #79      | Done                                                                     |
+| FPP-70  | Reopen closed events                             | #70      | Done                                                                     |
+| FPP-145 | Custom display name for event location | (inline) | Done |
+
+#### RSVP & Potluck
+
+| Ticket  | Description                                       | PR           | Status |
+| ------- | ------------------------------------------------- | ------------ | ------ |
+| FPP-52  | Multi-slot potluck signup with my-slots view      | #33          | Done   |
+| FPP-53  | Show last-updated on registration confirmation    | #29          | Done   |
+| FPP-54  | Make potluck slot name optional                   | #48          | Done   |
+| FPP-55  | Remove `RSVP.dietaryNotes` field                  | #47          | Done   |
+| FPP-56  | Per-member attendance + registration confirmation | #27          | Done   |
+| FPP-80  | Editable household name in registration form      | #30          | Done   |
+| FPP-89  | Invitation-token RSVP wizard (server + e2e)       | #52, #62     | Done   |
+| FPP-106 | Stabilize input focus in member-name fields       | #80          | Done   |
+| FPP-107 | Allow head-of-household age for fee calc          | #81          | Done   |
+| FPP-109 | Allow multiple ad-hoc guests in one attendance    | #82          | Done   |
+| FPP-111 | Link accounts by email (`LinkedIdentity`)         | #84          | Done   |
+| FPP-113 | Fix age charge edge cases                         | #84          | Done   |
+| FPP-115 | Expand RSVP modal layout                          | #84          | Done   |
+| FPP-117 | Household requires age + name surfaced            | (#80 series) | Done   |
+| FPP-118 | Mobile sheet dismissal                            | (inline)     | Done   |
+| FPP-124 | Keep SMS contact fields visible on RSVP           | (inline)     | Done   |
+| FPP-125 | Streamline potluck transition (in RSVP)           | (inline)     | Done   |
+| FPP-126 | Potluck transition follow-up                      | (inline)     | Done   |
+| FPP-128 | Save button + potluck completion in RSVP          | (inline)     | Done   |
+| FPP-129 | Refresh slot queries immediately                  | (inline)     | Done   |
+| FPP-130 | Decrement signup count once on decline            | (inline)     | Done   |
+| FPP-131 | Potluck completion polish                         | (inline)     | Done   |
+
+#### Payments
+
+| Ticket  | Description                                  | PR       | Status |
+| ------- | -------------------------------------------- | -------- | ------ |
+| FPP-77  | Show fee total on confirmation screen        | #32      | Done   |
+| FPP-101 | Wire `deliverOne` email branch to SendGrid   | #60      | Done   |
+| FPP-123 | Inline Stripe Elements form with 3DS support | (inline) | Done   |
+
+#### Communications
+
+| Ticket | Description                          | PR  | Status |
+| ------ | ------------------------------------ | --- | ------ |
+| FPP-86 | SMS via Twilio (`deliverOne` branch) | #65 | Done   |
+
+#### UI & Visual
+
+| Ticket  | Description                                | PR  | Status |
+| ------- | ------------------------------------------ | --- | ------ |
+| FPP-44  | Panels don't display properly in dark mode | #77 | Done   |
+| FPP-62  | Accessible timezone-aware date picker      | #78 | Done   |
+| FPP-84  | Homepage becomes a login screen            | #72 | Done   |
+| FPP-85  | Hide top-level nav on public routes        | #64 | Done   |
+| FPP-87  | Delete unused legacy `RSVPForm` component  | #73 | Done   |
+| FPP-91  | Admin UI table-first redesign              | #56 | Done   |
+| FPP-92  | DataTable primitive on TanStack Table      | #50 | Done   |
+| FPP-112 | Potluck roster in RSVP view                | #85 | Done   |
+| FPP-114 | Simplified header                          | #85 | Done   |
+| FPP-116 | Logo in nav                                | #85 | Done   |
+
+#### Audit & Observability
+
+| Ticket  | Description                              | PR  | Status |
+| ------- | ---------------------------------------- | --- | ------ |
+| FPP-50  | Event registrations surface on audit log | #55 | Done   |
+| FPP-78  | Document payment audit action strings    | #31 | Done   |
+| FPP-102 | Manual RSVP entry on members page        | #61 | Done   |
+
+#### Stakeholder Bug-Bash Round
+
+| Ticket | Description                                                          | PR       | Status |
+| ------ | -------------------------------------------------------------------- | -------- | ------ |
+| (anon) | User feedback form emailed to info@foliapicnic.com                   | #86      | Done   |
+| (anon) | PostHog analytics tracking on non-local hosts                        | (inline) | Done   |
+| (anon) | Admin user + household management pages                              | (inline) | Done   |
+| (anon) | Split `ADMIN_ADULT` into `ADMIN` and `ADULT` roles                   | (inline) | Done   |
+| (anon) | Event header consolidation + `additionalInfo` + PDF embed            | (inline) | Done   |
+| (anon) | Migrate from deprecated `Autocomplete` to `PlaceAutocompleteElement` | (inline) | Done   |
+| (anon) | Rebrand to Folia Family Picnic, update typeface                      | (inline) | Done   |
+
+### Open Follow-ups
+
+| Ticket  | Description                                                                                             | Source                                                          | Status                                                                              |
+| ------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| FPP-132 | Verify per-event host scoping end-to-end (REST admins gate, `stampHostRole` un-stamp path, scope audit) | [`audits/pr-review-summary.md`](../audits/pr-review-summary.md) | Open (see [`132-host-scoping-verification.md`](./132-host-scoping-verification.md)) |
+
 ## Active Development
 
-All tickets completed. See [CHANGELOG.md](../CHANGELOG.md) for release history.
+All scoped tickets are merged to `main`. FPP-132 is the one open follow-up. See [CHANGELOG.md](../CHANGELOG.md) for release history.
