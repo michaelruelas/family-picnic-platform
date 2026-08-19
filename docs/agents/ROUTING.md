@@ -22,13 +22,13 @@ the redirect, the route returns a 404 HTML body with a link to
 
 ## Authenticated Routes
 
-| Route             | File                              | Description                  |
-| ----------------- | --------------------------------- | ---------------------------- |
-| `/my-events`      | `src/app/my-events/page.tsx`      | User's RSVP history          |
-| `/profile`        | `src/app/profile/page.tsx`        | User profile & preferences   |
-| `/household`      | `src/app/household/page.tsx`      | Household dashboard          |
-| `/household/tree` | `src/app/household/tree/page.tsx` | Family tree visualization    |
-| `/onboarding`     | `src/app/onboarding/page.tsx`     | First-time onboarding wizard |
+| Route             | File                              | Description                              |
+| ----------------- | --------------------------------- | ---------------------------------------- |
+| `/my-events`      | `src/app/my-events/page.tsx`      | User's RSVP history                      |
+| `/profile`        | `src/app/profile/page.tsx`        | User profile, household, and preferences |
+| `/household`      | `src/app/household/page.tsx`      | Redirects to `/profile`                  |
+| `/household/tree` | `src/app/household/tree/page.tsx` | Family tree visualization                |
+| `/onboarding`     | `src/app/onboarding/page.tsx`     | First-time onboarding wizard             |
 
 ## Admin Routes
 

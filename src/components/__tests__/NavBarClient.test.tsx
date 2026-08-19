@@ -110,8 +110,8 @@ describe('NavBarClient (FPP-114, FPP-148, FPP-146, FPP-147, FPP-150)', () => {
 
     const eventLink = screen.getByRole('link', { name: /^event$/i });
     expect(eventLink).toHaveAttribute('href', '/events/evt-42');
-    expect(screen.getByRole('link', { name: /household/i })).toHaveAttribute('href', '/household');
     expect(screen.getByRole('link', { name: /profile/i })).toHaveAttribute('href', '/profile');
+    expect(screen.queryByRole('link', { name: /household/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /admin/i })).not.toBeInTheDocument();
   });

@@ -145,7 +145,7 @@ For complete documentation on:
 
 ### Authenticated Routes
 
-`/profile`, `/household`, `/household/tree`, `/onboarding`
+`/profile`, `/household/tree`, `/onboarding`
 
 ### Admin Routes
 

@@ -44,7 +44,6 @@ export default function NavBarClient() {
 
   const authenticatedNavItems: NavItem[] = session
     ? [
-        { href: '/household', label: 'Household' },
         { href: '/profile', label: 'Profile' },
         ...(isAdmin ? [{ href: '/admin/dashboard', label: 'Admin' }] : []),
       ]

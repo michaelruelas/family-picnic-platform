@@ -556,12 +556,12 @@ No nested route groups; each page is a standalone route directory with its own `
 
 ### Authenticated Routes
 
-| Route             | Description                  |
-| ----------------- | ---------------------------- |
-| `/profile`        | User profile & preferences   |
-| `/household`      | Household dashboard          |
-| `/household/tree` | Family tree visualization    |
-| `/onboarding`     | First-time onboarding wizard |
+| Route             | Description                              |
+| ----------------- | ---------------------------------------- |
+| `/profile`        | User profile, household, and preferences |
+| `/household`      | Redirects to `/profile`                  |
+| `/household/tree` | Family tree visualization                |
+| `/onboarding`     | First-time onboarding wizard             |
 
 ### Admin Routes
 

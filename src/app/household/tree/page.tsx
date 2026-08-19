@@ -130,8 +130,8 @@ export default async function HouseholdTreePage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-12">
       <div className="mb-8">
-        <Link href="/household" className="text-terracotta hover:text-terracotta text-sm">
-          ← Back to Household
+        <Link href="/profile" className="text-terracotta hover:text-terracotta text-sm">
+          ← Back to Profile
         </Link>
       </div>
 
