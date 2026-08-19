@@ -29,12 +29,9 @@ export function EventAdditionalInfoSection({
 
   return (
     <section data-testid="event-additional-info" className="space-y-8">
-      <div>
-        <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Extras</p>
-        <h2 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
-          Additional Info
-        </h2>
-      </div>
+      <h2 className="font-display text-foreground text-3xl font-medium tracking-tight md:text-4xl">
+        Additional Info
+      </h2>
 
       {!hasBody && !hasAttachments && (
         <p className="text-muted-foreground mt-6 text-sm italic">Nothing extra to share yet.</p>

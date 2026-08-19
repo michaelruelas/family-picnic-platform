@@ -119,9 +119,8 @@ describe('FPP-154: event overview continuous-scroll layout', () => {
   });
 
   describe('FPP-10 — Header tab content', () => {
-    it('renders a Welcome heading and the event name as subtitle', async () => {
+    it('renders the event name as the header heading', async () => {
       const content = await fs.readFile(headerSectionPath, 'utf-8');
-      expect(content).toMatch(/Welcome/);
       expect(content).toMatch(/eventName/);
     });
 

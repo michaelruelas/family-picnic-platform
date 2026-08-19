@@ -128,12 +128,9 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
   return (
     <div className="space-y-10">
       <header className="space-y-4">
-        <div>
-          <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Welcome</p>
-          <h2 className="font-display text-foreground mt-1 text-3xl leading-tight font-medium tracking-tight md:text-4xl">
-            {eventName}
-          </h2>
-        </div>
+        <h2 className="font-display text-foreground text-3xl leading-tight font-medium tracking-tight md:text-4xl">
+          {eventName}
+        </h2>
         <div className="text-muted-foreground flex flex-wrap items-center gap-x-5 gap-y-2 text-base md:text-lg">
           <span className="flex items-center gap-2">
             <span className="text-sage" aria-hidden="true">
@@ -166,25 +163,7 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
             <span className="text-sage" aria-hidden="true">
               📍
             </span>
-            {/* FPP-145 follow-up: stacked location display. The host's
-                custom title renders as the primary line (bold); the
-                Google Places resolved address shows as a muted second
-                line when it differs from the custom title so guests
-                see both — the polished display string and the
-                canonical address Google Maps directions use. */}
-            <span className="flex flex-col">
-              <span className="text-foreground font-semibold">{eventLocation}</span>
-              {eventResolvedLocation &&
-                eventResolvedLocation.trim() !== '' &&
-                eventResolvedLocation !== eventLocation && (
-                  <span
-                    className="text-muted-foreground text-sm font-normal"
-                    data-testid="event-location-resolved-subline"
-                  >
-                    {eventResolvedLocation}
-                  </span>
-                )}
-            </span>
+            <span className="text-foreground font-semibold">{eventLocation}</span>
           </span>
         </div>
         {/* FPP-144: secondary "fact strip" directly under the event main
@@ -201,8 +180,6 @@ export function EventHeaderSection(props: EventHeaderSectionProps) {
       <EventRsvpCard
         eventId={eventId}
         eventName={eventName}
-        eventDate={eventDate}
-        location={eventLocation}
         isPast={isPast}
         isLoggedIn={isLoggedIn}
         rsvpDeadline={rsvpDeadline?.toISOString() ?? null}
@@ -276,9 +253,7 @@ function MetaStrip({
           </span>
           <span className="flex items-center gap-1.5">
             <span aria-hidden="true">🍴</span>
-            <span className="text-foreground font-medium">
-              {dishesClaimed} {dishesClaimed === 1 ? 'dish' : 'dishes'} claimed
-            </span>
+            <span className="text-foreground font-medium">{dishesClaimed} Dishes</span>
           </span>
         </>
       )}
@@ -326,8 +301,7 @@ function HostBlock({
   const safeHtml = sanitizeRichText(description);
   return (
     <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9">
-      <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">The welcome</p>
-      <h3 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
+      <h3 className="font-display text-foreground text-3xl font-medium tracking-tight md:text-4xl">
         A note from the host
       </h3>
       <div

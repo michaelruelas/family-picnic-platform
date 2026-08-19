@@ -24,8 +24,7 @@ export function EventDownloadsSection({ attachments }: EventDownloadsSectionProp
       className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1 md:p-9"
       data-testid="event-downloads-section"
     >
-      <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">Downloads</p>
-      <h3 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
+      <h3 className="font-display text-foreground text-3xl font-medium tracking-tight md:text-4xl">
         Documents from the host
       </h3>
       <p className="text-muted-foreground mt-2">

@@ -63,8 +63,6 @@ beforeEach(() => {
 const baseProps = {
   eventId: 'evt-1',
   eventName: 'Annual Picnic',
-  eventDate: new Date('2026-09-01T17:00:00Z'),
-  location: 'Central Park, New York',
   isPast: false,
   isLoggedIn: true,
   rsvpDeadline: null,

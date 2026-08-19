@@ -159,12 +159,13 @@ describe('EventHeaderSection (FPP-140 / FPP-139)', () => {
     expect(note.querySelector('a')?.getAttribute('href')).toBeNull();
   });
 
-  // FPP-145 follow-up: the meta strip stacks the host's custom
-  // location title on top of the Google Places resolved address so
-  // guests see both — the polished display string plus the canonical
-  // address that Google Maps directions use.
-  describe('FPP-145 stacked location rendering', () => {
-    it('shows both the custom title and the resolved address when they differ', () => {
+  // The public event page no longer surfaces the Google Places
+  // resolved address below the host's custom title — the custom
+  // title is the only location line guests see in the header
+  // strip. The map's iframe + visible label still use the
+  // resolved address so directions remain accurate.
+  describe('location display', () => {
+    it('shows only the custom title even when the resolved address differs', () => {
       render(
         <EventHeaderSection
           {...baseProps}
@@ -173,13 +174,11 @@ describe('EventHeaderSection (FPP-140 / FPP-139)', () => {
         />,
       );
       expect(screen.getByText('Shaver Lake - Camp Edison Tannenager Site')).toBeInTheDocument();
-      // The resolved address renders as a secondary muted line
-      // below the primary title with a stable testid.
-      const subline = screen.getByTestId('event-location-resolved-subline');
-      expect(subline).toHaveTextContent('Shaver Lake, Shaver Lake, CA 93664, USA');
+      expect(screen.queryByTestId('event-location-resolved-subline')).not.toBeInTheDocument();
+      expect(screen.queryByText('Shaver Lake, Shaver Lake, CA 93664, USA')).not.toBeInTheDocument();
     });
 
-    it('hides the secondary line when the resolved address matches the custom title', () => {
+    it('shows only the custom title when the resolved address matches', () => {
       render(
         <EventHeaderSection
           {...baseProps}
@@ -187,13 +186,11 @@ describe('EventHeaderSection (FPP-140 / FPP-139)', () => {
           eventResolvedLocation="Central Park"
         />,
       );
-      expect(screen.queryByTestId('event-location-resolved-subline')).not.toBeInTheDocument();
       expect(screen.getByText('Central Park')).toBeInTheDocument();
+      expect(screen.queryByTestId('event-location-resolved-subline')).not.toBeInTheDocument();
     });
 
-    it('hides the secondary line when no resolved address was passed', () => {
-      // Host picked no Google address — only the custom title
-      // should appear, no fallback duplication.
+    it('shows only the custom title when no resolved address was passed', () => {
       render(
         <EventHeaderSection
           {...baseProps}
@@ -201,14 +198,11 @@ describe('EventHeaderSection (FPP-140 / FPP-139)', () => {
           eventResolvedLocation=""
         />,
       );
-      expect(screen.queryByTestId('event-location-resolved-subline')).not.toBeInTheDocument();
       expect(screen.getByText('Custom Title Only')).toBeInTheDocument();
+      expect(screen.queryByTestId('event-location-resolved-subline')).not.toBeInTheDocument();
     });
 
-    it('falls back to a single resolved line when no custom title was provided', () => {
-      // No custom title means the primary line IS the Google
-      // address. The secondary line would just repeat it, so the
-      // component suppresses it.
+    it('falls back to the resolved address as the single line when no custom title was provided', () => {
       render(
         <EventHeaderSection
           {...baseProps}
@@ -216,8 +210,8 @@ describe('EventHeaderSection (FPP-140 / FPP-139)', () => {
           eventResolvedLocation="Central Park, NY"
         />,
       );
-      expect(screen.queryByTestId('event-location-resolved-subline')).not.toBeInTheDocument();
       expect(screen.getByText('Central Park, NY')).toBeInTheDocument();
+      expect(screen.queryByTestId('event-location-resolved-subline')).not.toBeInTheDocument();
     });
   });
 });

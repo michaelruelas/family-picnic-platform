@@ -286,17 +286,9 @@ export default async function EventDetailPage({ params }: Props) {
             </div>
           )}
         </div>
-        <div className="absolute right-5 bottom-5 left-5 md:right-10 md:bottom-10 md:left-10">
-          <div className="max-w-3xl">
-            <p className="font-display text-base font-medium text-white/90 italic">
-              {eventDate.toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </p>
-            <h1 className="font-display mt-2 text-4xl leading-[1.05] font-medium tracking-tight text-white drop-shadow-sm md:text-6xl">
+        <div className="absolute right-6 bottom-6 left-6 md:right-20 md:bottom-20 md:left-20">
+          <div className="max-w-4xl">
+            <h1 className="font-display text-4xl leading-[1.05] font-medium tracking-tight text-white drop-shadow-lg md:text-6xl">
               {event.name}
             </h1>
           </div>

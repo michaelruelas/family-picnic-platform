@@ -21,8 +21,6 @@ interface MemberAttendance {
 interface EventRsvpCardProps {
   eventId: string;
   eventName: string;
-  eventDate: Date;
-  location: string;
   isPast: boolean;
   isLoggedIn: boolean;
   rsvpDeadline: string | null;
@@ -50,8 +48,6 @@ interface EventRsvpCardProps {
 export function EventRsvpCard({
   eventId,
   eventName,
-  eventDate,
-  location,
   isPast,
   isLoggedIn,
   rsvpDeadline,
@@ -65,11 +61,6 @@ export function EventRsvpCard({
   const isRsvpOpen = !isPast && (!rsvpDeadline || new Date(rsvpDeadline) > new Date());
   const isFull =
     maxCapacity !== null && maxCapacity !== undefined && maxCapacity - currentAttending <= 0;
-  const formattedDate = eventDate.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
 
   const shouldAutoOpen = Boolean(
     searchParams?.get('rsvpOpen') === '1' && isLoggedIn && !isPast && isRsvpOpen,
@@ -125,12 +116,7 @@ export function EventRsvpCard({
   if (!isLoggedIn) {
     return (
       <div className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1">
-        <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-          {formattedDate} · {location.split(',')[0]}
-        </p>
-        <h3 className="font-display text-foreground mt-2 text-2xl font-semibold">
-          Join the gathering
-        </h3>
+        <h3 className="font-display text-foreground text-2xl font-semibold">Join the gathering</h3>
         <p className="text-muted-foreground mt-2 text-sm">
           Sign in to RSVP and let us know you&apos;re coming.
         </p>
@@ -152,9 +138,6 @@ export function EventRsvpCard({
     return (
       <>
         <div ref={cardRef} className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1">
-          <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-            {formattedDate} · {location.split(',')[0]}
-          </p>
           {isConfirmed && (
             <>
               <div className="bg-sage/20 text-sage mt-4 inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold">
@@ -285,10 +268,7 @@ export function EventRsvpCard({
     return (
       <>
         <div ref={cardRef} className="bg-card shadow-card ring-border/60 rounded-sm p-7 ring-1">
-          <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
-            {formattedDate} · {location.split(',')[0]}
-          </p>
-          <h3 className="font-display text-foreground mt-2 text-2xl font-semibold">
+          <h3 className="font-display text-foreground text-2xl font-semibold">
             {isFull ? 'Join the waitlist' : 'Are you coming?'}
           </h3>
           <p className="text-muted-foreground mt-2 text-sm">

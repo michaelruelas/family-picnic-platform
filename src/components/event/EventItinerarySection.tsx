@@ -35,14 +35,9 @@ export interface EventItinerarySectionProps {
 export function EventItinerarySection({ items }: EventItinerarySectionProps) {
   return (
     <section>
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">The day</p>
-          <h2 className="font-display text-foreground mt-2 text-3xl font-medium tracking-tight md:text-4xl">
-            Itinerary
-          </h2>
-        </div>
-      </div>
+      <h2 className="font-display text-foreground text-3xl font-medium tracking-tight md:text-4xl">
+        Itinerary
+      </h2>
 
       {items.length === 0 ? (
         <div className="mt-6">
