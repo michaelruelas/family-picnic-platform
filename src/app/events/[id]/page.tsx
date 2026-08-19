@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import { EventStickyBar } from '~/components/event/EventStickyBar';
 import EventNav from '~/components/event/EventNav';
-import { BreatheSection } from '~/components/ui/BreatheSection';
+import EventHero from '~/components/event/EventHero';
 import { EventSectionTabs } from '~/components/event/EventSectionTabs';
 import { EventHeaderSection } from '~/components/event/EventHeaderSection';
 import { formatItineraryTime } from '~/lib/itinerary-time';
@@ -248,52 +248,13 @@ export default async function EventDetailPage({ params }: Props) {
 
   return (
     <main className="bg-background pb-32">
-      <BreatheSection className="relative -mt-[73px] h-[55vh] min-h-[420px] w-full overflow-hidden md:h-[40vh]">
-        {/* FPP-60: hero precedence is featuredImageUrl -> mapImageUrl
-            -> default banner. The featured image is whatever the
-            host uploaded through the admin form; the map preview is
-            the legacy fallback (QUB-15); the banner is the
-            pre-map default. The static-map fallback intentionally
-            remains so existing events without a featured image keep
-            rendering exactly as before this ticket. */}
-        {event.featuredImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={event.featuredImageUrl}
-            alt={event.name}
-            className="h-full w-full object-cover"
-          />
-        ) : event.mapImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={event.mapImageUrl} alt={event.name} className="h-full w-full object-cover" />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src="/lake-banner.jpg" alt="" className="h-full w-full object-cover" />
-        )}
-        <div className="from-foreground/40 absolute inset-0 bg-gradient-to-t via-transparent to-transparent" />
-        <div className="absolute top-5 right-5 left-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="shadow-soft inline-flex items-center gap-2 rounded-sm border border-white/40 bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur-md">
-            <span className="bg-sunlight h-2 w-2 rounded-sm shadow-[0_0_10px_var(--sunlight)]" />
-            {event.status === 'PUBLISHED'
-              ? 'Invitation Open'
-              : event.status === 'CANCELLED'
-                ? 'Cancelled'
-                : event.status.charAt(0) + event.status.slice(1).toLowerCase()}
-          </div>
-          {isPast && (
-            <div className="bg-foreground/80 text-background rounded-sm px-4 py-2 text-sm font-medium backdrop-blur-md">
-              Past gathering
-            </div>
-          )}
-        </div>
-        <div className="absolute right-6 bottom-6 left-6 md:right-20 md:bottom-20 md:left-20">
-          <div className="max-w-4xl">
-            <h1 className="font-display text-4xl leading-[1.05] font-medium tracking-tight text-white drop-shadow-lg md:text-6xl">
-              {event.name}
-            </h1>
-          </div>
-        </div>
-      </BreatheSection>
+      <EventHero
+        name={event.name}
+        featuredImageUrl={event.featuredImageUrl}
+        mapImageUrl={event.mapImageUrl}
+        status={event.status}
+        isPast={isPast}
+      />
 
       <div className="mx-auto max-w-6xl px-5 pt-6 md:pt-8">
         <EventNav

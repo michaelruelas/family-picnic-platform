@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -13,27 +14,55 @@ env:
   AUTH_GOOGLE_ID: ci-placeholder
   AUTH_GOOGLE_SECRET: ci-placeholder
 
+# Cancel duplicate runs: a fresh push to a PR supersedes the
+# previous one; main runs always run to completion. Tagged releases
+# (`v*`) also run to completion so a release isn't interrupted by
+# an unrelated commit landing on main during the build.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v') }}
+
 jobs:
   validate:
     runs-on: family-picnic-runner-set
     timeout-minutes: 15
 
-    strategy:
-      matrix:
-        bun-version: [1.3]
+    # GITHUB_TOKEN is read-only by default at the org level, but
+    # declaring it explicitly keeps the workflow self-documenting and
+    # protects against future permission drift.
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: ${{ matrix.bun-version }}
+          bun-version: 1.3
 
-      - uses: actions/setup-node@v7
+      # Cache the bun install directory. Keyed on the lockfile + the
+      # OS + runner so a lockfile change invalidates cleanly.
+      - name: Cache bun install
+        uses: actions/cache@v5
         with:
-          node-version: '24'
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
 
       - run: bun install --frozen-lockfile
+
+      # Cache the Prisma generated client so we skip the codegen step
+      # when the schema is unchanged.
+      - name: Cache Prisma client
+        uses: actions/cache@v5
+        with:
+          path: src/lib/generated
+          key: prisma-${{ runner.os }}-${{ hashFiles('**/schema.prisma') }}
+          restore-keys: |
+            prisma-${{ runner.os }}-
 
       - name: Type check
         run: bun run typecheck
@@ -44,14 +73,24 @@ jobs:
       - name: Format check
         run: bun run format:check
 
-      - name: Test
-        run: npx vitest run
+      - name: Prisma validate
+        run: bun run db:validate
 
       - name: Coverage
         run: bun run test:coverage
 
-      - name: Prisma validate
-        run: bun run db:validate
+      # Next.js writes its build cache to .next/cache. Caching it
+      # between runs turns the build from cold to warm on most
+      # commits — typically saves 30-60s on this project. Keyed on
+      # the SHA so a fresh commit always has a fresh cache, with a
+      # fallback to the most recent cache for the runner OS.
+      - name: Cache Next.js build
+        uses: actions/cache@v5
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            next-${{ runner.os }}-
 
       - name: Build
         run: bun run build

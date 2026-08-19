@@ -51,7 +51,7 @@ describe('PublicAttendeeList (FPP-151) — table view', () => {
       <PublicAttendeeList attendees={[{ householdName: 'Solo', attendingFirstNames: ['Ada'] }]} />,
     );
     expect(screen.getByText(/1 person from 1 household so far\./)).toBeInTheDocument();
-    expect(screen.getByText('(1 going)')).toBeInTheDocument();
+    expect(screen.getByText('(1)')).toBeInTheDocument();
   });
 
   it('renders nothing when the attendee list is empty', () => {

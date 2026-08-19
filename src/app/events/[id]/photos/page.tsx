@@ -5,7 +5,7 @@ import { authOptions } from '~/lib/auth';
 import UploadButton from '~/components/photos/UploadButton';
 import PhotoGallery from '~/components/photos/PhotoGallery';
 import EventNav from '~/components/event/EventNav';
-import { BreatheSection } from '~/components/ui/BreatheSection';
+import EventHero from '~/components/event/EventHero';
 import { SignInPrompt } from '~/components/event/SignInPrompt';
 
 export const dynamic = 'force-dynamic';
@@ -51,6 +51,13 @@ export default async function EventPhotosPage({ params }: PageProps) {
     },
   });
 
+  // Hero image lives outside the include scope (it's a top-level
+  // field), so fetch it separately. Cheap point-read, no joins.
+  const heroMedia = await prisma.event.findUnique({
+    where: { id },
+    select: { featuredImageUrl: true, mapImageUrl: true },
+  });
+
   if (!event) {
     notFound();
   }
@@ -69,8 +76,23 @@ export default async function EventPhotosPage({ params }: PageProps) {
 
   return (
     <main className="bg-background min-h-screen pb-24">
-      <BreatheSection>
-        <div className="mx-auto max-w-4xl px-5 pt-10 md:pt-14">
+      <EventHero
+        name={event.name}
+        featuredImageUrl={heroMedia?.featuredImageUrl ?? null}
+        mapImageUrl={heroMedia?.mapImageUrl ?? null}
+        size="compact"
+      />
+      <div className="mx-auto max-w-5xl px-5 pt-6 md:pt-8">
+        <EventNav
+          eventId={event.id}
+          dishCount={dishCount}
+          photoCount={photoCount}
+          active="photos"
+        />
+      </div>
+
+      <div className="mx-auto max-w-5xl px-5 pt-8 md:pt-10">
+        <div>
           <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
             Memories
           </p>
@@ -80,17 +102,6 @@ export default async function EventPhotosPage({ params }: PageProps) {
           <p className="text-muted-foreground mt-2 max-w-2xl text-base">
             Share and enjoy the candid moments from {event.name}.
           </p>
-        </div>
-      </BreatheSection>
-
-      <div className="mx-auto max-w-4xl px-5">
-        <div className="mt-6">
-          <EventNav
-            eventId={event.id}
-            dishCount={dishCount}
-            photoCount={photoCount}
-            active="photos"
-          />
         </div>
 
         {userId && (

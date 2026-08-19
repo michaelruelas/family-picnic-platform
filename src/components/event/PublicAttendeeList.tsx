@@ -45,12 +45,6 @@ export function PublicAttendeeList({ attendees }: PublicAttendeeListProps) {
               scope="col"
               className="text-muted-foreground py-2 pr-4 text-xs font-semibold tracking-widest uppercase"
             >
-              Household
-            </th>
-            <th
-              scope="col"
-              className="text-muted-foreground py-2 text-xs font-semibold tracking-widest uppercase"
-            >
               Attending members
             </th>
           </tr>
@@ -73,25 +67,15 @@ function HouseholdGroup({ householdName, attendingFirstNames }: PublicAttendee) 
         className="bg-secondary/40 border-border/60 border-t"
         data-testid="public-attendee-household"
       >
-        <th
-          scope="rowgroup"
-          colSpan={2}
-          className="text-foreground px-3 py-3 text-base font-semibold"
-        >
+        <th scope="rowgroup" className="text-foreground px-3 py-3 text-base font-semibold">
           {householdName}{' '}
-          <span className="text-muted-foreground ml-1 text-sm font-normal">
-            ({count} {count === 1 ? 'going' : 'going'})
-          </span>
+          <span className="text-muted-foreground ml-1 text-sm font-normal">({count})</span>
         </th>
       </tr>
       {attendingFirstNames.map((firstName, idx) => (
         <tr key={`${householdName}-${firstName}-${idx}`} data-testid="public-attendee-member">
-          <td className="border-border/30 w-2 border-t" aria-hidden="true" />
-          <td className="border-border/30 border-t px-3 py-2 pl-8 text-sm">
-            <span className="text-foreground font-medium">{firstName}</span>
-            <span className="text-muted-foreground ml-2 text-xs tracking-widest uppercase">
-              going
-            </span>
+          <td className="border-border/30 border-t px-3 py-2 pl-8 text-sm font-medium">
+            {firstName}
           </td>
         </tr>
       ))}

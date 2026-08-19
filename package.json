@@ -15,7 +15,7 @@
     "worker:dev": "npx @openworkflow/cli worker start --concurrency 2",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:all": "eslint . --ext .ts,.tsx && prettier --check .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --incremental",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "ci": "bun run typecheck && bun run lint && bun run test",

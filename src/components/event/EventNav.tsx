@@ -18,7 +18,7 @@ export default function EventNav({ eventId, dishCount, photoCount, active }: Eve
   const tabs: Tab[] = [
     {
       key: 'overview',
-      label: 'Overview',
+      label: 'Details',
       href: `/events/${eventId}`,
       count: 0,
     },

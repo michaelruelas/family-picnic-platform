@@ -1,0 +1,24 @@
+#!/bin/sh
+set -e
+
+# Pre-push runs the same checks as CI minus coverage + build. The
+# intent is to catch regressions (esp. test failures) before the
+# code leaves the laptop — CI is the final gate. ~6m on a warm
+# runner; pass `--no-verify` to skip when you know what you're doing.
+
+echo "[pre-push] Validating before push..."
+
+echo "[typecheck] Running type check..."
+bun run typecheck
+
+echo "[lint] Running lint..."
+bun run lint
+
+echo "[format] Checking formatting..."
+bun run format:check
+
+echo "[prisma] Validating schema..."
+bun run db:validate
+
+echo "[test] Running full test suite..."
+bun run test

@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '~/lib/auth';
 import Link from 'next/link';
 import { RSVPStatus, EventStatus } from '~/lib/generated/enums';
-import { BreatheSection } from '~/components/ui/BreatheSection';
+import EventHero from '~/components/event/EventHero';
 import SlotList, { type EventSlot } from '~/components/potluck/SlotList';
 import EventNav from '~/components/event/EventNav';
 
@@ -32,7 +32,13 @@ export default async function EventPotluckPage({ params }: PageProps) {
 
   const event = await prisma.event.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      featuredImageUrl: true,
+      mapImageUrl: true,
+      status: true,
+      date: true,
       potluckSlots: {
         orderBy: { category: 'asc' },
         include: {
@@ -108,15 +114,23 @@ export default async function EventPotluckPage({ params }: PageProps) {
 
   return (
     <main className="bg-background min-h-screen pb-24">
-      <BreatheSection>
-        <div className="mx-auto max-w-5xl px-5 pt-10 md:pt-14">
-          <Link
-            href={`/events/${event.id}`}
-            className="text-muted-foreground hover:text-foreground text-sm font-semibold"
-          >
-            ← Back to {event.name}
-          </Link>
-          <p className="text-terracotta mt-4 text-sm font-semibold tracking-widest uppercase">
+      <EventHero
+        name={event.name}
+        featuredImageUrl={event.featuredImageUrl}
+        mapImageUrl={event.mapImageUrl}
+        size="compact"
+      />
+      <div className="mx-auto max-w-5xl px-5 pt-6 md:pt-8">
+        <EventNav
+          eventId={event.id}
+          dishCount={dishCount}
+          photoCount={eventPhotos}
+          active="potluck"
+        />
+      </div>
+      <div className="mx-auto max-w-5xl px-5 pt-8 md:pt-10">
+        <div>
+          <p className="text-terracotta text-sm font-semibold tracking-widest uppercase">
             The menu
           </p>
           <h1 className="font-display text-foreground mt-2 text-4xl font-medium tracking-tight md:text-5xl">
@@ -126,17 +140,24 @@ export default async function EventPotluckPage({ params }: PageProps) {
             Pick what your household will bring. You can claim more than one dish — one per slot.
           </p>
         </div>
-      </BreatheSection>
-
-      <div className="mx-auto max-w-5xl px-5">
-        <div className="mt-6">
-          <EventNav
-            eventId={event.id}
-            dishCount={dishCount}
-            photoCount={eventPhotos}
-            active="potluck"
-          />
-        </div>
+        {userId && (
+          <div
+            className="bg-sunlight/20 ring-sunlight/40 mt-6 flex flex-col gap-3 rounded-sm px-5 py-4 text-sm ring-1 sm:flex-row sm:items-center sm:justify-between"
+            data-testid="potluck-readonly-banner"
+          >
+            <p className="text-foreground">
+              <span className="font-semibold">Bring a dish from your RSVP.</span> Open the sheet to
+              claim a signup.
+            </p>
+            <Link
+              href={`/events/${event.id}?rsvpOpen=1#potluck`}
+              className="bg-foreground text-background press hover:bg-foreground/90 inline-flex items-center justify-center rounded-sm px-4 py-2 text-sm font-semibold transition-all"
+              data-testid="potluck-edit-my-dishes"
+            >
+              Edit my dishes
+            </Link>
+          </div>
+        )}
         <div className="mt-8">
           {!isEventPublished || isPast ? (
             <div className="bg-secondary/40 rounded-sm p-10 text-center">
