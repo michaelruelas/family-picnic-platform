@@ -1,5 +1,5 @@
 import { prisma } from '~/lib/prisma';
-import { writeAuditLog } from '~/lib/audit';
+import { writeAuditLog, type AuditLogEntry } from '~/lib/audit';
 import { isRelayEmail } from '~/lib/email-relay';
 import type { Role } from '~/lib/generated/enums';
 
@@ -23,6 +23,17 @@ export interface IdentityLink {
    * sign-ins; the user can edit it from the profile page).
    */
   displayName?: string | null;
+}
+
+export interface IdentityLookupOptions {
+  /**
+   * When false, skip every `writeAuditLog` call inside this function.
+   * Used by the `jwt` callback's read-only re-resolution path: the
+   * `signIn` callback already wrote the success/refusal audit, so the
+   * second call (from `jwt`) must not double-audit. Defaults to true
+   * so existing callers and tests see no change.
+   */
+  audited?: boolean;
 }
 
 export interface IdentityLookupResult {
@@ -64,10 +75,20 @@ export interface IdentityLookupResult {
  * Returns `null` when sign-in should be refused (only path: a soft-deleted
  * user with the same email). The audit log captures the decision in
  * both success and failure cases for FPP-26.2 compliance.
+ *
+ * The NextAuth `jwt` callback re-resolves the identity on every token
+ * mint so the session stays current; pass `{ audited: false }` from
+ * that path to avoid writing a second `auth.signIn.succeeded` row
+ * after the `signIn` callback already wrote one.
  */
 export async function findOrCreateUserByIdentity(
   link: IdentityLink,
+  options: IdentityLookupOptions = {},
 ): Promise<IdentityLookupResult | null> {
+  const audited = options.audited ?? true;
+  const writeAudit = (entry: AuditLogEntry): Promise<void> =>
+    audited ? writeAuditLog(entry) : Promise.resolve();
+
   const email = link.emailSnapshot?.trim().toLowerCase();
   const providerAccountId = link.providerAccountId.trim();
   if (!providerAccountId) {
@@ -86,7 +107,7 @@ export async function findOrCreateUserByIdentity(
 
   if (existing) {
     if (existing.user.deletedAt) {
-      await writeAuditLog({
+      await writeAudit({
         userId: existing.user.id,
         action: 'auth.signIn.refused',
         newValue: {
@@ -101,7 +122,7 @@ export async function findOrCreateUserByIdentity(
       // user must have an admin replace the email before they can
       // sign in again. Audit and throw so the signIn callback can
       // surface a specific error to the login form.
-      await writeAuditLog({
+      await writeAudit({
         userId: existing.user.id,
         action: 'auth.signIn.refused',
         newValue: {
@@ -112,7 +133,7 @@ export async function findOrCreateUserByIdentity(
       });
       throw new RelayEmailBlockedError('existing_user');
     }
-    await writeAuditLog({
+    await writeAudit({
       userId: existing.user.id,
       action: 'auth.signIn.succeeded',
       newValue: { provider: link.provider, identityId: existing.id },
@@ -137,7 +158,7 @@ export async function findOrCreateUserByIdentity(
     // (b) allow a "no-email" user. Refuse for now to keep the model
     // simple; the LinkedIdentity row is still created if the user
     // already authenticated via another provider earlier.
-    await writeAuditLog({
+    await writeAudit({
       userId: 'unknown',
       action: 'auth.signIn.refused',
       newValue: {
@@ -153,7 +174,7 @@ export async function findOrCreateUserByIdentity(
     // Apple Private Relay). The platform has no real way to contact
     // the user at that address, so refuse and direct them to sign in
     // with a real email instead.
-    await writeAuditLog({
+    await writeAudit({
       userId: 'unknown',
       action: 'auth.signIn.refused',
       newValue: {
@@ -177,7 +198,7 @@ export async function findOrCreateUserByIdentity(
         emailSnapshot: email,
       },
     });
-    await writeAuditLog({
+    await writeAudit({
       userId: activeByEmail.id,
       action: 'auth.identity.linked',
       newValue: {
@@ -204,7 +225,7 @@ export async function findOrCreateUserByIdentity(
     select: { id: true, deletedAt: true },
   });
   if (tombstone?.deletedAt) {
-    await writeAuditLog({
+    await writeAudit({
       userId: tombstone.id,
       action: 'auth.signIn.refused',
       newValue: {
@@ -235,7 +256,7 @@ export async function findOrCreateUserByIdentity(
     return { user, identity };
   });
 
-  await writeAuditLog({
+  await writeAudit({
     userId: created.user.id,
     action: 'auth.signIn.succeeded',
     newValue: {

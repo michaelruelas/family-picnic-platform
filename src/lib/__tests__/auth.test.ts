@@ -531,6 +531,114 @@ describe('authOptions session callback', () => {
       expect(result).toBe(false);
     });
   });
+
+  describe('end-to-end: signIn + jwt do not double-audit', () => {
+    // NextAuth runs signIn first, then jwt (with `account` set) to
+    // mint the token. Both callbacks hit `findOrCreateUserByIdentity`,
+    // which used to write `auth.signIn.succeeded` twice. The jwt path
+    // now passes `{ audited: false }` so only the signIn path audits.
+    it('writes exactly one auth.signIn.succeeded for an existing identity across both callbacks', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue({
+        id: 'ident-1',
+        userId: 'user-1',
+        provider: 'google',
+        providerAccountId: 'google-sub-1',
+        user: {
+          id: 'user-1',
+          email: 'existing@example.com',
+          name: 'Existing',
+          role: 'ADMIN',
+          deletedAt: null,
+        },
+      } as any);
+
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean>;
+      const jwtCallback = authOptions.callbacks!.jwt as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<Record<string, unknown>>;
+
+      const signInResult = await signInCallback({
+        account: { provider: 'google' },
+        profile: { sub: 'google-sub-1', email: 'existing@example.com', name: 'Existing' },
+      });
+      expect(signInResult).toBe(true);
+
+      const token = await jwtCallback({
+        token: { name: 'Existing', email: 'existing@example.com', sub: 'google-sub-1' },
+        account: { provider: 'google', providerAccountId: 'google-sub-1' },
+        profile: { sub: 'google-sub-1', email: 'existing@example.com', name: 'Existing' },
+        user: { id: 'google-sub-1' },
+      });
+      expect(token.sub).toBe('user-1');
+
+      const successAudits = vi.mocked(prisma.adminAuditLog.create).mock.calls.filter(([call]) => {
+        const data = (call as { data: { action?: string } }).data;
+        return data.action === 'auth.signIn.succeeded';
+      });
+      expect(successAudits).toHaveLength(1);
+    });
+
+    it('writes exactly one auth.signIn.succeeded for a brand-new user across both callbacks', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+        return fn({
+          user: {
+            create: vi.fn().mockResolvedValue({
+              id: 'user-new',
+              email: 'fresh@example.com',
+              name: 'Fresh User',
+              role: 'ADULT',
+            }),
+          },
+          linkedIdentity: {
+            create: vi.fn().mockResolvedValue({
+              id: 'ident-new',
+              userId: 'user-new',
+              provider: 'google',
+              providerAccountId: 'google-sub-fresh',
+              emailSnapshot: 'fresh@example.com',
+            }),
+          },
+        } as any);
+      });
+
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean>;
+      const jwtCallback = authOptions.callbacks!.jwt as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<Record<string, unknown>>;
+
+      const signInResult = await signInCallback({
+        account: { provider: 'google' },
+        profile: { sub: 'google-sub-fresh', email: 'fresh@example.com', name: 'Fresh User' },
+      });
+      expect(signInResult).toBe(true);
+
+      await jwtCallback({
+        token: { name: 'Fresh User', email: 'fresh@example.com', sub: 'google-sub-fresh' },
+        account: { provider: 'google', providerAccountId: 'google-sub-fresh' },
+        profile: { sub: 'google-sub-fresh', email: 'fresh@example.com', name: 'Fresh User' },
+        user: { id: 'google-sub-fresh' },
+      });
+
+      const successAudits = vi.mocked(prisma.adminAuditLog.create).mock.calls.filter(([call]) => {
+        const data = (call as { data: { action?: string } }).data;
+        return data.action === 'auth.signIn.succeeded';
+      });
+      expect(successAudits).toHaveLength(1);
+      expect(successAudits[0]?.[0]?.data?.newValue).toEqual(
+        expect.objectContaining({ userCreated: true }),
+      );
+    });
+  });
 });
 
 describe('dev credentials provider', () => {

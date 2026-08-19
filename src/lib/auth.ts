@@ -50,6 +50,10 @@ export function isAdminRole(role: Role | null | undefined): boolean {
  * Looks up the Family Picnic user id for an OAuth sign-in. The
  * signIn callback (and the jwt callback fallback) calls this so the
  * resolved user id is stamped on the JWT.
+ *
+ * The jwt callback re-resolves the identity on every token mint so
+ * the session stays current; it passes `{ audited: false }` so the
+ * signIn callback's success audit is not duplicated.
  */
 export async function resolveIdentityToUserId(
   provider: OAuthProvider,
@@ -57,12 +61,15 @@ export async function resolveIdentityToUserId(
   email: string | null,
   displayName?: string | null,
 ): Promise<string | null> {
-  const resolved = await findOrCreateUserByIdentity({
-    provider,
-    providerAccountId,
-    emailSnapshot: email,
-    displayName,
-  });
+  const resolved = await findOrCreateUserByIdentity(
+    {
+      provider,
+      providerAccountId,
+      emailSnapshot: email,
+      displayName,
+    },
+    { audited: false },
+  );
   return resolved?.userId ?? null;
 }
 

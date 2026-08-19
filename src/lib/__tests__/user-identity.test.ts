@@ -536,6 +536,176 @@ describe('findOrCreateUserByIdentity', () => {
       });
     });
   });
+
+  describe('audited option (used by the jwt callback to skip the duplicate audit)', () => {
+    it('writes no audit log when audited=false on the existing-identity success path', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue({
+        id: 'ident-1',
+        userId: 'user-1',
+        provider: 'google',
+        providerAccountId: 'google-sub-1',
+        emailSnapshot: 'a@example.com',
+        createdAt: new Date(),
+        user: {
+          id: 'user-1',
+          email: 'a@example.com',
+          name: 'A',
+          role: 'ADMIN',
+          deletedAt: null,
+        },
+      } as never);
+
+      const { findOrCreateUserByIdentity } = await import('../user-identity');
+      const result = await findOrCreateUserByIdentity(
+        {
+          provider: 'google',
+          providerAccountId: 'google-sub-1',
+          emailSnapshot: 'a@example.com',
+        },
+        { audited: false },
+      );
+
+      expect(result?.userId).toBe('user-1');
+      expect(prisma.adminAuditLog.create).not.toHaveBeenCalled();
+    });
+
+    it('writes no audit log when audited=false on the email-link success path', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'existing@example.com',
+        name: 'Existing',
+        role: 'ADMIN',
+        deletedAt: null,
+      } as never);
+      vi.mocked(prisma.linkedIdentity.create).mockResolvedValue({
+        id: 'ident-2',
+        userId: 'user-1',
+        provider: 'facebook',
+        providerAccountId: 'facebook-id-1',
+        emailSnapshot: 'existing@example.com',
+        createdAt: new Date(),
+      } as never);
+
+      const { findOrCreateUserByIdentity } = await import('../user-identity');
+      await findOrCreateUserByIdentity(
+        {
+          provider: 'facebook',
+          providerAccountId: 'facebook-id-1',
+          emailSnapshot: 'existing@example.com',
+        },
+        { audited: false },
+      );
+
+      expect(prisma.adminAuditLog.create).not.toHaveBeenCalled();
+    });
+
+    it('writes no audit log when audited=false on the new-user success path', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+        return fn({
+          user: {
+            create: vi.fn().mockResolvedValue({
+              id: 'user-new',
+              email: 'new@example.com',
+              name: 'New',
+              role: 'ADULT',
+            }),
+          },
+          linkedIdentity: {
+            create: vi.fn().mockResolvedValue({
+              id: 'ident-new',
+              userId: 'user-new',
+              provider: 'google',
+              providerAccountId: 'g-1',
+              emailSnapshot: 'new@example.com',
+            }),
+          },
+        } as never);
+      });
+
+      const { findOrCreateUserByIdentity } = await import('../user-identity');
+      await findOrCreateUserByIdentity(
+        {
+          provider: 'google',
+          providerAccountId: 'g-1',
+          emailSnapshot: 'new@example.com',
+        },
+        { audited: false },
+      );
+
+      expect(prisma.adminAuditLog.create).not.toHaveBeenCalled();
+    });
+
+    it('writes no refusal audit when audited=false on a tombstoned-user refusal', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue({
+        id: 'ident-1',
+        userId: 'user-1',
+        provider: 'google',
+        providerAccountId: 'google-sub-1',
+        emailSnapshot: 'a@example.com',
+        createdAt: new Date(),
+        user: {
+          id: 'user-1',
+          email: 'a@example.com',
+          name: 'A',
+          role: 'ADMIN',
+          deletedAt: new Date(),
+        },
+      } as never);
+
+      const { findOrCreateUserByIdentity } = await import('../user-identity');
+      const result = await findOrCreateUserByIdentity(
+        {
+          provider: 'google',
+          providerAccountId: 'google-sub-1',
+          emailSnapshot: 'a@example.com',
+        },
+        { audited: false },
+      );
+
+      expect(result).toBeNull();
+      expect(prisma.adminAuditLog.create).not.toHaveBeenCalled();
+    });
+
+    it('defaults to audited=true (existing call sites keep their audits)', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue({
+        id: 'ident-1',
+        userId: 'user-1',
+        provider: 'google',
+        providerAccountId: 'google-sub-1',
+        emailSnapshot: 'a@example.com',
+        createdAt: new Date(),
+        user: {
+          id: 'user-1',
+          email: 'a@example.com',
+          name: 'A',
+          role: 'ADMIN',
+          deletedAt: null,
+        },
+      } as never);
+
+      const { findOrCreateUserByIdentity } = await import('../user-identity');
+      await findOrCreateUserByIdentity({
+        provider: 'google',
+        providerAccountId: 'google-sub-1',
+        emailSnapshot: 'a@example.com',
+      });
+
+      expect(prisma.adminAuditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          action: 'auth.signIn.succeeded',
+        }),
+      });
+    });
+  });
 });
 
 describe('linkIdentityToCurrentUser', () => {
