@@ -50,11 +50,13 @@ export async function resolveIdentityToUserId(
   provider: OAuthProvider,
   providerAccountId: string,
   email: string | null,
+  displayName?: string | null,
 ): Promise<string | null> {
   const resolved = await findOrCreateUserByIdentity({
     provider,
     providerAccountId,
     emailSnapshot: email,
+    displayName,
   });
   return resolved?.userId ?? null;
 }
@@ -224,7 +226,13 @@ export const authOptions: NextAuthOptions = {
         }
         const email =
           extractEmail(profile) ?? (typeof user?.email === 'string' ? user.email : null);
-        const userId = await resolveIdentityToUserId(provider, providerAccountId, email);
+        const displayName = extractDisplayName(provider, profile, user);
+        const userId = await resolveIdentityToUserId(
+          provider,
+          providerAccountId,
+          email,
+          displayName,
+        );
         if (userId) {
           token.sub = userId;
         }
@@ -268,10 +276,12 @@ export const authOptions: NextAuthOptions = {
       // Validate now (and write the audit entry) so a soft-deleted
       // tombstone gets refused before the redirect back to the app.
       const email = extractEmail(profile);
+      const displayName = extractDisplayName(provider, profile, undefined);
       const resolved = await findOrCreateUserByIdentity({
         provider,
         providerAccountId,
         emailSnapshot: email,
+        displayName,
       });
       return resolved !== null;
     },
@@ -304,6 +314,61 @@ function extractEmail(profile: unknown): string | null {
     return candidate;
   }
   return null;
+}
+
+/**
+ * Pulls the best display name the provider can offer for a new user.
+ *
+ * Google exposes `profile.name` (full) and `profile.given_name` /
+ * `profile.family_name`. Facebook exposes `profile.name`,
+ * `profile.first_name`, and `profile.last_name`. Apple only returns
+ * `profile.name` on the first sign-in; subsequent sign-ins drop the
+ * name entirely, in which case we let the email-fallback path kick
+ * in. NextAuth also tucks the OAuth user object into the `user`
+ * param of the jwt callback, so we fall back to that too.
+ */
+function extractDisplayName(
+  provider: OAuthProvider,
+  profile: unknown,
+  user: { name?: string | null } | undefined,
+): string | null {
+  const fromProfile = readNameFromProfile(provider, profile);
+  if (fromProfile) return fromProfile;
+  if (user && typeof user.name === 'string' && user.name.trim().length > 0) {
+    return user.name;
+  }
+  return null;
+}
+
+function readNameFromProfile(provider: OAuthProvider, profile: unknown): string | null {
+  if (!profile || typeof profile !== 'object') return null;
+  const p = profile as Record<string, unknown>;
+  if (provider === 'google') {
+    return firstNonEmptyString(p.name) ?? composeName(p.given_name, p.family_name);
+  }
+  if (provider === 'facebook') {
+    return firstNonEmptyString(p.name) ?? composeName(p.first_name, p.last_name);
+  }
+  if (provider === 'apple') {
+    // Apple only sends the name on the very first sign-in. On every
+    // subsequent sign-in `profile.name` is absent and we must not
+    // overwrite the User's name with stale or empty data.
+    return firstNonEmptyString(p.name);
+  }
+  return null;
+}
+
+function firstNonEmptyString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function composeName(given: unknown, family: unknown): string | null {
+  const g = firstNonEmptyString(given);
+  const f = firstNonEmptyString(family);
+  if (g && f) return `${g} ${f}`;
+  return g ?? f;
 }
 
 export { getServerSession } from 'next-auth';

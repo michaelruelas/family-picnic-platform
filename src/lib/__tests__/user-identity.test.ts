@@ -240,7 +240,7 @@ describe('findOrCreateUserByIdentity', () => {
             create: vi.fn().mockResolvedValue({
               id: 'user-new',
               email: 'new@example.com',
-              name: 'new@example.com',
+              name: 'Apple User',
               role: 'ADULT',
             }),
           },
@@ -261,6 +261,7 @@ describe('findOrCreateUserByIdentity', () => {
         provider: 'apple',
         providerAccountId: 'apple-sub-3',
         emailSnapshot: 'new@example.com',
+        displayName: 'Apple User',
       });
 
       expect(result?.userId).toBe('user-new');
@@ -275,6 +276,131 @@ describe('findOrCreateUserByIdentity', () => {
           newValue: expect.objectContaining({ userCreated: true }),
         }),
       });
+    });
+
+    it('uses the OAuth display name on the new User (no email-as-name)', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      const createUser = vi.fn().mockResolvedValue({
+        id: 'user-new',
+        email: 'maria@example.com',
+        name: 'Maria Garcia',
+        role: 'ADULT',
+      });
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+        return fn({
+          user: { create: createUser },
+          linkedIdentity: {
+            create: vi.fn().mockResolvedValue({
+              id: 'ident-new',
+              userId: 'user-new',
+              provider: 'google',
+              providerAccountId: 'g-1',
+              emailSnapshot: 'maria@example.com',
+            }),
+          },
+        } as never);
+      });
+
+      const { findOrCreateUserByIdentity } = await import('../user-identity');
+      await findOrCreateUserByIdentity({
+        provider: 'google',
+        providerAccountId: 'g-1',
+        emailSnapshot: 'maria@example.com',
+        displayName: 'Maria Garcia',
+      });
+
+      expect(createUser).toHaveBeenCalledWith({
+        data: {
+          email: 'maria@example.com',
+          name: 'Maria Garcia',
+          role: 'ADULT',
+        },
+      });
+    });
+
+    it('falls back to email when displayName is missing (Apple subsequent sign-ins)', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      const createUser = vi.fn().mockResolvedValue({
+        id: 'user-new',
+        email: 'returning@example.com',
+        name: 'returning@example.com',
+        role: 'ADULT',
+      });
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+        return fn({
+          user: { create: createUser },
+          linkedIdentity: {
+            create: vi.fn().mockResolvedValue({
+              id: 'ident-new',
+              userId: 'user-new',
+              provider: 'apple',
+              providerAccountId: 'apple-sub-4',
+              emailSnapshot: 'returning@example.com',
+            }),
+          },
+        } as never);
+      });
+
+      const { findOrCreateUserByIdentity } = await import('../user-identity');
+      await findOrCreateUserByIdentity({
+        provider: 'apple',
+        providerAccountId: 'apple-sub-4',
+        emailSnapshot: 'returning@example.com',
+        displayName: null,
+      });
+
+      expect(createUser).toHaveBeenCalledWith({
+        data: {
+          email: 'returning@example.com',
+          name: 'returning@example.com',
+          role: 'ADULT',
+        },
+      });
+    });
+
+    it('trims and caps an oversized display name to 200 characters', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null);
+      const createUser = vi.fn().mockResolvedValue({
+        id: 'user-new',
+        email: 'long@example.com',
+        name: 'x'.repeat(200),
+        role: 'ADULT',
+      });
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+        return fn({
+          user: { create: createUser },
+          linkedIdentity: {
+            create: vi.fn().mockResolvedValue({
+              id: 'ident-new',
+              userId: 'user-new',
+              provider: 'google',
+              providerAccountId: 'g-2',
+              emailSnapshot: 'long@example.com',
+            }),
+          },
+        } as never);
+      });
+
+      const { findOrCreateUserByIdentity } = await import('../user-identity');
+      await findOrCreateUserByIdentity({
+        provider: 'google',
+        providerAccountId: 'g-2',
+        emailSnapshot: 'long@example.com',
+        displayName: '   ' + 'x'.repeat(500) + '   ',
+      });
+
+      const call = createUser.mock.calls[0]?.[0] as { data: { name: string } };
+      expect(call.data.name).toHaveLength(200);
+      expect(call.data.name).toBe('x'.repeat(200));
     });
 
     it('normalizes the email (trim + lowercase) before lookup', async () => {

@@ -13,6 +13,15 @@ export interface IdentityLink {
   provider: OAuthProvider;
   providerAccountId: string;
   emailSnapshot?: string | null;
+  /**
+   * Display name from the OAuth profile (`profile.name` on Google,
+   * Facebook, and Apple-on-first-sign-in). Used as the new User's
+   * `name` when an account is created, so the platform never falls
+   * back to the email by default. Falls back to the email only when
+   * the provider did not return a name (Apple hides it on subsequent
+   * sign-ins; the user can edit it from the profile page).
+   */
+  displayName?: string | null;
 }
 
 export interface IdentityLookupResult {
@@ -176,7 +185,7 @@ export async function findOrCreateUserByIdentity(
     const user = await tx.user.create({
       data: {
         email,
-        name: email,
+        name: deriveInitialName(link.displayName, email),
         role: 'ADULT',
       },
     });
@@ -313,6 +322,29 @@ export class IdentityAlreadyLinkedError extends Error {
     super(message);
     this.name = 'IdentityAlreadyLinkedError';
   }
+}
+
+/**
+ * Picks the best initial name for a brand-new User created via OAuth.
+ *
+ * The OAuth profile name (Google/Facebook/Apple) is preferred so the
+ * user does not land on the app with their email as their display
+ * name. The email is only used as a last resort — Apple deliberately
+ * omits `profile.name` on every sign-in after the first, so a
+ * returning Apple user who never linked an earlier provider would
+ * otherwise have a blank profile until they edited it manually.
+ *
+ * The returned string is trimmed and length-capped so a malicious or
+ * buggy provider cannot stash an unbounded blob in the User.name
+ * column.
+ */
+export function deriveInitialName(displayName: string | null | undefined, email: string): string {
+  const USER_NAME_MAX = 200;
+  const trimmedName = displayName?.trim();
+  if (trimmedName) {
+    return trimmedName.slice(0, USER_NAME_MAX);
+  }
+  return email;
 }
 
 /**

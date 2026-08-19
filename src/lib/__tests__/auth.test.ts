@@ -291,16 +291,15 @@ describe('authOptions session callback', () => {
       const { prisma } = await import('~/lib/prisma');
       vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
       vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      const createUser = vi.fn().mockResolvedValue({
+        id: 'new-user',
+        email: 'apple@example.com',
+        name: 'Apple User',
+        role: 'ADULT',
+      });
       vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
         return fn({
-          user: {
-            create: vi.fn().mockResolvedValue({
-              id: 'new-user',
-              email: 'apple@example.com',
-              name: 'apple@example.com',
-              role: 'ADULT',
-            }),
-          },
+          user: { create: createUser },
           linkedIdentity: {
             create: vi.fn().mockResolvedValue({
               id: 'ident-1',
@@ -325,6 +324,106 @@ describe('authOptions session callback', () => {
         },
       });
       expect(result).toBe(true);
+      // The OAuth profile name should drive the new User's name, not
+      // the email. Falling back to the email-as-name was the bug
+      // we are fixing in this iteration.
+      expect(createUser).toHaveBeenCalledWith({
+        data: {
+          email: 'apple@example.com',
+          name: 'Apple User',
+          role: 'ADULT',
+        },
+      });
+    });
+
+    it('uses given_name + family_name when google profile omits the combined name', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      const createUser = vi.fn().mockResolvedValue({
+        id: 'new-user',
+        email: 'maria@example.com',
+        name: 'Maria Garcia',
+        role: 'ADULT',
+      });
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+        return fn({
+          user: { create: createUser },
+          linkedIdentity: {
+            create: vi.fn().mockResolvedValue({
+              id: 'ident-1',
+              userId: 'new-user',
+              provider: 'google',
+              providerAccountId: 'g-sub-1',
+              emailSnapshot: 'maria@example.com',
+            }),
+          },
+        } as any);
+      });
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean>;
+      const result = await signInCallback({
+        account: { provider: 'google' },
+        profile: {
+          sub: 'g-sub-1',
+          email: 'maria@example.com',
+          given_name: 'Maria',
+          family_name: 'Garcia',
+        },
+      });
+      expect(result).toBe(true);
+      expect(createUser).toHaveBeenCalledWith({
+        data: {
+          email: 'maria@example.com',
+          name: 'Maria Garcia',
+          role: 'ADULT',
+        },
+      });
+    });
+
+    it('falls back to the email when apple omits the name on a subsequent sign-in', async () => {
+      const { prisma } = await import('~/lib/prisma');
+      vi.mocked(prisma.linkedIdentity.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
+      const createUser = vi.fn().mockResolvedValue({
+        id: 'new-user',
+        email: 'returning@example.com',
+        name: 'returning@example.com',
+        role: 'ADULT',
+      });
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+        return fn({
+          user: { create: createUser },
+          linkedIdentity: {
+            create: vi.fn().mockResolvedValue({
+              id: 'ident-1',
+              userId: 'new-user',
+              provider: 'apple',
+              providerAccountId: 'apple-sub-1',
+              emailSnapshot: 'returning@example.com',
+            }),
+          },
+        } as any);
+      });
+      const { authOptions } = await import('../auth');
+      const signInCallback = authOptions.callbacks!.signIn as unknown as (
+        params: Record<string, unknown>,
+      ) => Promise<boolean>;
+      const result = await signInCallback({
+        account: { provider: 'apple' },
+        // No `name` field — Apple hides it after the first sign-in.
+        profile: { sub: 'apple-sub-1', email: 'returning@example.com' },
+      });
+      expect(result).toBe(true);
+      expect(createUser).toHaveBeenCalledWith({
+        data: {
+          email: 'returning@example.com',
+          name: 'returning@example.com',
+          role: 'ADULT',
+        },
+      });
     });
 
     it('allows sign in for facebook OAuth by linking to an existing user by email', async () => {
