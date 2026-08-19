@@ -1,27 +1,29 @@
+# Dev runs the Next.js dev server (much slower than the
+# standalone build) and validates the full NextAuth stack, so:
+# - Revert readinessProbe to /api/auth/session so we verify the
+#   full auth flow, not just the DB ping.
+# - Give the startup probe a much wider window (60 × 10s = 10 min)
+#   so the dev server has time to compile routes on first boot.
+# - Space liveness/readiness probes out further so a slow dev
+#   compile doesn't trigger spurious restarts.
 - op: replace
   path: /spec/template/spec/containers/0/readinessProbe/httpGet/path
   value: /api/auth/session
 - op: replace
-  path: /spec/template/spec/containers/0/livenessProbe/httpGet/path
-  value: /api/auth/session
+  path: /spec/template/spec/containers/0/startupProbe/periodSeconds
+  value: 10
 - op: replace
-  path: /spec/template/spec/containers/0/readinessProbe/initialDelaySeconds
-  value: 30
-- op: replace
-  path: /spec/template/spec/containers/0/livenessProbe/initialDelaySeconds
+  path: /spec/template/spec/containers/0/startupProbe/failureThreshold
   value: 60
-- op: replace
-  path: /spec/template/spec/containers/0/readinessProbe/timeoutSeconds
-  value: 5
-- op: replace
-  path: /spec/template/spec/containers/0/livenessProbe/timeoutSeconds
-  value: 5
-- op: replace
-  path: /spec/template/spec/containers/0/readinessProbe/periodSeconds
-  value: 30
 - op: replace
   path: /spec/template/spec/containers/0/livenessProbe/periodSeconds
   value: 60
 - op: replace
   path: /spec/template/spec/containers/0/livenessProbe/failureThreshold
+  value: 5
+- op: replace
+  path: /spec/template/spec/containers/0/readinessProbe/periodSeconds
+  value: 30
+- op: replace
+  path: /spec/template/spec/containers/0/readinessProbe/failureThreshold
   value: 5

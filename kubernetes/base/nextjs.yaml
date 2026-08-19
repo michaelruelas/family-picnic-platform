@@ -169,19 +169,39 @@ spec:
             capabilities:
               drop:
                 - ALL
-          readinessProbe:
+          # Startup probe gives Next.js enough time to finish its
+          # initial boot (compile, warm caches, attach listeners)
+          # before liveness starts counting. Once startup passes,
+          # this probe is never consulted again.
+          # 30 attempts × 5s = 150s startup window.
+          startupProbe:
             httpGet:
               path: /api/health
               port: 3000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          # Liveness: "is the process alive and serving HTTP?"
+          # Lightweight — does NOT touch the DB. A DB hiccup must
+          # not trip liveness (that would force-restart every pod
+          # simultaneously). 3 failures × 30s = 90s before restart.
           livenessProbe:
             httpGet:
               path: /api/health
               port: 3000
-            initialDelaySeconds: 15
-            periodSeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Readiness: "can this pod serve real traffic?" Pings the
+          # DB so a connection-pool exhaustion or DB outage drains
+          # traffic rather than returning 500s. 3 failures × 10s =
+          # 30s before the Service stops routing to this pod.
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 3
           volumeMounts:
             - name: tmp
