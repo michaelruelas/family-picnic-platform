@@ -736,6 +736,15 @@ describe('RsvpBottomSheet per-member attendance', () => {
       await waitFor(() => {
         expect(mockConfirm.mutateAsync).toHaveBeenCalled();
       });
+      // FPP-122: the auto-seeded user-as-guest row must NOT trigger
+      // a /api/household-members POST. The onboarding endpoint already
+      // creates the self-member, and a second POST would create a
+      // duplicate HouseholdMember with the same name (and a confusing
+      // age=18 default for the seeded self-member).
+      const memberAddCalls = mockFetch.mock.calls.filter(
+        ([url]) => typeof url === 'string' && url === '/api/household-members',
+      );
+      expect(memberAddCalls).toHaveLength(0);
     });
   });
 

@@ -152,7 +152,14 @@ function buildInitialDrafts(
   }
 
   // If no members exist yet, seed with the current user's name so they
-  // immediately appear in the attendance list.
+  // immediately appear in the attendance list. FPP-122: this row is
+  // intentionally NOT flagged as saveToHousehold — the onboarding
+  // endpoint already creates a self-member with the same name during
+  // the create-household branch of `handleConfirm`, and flagging the
+  // draft for save would POST a second HouseholdMember with the same
+  // name (the duplicate self-member bug). The row stays in the form
+  // so the user can edit their attendance; it just submits as an
+  // ad-hoc attendance instead of being persisted to the roster.
   if (next.length === 0 && userName && userName.trim()) {
     next.push({
       draftKey: nextDraftKey(),
@@ -162,7 +169,7 @@ function buildInitialDrafts(
       attending: RsvpAttending.YES,
       originalMemberName: null,
       originalMemberAge: null,
-      saveToHousehold: true,
+      saveToHousehold: false,
     });
   }
 
