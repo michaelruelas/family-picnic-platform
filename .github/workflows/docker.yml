@@ -5,12 +5,12 @@ on:
   # Build the image only after CI passes for the same commit. This
   # is the post-merge path: a green main → a pushed image.
   workflow_run:
-    workflows: ["CI"]
+    workflows: ['CI']
     types: [completed]
   workflow_dispatch:
     inputs:
       ref:
-        description: "Branch / SHA to build (defaults to the current head)"
+        description: 'Branch / SHA to build (defaults to the current head)'
         required: false
         type: string
 
