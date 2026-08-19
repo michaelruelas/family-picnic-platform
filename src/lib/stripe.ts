@@ -7,7 +7,7 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 // Pin the API version. Stripe updates its API surface frequently; pinning
 // protects us from silent behavior changes between SDK and server. Bump
 // deliberately when the team is ready to migrate.
-export const STRIPE_API_VERSION = '2025-08-27.basil' as const;
+export const STRIPE_API_VERSION = '2026-07-29.dahlia' as const;
 
 export function isConfigured(): boolean {
   return Boolean(secretKey && publishableKey);
