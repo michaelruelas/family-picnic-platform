@@ -132,7 +132,7 @@ create_json="$(
   "$STRIPE_CLI" webhook_endpoints create \
     --url "$URL" \
     --enabled-events "${EVENTS[0]}","${EVENTS[1]}","${EVENTS[2]}","${EVENTS[3]}","${EVENTS[4]}" \
-    --api-version 2025-08-27.basil \
+    --api-version 2026-07-29.dahlia \
     --format json \
     --connect-to-default-account
 )" || {

@@ -41,8 +41,8 @@ describe('Stripe webhook bootstrap (FPP-47)', () => {
       path.join(process.cwd(), 'src/lib/stripe.ts'),
       'utf-8',
     );
-    const setupVersion = setupContent.match(/--api-version\s+([0-9-]+\.basil)/);
-    const libVersion = stripeLibContent.match(/STRIPE_API_VERSION.*'([^']+\.basil)'/);
+    const setupVersion = setupContent.match(/--api-version\s+([0-9-]+\.[a-z]+)/);
+    const libVersion = stripeLibContent.match(/STRIPE_API_VERSION\s*=\s*'([^']+)'/);
     expect(setupVersion).not.toBeNull();
     expect(libVersion).not.toBeNull();
     expect(setupVersion![1]).toBe(libVersion![1]);

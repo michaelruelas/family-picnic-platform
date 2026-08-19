@@ -167,9 +167,10 @@ follow-up audits, and post-release hardening. All merged to `main`.
 
 ### Open Follow-ups
 
-| Ticket  | Description                                                                                             | Source                                                          | Status                                                                              |
-| ------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| FPP-132 | Verify per-event host scoping end-to-end (REST admins gate, `stampHostRole` un-stamp path, scope audit) | [`audits/pr-review-summary.md`](../audits/pr-review-summary.md) | Open (see [`132-host-scoping-verification.md`](./132-host-scoping-verification.md)) |
+| Ticket  | Description                                                                                                                     | Source                                                          | Status                                                                                |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| FPP-132 | Verify per-event host scoping end-to-end (REST admins gate, `stampHostRole` un-stamp path, scope audit)                         | [`audits/pr-review-summary.md`](../audits/pr-review-summary.md) | Open (see [`132-host-scoping-verification.md`](./132-host-scoping-verification.md))   |
+| FPP-153 | Wire `TWILIO_FROM_EMAIL` through the OpenBao → ESO → K8s Secret pipeline (currently hardcoded in `kubernetes/base/nextjs.yaml`) | (inline)                                                        | Open (see [`153-twilio-from-email-pipeline.md`](./153-twilio-from-email-pipeline.md)) |
 
 ## Active Development
 

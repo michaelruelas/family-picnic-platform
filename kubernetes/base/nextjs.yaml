@@ -102,7 +102,7 @@ spec:
                   name: nextjs-secrets
                   key: nextauth-secret
             - name: TWILIO_FROM_EMAIL
-              value: 'noreply@family-picnic.example.com'
+              value: 'info@foliapicnic.com'
             - name: TWILIO_ACCOUNT_SID
               valueFrom:
                 secretKeyRef:
