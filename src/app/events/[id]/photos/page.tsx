@@ -35,14 +35,14 @@ export default async function EventPhotosPage({ params }: PageProps) {
       photos: {
         where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
-include: {
-            reactions: {
-              select: { reaction: true, userId: true },
-            },
-            household: {
-              select: { name: true },
-            },
+        include: {
+          reactions: {
+            select: { reaction: true, userId: true },
           },
+          household: {
+            select: { name: true },
+          },
+        },
       },
       potluckSlots: {
         select: { signups: { where: { rsvp: { status: 'CONFIRMED' } } } },
