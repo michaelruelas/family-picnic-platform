@@ -82,7 +82,7 @@ export default function MySlotsSummary({
       <header className="flex items-center justify-between gap-3">
         <div>
           <p className="text-terracotta text-xs font-semibold tracking-widest uppercase">
-            My slots
+            My signups
           </p>
           <h2 className="font-display text-foreground mt-1 text-xl font-semibold">
             {signups.length > 0
@@ -92,13 +92,13 @@ export default function MySlotsSummary({
         </div>
         {signups.length > 0 && !compact && (
           <span className="text-muted-foreground text-sm">
-            {signups.length} {signups.length === 1 ? 'slot' : 'slots'}
+            {signups.length} {signups.length === 1 ? 'signup' : 'signups'}
           </span>
         )}
       </header>
 
       {isLoading ? (
-        <p className="text-muted-foreground mt-4 text-sm">Loading your slots…</p>
+        <p className="text-muted-foreground mt-4 text-sm">Loading your signups…</p>
       ) : signups.length === 0 ? (
         <p className="text-muted-foreground mt-3 text-sm">
           Browse the menu below and tap{' '}

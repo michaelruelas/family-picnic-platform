@@ -188,18 +188,5 @@ describe('SlotList readOnly mode (FPP-21)', () => {
       expect(screen.getAllByText('Mac and cheese').length).toBeGreaterThan(0);
       expect(screen.queryByText(/Pat/)).not.toBeInTheDocument();
     });
-
-    it('still surfaces the existing "Sign in" hint banner', () => {
-      render(
-        <SlotList
-          eventId="evt-1"
-          slots={baseSlots}
-          userId={null}
-          hasRsvp={false}
-          isRsvpConfirmed={false}
-        />,
-      );
-      expect(screen.getByText(/Sign in/i)).toBeInTheDocument();
-    });
   });
 });

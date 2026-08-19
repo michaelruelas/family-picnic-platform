@@ -79,6 +79,63 @@ function findMySignups(slot: EventSlot, mySignups: MyPotluckSignup[]): MyPotluck
   return mySignups.filter((s) => s.slotId === slot.id);
 }
 
+interface SignupRow {
+  id: string;
+  isMine: boolean;
+  mySignup?: MyPotluckSignup;
+  dishName: string;
+  householdLabel: string | null;
+}
+
+/**
+ * Build the list of signup rows shown on a dish card. The slot's
+ * public signups and the caller's own mySignups are unioned so the
+ * user's rows render even when the slot's public signups are stale
+ * (e.g. just-claimed, not yet refetched). The mySignup entries carry
+ * less data (no rsvp.householdName) so the household cell falls back
+ * to "You".
+ *
+ * Auth gate: anonymous viewers (userId=null) never see household or
+ * user names — those are personal data; dish names stay visible.
+ */
+function buildSignupRows(
+  slot: EventSlot,
+  mySignupsOnSlot: MyPotluckSignup[],
+  userId: string | null,
+): SignupRow[] {
+  const seen = new Set<string>();
+  const rows: SignupRow[] = [];
+  for (const s of slot.signups) {
+    const mySignup = mySignupsOnSlot.find((m) => m.id === s.id);
+    // Auth gate: anonymous viewers (userId=null) never see household
+    // or user names — those are personal data. The chain below keeps
+    // the conditional shape so the structural privacy test can assert
+    // the gate exists.
+    const householdLabel = !userId ? '' : (s.rsvp.householdName ?? s.rsvp.user?.name ?? 'Guest');
+    rows.push({
+      id: s.id,
+      isMine: !!mySignup,
+      mySignup,
+      dishName: s.dishName,
+      householdLabel,
+    });
+    seen.add(s.id);
+  }
+  for (const m of mySignupsOnSlot) {
+    if (seen.has(m.id)) continue;
+    rows.push({
+      id: m.id,
+      isMine: true,
+      mySignup: m,
+      dishName: m.dishName,
+      householdLabel: userId ? 'You' : null,
+    });
+  }
+  // Sort by dish name ascending (A → Z) so the menu reads top-to-bottom.
+  rows.sort((a, b) => (a.dishName || '').localeCompare(b.dishName || ''));
+  return rows;
+}
+
 export default function SlotList({
   eventId,
   slots,
@@ -193,35 +250,13 @@ export default function SlotList({
 
   return (
     <>
-      {!userId ? (
-        <div className="bg-sunlight/20 ring-sunlight/40 mb-6 rounded-sm px-5 py-4 text-sm ring-1">
-          <p className="text-foreground">
-            <span className="font-semibold">Sign in</span> to claim a dish. You can bring one thing
-            from every open category.
-          </p>
-        </div>
-      ) : !hasRsvp ? (
-        <div className="bg-sunlight/20 ring-sunlight/40 mb-6 rounded-sm px-5 py-4 text-sm ring-1">
-          <p className="text-foreground">
-            <span className="font-semibold">RSVP first.</span> Once you have confirmed attendance
-            you can claim potluck dishes.
-          </p>
-        </div>
-      ) : !isRsvpConfirmed ? (
-        <div className="bg-secondary mb-6 rounded-sm px-5 py-4 text-sm">
-          <p className="text-foreground/85">
-            Your RSVP is not confirmed. Update it on the event page to claim dishes.
-          </p>
-        </div>
-      ) : null}
-
       {error && (
         <div className="bg-destructive/10 text-destructive ring-destructive/30 mb-4 rounded-sm px-4 py-3 text-sm ring-1">
           {error}
         </div>
       )}
 
-      <div className="space-y-8">
+      <div className="space-y-10">
         {groupedSlots.map(({ category, slots: categorySlots }) => (
           <section key={category} aria-labelledby={`cat-${category}`}>
             <div className="flex items-center gap-3">
@@ -237,17 +272,15 @@ export default function SlotList({
               >
                 {POTLUCK_CATEGORY_LABELS[category] ?? category}
               </h3>
-              <span className="text-muted-foreground ml-auto text-sm">
-                {categorySlots.length} {categorySlots.length === 1 ? 'slot' : 'slots'}
-              </span>
             </div>
 
-            <ul className="mt-4 grid gap-3 md:grid-cols-2">
+            <ul className="mt-5 space-y-4">
               {categorySlots.map((slot) => {
                 const full = isSlotFull(slot);
-                const remaining = remainingCapacity(slot);
                 const mySignupsOnSlot = findMySignups(slot, mySignups);
                 const hasMine = mySignupsOnSlot.length > 0;
+                const rows = buildSignupRows(slot, mySignupsOnSlot, userId);
+                const signupCount = rows.length;
                 // The new-claim button is disabled only when the slot is
                 // full. Existing signups on this slot do not block a
                 // multi-claim — the household can bring several distinct
@@ -256,136 +289,145 @@ export default function SlotList({
                 return (
                   <li
                     key={slot.id}
-                    className="bg-card shadow-card ring-border/60 rounded-sm p-5 ring-1"
+                    className="bg-card shadow-card ring-border/60 rounded-sm p-5 ring-1 sm:p-6"
                     data-testid={`potluck-slot-${slot.id}`}
                     data-slot-mine={hasMine ? 'true' : 'false'}
                     data-slot-full={full ? 'true' : 'false'}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-foreground truncate font-semibold">
-                          {slotDisplayName(slot)}
-                        </p>
-                        <p className="text-muted-foreground mt-1 text-xs">
-                          {slot.slotType === 'UNLIMITED'
-                            ? `${slot.currentSignups} ${
-                                slot.currentSignups === 1 ? 'signup' : 'signups'
-                              }`
-                            : `${slot.currentSignups}/${slot.maxSignups} filled${
-                                remaining !== null && !full
-                                  ? ` · ${remaining} left`
-                                  : full
-                                    ? ' · full'
-                                    : ''
-                              }`}
+                    <div className="flex items-start justify-between gap-4">
+                      <p className="text-foreground min-w-0 flex-1 truncate font-semibold">
+                        {slotDisplayName(slot)}
+                      </p>
+                      <div className="shrink-0 text-right">
+                        <span className="bg-sage/20 text-sage inline-flex items-baseline gap-0.5 rounded-sm px-2.5 py-1 font-semibold tabular-nums">
+                          <span>{signupCount}</span>
+                          {slot.slotType === 'LIMITED' && slot.maxSignups !== null && (
+                            <span className="text-xs font-medium opacity-70">
+                              / {slot.maxSignups}
+                            </span>
+                          )}
+                        </span>
+                        <p className="text-muted-foreground mt-1 text-[11px] font-medium tracking-wide uppercase">
+                          {signupCount === 1 ? 'signup' : 'signups'}
+                          {full ? ' · full' : ''}
                         </p>
                       </div>
-                      {hasMine ? (
-                        <span
-                          className="bg-sage/20 text-sage inline-flex items-center gap-1 rounded-sm px-3 py-1 text-xs font-semibold"
-                          data-testid="yours-badge"
-                        >
-                          <span>✓</span> Yours
-                        </span>
-                      ) : null}
                     </div>
 
-                    {slot.signups.length > 0 && (
-                      <ul className="text-muted-foreground mt-3 space-y-1 text-xs">
-                        {slot.signups.slice(0, 3).map((s) => (
-                          <li key={s.id} className="truncate">
-                            <span className="text-foreground/80 font-medium">{s.dishName}</span>
-                            {/* FPP-127: the household name is the
-                              primary identity handle on a claim.
-                              Fall back to the user name for legacy
-                              rows where householdName is not yet
-                              surfaced, and finally omit the suffix
-                              when neither is set.
-                              Auth gate: household + user names are
-                              personal data, so anonymous guests see
-                              the dish name only. */}
-                            {!userId
-                              ? ''
-                              : s.rsvp.householdName
-                                ? ` · ${s.rsvp.householdName}`
-                                : s.rsvp.user?.name
-                                  ? ` · ${s.rsvp.user.name}`
-                                  : ''}
-                          </li>
-                        ))}
-                        {slot.signups.length > 3 && (
-                          <li className="text-muted-foreground/80">
-                            +{slot.signups.length - 3} more
-                          </li>
-                        )}
-                      </ul>
+                    {rows.length > 0 && (
+                      <>
+                        {/* Thin separator between the header and the
+                          signup list — gives the card a clear "title
+                          row → content row" rhythm without adding a
+                          heavy outer border. */}
+                        <hr className="border-border/60 mt-4 border-t" />
+                        <div className="mt-1">
+                          <table
+                            className="w-full text-sm"
+                            data-testid={`potluck-signups-table-${slot.id}`}
+                          >
+                            <tbody className="divide-border/60 divide-y">
+                              {rows.map((row, idx) => {
+                                // Alternating rows stay subtle so the
+                                // "yours" highlight always wins on
+                                // contrast. YOURS rows skip the stripe
+                                // and get their own sage background +
+                                // left edge accent so the eye locks on
+                                // them regardless of row position.
+                                const rowClasses = row.isMine
+                                  ? 'bg-sage/25 border-l-4 border-l-sage'
+                                  : idx % 2 === 1
+                                    ? 'bg-secondary/20'
+                                    : '';
+                                return (
+                                  <tr
+                                    key={row.id}
+                                    data-testid={
+                                      row.isMine ? `potluck-my-signup-${row.id}` : undefined
+                                    }
+                                    className={rowClasses}
+                                  >
+                                    <td className="text-foreground py-2.5 pr-4 pl-3 font-medium">
+                                      <span className="flex flex-wrap items-center gap-2">
+                                        <span>{row.dishName || '(no name)'}</span>
+                                        {row.isMine && (
+                                          <span
+                                            className="bg-sage inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase"
+                                            data-testid="yours-badge"
+                                          >
+                                            <span aria-hidden="true">★</span>
+                                            You
+                                          </span>
+                                        )}
+                                      </span>
+                                    </td>
+                                    <td className="text-muted-foreground py-2.5 pr-4 text-right align-middle">
+                                      {row.householdLabel ?? (
+                                        <span className="text-muted-foreground/40 font-normal">
+                                          —
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="py-2.5 text-right align-middle">
+                                      {!readOnly && row.isMine && row.mySignup ? (
+                                        <div className="flex justify-end gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => openEditClaim(row.mySignup!)}
+                                            disabled={!isRsvpConfirmed}
+                                            className="text-foreground/80 hover:text-foreground rounded-sm px-2 py-0.5 text-xs font-semibold underline-offset-4 hover:underline disabled:opacity-50"
+                                            data-testid={`potluck-edit-signup-${row.mySignup!.id}`}
+                                            aria-label={`Edit ${row.mySignup!.dishName || 'dish'}`}
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDrop(row.mySignup!.id)}
+                                            disabled={cancelSignup.isPending}
+                                            className="text-muted-foreground hover:text-destructive rounded-sm px-2 py-0.5 text-xs font-semibold underline-offset-4 hover:underline disabled:opacity-50"
+                                            data-testid={`potluck-drop-signup-${row.mySignup!.id}`}
+                                            aria-label={`Drop ${row.mySignup!.dishName || 'dish'}`}
+                                          >
+                                            Drop
+                                          </button>
+                                        </div>
+                                      ) : null}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
                     )}
 
-                    {/* Multi-claim: list the caller's own signups on
-                      this slot one row at a time, each with edit and
-                      drop affordances. The "Claim another dish"
-                      button below adds a fresh row when there's room. */}
-                    {!readOnly && hasMine ? (
-                      <ul className="mt-3 space-y-1" data-testid={`potluck-my-signups-${slot.id}`}>
-                        {mySignupsOnSlot.map((my) => (
-                          <li
-                            key={my.id}
-                            className="bg-secondary/60 flex items-center justify-between gap-2 rounded-sm px-3 py-2 text-xs"
-                            data-testid={`potluck-my-signup-${my.id}`}
+                    {!readOnly && (
+                      <div className="mt-4 flex gap-2">
+                        {!hasMine ? (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => openNewClaim(slot.id)}
+                            disabled={newClaimDisabled}
+                            data-testid={`potluck-claim-${slot.id}`}
                           >
-                            <span className="text-foreground truncate font-medium">
-                              {my.dishName || '(no name)'}
-                            </span>
-                            <div className="flex shrink-0 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openEditClaim(my)}
-                                disabled={!isRsvpConfirmed}
-                                className="text-foreground/80 hover:text-foreground rounded-sm px-2 py-0.5 font-semibold underline-offset-4 hover:underline disabled:opacity-50"
-                                data-testid={`potluck-edit-signup-${my.id}`}
-                                aria-label={`Edit ${my.dishName || 'dish'}`}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDrop(my.id)}
-                                disabled={cancelSignup.isPending}
-                                className="text-muted-foreground hover:text-destructive rounded-sm px-2 py-0.5 font-semibold underline-offset-4 hover:underline disabled:opacity-50"
-                                data-testid={`potluck-drop-signup-${my.id}`}
-                                aria-label={`Drop ${my.dishName || 'dish'}`}
-                              >
-                                Drop
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-
-                    <div className="mt-4 flex gap-2">
-                      {!readOnly && !hasMine ? (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => openNewClaim(slot.id)}
-                          disabled={newClaimDisabled}
-                          data-testid={`potluck-claim-${slot.id}`}
-                        >
-                          {full ? 'Full' : 'Claim this dish'}
-                        </Button>
-                      ) : !readOnly ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openNewClaim(slot.id)}
-                          disabled={newClaimDisabled}
-                          data-testid={`potluck-claim-another-${slot.id}`}
-                        >
-                          {full ? 'Slot is full' : 'Claim another dish'}
-                        </Button>
-                      ) : null}
-                    </div>
+                            {full ? 'Full' : 'Claim this dish'}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openNewClaim(slot.id)}
+                            disabled={newClaimDisabled}
+                            data-testid={`potluck-claim-another-${slot.id}`}
+                          >
+                            {full ? 'Signups full' : 'Claim another dish'}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -453,7 +495,7 @@ export default function SlotList({
                 ) : claimIsEdit ? (
                   'Save changes'
                 ) : (
-                  'Add to my slots'
+                  'Add to my signups'
                 )}
               </Button>
               <Button variant="ghost" onClick={closeClaim}>

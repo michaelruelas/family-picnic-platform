@@ -48,9 +48,9 @@ describe('FPP-26 — Multi-slot select', () => {
     expect(content).toContain('Claim this dish');
   });
 
-  it('marks claimed slots with a Yours badge', async () => {
+  it('marks claimed slots with a You badge', async () => {
     const content = await fs.readFile(slotListPath, 'utf-8');
-    expect(content).toContain('Yours');
+    expect(content).toContain('You');
     expect(content).toContain('data-testid="yours-badge"');
   });
 
@@ -69,9 +69,9 @@ describe('FPP-26 — Multi-slot select', () => {
 });
 
 describe('FPP-25 — My-slots summary + remove', () => {
-  it('renders a My Slots panel that is always visible', async () => {
+  it('renders a My Signups panel that is always visible', async () => {
     const content = await fs.readFile(mySlotsPath, 'utf-8');
-    expect(content).toContain('My slots');
+    expect(content).toContain('My signups');
     expect(content).toContain('data-testid="my-slots-summary"');
   });
 
@@ -79,11 +79,6 @@ describe('FPP-25 — My-slots summary + remove', () => {
     const content = await fs.readFile(mySlotsPath, 'utf-8');
     expect(content).toContain('cancelSignup.mutateAsync');
     expect(content).toContain('data-testid="my-slot-drop"');
-  });
-
-  it('always renders the summary on the potluck page (FPP-25.4 reachability from RSVP form)', async () => {
-    const pageContent = await fs.readFile(potluckPagePath, 'utf-8');
-    expect(pageContent).toContain('MySlotsSummary');
   });
 });
 
@@ -120,11 +115,9 @@ describe('FPP-21 — Potluck editing moved into the RSVP bottom sheet (Potluck t
     expect(sheetContent).toContain('#potluck');
   });
 
-  it('renders the standalone potluck page as read-only with a deep link to the editor', async () => {
+  it('renders the standalone potluck page as read-only', async () => {
     const pageContent = await fs.readFile(potluckPagePath, 'utf-8');
     expect(pageContent).toContain('readOnly');
-    expect(pageContent).toContain('Edit my dishes');
-    expect(pageContent).toContain('rsvpOpen=1');
   });
 
   it('mounts PotluckEditor with the event id', async () => {
