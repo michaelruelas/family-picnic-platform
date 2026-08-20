@@ -18,6 +18,14 @@ interface NavItem {
    * shared path does not double-highlight.
    */
   matchPrefixes?: readonly string[];
+  /**
+   * Regex pattern that activates this nav item in addition to
+   * (or instead of) the prefix matcher. Use for routes whose
+   * active shape is non-trivial — e.g. `/admin/events/{id}/potluck`
+   * where the cuid segment is variable. The regex is matched
+   * against the full pathname with `^…$` anchors.
+   */
+  matchPath?: RegExp;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -153,6 +161,31 @@ const NAV_ITEMS: NavItem[] = [
       </svg>
     ),
   },
+  // FPP-150: top-level Potluck entry that drills into the
+  // per-event admin potluck page. Lights up on both the global
+  // index page and the per-event signup management surface so the
+  // sidebar stays active throughout the potluck workflow.
+  {
+    href: '/admin/potluck',
+    label: 'Potluck',
+    description: 'Browse and edit signups',
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.6}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+        />
+      </svg>
+    ),
+    matchPath: /^\/admin\/events\/[^/]+\/potluck(?:\/|$)/,
+  },
   {
     href: '/admin/audit-log',
     label: 'Audit Log',
@@ -207,7 +240,7 @@ const EVENTS_SIBLING_SEGMENTS = new Set(['past']);
 
 function isActive(pathname: string, item: NavItem): boolean {
   const prefixes = item.matchPrefixes ?? [item.href];
-  return prefixes.some((prefix) => {
+  const prefixHit = prefixes.some((prefix) => {
     const base = prefix.replace(/\/$/, '');
     if (pathname === base) return true;
 
@@ -225,6 +258,9 @@ function isActive(pathname: string, item: NavItem): boolean {
 
     return false;
   });
+  if (prefixHit) return true;
+  if (item.matchPath) return item.matchPath.test(pathname);
+  return false;
 }
 
 interface AdminSidebarProps {

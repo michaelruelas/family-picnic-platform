@@ -115,14 +115,38 @@ export default async function EditEventPage({ params }: PageProps) {
       </div>
 
       <div className="mt-12">
-        <h2 className="text-foreground text-2xl font-bold">Potluck Slots</h2>
-        <p className="text-muted-foreground mt-2">
-          Manage what dishes attendees can sign up to bring
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-foreground text-2xl font-bold">Potluck Slots</h2>
+            <p className="text-muted-foreground mt-2">
+              Manage what dishes attendees can sign up to bring
+            </p>
+          </div>
+        </div>
         <div className="mt-6">
           <SlotGrid eventId={event.id} slots={event.potluckSlots} />
         </div>
       </div>
+
+      {event.potluckSlots.length > 0 ? (
+        <div className="mt-12 border-t pt-12">
+          <div className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-sm p-5 shadow-sm">
+            <div>
+              <p className="text-foreground text-base font-semibold">Manage potluck signups</p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Edit, cancel, create, or reassign any signup on this event
+              </p>
+            </div>
+            <a
+              href={`/admin/events/${event.id}/potluck`}
+              className="bg-terracotta hover:bg-terracotta rounded-sm px-5 py-2.5 text-sm font-semibold text-white"
+              data-testid="manage-potluck-cta"
+            >
+              Open potluck admin →
+            </a>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-12 border-t pt-12">
         <h2 className="text-foreground text-2xl font-bold">PDF Attachments</h2>

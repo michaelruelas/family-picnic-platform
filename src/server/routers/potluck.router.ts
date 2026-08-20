@@ -584,4 +584,472 @@ export const potluckRouter = router({
 
       return Object.values(summary);
     }),
+
+  // ============================================================
+  // Admin signup surface (FPP-150)
+  // ============================================================
+  // The diner-facing `signup` / `updateSignup` / `cancelSignup`
+  // procedures enforce that the caller owns the signup via their
+  // own RSVP. The admin variants below accept any RSVP under the
+  // event and are gated by `eventAdminProcedure` (per-event host
+  // OR platform admin). Every mutation writes a domain audit log
+  // entry tagged `potluck.signup.admin.*` so the existing
+  // /admin/audit-log filter on subjectType `PotluckSignup` shows
+  // both diner and admin actions side-by-side.
+
+  /**
+   * Returns every non-soft-deleted signup for the event in a flat
+   * row shape the admin DataTable can render directly. Pulls in
+   * the slot, the RSVP, the user, and the household so the table
+   * can label rows by household without an extra round-trip.
+   */
+  adminListSignups: eventAdminProcedure(
+    z.object({ eventId: z.string() }),
+    (input) => input.eventId,
+  ).query(async ({ input }) => {
+    return prisma.potluckSlot.findMany({
+      where: { eventId: input.eventId },
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      include: {
+        // FPP-Postmortem: filter out soft-deleted signups so the
+        // admin table doesn't surface cancelled-without-purge rows.
+        signups: {
+          where: { deletedAt: null },
+          orderBy: { claimedAt: 'asc' },
+          include: {
+            rsvp: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    household: { select: { id: true, name: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }),
+
+  /**
+   * Returns a single signup with the household/user identity the
+   * edit modal needs to pre-fill. Companion to the list query
+   * (`adminListSignups`) so the row shape can stay minimal —
+   * dropping dietary labels, RSVP status, and claimed date from
+   * the table payload keeps the table render cheap.
+   */
+  adminGetSignup: eventAdminProcedure(z.object({ signupId: z.string() }), async (input) => {
+    const signup = await prisma.potluckSignup.findUnique({
+      where: { id: input.signupId },
+      select: { slot: { select: { eventId: true } } },
+    });
+    if (!signup) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Signup not found' });
+    }
+    return signup.slot.eventId;
+  }).query(async ({ input }) => {
+    const signup = await prisma.potluckSignup.findUnique({
+      where: { id: input.signupId },
+      include: {
+        rsvp: {
+          select: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                household: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!signup || signup.deletedAt !== null) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Signup not found' });
+    }
+    return {
+      id: signup.id,
+      dishName: signup.dishName,
+      servings: signup.servings,
+      dietaryLabels: signup.dietaryLabels,
+      householdName: signup.rsvp.user.household?.name ?? signup.rsvp.user.name,
+      userName: signup.rsvp.user.name,
+    };
+  }),
+
+  /**
+   * Admin override of `updateSignup`. Edits any signup under the
+   * event regardless of which RSVP it belongs to. Mirrors the
+   * diner-facing write shape (dishName / servings / dietaryLabels)
+   * and writes a domain audit-log entry under
+   * `potluck.signup.admin.update` with before/after diff.
+   */
+  adminUpdateSignup: eventAdminProcedure(
+    z.object({
+      signupId: z.string(),
+      dishName: z.string().trim().default(''),
+      servings: z.number().int().min(1),
+      dietaryLabels: z.array(z.string()),
+    }),
+    async (input) => {
+      const signup = await prisma.potluckSignup.findUnique({
+        where: { id: input.signupId },
+        select: { slot: { select: { eventId: true } } },
+      });
+      if (!signup) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Signup not found' });
+      }
+      return signup.slot.eventId;
+    },
+  ).mutation(async ({ ctx, input }) => {
+    // FPP-Postmortem: refuse to update a soft-deleted row.
+    const existing = await prisma.potluckSignup.findUnique({
+      where: { id: input.signupId },
+      include: { slot: { select: { eventId: true } } },
+    });
+    if (!existing || existing.deletedAt !== null) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Signup not found' });
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.potluckSignup.update({
+        where: { id: input.signupId },
+        data: {
+          dishName: input.dishName,
+          servings: input.servings,
+          dietaryLabels: input.dietaryLabels,
+        },
+      });
+
+      await writeDomainAuditLog(
+        {
+          actorId: ctx.session.user.id,
+          action: 'potluck.signup.admin.update',
+          subjectType: 'PotluckSignup',
+          subjectId: updated.id,
+          payload: {
+            slotId: updated.slotId,
+            eventId: existing.slot.eventId,
+            before: {
+              dishName: existing.dishName,
+              servings: existing.servings,
+              dietaryLabels: existing.dietaryLabels,
+            },
+            after: {
+              dishName: input.dishName,
+              servings: input.servings,
+              dietaryLabels: input.dietaryLabels,
+            },
+          },
+        },
+        tx,
+      );
+
+      return updated;
+    });
+  }),
+
+  /**
+   * Admin override of `cancelSignup`. Soft-deletes the signup and
+   * decrements the slot's counter — same atomic shape as the
+   * diner-facing `cancelSignup`, but without the RSVP-ownership
+   * check. Writes `potluck.signup.admin.cancel` to the audit log.
+   */
+  adminCancelSignup: eventAdminProcedure(z.object({ signupId: z.string() }), async (input) => {
+    const signup = await prisma.potluckSignup.findUnique({
+      where: { id: input.signupId },
+      select: { slot: { select: { eventId: true } } },
+    });
+    if (!signup) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Signup not found' });
+    }
+    return signup.slot.eventId;
+  }).mutation(async ({ ctx, input }) => {
+    const existing = await prisma.potluckSignup.findUnique({
+      where: { id: input.signupId },
+      include: { slot: { select: { eventId: true } } },
+    });
+    if (!existing || existing.deletedAt !== null) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Signup not found' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.potluckSignup.update({
+        where: { id: input.signupId },
+        data: { deletedAt: new Date() },
+      });
+
+      await tx.potluckSlot.update({
+        where: { id: existing.slotId },
+        data: { currentSignups: { decrement: 1 } },
+      });
+
+      await writeDomainAuditLog(
+        {
+          actorId: ctx.session.user.id,
+          action: 'potluck.signup.admin.cancel',
+          subjectType: 'PotluckSignup',
+          subjectId: existing.id,
+          payload: {
+            slotId: existing.slotId,
+            eventId: existing.slot.eventId,
+            rsvpId: existing.rsvpId,
+            dishName: existing.dishName,
+            servings: existing.servings,
+            dietaryLabels: existing.dietaryLabels,
+          },
+        },
+        tx,
+      );
+    });
+
+    return { success: true };
+  }),
+
+  /**
+   * Admin override of `signup`. Creates a signup on behalf of any
+   * RSVP tied to the event. Bypasses the diner-only "must have
+   * confirmed RSVP" / "event must be published" gates so hosts
+   * can claim a slot for a household before the event is
+   * published, or for a hold-list RSVP. Runs under the same
+   * Serializable window for LIMITED slots as the diner flow so
+   * the counter cannot exceed `maxSignups`.
+   */
+  adminCreateSignup: eventAdminProcedure(
+    z.object({
+      eventId: z.string(),
+      slotId: z.string(),
+      rsvpId: z.string(),
+      dishName: z.string().trim().default(''),
+      servings: z.number().int().min(1).default(1),
+      dietaryLabels: z.array(z.string()).default([]),
+    }),
+    (input) => input.eventId,
+  ).mutation(async ({ ctx, input }) => {
+    const slot = await prisma.potluckSlot.findUnique({
+      where: { id: input.slotId },
+      include: { event: { select: { id: true, name: true } } },
+    });
+    if (!slot || slot.eventId !== input.eventId) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Slot not found' });
+    }
+
+    const rsvp = await prisma.rSVP.findUnique({
+      where: { id: input.rsvpId },
+      select: { id: true, eventId: true },
+    });
+    if (!rsvp || rsvp.eventId !== input.eventId) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'RSVP not found' });
+    }
+
+    if (slot.slotType === SlotType.LIMITED) {
+      return prisma.$transaction(
+        async (tx) => {
+          const currentSignups = await tx.potluckSignup.count({
+            where: { slotId: input.slotId, deletedAt: null },
+          });
+          const maxSignups = slot.maxSignups ?? 0;
+          if (currentSignups >= maxSignups) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'This slot is full',
+            });
+          }
+
+          const created = await tx.potluckSignup.create({
+            data: {
+              slotId: input.slotId,
+              rsvpId: rsvp.id,
+              dishName: input.dishName,
+              servings: input.servings,
+              dietaryLabels: input.dietaryLabels,
+            },
+          });
+
+          await tx.potluckSlot.update({
+            where: { id: input.slotId },
+            data: { currentSignups: { increment: 1 } },
+          });
+
+          await writeDomainAuditLog(
+            {
+              actorId: ctx.session.user.id,
+              action: 'potluck.signup.admin.create',
+              subjectType: 'PotluckSignup',
+              subjectId: created.id,
+              payload: {
+                slotId: input.slotId,
+                eventId: input.eventId,
+                rsvpId: rsvp.id,
+                dishName: input.dishName,
+                servings: input.servings,
+                dietaryLabels: input.dietaryLabels,
+                onBehalfOf: true,
+              },
+            },
+            tx,
+          );
+
+          return created;
+        },
+        { isolationLevel: 'Serializable' },
+      );
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const created = await tx.potluckSignup.create({
+        data: {
+          slotId: input.slotId,
+          rsvpId: rsvp.id,
+          dishName: input.dishName,
+          servings: input.servings,
+          dietaryLabels: input.dietaryLabels,
+        },
+      });
+
+      await writeDomainAuditLog(
+        {
+          actorId: ctx.session.user.id,
+          action: 'potluck.signup.admin.create',
+          subjectType: 'PotluckSignup',
+          subjectId: created.id,
+          payload: {
+            slotId: input.slotId,
+            eventId: input.eventId,
+            rsvpId: rsvp.id,
+            dishName: input.dishName,
+            servings: input.servings,
+            dietaryLabels: input.dietaryLabels,
+            onBehalfOf: true,
+          },
+        },
+        tx,
+      );
+
+      return created;
+    });
+  }),
+
+  /**
+   * Move a signup to a different slot and/or RSVP. Used when a
+   * host needs to reassign a dish to a different category, or
+   * relocate a claim to a different household (e.g. when a guest
+   * transfers their RSVP to someone else mid-event). Adjusts the
+   * counter on both the source and destination slot in a single
+   * transaction so the totals stay consistent.
+   */
+  adminReassignSignup: eventAdminProcedure(
+    z.object({
+      signupId: z.string(),
+      slotId: z.string(),
+      rsvpId: z.string(),
+    }),
+    async (input) => {
+      const signup = await prisma.potluckSignup.findUnique({
+        where: { id: input.signupId },
+        select: { slot: { select: { eventId: true } } },
+      });
+      if (!signup) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Signup not found' });
+      }
+      return signup.slot.eventId;
+    },
+  ).mutation(async ({ ctx, input }) => {
+    const existing = await prisma.potluckSignup.findUnique({
+      where: { id: input.signupId },
+      include: { slot: { select: { eventId: true } } },
+    });
+    if (!existing || existing.deletedAt !== null) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Signup not found' });
+    }
+
+    if (input.slotId === existing.slotId && input.rsvpId === existing.rsvpId) {
+      return existing;
+    }
+
+    const destinationSlot = await prisma.potluckSlot.findUnique({
+      where: { id: input.slotId },
+      select: { eventId: true, slotType: true, maxSignups: true },
+    });
+    if (!destinationSlot || destinationSlot.eventId !== existing.slot.eventId) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Destination slot not found' });
+    }
+
+    const destinationRsvp = await prisma.rSVP.findUnique({
+      where: { id: input.rsvpId },
+      select: { id: true, eventId: true },
+    });
+    if (!destinationRsvp || destinationRsvp.eventId !== existing.slot.eventId) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Destination RSVP not found' });
+    }
+
+    // Counter arithmetic:
+    // - source slot was decremented by 1 (we moved one off it)
+    // - destination slot was incremented by 1 (we moved one on it)
+    // - source slot type (LIMITED/UNLIMITED) does not change on decrement
+    // - destination slot capacity must be checked for LIMITED
+    return prisma.$transaction(
+      async (tx) => {
+        if (destinationSlot.slotType === SlotType.LIMITED && input.slotId !== existing.slotId) {
+          const currentSignups = await tx.potluckSignup.count({
+            where: { slotId: input.slotId, deletedAt: null },
+          });
+          const maxSignups = destinationSlot.maxSignups ?? 0;
+          if (currentSignups >= maxSignups) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Destination slot is full',
+            });
+          }
+        }
+
+        const updated = await tx.potluckSignup.update({
+          where: { id: input.signupId },
+          data: {
+            slotId: input.slotId,
+            rsvpId: input.rsvpId,
+          },
+        });
+
+        if (input.slotId !== existing.slotId) {
+          await tx.potluckSlot.update({
+            where: { id: existing.slotId },
+            data: { currentSignups: { decrement: 1 } },
+          });
+          await tx.potluckSlot.update({
+            where: { id: input.slotId },
+            data: { currentSignups: { increment: 1 } },
+          });
+        }
+
+        await writeDomainAuditLog(
+          {
+            actorId: ctx.session.user.id,
+            action: 'potluck.signup.admin.reassign',
+            subjectType: 'PotluckSignup',
+            subjectId: updated.id,
+            payload: {
+              eventId: existing.slot.eventId,
+              before: {
+                slotId: existing.slotId,
+                rsvpId: existing.rsvpId,
+              },
+              after: {
+                slotId: input.slotId,
+                rsvpId: input.rsvpId,
+              },
+            },
+          },
+          tx,
+        );
+
+        return updated;
+      },
+      { isolationLevel: 'Serializable' },
+    );
+  }),
 });
