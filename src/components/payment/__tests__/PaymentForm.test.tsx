@@ -5,6 +5,13 @@ vi.mock('@stripe/stripe-js', () => ({
   loadStripe: vi.fn(async () => ({})),
 }));
 
+vi.mock('next-themes', () => ({
+  // PaymentForm reads `resolvedTheme` to pick Stripe's night vs stripe
+  // appearance. Tests render without a ThemeProvider, so we return a
+  // stable light-mode value to avoid hook-count drift between renders.
+  useTheme: () => ({ resolvedTheme: 'light', theme: 'light', setTheme: () => {} }),
+}));
+
 const mockElementsSpy = vi.fn();
 const mockPaymentElementSpy = vi.fn();
 

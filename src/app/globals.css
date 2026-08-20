@@ -42,7 +42,7 @@
   --color-sage-hover: var(--success-hover);
   --color-sunlight: var(--warning);
   --color-sunlight-foreground: var(--warning-foreground);
-  --color-terracotta: var(--primary);
+  --color-terracotta: var(--terracotta);
   --color-terracotta-foreground: var(--primary-foreground);
   --color-terracotta-hover: var(--primary-hover);
 

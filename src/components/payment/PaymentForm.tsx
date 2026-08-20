@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadStripe, type Stripe as StripeJs } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import type { Appearance } from '@stripe/stripe-js';
+import { useTheme } from 'next-themes';
 import { trpc } from '~/lib/trpc-client';
 import { track } from '~/lib/analytics';
 import { formatAmount } from '~/lib/currency';
+import { useMounted } from '~/hooks/useMounted';
 import Spinner from '~/components/ui/Spinner';
 
 interface PaymentFormProps {
@@ -76,6 +79,54 @@ function PaymentFormSetup(props: PaymentFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // FPP-181: Stripe Elements ships with a light theme by default, which
+  // makes "Card number" / "ZIP code" labels disappear against the dark
+  // modal in dark mode. We mirror our app's resolved theme into Stripe's
+  // `appearance` API so the iframe paints dark surfaces with light
+  // labels. Brand color is overridden on both themes so the focused
+  // field accent stays consistent with the rest of the app instead of
+  // reverting to Stripe's default blue.
+  //
+  // Hooks must run before any early return below so the hook order is
+  // stable across the loading → ready transition.
+  const { resolvedTheme } = useTheme();
+  // FPP-181: `useTheme()` returns `undefined` until client hydration,
+  // so we read it through `useMounted()` to render Stripe's light
+  // theme during SSR and the first paint, then swap to dark once the
+  // resolved theme is available. Using `useMounted` (which uses
+  // `useSyncExternalStore` rather than setState-in-effect) keeps the
+  // hook order stable and avoids a cascading-render lint warning.
+  const mounted = useMounted();
+  const isDark = mounted && resolvedTheme === 'dark';
+  const appearance: Appearance = useMemo(
+    () =>
+      isDark
+        ? {
+            theme: 'night',
+            variables: {
+              colorPrimary: '#5eaa7a',
+              colorBackground: '#13251c',
+              colorText: '#eef5f1',
+              colorTextSecondary: '#95aea0',
+              colorDanger: '#f87171',
+              colorTextPlaceholder: '#6f8479',
+              borderRadius: '12px',
+              fontFamily:
+                'Inter, "Inter Fallback", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+            },
+          }
+        : {
+            theme: 'stripe',
+            variables: {
+              colorPrimary: '#1b5e37',
+              borderRadius: '12px',
+              fontFamily:
+                'Inter, "Inter Fallback", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+            },
+          },
+    [isDark],
+  );
+
   if (!stripePromise) {
     return (
       <div className="bg-card rounded-sm p-6 shadow-sm" data-testid="payment-loading">
@@ -128,7 +179,7 @@ function PaymentFormSetup(props: PaymentFormProps) {
         // Lock the Payment Element to the intent created for this
         // event so the clientSecret matches the Stripe session.
         clientSecret,
-        appearance: { theme: 'stripe' },
+        appearance,
       }}
     >
       <PaymentFormInner

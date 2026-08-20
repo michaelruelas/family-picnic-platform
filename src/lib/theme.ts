@@ -54,6 +54,13 @@ export interface ThemeColors {
   input: string;
   ring: string;
 
+  // Text accent (used for `text-terracotta` / `bg-terracotta/N text-terracotta`
+  // pills). Decoupled from `primary` so the dark-mode primary can stay dark
+  // enough for white button text while the text accent has enough contrast on
+  // dark cards (>=4.5:1).
+  terracotta: string;
+  terracottaHover: string;
+
   // Demographic / Family Tree category tokens
   roleAdult: string;
   roleChild: string;
@@ -101,6 +108,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#cfe0d5',
       input: '#cfe0d5',
       ring: '#1b5e37',
+      terracotta: '#1b5e37',
+      terracottaHover: '#14472a',
       roleAdult: '#1b5e37',
       roleChild: '#2d7a4d',
       roleDependent: '#1f5951',
@@ -132,6 +141,14 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#284c3a', // Clear, visible border
       input: '#284c3a',
       ring: '#38945f',
+      // FPP-181: dark-mode text accent. The brand pine (`#2d7a4d`) is dark
+      // enough for white button labels (5.3:1 on primary) but has only ~3:1
+      // contrast against the card surface — `text-terracotta` rendered as
+      // eyebrows, secondary-button labels, and link text disappears. Lifting
+      // the text accent to a brighter pine restores ~6:1 contrast on card and
+      // ~6.4:1 on background while keeping the same hue family.
+      terracotta: '#5eaa7a',
+      terracottaHover: '#76c290',
       roleAdult: '#2d7a4d',
       roleChild: '#38945f',
       roleDependent: '#2a6960',
@@ -170,6 +187,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#e2e8f0',
       input: '#e2e8f0',
       ring: '#0284c7',
+      terracotta: '#0284c7',
+      terracottaHover: '#0369a1',
       roleAdult: '#0284c7',
       roleChild: '#0ea5e9',
       roleDependent: '#15803d',
@@ -201,6 +220,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#24354e',
       input: '#24354e',
       ring: '#38bdf8',
+      terracotta: '#38bdf8',
+      terracottaHover: '#7dd3fc',
       roleAdult: '#38bdf8',
       roleChild: '#7dd3fc',
       roleDependent: '#4ade80',
@@ -239,6 +260,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#dce7df',
       input: '#dce7df',
       ring: '#15803d',
+      terracotta: '#15803d',
+      terracottaHover: '#166534',
       roleAdult: '#15803d',
       roleChild: '#0284c7',
       roleDependent: '#d97706',
@@ -270,6 +293,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#1c3d2a',
       input: '#1c3d2a',
       ring: '#4ade80',
+      terracotta: '#4ade80',
+      terracottaHover: '#86efac',
       roleAdult: '#4ade80',
       roleChild: '#38bdf8',
       roleDependent: '#fbbf24',
@@ -308,6 +333,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#ede5e0',
       input: '#ede5e0',
       ring: '#ea580c',
+      terracotta: '#ea580c',
+      terracottaHover: '#c2410c',
       roleAdult: '#ea580c',
       roleChild: '#f59e0b',
       roleDependent: '#16a34a',
@@ -339,6 +366,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#38251e',
       input: '#38251e',
       ring: '#fb923c',
+      terracotta: '#fb923c',
+      terracottaHover: '#fdba74',
       roleAdult: '#fb923c',
       roleChild: '#fbbf24',
       roleDependent: '#4ade80',
@@ -377,6 +406,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#e2e8f0',
       input: '#e2e8f0',
       ring: '#0891b2',
+      terracotta: '#0891b2',
+      terracottaHover: '#0e7490',
       roleAdult: '#0891b2',
       roleChild: '#06b6d4',
       roleDependent: '#059669',
@@ -408,6 +439,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#1a3746',
       input: '#1a3746',
       ring: '#22d3ee',
+      terracotta: '#22d3ee',
+      terracottaHover: '#67e8f9',
       roleAdult: '#22d3ee',
       roleChild: '#38bdf8',
       roleDependent: '#34d399',
@@ -446,6 +479,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#ece7dc',
       input: '#ece7dc',
       ring: '#2b2d42',
+      terracotta: '#e07a5f',
+      terracottaHover: '#cf6c52',
       roleAdult: '#e07a5f',
       roleChild: '#f2cc8f',
       roleDependent: '#81b29a',
@@ -477,6 +512,8 @@ export const THEMES: Record<ThemePreset, ThemeDefinition> = {
       border: '#3a3329',
       input: '#3a3329',
       ring: '#f3ede2',
+      terracotta: '#e8907a',
+      terracottaHover: '#f0a896',
       roleAdult: '#e8907a',
       roleChild: '#d9b678',
       roleDependent: '#8dbfa7',
@@ -561,6 +598,8 @@ export function getThemeCss(preset: ThemePreset = ACTIVE_THEME): string {
       --border: ${light.border};
       --input: ${light.input};
       --ring: ${light.ring};
+      --terracotta: ${light.terracotta};
+      --terracotta-hover: ${light.terracottaHover};
       --chart-1: ${light.primary};
       --chart-2: ${light.success};
       --chart-3: ${light.warning};
@@ -608,6 +647,8 @@ export function getThemeCss(preset: ThemePreset = ACTIVE_THEME): string {
       --border: ${dark.border};
       --input: ${dark.input};
       --ring: ${dark.ring};
+      --terracotta: ${dark.terracotta};
+      --terracotta-hover: ${dark.terracottaHover};
       --chart-1: ${dark.primary};
       --chart-2: ${dark.success};
       --chart-3: ${dark.warning};
