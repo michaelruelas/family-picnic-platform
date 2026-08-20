@@ -24,6 +24,7 @@ export default function LoginForm({
   const callbackUrl = searchParams?.get('callbackUrl') || SIGNED_IN_REDIRECT;
   const oauthError = searchParams?.get('error');
   const relayBlocked = oauthError === 'RelayEmail';
+  const relayAmbiguous = oauthError === 'RelayAmbiguous';
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -76,6 +77,19 @@ export default function LoginForm({
                 This sign-in used a third-party alias (e.g. Apple Hide My Email) that we cannot
                 reliably deliver mail to. Sign in with Google, or in Apple choose &ldquo;Share My
                 Email&rdquo; instead of &ldquo;Hide My Email&rdquo; for this app.
+              </p>
+            </div>
+          ) : null}
+          {relayAmbiguous ? (
+            <div
+              role="alert"
+              className="mb-4 rounded-sm bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-300"
+            >
+              <p className="font-semibold">Sign-in blocked: please contact an admin.</p>
+              <p className="mt-1 text-xs text-amber-800">
+                More than one account on this platform was created with a relay email, so we can not
+                safely link this sign-in. Email an admin and they can update the right account so
+                you can sign in.
               </p>
             </div>
           ) : null}

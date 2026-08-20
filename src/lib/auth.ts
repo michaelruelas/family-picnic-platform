@@ -8,6 +8,7 @@ import type { Role } from './generated/enums';
 import {
   findOrCreateUserByIdentity,
   isOAuthProvider,
+  RelayAmbiguousError,
   RelayEmailBlockedError,
   type OAuthProvider,
 } from './user-identity';
@@ -301,6 +302,11 @@ export const authOptions: NextAuthOptions = {
         if (err instanceof RelayEmailBlockedError) {
           // Surface a specific error to the login form so the user
           // knows the issue is a relay alias, not bad credentials.
+          return `/login?error=${err.code}`;
+        }
+        if (err instanceof RelayAmbiguousError) {
+          // Multiple relay-flagged users exist; we cannot safely
+          // auto-merge. Direct the user to an admin.
           return `/login?error=${err.code}`;
         }
         throw err;

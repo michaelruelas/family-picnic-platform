@@ -52,6 +52,12 @@ export interface IdentityLookupResult {
   // (FPP-31: account linking). False when the row was created along
   // with a brand-new user.
   linkedToExistingUser: boolean;
+  // True when the user was recovered from a relay-flagged account via
+  // cross-provider sign-in (see the cross-provider recovery branch
+  // in `findOrCreateUserByIdentity`). Their original relay email was
+  // replaced with the verified real email from the new provider and
+  // the `emailIsRelay` flag was cleared.
+  recoveredFromRelay?: boolean;
 }
 
 /**
@@ -236,6 +242,70 @@ export async function findOrCreateUserByIdentity(
     return null;
   }
 
+  // Cross-provider recovery: an existing user is locked behind a
+  // third-party relay email (e.g. Apple Private Relay); the new
+  // sign-in uses a verified real email from a different OAuth
+  // provider. Linking instead of creating a duplicate keeps the
+  // user's existing data (household, RSVPs, potluck signups) on the
+  // same row. Refused when more than one relay user is in the DB so
+  // the auto-merge cannot combine unrelated people.
+  const relayCandidates = await prisma.user.findMany({
+    where: { emailIsRelay: true, deletedAt: null },
+    select: { id: true, email: true, name: true, role: true },
+  });
+  if (relayCandidates.length > 1) {
+    await writeAudit({
+      userId: relayCandidates.map((u) => u.id).join(','),
+      action: 'auth.signIn.refused',
+      newValue: {
+        provider: link.provider,
+        reason: 'relay_recovery_ambiguous',
+        candidateUserIds: relayCandidates.map((u) => u.id),
+      },
+    });
+    throw new RelayAmbiguousError();
+  }
+  if (relayCandidates.length === 1) {
+    const relayUser = relayCandidates[0]!;
+    const recovered = await prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: relayUser.id },
+        data: { email, emailIsRelay: false },
+      });
+      const identity = await tx.linkedIdentity.create({
+        data: {
+          userId: relayUser.id,
+          provider: link.provider,
+          providerAccountId,
+          emailSnapshot: email,
+        },
+      });
+      return { user: updated, identity };
+    });
+    await writeAudit({
+      userId: recovered.user.id,
+      action: 'auth.signIn.succeeded',
+      newValue: {
+        provider: link.provider,
+        identityId: recovered.identity.id,
+        recoveredFromRelay: true,
+        previousEmail: relayUser.email,
+      },
+    });
+    return {
+      userId: recovered.user.id,
+      user: {
+        id: recovered.user.id,
+        email: recovered.user.email,
+        name: recovered.user.name,
+        role: recovered.user.role,
+      },
+      identityCreated: true,
+      linkedToExistingUser: true,
+      recoveredFromRelay: true,
+    };
+  }
+
   const created = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
@@ -405,6 +475,24 @@ export class RelayEmailBlockedError extends Error {
     );
     this.name = 'RelayEmailBlockedError';
     this.variant = variant;
+  }
+}
+
+/**
+ * Thrown by `findOrCreateUserByIdentity` when the cross-provider
+ * recovery branch cannot safely auto-link the new sign-in to a
+ * relay-flagged user because more than one such user exists in the
+ * DB. Auto-merging in that situation could combine two unrelated
+ * people, so the signIn callback surfaces a specific error and
+ * directs the user to contact an admin.
+ */
+export class RelayAmbiguousError extends Error {
+  readonly code = 'RelayAmbiguous' as const;
+  constructor() {
+    super(
+      'Sign-in refused: more than one relay-flagged user exists; contact an admin to merge or update your email',
+    );
+    this.name = 'RelayAmbiguousError';
   }
 }
 
