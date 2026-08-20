@@ -5,7 +5,9 @@ vi.mock('~/lib/prisma', () => ({
     user: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn(),
+      update: vi.fn(),
     },
     linkedIdentity: {
       findUnique: vi.fn(),
