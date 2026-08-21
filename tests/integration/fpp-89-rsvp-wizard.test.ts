@@ -9,6 +9,7 @@ describe('Universal Event RSVP and Vanity Invitation URL', () => {
   const headerPath = path.join(process.cwd(), 'src/components/event/EventHeaderSection.tsx');
   const eventPagePath = path.join(process.cwd(), 'src/app/events/[id]/page.tsx');
   const eventsListPagePath = path.join(process.cwd(), 'src/app/events/page.tsx');
+  const homePagePath = path.join(process.cwd(), 'src/app/page.tsx');
 
   it('vanity RSVP route exists and redirects to event with rsvpOpen=1', async () => {
     const vanityPage = await fs.readFile(vanityRsvpPath, 'utf-8');
@@ -39,10 +40,14 @@ describe('Universal Event RSVP and Vanity Invitation URL', () => {
     expect(card).toMatch(/Join Waitlist/);
   });
 
-  it('events list page redirects to latest event when configured', async () => {
+  it('home page redirects to latest event when configured (single-hop, no double redirect)', async () => {
+    const homePage = await fs.readFile(homePagePath, 'utf-8');
+    expect(homePage).toMatch(/shouldRedirectToLatestEvent/);
+    expect(homePage).toMatch(/getLatestEvent/);
+    expect(homePage).toMatch(/redirect\(`\/events\/\$\{latestEvent\.id\}`\)/);
+
     const eventsPage = await fs.readFile(eventsListPagePath, 'utf-8');
-    expect(eventsPage).toMatch(/shouldRedirectToLatestEvent/);
-    expect(eventsPage).toMatch(/getLatestEvent/);
-    expect(eventsPage).toMatch(/redirect\(`\/events\/\$\{latestEvent\.id\}`\)/);
+    expect(eventsPage).not.toMatch(/shouldRedirectToLatestEvent/);
+    expect(eventsPage).not.toMatch(/getLatestEvent/);
   });
 });
